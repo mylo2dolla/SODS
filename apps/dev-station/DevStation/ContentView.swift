@@ -79,12 +79,15 @@ struct ContentView: View {
     @State private var bleTableWarning: String?
     @State private var sodsURLText = ""
     @State private var showToolsRegistry = false
+    @State private var showFlashPopover = false
 
     var body: some View {
         mainContent
             .toolbar { toolbarContent }
             .sheet(isPresented: $showToolsRegistry) {
-                ToolRegistryView(registry: toolRegistry, baseURL: sodsStore.baseURL)
+                ToolRegistryView(registry: toolRegistry, baseURL: sodsStore.baseURL, onFlash: {
+                    showFlashPopover = true
+                })
             }
     }
 
@@ -219,6 +222,16 @@ struct ContentView: View {
                         .buttonStyle(PrimaryActionButtonStyle())
                     Button("God Button") { openSODSTools() }
                         .buttonStyle(SecondaryActionButtonStyle())
+                    Button("Flash") { showFlashPopover = true }
+                        .buttonStyle(SecondaryActionButtonStyle())
+                        .popover(isPresented: $showFlashPopover, arrowEdge: .bottom) {
+                            FlashPopoverView(
+                                status: sodsStore.health,
+                                onFlashEsp32: { openFlashPath("/flash/esp32") },
+                                onFlashEsp32c3: { openFlashPath("/flash/esp32c3") },
+                                onOpenWebTools: { openFlashPath("/flash/") }
+                            )
+                        }
                     Text(sodsStore.health.label)
                         .font(.system(size: 11))
                         .foregroundColor(Color(sodsStore.health.color))
@@ -700,6 +713,16 @@ struct ContentView: View {
                 }
             }
             .pickerStyle(.segmented)
+            Button("Flash") { showFlashPopover = true }
+                .buttonStyle(SecondaryActionButtonStyle())
+                .popover(isPresented: $showFlashPopover, arrowEdge: .bottom) {
+                    FlashPopoverView(
+                        status: sodsStore.health,
+                        onFlashEsp32: { openFlashPath("/flash/esp32") },
+                        onFlashEsp32c3: { openFlashPath("/flash/esp32c3") },
+                        onOpenWebTools: { openFlashPath("/flash/") }
+                    )
+                }
             Text("Scanning: \(scanner.isScanning ? "Yes" : "No")")
                 .font(.system(size: 11))
                 .foregroundColor(.secondary)
@@ -797,6 +820,44 @@ struct ContentView: View {
     private func openSODSTools() {
         toolRegistry.reload()
         showToolsRegistry = true
+    }
+
+    private func openFlashPath(_ path: String) {
+        let base = sodsStore.baseURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        StationProcessManager.shared.ensureRunning(baseURL: base)
+        Task {
+            if await waitForStation(baseURL: base, timeout: 6.0) {
+                if let url = URL(string: base + path) {
+                    NSWorkspace.shared.open(url)
+                }
+            } else if let url = URL(string: base + path) {
+                NSWorkspace.shared.open(url)
+            }
+        }
+    }
+
+    private func waitForStation(baseURL: String, timeout: TimeInterval) async -> Bool {
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            if await pingStatus(baseURL: baseURL) { return true }
+            try? await Task.sleep(nanoseconds: 400_000_000)
+        }
+        return false
+    }
+
+    private func pingStatus(baseURL: String) async -> Bool {
+        guard let url = URL(string: baseURL + "/api/status") else { return false }
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 1.5
+        do {
+            let (_, response) = try await URLSession.shared.data(for: request)
+            if let http = response as? HTTPURLResponse {
+                return (200...299).contains(http.statusCode)
+            }
+        } catch {
+            return false
+        }
+        return false
     }
 
     private func bestONVIFXAddr(for ip: String) -> String? {
@@ -4640,6 +4701,57 @@ private func sodsRootPath() -> String {
 
 private func nodeAgentRootPath() -> String {
     "\(sodsRootPath())/firmware/node-agent"
+}
+
+struct FlashPopoverView: View {
+    let status: APIHealth
+    let onFlashEsp32: () -> Void
+    let onFlashEsp32c3: () -> Void
+    let onOpenWebTools: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("Flash Device")
+                    .font(.system(size: 14, weight: .semibold))
+                Spacer()
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(Color(status.color))
+                        .frame(width: 8, height: 8)
+                    Text(status.label)
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(Theme.panelAlt)
+                .clipShape(Capsule())
+                .overlay(
+                    Capsule()
+                        .stroke(Theme.border, lineWidth: 1)
+                )
+            }
+
+            Text("Pick a target to open the station-hosted web flasher.")
+                .font(.system(size: 11))
+                .foregroundColor(Theme.textSecondary)
+
+            HStack(spacing: 10) {
+                Button("ESP32 DevKit") { onFlashEsp32() }
+                    .buttonStyle(PrimaryActionButtonStyle())
+                Button("ESP32-C3 DevKit") { onFlashEsp32c3() }
+                    .buttonStyle(PrimaryActionButtonStyle())
+            }
+
+            Button("Open Web Tools Folder") { onOpenWebTools() }
+                .buttonStyle(SecondaryActionButtonStyle())
+        }
+        .padding(14)
+        .frame(width: 360)
+        .background(Theme.background)
+        .foregroundColor(Theme.textPrimary)
+    }
 }
 
 enum FlashTarget: String, CaseIterable, Identifiable {

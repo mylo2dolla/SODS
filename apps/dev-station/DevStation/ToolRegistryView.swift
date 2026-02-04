@@ -3,6 +3,7 @@ import SwiftUI
 struct ToolRegistryView: View {
     @ObservedObject var registry: ToolRegistry
     let baseURL: String
+    let onFlash: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -10,6 +11,10 @@ struct ToolRegistryView: View {
                 Text("SODS Tool Registry")
                     .font(.system(size: 16, weight: .semibold))
                 Spacer()
+                Button("Flash") {
+                    onFlash()
+                }
+                .buttonStyle(PrimaryActionButtonStyle())
                 Button("Open /api/tools") {
                     let trimmed = baseURL.trimmingCharacters(in: .whitespacesAndNewlines)
                     guard let url = URL(string: trimmed + "/api/tools") else { return }
