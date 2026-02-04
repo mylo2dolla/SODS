@@ -12,6 +12,10 @@
 		A1A1A1A1A1A1A1A1A1A1A1E1 /* ToolRegistryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1E1 /* ToolRegistryView.swift */; };
 		A1A1A1A1A1A1A1A1A1A1A1E2 /* StationProcessManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1E2 /* StationProcessManager.swift */; };
 		A1A1A1A1A1A1A1A1A1A1A1E3 /* PiLoggerStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1E3 /* PiLoggerStore.swift */; };
+		A1A1A1A1A1A1A1A1A1A1A1E4 /* ModalHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1E4 /* ModalHeaderView.swift */; };
+		A1A1A1A1A1A1A1A1A1A1A1E5 /* APIInspectorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1E5 /* APIInspectorView.swift */; };
+		A1A1A1A1A1A1A1A1A1A1A1E6 /* ToolRunnerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1E6 /* ToolRunnerView.swift */; };
+		A1A1A1A1A1A1A1A1A1A1A1E7 /* ViewerSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1E7 /* ViewerSheet.swift */; };
 		A1A1A1A1A1A1A1A1A1A1A1A3 /* NetworkScanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1B3 /* NetworkScanner.swift */; };
 		A1A1A1A1A1A1A1A1A1A1A1A4 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1B4 /* Models.swift */; };
 		A1A1A1A1A1A1A1A1A1A1A1A5 /* AsyncSemaphore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1B6 /* AsyncSemaphore.swift */; };
@@ -58,6 +62,10 @@
 		B1B1B1B1B1B1B1B1B1B1B1E1 /* ToolRegistryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolRegistryView.swift; sourceTree = "<group>"; };
 		B1B1B1B1B1B1B1B1B1B1B1E2 /* StationProcessManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StationProcessManager.swift; sourceTree = "<group>"; };
 		B1B1B1B1B1B1B1B1B1B1B1E3 /* PiLoggerStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PiLoggerStore.swift; sourceTree = "<group>"; };
+		B1B1B1B1B1B1B1B1B1B1B1E4 /* ModalHeaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModalHeaderView.swift; sourceTree = "<group>"; };
+		B1B1B1B1B1B1B1B1B1B1B1E5 /* APIInspectorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIInspectorView.swift; sourceTree = "<group>"; };
+		B1B1B1B1B1B1B1B1B1B1B1E6 /* ToolRunnerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolRunnerView.swift; sourceTree = "<group>"; };
+		B1B1B1B1B1B1B1B1B1B1B1E7 /* ViewerSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewerSheet.swift; sourceTree = "<group>"; };
 		B1B1B1B1B1B1B1B1B1B1B1B3 /* NetworkScanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkScanner.swift; sourceTree = "<group>"; };
 		B1B1B1B1B1B1B1B1B1B1B1B4 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
 		B1B1B1B1B1B1B1B1B1B1B1B5 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -125,6 +133,10 @@
 				B1B1B1B1B1B1B1B1B1B1B1E1 /* ToolRegistryView.swift */,
 				B1B1B1B1B1B1B1B1B1B1B1E2 /* StationProcessManager.swift */,
 				B1B1B1B1B1B1B1B1B1B1B1E3 /* PiLoggerStore.swift */,
+				B1B1B1B1B1B1B1B1B1B1B1E4 /* ModalHeaderView.swift */,
+				B1B1B1B1B1B1B1B1B1B1B1E5 /* APIInspectorView.swift */,
+				B1B1B1B1B1B1B1B1B1B1B1E6 /* ToolRunnerView.swift */,
+				B1B1B1B1B1B1B1B1B1B1B1E7 /* ViewerSheet.swift */,
 				B1B1B1B1B1B1B1B1B1B1B1B3 /* NetworkScanner.swift */,
 				B1B1B1B1B1B1B1B1B1B1B1B4 /* Models.swift */,
 				B1B1B1B1B1B1B1B1B1B1B1B6 /* AsyncSemaphore.swift */,
@@ -248,6 +260,10 @@
 				A1A1A1A1A1A1A1A1A1A1A1E1 /* ToolRegistryView.swift in Sources */,
 				A1A1A1A1A1A1A1A1A1A1A1E2 /* StationProcessManager.swift in Sources */,
 				A1A1A1A1A1A1A1A1A1A1A1E3 /* PiLoggerStore.swift in Sources */,
+				A1A1A1A1A1A1A1A1A1A1A1E4 /* ModalHeaderView.swift in Sources */,
+				A1A1A1A1A1A1A1A1A1A1A1E5 /* APIInspectorView.swift in Sources */,
+				A1A1A1A1A1A1A1A1A1A1A1E6 /* ToolRunnerView.swift in Sources */,
+				A1A1A1A1A1A1A1A1A1A1A1E7 /* ViewerSheet.swift in Sources */,
 				A1A1A1A1A1A1A1A1A1A1A1A3 /* NetworkScanner.swift in Sources */,
 				A1A1A1A1A1A1A1A1A1A1A1A4 /* Models.swift in Sources */,
 				A1A1A1A1A1A1A1A1A1A1A1A5 /* AsyncSemaphore.swift in Sources */,

@@ -203,7 +203,7 @@ final class SODSStore: ObservableObject {
     func openEndpoint(for node: SignalNode, path: String) {
         guard let ip = node.ip, !ip.isEmpty else { return }
         guard let url = URL(string: "http://\(ip)\(path)") else { return }
-        NSWorkspace.shared.open(url)
+        NotificationCenter.default.post(name: .sodsOpenURLInApp, object: url)
     }
 
     private func makeURL(path: String) -> URL? {

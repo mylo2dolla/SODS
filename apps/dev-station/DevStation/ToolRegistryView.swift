@@ -4,23 +4,26 @@ struct ToolRegistryView: View {
     @ObservedObject var registry: ToolRegistry
     let baseURL: String
     let onFlash: () -> Void
+    let onInspect: (ContentView.APIEndpoint) -> Void
+    let onRunTool: (ToolDefinition) -> Void
+    let onClose: () -> Void
+    @State private var searchText = ""
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("SODS Tool Registry")
-                    .font(.system(size: 16, weight: .semibold))
-                Spacer()
+            ModalHeaderView(title: "Tool Registry", onBack: nil, onClose: onClose)
+
+            HStack(spacing: 10) {
+                TextField("Search tools", text: $searchText)
+                    .textFieldStyle(.roundedBorder)
+                Button("View JSON") {
+                    onInspect(.tools)
+                }
+                .buttonStyle(SecondaryActionButtonStyle())
                 Button("Flash") {
                     onFlash()
                 }
                 .buttonStyle(PrimaryActionButtonStyle())
-                Button("Open /api/tools") {
-                    let trimmed = baseURL.trimmingCharacters(in: .whitespacesAndNewlines)
-                    guard let url = URL(string: trimmed + "/api/tools") else { return }
-                    NSWorkspace.shared.open(url)
-                }
-                .buttonStyle(SecondaryActionButtonStyle())
             }
 
             if let note = registry.policyNote {
@@ -29,15 +32,28 @@ struct ToolRegistryView: View {
                     .foregroundColor(.secondary)
             }
 
-            if registry.tools.isEmpty {
+            let filtered = registry.tools.filter { tool in
+                if searchText.isEmpty { return true }
+                let needle = searchText.lowercased()
+                return tool.name.lowercased().contains(needle)
+                    || tool.scope.lowercased().contains(needle)
+                    || tool.kind.lowercased().contains(needle)
+                    || tool.description.lowercased().contains(needle)
+            }
+
+            if filtered.isEmpty {
                 Text("No tools available.")
                     .font(.system(size: 12))
                     .foregroundColor(.secondary)
             } else {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 10) {
-                        ForEach(registry.tools) { tool in
-                            ToolRow(tool: tool)
+                        ForEach(filtered) { tool in
+                            ToolRow(
+                                tool: tool,
+                                onRun: { onRunTool(tool) },
+                                onInspect: { onInspect(.tools) }
+                            )
                         }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -54,6 +70,8 @@ struct ToolRegistryView: View {
 
 private struct ToolRow: View {
     let tool: ToolDefinition
+    let onRun: () -> Void
+    let onInspect: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -80,6 +98,14 @@ private struct ToolRow: View {
             Text("Output: \(tool.output)")
                 .font(.system(size: 11))
                 .foregroundColor(.secondary)
+
+            HStack(spacing: 8) {
+                Button("Run") { onRun() }
+                    .buttonStyle(PrimaryActionButtonStyle())
+                Button("View JSON") { onInspect() }
+                    .buttonStyle(SecondaryActionButtonStyle())
+                Spacer()
+            }
         }
         .padding(10)
         .background(Theme.panelAlt)

@@ -27,6 +27,37 @@ struct ContentView: View {
         var id: String { rawValue }
     }
 
+    enum APIEndpoint: String, CaseIterable, Identifiable {
+        case tools = "/api/tools"
+        case status = "/api/status"
+        case health = "/health"
+
+        var id: String { rawValue }
+        var label: String {
+            switch self {
+            case .tools: return "/api/tools"
+            case .status: return "/api/status"
+            case .health: return "/health"
+            }
+        }
+    }
+
+    enum ActiveSheet: Identifiable {
+        case toolRegistry
+        case apiInspector(endpoint: APIEndpoint)
+        case toolRunner(tool: ToolDefinition)
+        case viewer(url: URL)
+
+        var id: String {
+            switch self {
+            case .toolRegistry: return "toolRegistry"
+            case .apiInspector(let endpoint): return "apiInspector:\(endpoint.rawValue)"
+            case .toolRunner(let tool): return "toolRunner:\(tool.name)"
+            case .viewer(let url): return "viewer:\(url.absoluteString)"
+            }
+        }
+    }
+
     @StateObject private var scanner = NetworkScanner()
     @StateObject private var logStore = LogStore.shared
     @StateObject private var bleScanner = BLEScanner.shared
@@ -78,16 +109,46 @@ struct ContentView: View {
     @State private var inboxStatus = InboxRetention.shared.currentStatus()
     @State private var bleTableWarning: String?
     @State private var sodsURLText = ""
-    @State private var showToolsRegistry = false
     @State private var showFlashPopover = false
+    @State private var activeSheet: ActiveSheet?
 
     var body: some View {
         mainContent
             .toolbar { toolbarContent }
-            .sheet(isPresented: $showToolsRegistry) {
-                ToolRegistryView(registry: toolRegistry, baseURL: sodsStore.baseURL, onFlash: {
-                    showFlashPopover = true
-                })
+            .sheet(item: $activeSheet) { sheet in
+                switch sheet {
+                case .toolRegistry:
+                    ToolRegistryView(
+                        registry: toolRegistry,
+                        baseURL: sodsStore.baseURL,
+                        onFlash: { showFlashPopover = true },
+                        onInspect: { endpoint in activeSheet = .apiInspector(endpoint: endpoint) },
+                        onRunTool: { tool in activeSheet = .toolRunner(tool: tool) },
+                        onClose: { activeSheet = nil }
+                    )
+                case .apiInspector(let endpoint):
+                    APIInspectorView(
+                        baseURL: sodsStore.baseURL,
+                        endpoint: endpoint,
+                        onClose: { activeSheet = nil },
+                        onBack: { activeSheet = .toolRegistry }
+                    )
+                case .toolRunner(let tool):
+                    ToolRunnerView(
+                        baseURL: sodsStore.baseURL,
+                        tool: tool,
+                        onOpenViewer: { url in activeSheet = .viewer(url: url) },
+                        onClose: { activeSheet = nil },
+                        onBack: { activeSheet = .toolRegistry }
+                    )
+                case .viewer(let url):
+                    ViewerSheet(url: url, onClose: { activeSheet = nil })
+                }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .sodsOpenURLInApp)) { note in
+                if let url = note.object as? URL {
+                    activeSheet = .viewer(url: url)
+                }
             }
     }
 
@@ -216,9 +277,13 @@ struct ContentView: View {
                         sodsStore.updateBaseURL(sodsURLText)
                     }
                     .buttonStyle(SecondaryActionButtonStyle())
+                    Button("Inspect API") {
+                        activeSheet = .apiInspector(endpoint: .status)
+                    }
+                    .buttonStyle(SecondaryActionButtonStyle())
                 }
                 HStack(spacing: 10) {
-                    Button("Open Spectrum") { openSODSSpectrum() }
+                    Button("Open Spectrum") { viewMode = .spectral }
                         .buttonStyle(PrimaryActionButtonStyle())
                     Button("God Button") { openSODSTools() }
                         .buttonStyle(SecondaryActionButtonStyle())
@@ -707,6 +772,8 @@ struct ContentView: View {
                 .font(.system(size: 16, weight: .semibold))
         }
         ToolbarItemGroup(placement: .automatic) {
+            Button("Tools") { openSODSTools() }
+                .buttonStyle(SecondaryActionButtonStyle())
             Picker("View", selection: $viewMode) {
                 ForEach(ViewMode.allCases) { mode in
                     Text(mode.rawValue).tag(mode)
@@ -812,14 +879,12 @@ struct ContentView: View {
     }
 
     private func openSODSSpectrum() {
-        let base = sodsStore.baseURL.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let url = URL(string: base) else { return }
-        NSWorkspace.shared.open(url)
+        viewMode = .spectral
     }
 
     private func openSODSTools() {
         toolRegistry.reload()
-        showToolsRegistry = true
+        activeSheet = .toolRegistry
     }
 
     private func openFlashPath(_ path: String) {
@@ -4689,6 +4754,7 @@ private func openBluetoothPrivacySettings() {
 
 extension Notification.Name {
     static let flashNodeCommand = Notification.Name("sods.flashNodeCommand")
+    static let sodsOpenURLInApp = Notification.Name("sods.openUrlInApp")
 }
 
 private func sodsRootPath() -> String {
