@@ -19,12 +19,8 @@ npm install
 npm run dev -- --pi-logger http://pi-logger.local:8088 --port 9123
 ```
 
-Note: `./tools/sods --help` works only after the CLI is built:
-```bash
-cd cli/sods
-npm install
-npm run build
-```
+Tools are runnable from any working directory. Use an absolute path or `cd` to the repo root before running `./tools/...`.
+If executables lose their permissions, run `/Users/letsdev/sods/SODS/tools/permfix.sh`.
 
 Build + run:
 ```bash

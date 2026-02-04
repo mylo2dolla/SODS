@@ -1,4 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-exec "$ROOT/tools/_sods_cli.sh" "$@"
+
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+RUNNER="$REPO_ROOT/tools/_sods_cli.sh"
+
+if [[ ! -x "$RUNNER" ]]; then
+  echo "devstation: missing runner at $RUNNER" >&2
+  exit 2
+fi
+
+exec "$RUNNER" "$@"

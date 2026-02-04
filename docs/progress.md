@@ -57,12 +57,8 @@ cd firmware/ops-portal
 pio run -e ops-portal
 ```
 
-CLI build required for `./tools/sods --help`:
-```bash
-cd cli/sods
-npm install
-npm run build
-```
+Tools are runnable from any working directory. Use an absolute path or `cd` to the repo root before running `./tools/...`.
+If executables lose permissions, run `/Users/letsdev/sods/SODS/tools/permfix.sh`.
 
 ## Notes
 
