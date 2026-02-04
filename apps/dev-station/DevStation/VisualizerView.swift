@@ -362,8 +362,9 @@ struct SignalFieldView: View {
             if quickOverlayVisible {
                 QuickOverlayView(
                     activeCount: max(frames.count, events.count),
-                    hottestSource: frames.first?.source ?? "idle",
-                    status: frames.isEmpty ? "Idle" : "Live"
+                    hottestSource: hottestLabel,
+                    status: frames.isEmpty ? "Idle" : "Live",
+                    focused: focusedNodeID
                 )
                 .transition(.opacity)
                 .onAppear {
@@ -414,12 +415,20 @@ struct SignalFieldView: View {
                 .stroke(Theme.border, lineWidth: 1)
         )
     }
+
+    private var hottestLabel: String {
+        guard let hottest = frames.max(by: { ($0.glow ?? 0) < ($1.glow ?? 0) }) else {
+            return "idle"
+        }
+        return hottest.deviceID
+    }
 }
 
 struct QuickOverlayView: View {
     let activeCount: Int
     let hottestSource: String
     let status: String
+    let focused: String?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -431,6 +440,11 @@ struct QuickOverlayView: View {
                 .font(.system(size: 11))
             Text("Hottest: \(hottestSource)")
                 .font(.system(size: 11))
+            if let focused {
+                Text("Focus: \(focused)")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+            }
         }
         .padding(12)
         .background(Theme.panelAlt)

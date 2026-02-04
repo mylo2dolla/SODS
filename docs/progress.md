@@ -18,6 +18,7 @@ Date: 2026-02-04
 - Visualizer upgraded with focus mode, pulses, and field haze for a richer 4D feel.
 - Visualizer now renders subtle bin arcs and supports pinning nodes for persistent tracking.
 - Added gentle attraction for related sources plus orbital drift to make the field feel alive.
+- Quick overlay now surfaces hottest source + current focus for at-a-glance context.
 
 ## Current Architecture (Locked)
 
