@@ -150,15 +150,14 @@ export class SODSServer {
     if (url.pathname === "/tools") {
       return this.respondJson(res, { items: listTools() });
     }
+    if (url.pathname === "/api/flash") {
+      return this.respondJson(res, this.buildFlashInfo(req));
+    }
     if (url.pathname === "/flash/esp32") {
-      res.writeHead(302, { Location: "/flash/index.html?chip=esp32" });
-      res.end();
-      return;
+      return this.respondFlashHtml(res, "esp32", "ESP32 DevKit", "/flash/manifest.json");
     }
     if (url.pathname === "/flash/esp32c3") {
-      res.writeHead(302, { Location: "/flash/index.html?chip=esp32c3" });
-      res.end();
-      return;
+      return this.respondFlashHtml(res, "esp32c3", "ESP32-C3 DevKit", "/flash/manifest-esp32c3.json");
     }
     if (url.pathname.startsWith("/flash/")) {
       const rel = url.pathname.replace(/^\/flash\/+/, "");
@@ -372,5 +371,56 @@ export class SODSServer {
     } catch {
       return { tools: [] };
     }
+  }
+
+  private buildFlashInfo(req: http.IncomingMessage) {
+    const host = req.headers.host ?? "localhost:9123";
+    const base = `http://${host}`;
+    return {
+      base_url: base,
+      items: [
+        {
+          id: "esp32",
+          label: "ESP32 DevKit",
+          url: `${base}/flash/esp32`,
+          manifest: `${base}/flash/manifest.json`,
+        },
+        {
+          id: "esp32c3",
+          label: "ESP32-C3 DevKit",
+          url: `${base}/flash/esp32c3`,
+          manifest: `${base}/flash/manifest-esp32c3.json`,
+        },
+      ],
+    };
+  }
+
+  private respondFlashHtml(res: http.ServerResponse, chip: string, label: string, manifestPath: string) {
+    const html = `<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Flash ${label}</title>
+    <style>
+      body { background:#0a0a0c; color:#f5f5f5; font-family: -apple-system, Helvetica, Arial; padding:32px; }
+      .card { max-width:720px; margin:0 auto; background:#121216; border:1px solid #2a2a2f; border-radius:16px; padding:20px; box-shadow:0 0 24px rgba(255,60,60,0.18); }
+      h1 { margin:0 0 8px 0; font-size:22px; }
+      p { color:#b9b9c0; line-height:1.4; }
+      a { color:#ff3c3c; }
+      .button { margin-top:16px; display:inline-block; padding:10px 18px; border-radius:20px; background:#ff3c3c; color:#fff; text-decoration:none; box-shadow:0 0 14px rgba(255,60,60,0.4); }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h1>Flash ${label}</h1>
+      <p>Use the SODS web flasher to install firmware for ${label}. This page points to the repo-local ESP Web Tools manifest.</p>
+      <p>Manifest: <a href="${manifestPath}">${manifestPath}</a></p>
+      <a class="button" href="/flash/index.html?chip=${chip}">Open Web Flasher</a>
+    </div>
+  </body>
+</html>`;
+    res.writeHead(200, { "Content-Type": "text/html" });
+    res.end(html);
   }
 }
