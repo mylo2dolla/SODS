@@ -1,5 +1,5 @@
 import http from "node:http";
-import { readFileSync, existsSync, statSync, createReadStream } from "node:fs";
+import { readFileSync, existsSync, statSync, createReadStream, mkdirSync, createWriteStream } from "node:fs";
 import { join, resolve } from "node:path";
 import { WebSocketServer, WebSocket } from "ws";
 import { Ingestor } from "./ingest.js";
@@ -12,6 +12,8 @@ type ServerOptions = {
   port: number;
   piLoggerBase: string;
   publicDir: string;
+  flashDir: string;
+  localLogPath?: string;
 };
 
 export class SODSServer {
@@ -28,9 +30,19 @@ export class SODSServer {
   private wssEvents?: WebSocketServer;
   private wssFrames?: WebSocketServer;
   private frameTimer?: NodeJS.Timeout;
+  private localLogStream?: ReturnType<typeof createWriteStream>;
 
   constructor(private options: ServerOptions) {
     this.ingestor = new Ingestor(options.piLoggerBase, 500, 1400);
+    if (options.localLogPath) {
+      try {
+        const dir = resolve(options.localLogPath, "..");
+        mkdirSync(dir, { recursive: true });
+        this.localLogStream = createWriteStream(options.localLogPath, { flags: "a" });
+      } catch {
+        this.localLogStream = undefined;
+      }
+    }
   }
 
   start() {
@@ -70,6 +82,7 @@ export class SODSServer {
   stop() {
     this.ingestor.stop();
     if (this.frameTimer) clearInterval(this.frameTimer);
+    if (this.localLogStream) this.localLogStream.end();
     this.server?.close();
   }
 
@@ -82,6 +95,9 @@ export class SODSServer {
     const payload = JSON.stringify(ev);
     for (const ws of this.eventsClients) {
       ws.send(payload);
+    }
+    if (this.localLogStream) {
+      this.localLogStream.write(payload + "\n");
     }
   }
 
@@ -97,6 +113,13 @@ export class SODSServer {
 
   private handleRequest(req: http.IncomingMessage, res: http.ServerResponse) {
     const url = new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`);
+    if (url.pathname === "/api/status") {
+      void this.handleStatus(res);
+      return;
+    }
+    if (url.pathname === "/api/tools") {
+      return this.respondJson(res, this.buildToolRegistry());
+    }
     if (url.pathname === "/health") {
       const counters = this.ingestor.getCounters();
       const payload = {
@@ -126,6 +149,20 @@ export class SODSServer {
     }
     if (url.pathname === "/tools") {
       return this.respondJson(res, { items: listTools() });
+    }
+    if (url.pathname === "/flash/esp32") {
+      res.writeHead(302, { Location: "/flash/index.html?chip=esp32" });
+      res.end();
+      return;
+    }
+    if (url.pathname === "/flash/esp32c3") {
+      res.writeHead(302, { Location: "/flash/index.html?chip=esp32c3" });
+      res.end();
+      return;
+    }
+    if (url.pathname.startsWith("/flash/")) {
+      const rel = url.pathname.replace(/^\/flash\/+/, "");
+      return this.serveStaticFrom(res, this.options.flashDir, rel || "index.html");
     }
     if (url.pathname === "/opsportal/state") {
       return this.respondJson(res, this.buildOpsPortalState());
@@ -223,6 +260,30 @@ export class SODSServer {
     createReadStream(abs).pipe(res);
   }
 
+  private serveStaticFrom(res: http.ServerResponse, rootDir: string, relPath: string) {
+    const safePath = relPath.replace(/^\/+/, "");
+    const abs = resolve(join(rootDir, safePath));
+    if (!abs.startsWith(resolve(rootDir))) {
+      res.writeHead(403);
+      res.end("Forbidden");
+      return;
+    }
+    if (!existsSync(abs) || statSync(abs).isDirectory()) {
+      res.writeHead(404);
+      res.end("Not found");
+      return;
+    }
+    const ext = abs.split(".").pop() ?? "";
+    const contentType =
+      ext === "html" ? "text/html" :
+      ext === "js" ? "application/javascript" :
+      ext === "css" ? "text/css" :
+      ext === "json" ? "application/json" :
+      "application/octet-stream";
+    res.writeHead(200, { "Content-Type": contentType });
+    createReadStream(abs).pipe(res);
+  }
+
   private serveDemo(res: http.ServerResponse) {
     const demoPath = join(this.options.publicDir, "demo.ndjson");
     if (!existsSync(demoPath)) {
@@ -270,5 +331,46 @@ export class SODSServer {
       buttons,
       frames: this.lastFrames,
     };
+  }
+
+  private async handleStatus(res: http.ServerResponse) {
+    const counters = this.ingestor.getCounters();
+    const nodes = this.ingestor.getNodes();
+    const station = {
+      ok: true,
+      uptime_ms: Math.floor(process.uptime() * 1000),
+      last_ingest_ms: this.lastIngestAt,
+      last_error: this.lastError ?? "",
+      pi_logger: this.options.piLoggerBase,
+      nodes_total: nodes.length,
+      nodes_online: nodes.filter((n) => nowMs() - n.last_seen < 60_000).length,
+      tools: listTools().length,
+    };
+
+    const logger = await this.fetchLoggerHealth();
+    this.respondJson(res, { station, logger });
+  }
+
+  private async fetchLoggerHealth() {
+    try {
+      const res = await fetch(`${this.options.piLoggerBase}/health`, { method: "GET" });
+      if (!res.ok) {
+        return { ok: false, status: `HTTP ${res.status}` };
+      }
+      const json = await res.json();
+      return { ok: true, status: "ok", detail: json };
+    } catch (err: any) {
+      return { ok: false, status: err?.message ?? "offline" };
+    }
+  }
+
+  private buildToolRegistry() {
+    try {
+      const registryPath = new URL("../../../docs/tool-registry.json", import.meta.url).pathname;
+      const raw = JSON.parse(readFileSync(registryPath, "utf8"));
+      return raw;
+    } catch {
+      return { tools: [] };
+    }
   }
 }

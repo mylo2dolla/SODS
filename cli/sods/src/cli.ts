@@ -170,10 +170,13 @@ async function cmdStart() {
     console.error("Invalid --pi-logger URL");
     process.exit(1);
   }
+  const localLogPath = process.env.SODS_LOCAL_LOG_PATH;
   const server = new SODSServer({
     port,
     piLoggerBase: piLogger,
     publicDir: new URL("../public/", import.meta.url).pathname,
+    flashDir: new URL("../../../firmware/node-agent/esp-web-tools/", import.meta.url).pathname,
+    localLogPath: localLogPath && localLogPath.trim() ? localLogPath.trim() : undefined,
   });
   server.start();
   console.log(`sods running on http://localhost:${port}`);
