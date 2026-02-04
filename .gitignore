@@ -21,3 +21,8 @@
 **/DerivedData
 **/xcuserdata
 **/*.xcuserstate
+
+# SODS user registries/tools
+docs/tool-registry.user.json
+docs/presets.user.json
+tools/user/

@@ -7,6 +7,8 @@ import { FrameEngine } from "./frame-engine.js";
 import { CanonicalEvent, SignalFrame } from "./schema.js";
 import { nowMs } from "./util.js";
 import { listTools, runTool } from "./tools.js";
+import { loadToolRegistry } from "./tool-registry.js";
+import { loadPresets } from "./presets.js";
 
 type ServerOptions = {
   port: number;
@@ -508,13 +510,11 @@ export class SODSServer {
   }
 
   private buildToolRegistry() {
-    try {
-      const registryPath = new URL("../../../docs/tool-registry.json", import.meta.url).pathname;
-      const raw = JSON.parse(readFileSync(registryPath, "utf8"));
-      return raw;
-    } catch {
-      return { tools: [] };
-    }
+    return loadToolRegistry();
+  }
+
+  private buildPresets() {
+    return loadPresets();
   }
 
   private buildFlashInfo(req: http.IncomingMessage) {
@@ -574,3 +574,6 @@ export class SODSServer {
     res.end(html);
   }
 }
+    if (url.pathname === "/api/presets") {
+      return this.respondJson(res, this.buildPresets());
+    }

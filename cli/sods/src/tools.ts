@@ -1,54 +1,23 @@
 import { spawn } from "node:child_process";
 import { performance } from "node:perf_hooks";
-import { readFileSync, existsSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
 import { CanonicalEvent } from "./schema.js";
+import { loadToolRegistry, ToolEntry } from "./tool-registry.js";
 
-export type ToolDef = {
-  name: string;
-  scope: string;
-  input: string;
-  output: string;
-  kind: "passive" | "active";
-  description?: string;
-  output_schema?: Record<string, unknown>;
-};
+export type ToolDef = ToolEntry;
 
 type RunResult = { ok: boolean; output: string; duration_ms: number; data?: Record<string, unknown> };
 
-function findRepoRoot() {
-  let dir = resolve(fileURLToPath(new URL(".", import.meta.url)));
-  for (let i = 0; i < 6; i += 1) {
-    const toolsPath = join(dir, "tools", "_sods_cli.sh");
-    const cliPath = join(dir, "cli", "sods");
-    if (existsSync(toolsPath) && existsSync(cliPath)) return dir;
-    const parent = resolve(dir, "..");
-    if (parent === dir) break;
-    dir = parent;
-  }
-  return resolve(fileURLToPath(new URL("../../../..", import.meta.url)));
-}
-
-const repoRoot = findRepoRoot();
+const repoRoot = resolve(new URL("../../../..", import.meta.url).pathname);
 
 function repoPath(...parts: string[]) {
   return join(repoRoot, ...parts);
 }
 
 export function listTools(): ToolDef[] {
-  const registryPath = new URL("../../../docs/tool-registry.json", import.meta.url).pathname;
-  if (!existsSync(registryPath)) return [];
-  try {
-    const raw = JSON.parse(readFileSync(registryPath, "utf8"));
-    if (Array.isArray(raw.tools)) {
-      const list = raw.tools as ToolDef[];
-      return list.filter((tool) => tool.kind === "passive");
-    }
-  } catch {
-    return [];
-  }
-  return [];
+  const registry = loadToolRegistry();
+  return registry.tools;
 }
 
 export async function runTool(
