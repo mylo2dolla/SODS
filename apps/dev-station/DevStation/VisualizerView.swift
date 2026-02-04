@@ -736,6 +736,7 @@ final class SignalFieldEngine: ObservableObject {
 
     struct GhostPoint: Hashable {
         let position: SIMD3<Double>
+        let color: NSColor
         let ts: Date
     }
 
@@ -1014,7 +1015,7 @@ final class SignalFieldEngine: ObservableObject {
         if now.timeIntervalSince(ghostLastFlush) > 0.12 {
             ghostLastFlush = now
             for source in sources.values {
-                ghostAccumulator.append(GhostPoint(position: source.position, ts: now))
+                ghostAccumulator.append(GhostPoint(position: source.position, color: source.color, ts: now))
             }
             if ghostAccumulator.count > 180 {
                 ghostAccumulator.removeFirst(ghostAccumulator.count - 180)
@@ -1035,7 +1036,7 @@ final class SignalFieldEngine: ObservableObject {
             )
             let radius = CGFloat(1.0 + alpha * 10.0) * depth
             context.fill(Path(ellipseIn: CGRect(x: basePoint.x - radius, y: basePoint.y - radius, width: radius * 2, height: radius * 2)),
-                         with: .color(Color.white.opacity(alpha)))
+                         with: .color(Color(ghost.color).opacity(alpha)))
         }
     }
 

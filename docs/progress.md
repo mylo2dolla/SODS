@@ -23,6 +23,7 @@ Date: 2026-02-04
 - Added replay autoplay + replay progress bar; pinned list now supports focus shortcuts.
 - Ghost trails + scrub bar seek make the spectrum replay feel alive and controllable.
 - Replay speed control added; ghost trails now decay by real time age.
+- Ghost trails now tinted by source color for identity continuity.
 
 ## Current Architecture (Locked)
 
