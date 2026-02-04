@@ -37,7 +37,8 @@ struct VisualizerView: View {
                 intensity: intensityMode,
                 replayEnabled: replayEnabled,
                 replayOffset: replayOffset,
-                ghostTrails: ghostTrails
+                ghostTrails: ghostTrails,
+                aliases: nodeAliases
             )
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
@@ -261,6 +262,16 @@ struct VisualizerView: View {
         }
     }
 
+    private var nodeAliases: [String: String] {
+        var out: [String: String] = [:]
+        for node in store.nodes {
+            let alias = node.hostname ?? node.ip ?? node.id
+            out[node.id] = alias
+            out["node:\(node.id)"] = alias
+        }
+        return out
+    }
+
     // persistence handled inside SignalFieldView
 
     private func toggleFilter(id: String, in set: inout Set<String>) {
@@ -356,6 +367,7 @@ struct SignalFieldView: View {
     let replayEnabled: Bool
     let replayOffset: Double
     let ghostTrails: Bool
+    let aliases: [String: String]
 
     @StateObject private var engine = SignalFieldEngine()
     @State private var mousePoint: CGPoint = .zero
@@ -410,7 +422,7 @@ struct SignalFieldView: View {
                     activeCount: max(frames.count, events.count),
                     hottestSource: hottestLabel,
                     status: frames.isEmpty ? "Idle" : "Live",
-                    focused: focusedNodeID
+                    focused: focusedLabel
                 )
                 .transition(.opacity)
                 .onAppear {
@@ -425,6 +437,7 @@ struct SignalFieldView: View {
             if let node = selectedNode {
                 NodeInspectorView(
                     node: node,
+                    alias: aliases[node.id],
                     focused: focusedNodeID == node.id,
                     pinned: pinnedNodeIDs.contains(node.id),
                     onFocus: {
@@ -480,7 +493,12 @@ struct SignalFieldView: View {
         guard let hottest = frames.max(by: { ($0.glow ?? 0) < ($1.glow ?? 0) }) else {
             return "idle"
         }
-        return hottest.deviceID
+        return aliases[hottest.deviceID] ?? hottest.deviceID
+    }
+
+    private var focusedLabel: String? {
+        guard let focusedNodeID else { return nil }
+        return aliases[focusedNodeID] ?? focusedNodeID
     }
 
     private func loadPersistedState() {
@@ -641,6 +659,7 @@ struct ReplayBarView: View {
 
 struct NodeInspectorView: View {
     let node: SignalFieldEngine.ProjectedNode
+    let alias: String?
     let focused: Bool
     let pinned: Bool
     let onFocus: () -> Void
@@ -662,6 +681,11 @@ struct NodeInspectorView: View {
                     .frame(width: 10, height: 10)
                 Text(node.id)
                     .font(.system(size: 11, weight: .semibold))
+            }
+            if let alias, alias != node.id {
+                Text(alias)
+                    .font(.system(size: 10))
+                    .foregroundColor(.secondary)
             }
             Text("Depth: \(String(format: "%.2f", node.depth))")
                 .font(.system(size: 10, design: .monospaced))

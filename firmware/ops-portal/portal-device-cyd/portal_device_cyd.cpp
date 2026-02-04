@@ -9,6 +9,7 @@
 #include <Preferences.h>
 #include <TFT_eSPI.h>
 #include <XPT2046_Touchscreen.h>
+#include <utility>
 
 #include "portal_core.h"
 
@@ -59,6 +60,15 @@ static bool focusMode = false;
 static String focusId = "";
 static unsigned long lastReplayStepMs = 0;
 static unsigned long replayStartMs = 0;
+static std::vector<std::pair<String, String>> aliasMap;
+
+static String lookupAlias(const String &id) {
+  for (const auto &pair : aliasMap) {
+    if (pair.first == id) return pair.second;
+    if ("node:" + pair.first == id) return pair.second;
+  }
+  return "";
+}
 
 static WebSocketsClient wsClient;
 static bool wsConnected = false;
@@ -361,13 +371,14 @@ static void applyFrames(JsonArray frames) {
   }
   if (focusMode) {
     if (focusId.length()) {
-      String shortId = focusId;
-      int lastColon = shortId.lastIndexOf(':');
-      if (lastColon >= 0 && lastColon + 1 < shortId.length()) {
-        shortId = shortId.substring(lastColon + 1);
+      String alias = lookupAlias(focusId);
+      String label = alias.length() ? alias : focusId;
+      int lastColon = label.lastIndexOf(':');
+      if (lastColon >= 0 && lastColon + 1 < label.length()) {
+        label = label.substring(lastColon + 1);
       }
-      if (shortId.length() > 6) shortId = shortId.substring(shortId.length() - 6);
-      core.setFocusLabel("focus:" + shortId);
+      if (label.length() > 12) label = label.substring(label.length() - 12);
+      core.setFocusLabel("focus:" + label);
     } else {
       core.setFocusLabel("focus");
     }
@@ -435,6 +446,19 @@ static void parsePortalState(const String &json) {
     applyFrames(frames);
     if (focusMode && focusId.length() == 0 && core.state().bins.size() > 0) {
       focusId = core.state().bins[0].id;
+    }
+  }
+
+  JsonObject nodes = root["nodes"];
+  JsonArray topNodes = nodes["top_nodes"].as<JsonArray>();
+  if (!topNodes.isNull()) {
+    aliasMap.clear();
+    for (JsonVariant v : topNodes) {
+      String nodeId = String((const char*)(v["node_id"] | ""));
+      String hostname = String((const char*)(v["hostname"] | ""));
+      String ip = String((const char*)(v["ip"] | ""));
+      String alias = hostname.length() ? hostname : (ip.length() ? ip : nodeId);
+      if (nodeId.length()) aliasMap.push_back({nodeId, alias});
     }
   }
 }

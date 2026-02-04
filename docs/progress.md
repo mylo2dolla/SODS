@@ -24,6 +24,7 @@ Date: 2026-02-04
 - Ghost trails + scrub bar seek make the spectrum replay feel alive and controllable.
 - Replay speed control added; ghost trails now decay by real time age.
 - Ghost trails now tinted by source color for identity continuity.
+- Focus labels now prefer real aliases (hostname/IP) when available.
 - Ops Portal visualizer now renders rings, pulses, and legend text for parity.
 - Ops Portal: touch toggles focus mode + replay bar scrub (basic parity).
 - Ops Portal status now shows focused source label and replay state.

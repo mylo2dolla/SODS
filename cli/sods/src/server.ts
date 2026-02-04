@@ -427,7 +427,13 @@ export class SODSServer {
     const topNodes = [...nodes]
       .sort((a, b) => b.last_seen - a.last_seen)
       .slice(0, 5)
-      .map((n) => ({ node_id: n.node_id, last_seen: n.last_seen, confidence: n.confidence }));
+      .map((n) => ({
+        node_id: n.node_id,
+        last_seen: n.last_seen,
+        confidence: n.confidence,
+        hostname: n.hostname,
+        ip: n.ip,
+      }));
 
     const lastSeenByNode: Record<string, number> = {};
     for (const n of nodes) {

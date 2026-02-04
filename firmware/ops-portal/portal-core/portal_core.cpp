@@ -201,7 +201,13 @@ void PortalCore::drawStatusLeft() {
   tft->print("tap: focus / replay");
   tft->setCursor(10, 136);
   tft->print("replay: ");
-  tft->print(replayOn ? "on" : "off");
+  if (replayOn) {
+    int seconds = (int)(replayPos * 60.0f);
+    tft->print(seconds);
+    tft->print("s");
+  } else {
+    tft->print("off");
+  }
 }
 
 void PortalCore::drawButtonsRight() {
