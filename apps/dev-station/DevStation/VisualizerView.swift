@@ -3,6 +3,7 @@ import AppKit
 
 struct VisualizerView: View {
     @ObservedObject var store: SODSStore
+    let onOpenTools: () -> Void
     @State private var baseURLText: String = ""
     @State private var paused: Bool = false
     @State private var decayRate: Double = 1.0
@@ -154,9 +155,7 @@ struct VisualizerView: View {
                         onOpenMetrics: {
                             store.openEndpoint(for: node, path: "/metrics")
                         },
-                        onOpenTools: {
-                            openTools(for: node)
-                        }
+                        onOpenTools: { onOpenTools() }
                     )
                 }
             }
@@ -220,12 +219,6 @@ struct VisualizerView: View {
             }
             return true
         }
-    }
-
-    private func openTools(for node: SignalNode) {
-        let base = store.baseURL.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let url = URL(string: base) else { return }
-        NSWorkspace.shared.open(url)
     }
 
     private func toggleFilter(id: String, in set: inout Set<String>) {

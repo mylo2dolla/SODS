@@ -363,7 +363,7 @@ struct ContentView: View {
         } else if viewMode == .ble {
             bleSection
         } else if viewMode == .spectral {
-            VisualizerView(store: sodsStore)
+            VisualizerView(store: sodsStore, onOpenTools: { openSODSTools() })
         } else if viewMode == .nodes {
             NodesView(
                 store: piAuxStore,
@@ -1040,7 +1040,7 @@ struct ContentView: View {
             return
         }
         logStore.log(.info, "Open Web UI: ip=\(ip) url=\(url.absoluteString)")
-        NSWorkspace.shared.open(url)
+        openInAppURL(url)
     }
 
     private func openSSDP(for ip: String) {
@@ -1049,7 +1049,11 @@ struct ContentView: View {
             return
         }
         logStore.log(.info, "Open SSDP Location: ip=\(ip) url=\(url.absoluteString)")
-        NSWorkspace.shared.open(url)
+        openInAppURL(url)
+    }
+
+    private func openInAppURL(_ url: URL) {
+        activeSheet = .viewer(url: url)
     }
 
     private func generateDeviceReport(for ip: String) {
