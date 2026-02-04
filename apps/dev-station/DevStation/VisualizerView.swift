@@ -454,6 +454,7 @@ struct SignalFieldView: View {
                 NodeInspectorView(
                     node: node,
                     alias: aliases[node.id],
+                    suggestions: Array(Set(aliases.values)).sorted(),
                     focused: focusedNodeID == node.id,
                     pinned: pinnedNodeIDs.contains(node.id),
                     onFocus: {
@@ -679,6 +680,7 @@ struct ReplayBarView: View {
 struct NodeInspectorView: View {
     let node: SignalFieldEngine.ProjectedNode
     let alias: String?
+    let suggestions: [String]
     let focused: Bool
     let pinned: Bool
     let onFocus: () -> Void
@@ -711,6 +713,17 @@ struct NodeInspectorView: View {
                 TextField("set alias", text: $aliasText)
                     .textFieldStyle(.roundedBorder)
                     .onAppear { aliasText = alias ?? "" }
+                if !aliasText.isEmpty {
+                    let matches = suggestions.filter { $0.localizedCaseInsensitiveContains(aliasText) }.prefix(4)
+                    if !matches.isEmpty {
+                        HStack(spacing: 6) {
+                            ForEach(Array(matches), id: \.self) { item in
+                                Button(item) { aliasText = item }
+                                    .buttonStyle(SecondaryActionButtonStyle())
+                            }
+                        }
+                    }
+                }
                 Button("Save Alias") { onSaveAlias(aliasText) }
                     .buttonStyle(SecondaryActionButtonStyle())
             }

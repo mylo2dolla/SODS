@@ -419,7 +419,7 @@ async function cmdAliasList() {
     console.error("Use --station for alias operations.");
     process.exit(1);
   }
-  const res = await fetch(`${station}/api/portal/state`, { method: "GET" });
+  const res = await fetch(`${station}/api/aliases`, { method: "GET" });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const json = await res.json();
   const aliases = json.aliases ?? {};

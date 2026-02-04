@@ -637,10 +637,12 @@ export class SODSServer {
       for (const line of lines) {
         const macMatch = String(line).match(/([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}/);
         if (!macMatch) continue;
+        const ssid = String(line).split(macMatch[0])[0].trim();
         const channelMatch = String(line).match(/\bch(?:annel)?\s*:?(\d{1,3})\b/i) ?? String(line).match(/\s(\d{1,3})\s*$/);
         const rssiMatch = String(line).match(/-?\d{2,3}\b/);
         emit("wifi.scan", {
           bssid: macMatch[0],
+          ssid: ssid || undefined,
           channel: channelMatch ? Number(channelMatch[1]) : undefined,
           rssi: rssiMatch ? Number(rssiMatch[0]) : undefined,
           line,

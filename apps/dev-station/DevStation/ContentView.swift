@@ -487,7 +487,8 @@ struct ContentView: View {
                 ForEach(sortedDevices) { device in
                     DeviceRow(
                         device: device,
-                        status: onvifStatus(for: device)
+                        status: onvifStatus(for: device),
+                        alias: aliasForDevice(ip: device.ip, host: hostForDevice(device), device: device)
                     )
                     .tag(device.ip)
                 }
@@ -652,8 +653,12 @@ struct ContentView: View {
             }
 
             HStack(spacing: 0) {
-                HostTable(hosts: filteredHosts, selectedIP: $selectedIP)
-                    .frame(minWidth: 700)
+                HostTable(
+                    hosts: filteredHosts,
+                    selectedIP: $selectedIP,
+                    aliasForHost: { host in aliasForDevice(ip: host.ip, host: host, device: nil) }
+                )
+                .frame(minWidth: 700)
                 Divider()
                 UnifiedDetailView(
                     host: selectedHost,
@@ -1958,6 +1963,7 @@ struct ConsentView: View {
 struct HostTable: View {
     let hosts: [HostEntry]
     @Binding var selectedIP: String?
+    let aliasForHost: (HostEntry) -> String?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -1965,6 +1971,9 @@ struct HostTable: View {
                 Text("IP")
                     .font(.system(size: 12, weight: .semibold))
                     .frame(width: 160, alignment: .leading)
+                Text("Alias")
+                    .font(.system(size: 12, weight: .semibold))
+                    .frame(width: 180, alignment: .leading)
                 Text("Status")
                     .font(.system(size: 12, weight: .semibold))
                     .frame(width: 120, alignment: .leading)
@@ -1999,6 +2008,8 @@ struct HostTable: View {
                         HStack {
                             Text(host.ip)
                                 .frame(width: 160, alignment: .leading)
+                            Text(aliasForHost(host) ?? "")
+                                .frame(width: 180, alignment: .leading)
                             Text(host.isAlive ? "Alive" : "No Response")
                                 .foregroundColor(host.isAlive ? .green : .secondary)
                                 .frame(width: 120, alignment: .leading)
@@ -2042,12 +2053,22 @@ struct HostTable: View {
 struct DeviceRow: View {
     let device: Device
     let status: String?
+    let alias: String?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
                 Text(device.ip)
                     .font(.system(size: 14, weight: .semibold))
+                if let alias, !alias.isEmpty {
+                    Text(alias)
+                        .font(.system(size: 11, weight: .semibold))
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Theme.panelAlt)
+                        .foregroundColor(.secondary)
+                        .cornerRadius(4)
+                }
                 if device.isCameraLikely {
                     Text("camera-likely")
                         .font(.system(size: 11, weight: .bold))
