@@ -311,11 +311,13 @@ static void applyFrames(JsonArray frames) {
     bin.light = readFloat(color["l"], readFloat(fv["l"], 0.5f));
     float persistence = readFloat(fv["persistence"], 0.4f);
     float confidence = readFloat(fv["confidence"], 0.6f);
+    float depth = readFloat(fv["z"], 0.6f);
     float rssi = readFloat(fv["rssi"], -70.0f);
     float rssiNorm = (rssi + 100.0f) / 70.0f;
     rssiNorm = max(0.0f, min(1.0f, rssiNorm));
-    bin.level = max(0.2f, min(1.0f, persistence + confidence * 0.3f + rssiNorm * 0.2f));
+    bin.level = max(0.2f, min(1.0f, persistence + confidence * 0.3f + rssiNorm * 0.2f + depth * 0.2f));
     bin.glow = readFloat(fv["glow"], confidence);
+    bin.glow = max(bin.glow, depth * 0.4f);
     nextBins.push_back(bin);
     if (nextBins.size() >= 16) break;
   }
