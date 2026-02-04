@@ -3433,7 +3433,7 @@ struct NodesView: View {
                     .buttonStyle(PrimaryActionButtonStyle())
                     .disabled(flashManager.isStarting)
 
-                    Button("Open Local Flasher") {
+                    Button("Open Station Flasher") {
                         flashManager.openLocalFlasher()
                     }
                     .buttonStyle(SecondaryActionButtonStyle())
@@ -4720,12 +4720,12 @@ final class FlashServerManager: ObservableObject {
         case .idle:
             return "Server idle."
         case .starting:
-            return "Starting flash server..."
+            return "Preparing station flasher..."
         case .running:
             if let url {
-                return "Server running at \(url.absoluteString)"
+                return "Station flasher at \(url.absoluteString)"
             }
-            return "Server running."
+            return "Station flasher ready."
         case .requiresTerminal:
             if let url {
                 return "Run in Terminal, then open \(url.absoluteString)"
@@ -4758,12 +4758,10 @@ final class FlashServerManager: ObservableObject {
             state = .idle
             return
         }
-        start(target: selectedTarget)
+        openStationFlasher(target: selectedTarget, autoOpen: true)
     }
 
     func stop() {
-        process?.terminate()
-        process = nil
         state = .idle
         lastError = nil
         terminalCommand = nil
@@ -4777,74 +4775,39 @@ final class FlashServerManager: ObservableObject {
     }
 
     func openLocalFlasher() {
-        let fallbackPort = port ?? selectedTarget.defaultPort
-        guard let localURL = defaultURL(target: selectedTarget, port: fallbackPort) else { return }
-        NSWorkspace.shared.open(localURL)
+        openStationFlasher(target: selectedTarget, autoOpen: true)
     }
 
-    private func start(target: FlashTarget) {
+    private func openStationFlasher(target: FlashTarget, autoOpen: Bool) {
         stop()
         state = .starting
         terminalCommand = nil
         lastError = nil
         outputBuffer = ""
+        port = nil
 
-        guard let chosenPort = pickPort(startingAt: target.defaultPort) else {
+        let baseURL = SODSStore.shared.baseURL
+        guard let url = stationFlashURL(baseURL: baseURL, target: target) else {
             state = .error
-            lastError = "No open port in range \(target.defaultPort)-\(target.defaultPort + 20)."
+            lastError = "Invalid station URL."
             return
         }
-
-        port = chosenPort
-        url = defaultURL(target: target, port: chosenPort)
-
-        let (commandLine, processConfig) = buildProcess(for: target, port: chosenPort)
-        terminalCommand = nil
-
-        guard let processConfig else {
-            state = .error
-            lastError = "Flash scripts missing; no fallback available."
-            return
+        self.url = url
+        state = .running
+        if autoOpen {
+            NSWorkspace.shared.open(url)
         }
+    }
 
-        let process = Process()
-        process.executableURL = processConfig.executableURL
-        process.arguments = processConfig.arguments
-        process.currentDirectoryURL = processConfig.currentDirectoryURL
-
-        let stdout = Pipe()
-        let stderr = Pipe()
-        process.standardOutput = stdout
-        process.standardError = stderr
-
-        stdout.fileHandleForReading.readabilityHandler = { [weak self] handle in
-            let data = handle.availableData
-            self?.consumeOutput(data)
+    private func stationFlashURL(baseURL: String, target: FlashTarget) -> URL? {
+        let path: String
+        switch target {
+        case .esp32dev:
+            path = "/flash/esp32"
+        case .esp32c3:
+            path = "/flash/esp32c3"
         }
-        stderr.fileHandleForReading.readabilityHandler = { [weak self] handle in
-            let data = handle.availableData
-            self?.consumeOutput(data)
-        }
-
-        process.terminationHandler = { [weak self] _ in
-            DispatchQueue.main.async {
-                self?.process = nil
-                if self?.state == .running {
-                    self?.state = .idle
-                }
-            }
-        }
-
-        do {
-            try process.run()
-            self.process = process
-            state = .running
-            openFlasher()
-        } catch {
-            state = .requiresTerminal
-            terminalCommand = commandLine
-            lastError = error.localizedDescription
-        }
+        return URL(string: "\(baseURL)\(path)")
     }
 
     private func consumeOutput(_ data: Data) {

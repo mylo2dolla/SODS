@@ -12,6 +12,8 @@ final class SODSStore: ObservableObject {
     @Published private(set) var lastError: String?
     @Published private(set) var lastPoll: Date?
     @Published private(set) var lastFramesAt: Date?
+    @Published private(set) var stationStatus: StationStatus?
+    @Published private(set) var loggerStatus: LoggerStatus?
     @Published var baseURL: String
 
     private let baseURLKey = "SODSBaseURL"
@@ -28,6 +30,7 @@ final class SODSStore: ObservableObject {
             baseURL = "http://localhost:9123"
             defaults.set(baseURL, forKey: baseURLKey)
         }
+        StationProcessManager.shared.ensureRunning(baseURL: baseURL)
         connect()
     }
 
@@ -36,6 +39,7 @@ final class SODSStore: ObservableObject {
         guard !trimmed.isEmpty else { return }
         baseURL = trimmed
         UserDefaults.standard.set(trimmed, forKey: baseURLKey)
+        StationProcessManager.shared.ensureRunning(baseURL: baseURL)
         connect()
     }
 
@@ -55,9 +59,9 @@ final class SODSStore: ObservableObject {
 
     private func schedulePoll() {
         pollTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { [weak self] _ in
-            Task { await self?.pollHealthAndNodes() }
+            Task { await self?.pollStatusAndNodes() }
         }
-        Task { await pollHealthAndNodes() }
+        Task { await pollStatusAndNodes() }
     }
 
     private func connectWebSocket() {
@@ -160,24 +164,26 @@ final class SODSStore: ObservableObject {
         }
     }
 
-    private func pollHealthAndNodes() async {
+    private func pollStatusAndNodes() async {
         do {
-            let healthURL = makeURL(path: "/health")
+            let statusURL = makeURL(path: "/api/status")
             let nodesURL = makeURL(path: "/nodes")
-            guard let healthURL, let nodesURL else { return }
+            guard let statusURL, let nodesURL else { return }
 
-            async let healthReq = URLSession.shared.data(from: healthURL)
+            async let statusReq = URLSession.shared.data(from: statusURL)
             async let nodesReq = URLSession.shared.data(from: nodesURL)
 
-            let (healthData, _) = try await healthReq
+            let (statusData, _) = try await statusReq
             let (nodesData, _) = try await nodesReq
 
             let decoder = JSONDecoder()
-            let healthPayload = try decoder.decode(SODSHealth.self, from: healthData)
+            let statusPayload = try decoder.decode(StationStatusEnvelope.self, from: statusData)
             let nodesPayload = try decoder.decode(SODSNodesEnvelope.self, from: nodesData)
 
-            health = .connected
+            health = statusPayload.station.ok ? .connected : .degraded
             lastError = nil
+            stationStatus = statusPayload.station
+            loggerStatus = statusPayload.logger
             nodes = nodesPayload.items.map {
                 SignalNode(
                     id: $0.nodeID,
@@ -190,7 +196,7 @@ final class SODSStore: ObservableObject {
             }
         } catch {
             lastError = error.localizedDescription
-            health = .degraded
+            health = .offline
         }
     }
 
@@ -247,10 +253,37 @@ struct SignalNode: Identifiable, Hashable {
     }
 }
 
-struct SODSHealth: Decodable {
+struct StationStatusEnvelope: Decodable {
+    let station: StationStatus
+    let logger: LoggerStatus
+}
+
+struct StationStatus: Decodable {
     let ok: Bool
     let uptimeMs: Int?
     let lastIngestMs: Int?
+    let lastError: String?
+    let piLogger: String?
+    let nodesTotal: Int?
+    let nodesOnline: Int?
+    let tools: Int?
+
+    enum CodingKeys: String, CodingKey {
+        case ok
+        case uptimeMs = "uptime_ms"
+        case lastIngestMs = "last_ingest_ms"
+        case lastError = "last_error"
+        case piLogger = "pi_logger"
+        case nodesTotal = "nodes_total"
+        case nodesOnline = "nodes_online"
+        case tools
+    }
+}
+
+struct LoggerStatus: Decodable {
+    let ok: Bool?
+    let status: String?
+    let detail: JSONValue?
 }
 
 struct SODSNodesEnvelope: Decodable {

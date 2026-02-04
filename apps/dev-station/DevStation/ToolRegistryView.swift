@@ -10,9 +10,9 @@ struct ToolRegistryView: View {
                 Text("SODS Tool Registry")
                     .font(.system(size: 16, weight: .semibold))
                 Spacer()
-                Button("Open /tools") {
+                Button("Open /api/tools") {
                     let trimmed = baseURL.trimmingCharacters(in: .whitespacesAndNewlines)
-                    guard let url = URL(string: trimmed + "/tools") else { return }
+                    guard let url = URL(string: trimmed + "/api/tools") else { return }
                     NSWorkspace.shared.open(url)
                 }
                 .buttonStyle(SecondaryActionButtonStyle())
@@ -43,6 +43,7 @@ struct ToolRegistryView: View {
         .frame(minWidth: 640, minHeight: 420)
         .background(Theme.background)
         .foregroundColor(Theme.textPrimary)
+        .onAppear { registry.reload() }
     }
 }
 

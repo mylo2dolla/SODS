@@ -50,25 +50,41 @@ final class ToolRegistry: ObservableObject {
     }
 
     func reload() {
-        let url = toolRegistryURL()
-        guard let url, let data = try? Data(contentsOf: url) else {
-            tools = []
-            policyNote = nil
-            return
-        }
-        do {
-            let payload = try JSONDecoder().decode(ToolRegistryPayload.self, from: data)
-            tools = payload.tools
-            policyNote = payload.policy?.notes
-        } catch {
-            tools = []
-            policyNote = nil
+        Task {
+            if let payload = await fetchRegistry() {
+                tools = payload.tools
+                policyNote = payload.policy?.notes
+            } else {
+                tools = []
+                policyNote = nil
+            }
         }
     }
 
-    private func toolRegistryURL() -> URL? {
+    private func fetchRegistry() async -> ToolRegistryPayload? {
+        if let remote = await fetchRemoteRegistry() {
+            return remote
+        }
         let root = sodsRootPath()
-        return URL(fileURLWithPath: "\(root)/docs/tool-registry.json")
+        let url = URL(fileURLWithPath: "\(root)/docs/tool-registry.json")
+        guard let data = try? Data(contentsOf: url) else { return nil }
+        return try? JSONDecoder().decode(ToolRegistryPayload.self, from: data)
+    }
+
+    private func fetchRemoteRegistry() async -> ToolRegistryPayload? {
+        let baseURL = stationBaseURL()
+        guard let url = URL(string: "\(baseURL)/api/tools") else { return nil }
+        var req = URLRequest(url: url)
+        req.timeoutInterval = 2.0
+        do {
+            let (data, resp) = try await URLSession.shared.data(for: req)
+            if let http = resp as? HTTPURLResponse, (200...299).contains(http.statusCode) {
+                return try JSONDecoder().decode(ToolRegistryPayload.self, from: data)
+            }
+        } catch {
+            return nil
+        }
+        return nil
     }
 
     private func sodsRootPath() -> String {
@@ -77,5 +93,13 @@ final class ToolRegistry: ObservableObject {
         }
         let home = FileManager.default.homeDirectoryForCurrentUser.path
         return "\(home)/sods/SODS"
+    }
+
+    private func stationBaseURL() -> String {
+        let defaults = UserDefaults.standard
+        if let saved = defaults.string(forKey: "SODSBaseURL"), !saved.isEmpty {
+            return saved
+        }
+        return "http://localhost:9123"
     }
 }
