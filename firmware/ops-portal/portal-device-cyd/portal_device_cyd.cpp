@@ -52,6 +52,7 @@ static unsigned long lastWifiOkMs = 0;
 static String lastWifiErr = "";
 static bool stationOk = false;
 static unsigned long lastStationOkMs = 0;
+static bool stationReachable = false;
 
 static WebSocketsClient wsClient;
 static bool wsConnected = false;
@@ -116,11 +117,19 @@ static void drawConfigScreen() {
   tft.setCursor(10, 10);
   tft.print("SODS Ops Portal Setup");
   tft.setCursor(10, 28);
-  tft.print("AP: SODS-Portal-Setup");
+  tft.print("Station: ");
+  tft.print(sodsBaseUrl.length() ? sodsBaseUrl : "not set");
   tft.setCursor(10, 44);
-  tft.print("Open: http://192.168.4.1");
+  tft.print("Wi-Fi: ");
+  tft.print(wifiSsid.length() ? wifiSsid : "not set");
   tft.setCursor(10, 60);
-  tft.print("Enter Wi-Fi + Station URL");
+  if (configMode) {
+    tft.print("AP: SODS-Portal-Setup");
+    tft.setCursor(10, 76);
+    tft.print("Open: http://192.168.4.1");
+  } else {
+    tft.print("Waiting for Station...");
+  }
 }
 
 static void startConfigPortal() {
@@ -479,6 +488,9 @@ void PortalDeviceCYD::setup() {
   tft.setCursor(6, 6);
   tft.print("SODS Ops Portal boot");
 
+  if (sodsBaseUrl.length() == 0) {
+    startConfigPortal();
+  }
   ensureWiFi();
   if (parseBaseUrl(sodsBaseUrl, wsHost, wsPort)) {
     wsClient.onEvent(handleWsEvent);
@@ -502,6 +514,12 @@ void PortalDeviceCYD::loop() {
       core.state().connErr = lastWifiErr;
     }
     core.updateTrails();
+  }
+  stationReachable = stationOk;
+  if (!stationReachable) {
+    drawConfigScreen();
+    delay(20);
+    return;
   }
   if (WiFi.isConnected()) {
     ensureWebSocket(now);
