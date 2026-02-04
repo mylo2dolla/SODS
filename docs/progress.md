@@ -15,6 +15,7 @@ Date: 2026-02-04
 - Spectrum Frame Spec documented and wired across Station + Dev Station + Ops Portal.
 - Frame engine now emits field positions (x/y/z) and tool runs inject local tool events into the visualizer stream.
 - Dev Station spectrum field now supports tap overlay, node inspector, idle state, and improved depth/repulsion.
+- Visualizer upgraded with focus mode, pulses, and field haze for a richer 4D feel.
 
 ## Current Architecture (Locked)
 

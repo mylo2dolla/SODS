@@ -316,6 +316,7 @@ struct SignalFieldView: View {
     @State private var mousePoint: CGPoint = .zero
     @State private var lastMouseMove: Date = .distantPast
     @State private var selectedNode: SignalFieldEngine.ProjectedNode?
+    @State private var focusedNodeID: String?
     @State private var quickOverlayVisible: Bool = false
     @State private var quickOverlayHideAt: Date = .distantPast
 
@@ -335,7 +336,9 @@ struct SignalFieldView: View {
                         timeScale: timeScale,
                         maxParticles: maxParticles,
                         intensity: intensity,
-                        parallax: parallax
+                        parallax: parallax,
+                        selectedID: selectedNode?.id,
+                        focusID: focusedNodeID
                     )
                 }
             }
@@ -372,7 +375,9 @@ struct SignalFieldView: View {
             }
 
             if let node = selectedNode {
-                NodeInspectorView(node: node) {
+                NodeInspectorView(node: node, focused: focusedNodeID == node.id, onFocus: {
+                    focusedNodeID = (focusedNodeID == node.id) ? nil : node.id
+                }) {
                     selectedNode = nil
                 }
                 .transition(.opacity)
@@ -420,6 +425,8 @@ struct QuickOverlayView: View {
 
 struct NodeInspectorView: View {
     let node: SignalFieldEngine.ProjectedNode
+    let focused: Bool
+    let onFocus: () -> Void
     let onClose: () -> Void
 
     var body: some View {
@@ -441,6 +448,8 @@ struct NodeInspectorView: View {
             Text("Depth: \(String(format: "%.2f", node.depth))")
                 .font(.system(size: 10, design: .monospaced))
                 .foregroundColor(.secondary)
+            Button(focused ? "Clear Focus" : "Focus") { onFocus() }
+                .buttonStyle(PrimaryActionButtonStyle())
         }
         .padding(12)
         .background(Theme.panelAlt)
@@ -484,12 +493,23 @@ final class SignalFieldEngine: ObservableObject {
     private var processedIDs: Set<String> = []
     private var lastUpdate: Date?
     private var lastProjected: [ProjectedNode] = []
+    private var pulses: [FieldPulse] = []
+    private var lastPulseBySource: [String: Date] = [:]
 
     struct ProjectedNode: Hashable {
         let id: String
         let point: CGPoint
         let color: NSColor
         let depth: CGFloat
+    }
+
+    struct FieldPulse: Hashable {
+        let id: UUID
+        let position: SIMD3<Double>
+        let color: NSColor
+        let birth: Date
+        let lifespan: TimeInterval
+        let strength: Double
     }
 
     func render(
@@ -503,7 +523,9 @@ final class SignalFieldEngine: ObservableObject {
         timeScale: Double,
         maxParticles: Int,
         intensity: SignalIntensity,
-        parallax: CGPoint
+        parallax: CGPoint,
+        selectedID: String?,
+        focusID: String?
     ) {
         drawBackground(context: &context, size: size, now: now)
 
@@ -518,8 +540,9 @@ final class SignalFieldEngine: ObservableObject {
             lastUpdate = now
         }
 
-        lastProjected = drawSources(context: &context, size: size, parallax: parallax)
-        drawParticles(context: &context, size: size, now: now, parallax: parallax)
+        lastProjected = drawSources(context: &context, size: size, parallax: parallax, selectedID: selectedID, focusID: focusID)
+        drawPulses(context: &context, size: size, now: now, parallax: parallax, focusID: focusID)
+        drawParticles(context: &context, size: size, now: now, parallax: parallax, focusID: focusID)
 
         if particles.count > maxParticles {
             particles.removeFirst(particles.count - maxParticles)
@@ -534,6 +557,7 @@ final class SignalFieldEngine: ObservableObject {
             source.update(from: event)
             sources[key] = source
             particles.append(contentsOf: SignalEmitter.emit(from: source, event: event, intensity: intensity, now: now))
+            seedPulse(id: key, source: source, event: event, now: now)
         }
         if processedIDs.count > 4000 {
             processedIDs.removeAll(keepingCapacity: true)
@@ -551,6 +575,7 @@ final class SignalFieldEngine: ObservableObject {
                 SignalParticle(
                     id: UUID(),
                     kind: .spark,
+                    sourceID: key,
                     position: source.position,
                     velocity: SIMD3<Double>(0, 0, 0),
                     birth: now,
@@ -564,6 +589,7 @@ final class SignalFieldEngine: ObservableObject {
                     trail: []
                 )
             )
+            seedPulse(id: key, color: style.color, strength: style.glow, source: source, now: now)
         }
     }
 
@@ -588,6 +614,7 @@ final class SignalFieldEngine: ObservableObject {
             }
             return particle
         }
+        pulses = pulses.filter { now.timeIntervalSince($0.birth) <= $0.lifespan }
     }
 
     private func applyRepulsion() {
@@ -619,6 +646,12 @@ final class SignalFieldEngine: ObservableObject {
         context.fill(Path(rect), with: .linearGradient(gradient, startPoint: .zero, endPoint: CGPoint(x: size.width, y: size.height)))
 
         let center = CGPoint(x: size.width * 0.5, y: size.height * 0.5)
+        let hazeGradient = Gradient(colors: [
+            Color(red: 0.18, green: 0.06, blue: 0.08, opacity: 0.22),
+            Color(red: 0.05, green: 0.02, blue: 0.04, opacity: 0.0)
+        ])
+        context.fill(Path(ellipseIn: CGRect(x: center.x - size.width * 0.45, y: center.y - size.height * 0.45, width: size.width * 0.9, height: size.height * 0.9)),
+                     with: .radialGradient(hazeGradient, center: center, startRadius: 0, endRadius: min(size.width, size.height) * 0.55))
         for ring in 1...4 {
             let radius = min(size.width, size.height) * 0.12 * CGFloat(ring)
             let ringRect = CGRect(x: center.x - radius, y: center.y - radius, width: radius * 2, height: radius * 2)
@@ -636,28 +669,64 @@ final class SignalFieldEngine: ObservableObject {
         }
     }
 
-    private func drawSources(context: inout GraphicsContext, size: CGSize, parallax: CGPoint) -> [ProjectedNode] {
+    private func drawSources(context: inout GraphicsContext, size: CGSize, parallax: CGPoint, selectedID: String?, focusID: String?) -> [ProjectedNode] {
         var projected: [ProjectedNode] = []
         for source in sources.values {
             let point = source.project(in: size, parallax: parallax)
             let depth = source.depth
             let glow = CGSize(width: 26 * depth, height: 26 * depth)
             let core = CGSize(width: 10 * depth, height: 10 * depth)
-            let color = Color(source.color)
+            let dimmed = focusID != nil && focusID != source.id
+            let color = Color(source.color).opacity(dimmed ? 0.25 : 1.0)
 
             let glowRect = CGRect(x: point.x - glow.width / 2, y: point.y - glow.height / 2, width: glow.width, height: glow.height)
-            context.fill(Path(ellipseIn: glowRect), with: .color(color.opacity(0.2)))
+            context.fill(Path(ellipseIn: glowRect), with: .color(color.opacity(dimmed ? 0.08 : 0.2)))
 
             let coreRect = CGRect(x: point.x - core.width / 2, y: point.y - core.height / 2, width: core.width, height: core.height)
-            context.fill(Path(ellipseIn: coreRect), with: .color(color.opacity(0.9)))
+            context.fill(Path(ellipseIn: coreRect), with: .color(color.opacity(dimmed ? 0.4 : 0.9)))
+            if let selectedID, selectedID == source.id {
+                context.stroke(Path(ellipseIn: glowRect), with: .color(color.opacity(0.9)), lineWidth: 2.0)
+            }
             projected.append(ProjectedNode(id: source.id, point: point, color: source.color, depth: depth))
         }
         return projected
     }
 
-    private func drawParticles(context: inout GraphicsContext, size: CGSize, now: Date, parallax: CGPoint) {
+    private func drawParticles(context: inout GraphicsContext, size: CGSize, now: Date, parallax: CGPoint, focusID: String?) {
         for particle in particles {
-            particle.draw(context: &context, size: size, now: now, parallax: parallax)
+            let dimmed = focusID != nil && focusID != particle.sourceID
+            particle.draw(context: &context, size: size, now: now, parallax: parallax, dimmed: dimmed)
+        }
+    }
+
+    private func drawPulses(context: inout GraphicsContext, size: CGSize, now: Date, parallax: CGPoint, focusID: String?) {
+        for pulse in pulses {
+            let age = now.timeIntervalSince(pulse.birth)
+            let progress = min(1.0, age / max(0.01, pulse.lifespan))
+            let alpha = (1.0 - progress) * pulse.strength
+            let depth = CGFloat(0.6 + pulse.position.z * 0.7)
+            let center = CGPoint(
+                x: CGFloat(pulse.position.x) * size.width * 0.45 + size.width * 0.5 + parallax.x * depth,
+                y: CGFloat(pulse.position.y) * size.height * 0.45 + size.height * 0.5 + parallax.y * depth
+            )
+            let radius = CGFloat(18 + progress * 140) * depth
+            let rect = CGRect(x: center.x - radius, y: center.y - radius, width: radius * 2, height: radius * 2)
+            let color = Color(pulse.color).opacity(alpha * (focusID == nil ? 0.6 : 0.25))
+            context.stroke(Path(ellipseIn: rect), with: .color(color), lineWidth: CGFloat(1.4 + pulse.strength * 2))
+        }
+    }
+
+    private func seedPulse(id: String, source: SignalSource, event: NormalizedEvent, now: Date) {
+        let color = SignalColor.deviceColor(id: id)
+        seedPulse(id: id, color: color, strength: event.signal.strength == nil ? 0.5 : 0.8, source: source, now: now)
+    }
+
+    private func seedPulse(id: String, color: NSColor, strength: Double, source: SignalSource, now: Date) {
+        if let last = lastPulseBySource[id], now.timeIntervalSince(last) < 0.2 { return }
+        lastPulseBySource[id] = now
+        pulses.append(FieldPulse(id: UUID(), position: source.position, color: color, birth: now, lifespan: 1.3, strength: strength))
+        if pulses.count > 80 {
+            pulses.removeFirst(pulses.count - 80)
         }
     }
 
@@ -750,6 +819,7 @@ final class SignalSource: Hashable {
 struct SignalParticle: Hashable {
     let id: UUID
     var kind: ParticleKind
+    var sourceID: String
     var position: SIMD3<Double>
     var velocity: SIMD3<Double>
     var birth: Date
@@ -787,7 +857,7 @@ struct SignalParticle: Hashable {
         now.timeIntervalSince(birth) > lifespan
     }
 
-    func draw(context: inout GraphicsContext, size: CGSize, now: Date, parallax: CGPoint) {
+    func draw(context: inout GraphicsContext, size: CGSize, now: Date, parallax: CGPoint, dimmed: Bool) {
         let age = now.timeIntervalSince(birth)
         let progress = min(1.0, age / max(0.01, lifespan))
         let alpha = 1.0 - progress
@@ -797,7 +867,7 @@ struct SignalParticle: Hashable {
             y: CGFloat(position.y) * size.height * 0.45 + size.height * 0.5 + parallax.y * depth
         )
         let glowStrength = max(0.0, min(1.0, glow))
-        let color = Color(color).opacity(alpha * 0.9)
+        let color = Color(color).opacity(alpha * (dimmed ? 0.25 : 0.9))
 
         switch kind {
         case .spark:
@@ -806,10 +876,10 @@ struct SignalParticle: Hashable {
             if glowStrength > 0.05 {
                 let glowRadius = radius * (1.6 + CGFloat(glowStrength) * 2.4)
                 let glowRect = CGRect(x: basePoint.x - glowRadius / 2, y: basePoint.y - glowRadius / 2, width: glowRadius, height: glowRadius)
-                context.fill(Path(ellipseIn: glowRect), with: .color(color.opacity(0.18 + CGFloat(glowStrength) * 0.35)))
+                context.fill(Path(ellipseIn: glowRect), with: .color(color.opacity((dimmed ? 0.06 : 0.18) + CGFloat(glowStrength) * 0.35)))
             }
             context.fill(Path(ellipseIn: rect), with: .color(color))
-            drawTrail(context: &context, size: size, parallax: parallax, alpha: alpha)
+            drawTrail(context: &context, size: size, parallax: parallax, alpha: alpha, dimmed: dimmed)
         case .ring:
             let radius = CGFloat(ringRadius) * depth
             let rect = CGRect(x: basePoint.x - radius, y: basePoint.y - radius, width: radius * 2, height: radius * 2)
@@ -822,11 +892,11 @@ struct SignalParticle: Hashable {
             let radius = CGFloat(ringRadius) * depth
             let rect = CGRect(x: basePoint.x - radius, y: basePoint.y - radius, width: radius * 2, height: radius * 2)
             context.stroke(Path(ellipseIn: rect), with: .color(color.opacity(0.8 + CGFloat(glowStrength) * 0.2)), lineWidth: CGFloat(ringWidth) * depth)
-            drawTrail(context: &context, size: size, parallax: parallax, alpha: alpha)
+            drawTrail(context: &context, size: size, parallax: parallax, alpha: alpha, dimmed: dimmed)
         }
     }
 
-    private func drawTrail(context: inout GraphicsContext, size: CGSize, parallax: CGPoint, alpha: Double) {
+    private func drawTrail(context: inout GraphicsContext, size: CGSize, parallax: CGPoint, alpha: Double, dimmed: Bool) {
         guard trail.count > 1 else { return }
         let depth = CGFloat(0.6 + position.z * 0.7)
         var path = Path()
@@ -840,7 +910,8 @@ struct SignalParticle: Hashable {
                 path.addLine(to: p)
             }
         }
-        context.stroke(path, with: .color(Color(color).opacity(alpha * 0.45)), lineWidth: 1.2 * depth)
+        let baseAlpha = dimmed ? 0.18 : 0.45
+        context.stroke(path, with: .color(Color(color).opacity(alpha * baseAlpha)), lineWidth: 1.2 * depth)
     }
 }
 
@@ -937,6 +1008,7 @@ enum SignalEmitter {
         return SignalParticle(
             id: UUID(),
             kind: .spark,
+            sourceID: source.id,
             position: source.position + jitter,
             velocity: velocity,
             birth: now,
@@ -955,6 +1027,7 @@ enum SignalEmitter {
         SignalParticle(
             id: UUID(),
             kind: pulse ? .pulse : .ring,
+            sourceID: source.id,
             position: source.position,
             velocity: SIMD3<Double>(0, 0, 0),
             birth: now,
@@ -974,6 +1047,7 @@ enum SignalEmitter {
         return SignalParticle(
             id: UUID(),
             kind: .burst,
+            sourceID: source.id,
             position: source.position,
             velocity: velocity,
             birth: now,
