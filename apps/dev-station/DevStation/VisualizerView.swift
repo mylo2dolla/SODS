@@ -317,6 +317,7 @@ struct SignalFieldView: View {
     @State private var lastMouseMove: Date = .distantPast
     @State private var selectedNode: SignalFieldEngine.ProjectedNode?
     @State private var focusedNodeID: String?
+    @State private var pinnedNodeIDs: Set<String> = []
     @State private var quickOverlayVisible: Bool = false
     @State private var quickOverlayHideAt: Date = .distantPast
 
@@ -375,16 +376,36 @@ struct SignalFieldView: View {
             }
 
             if let node = selectedNode {
-                NodeInspectorView(node: node, focused: focusedNodeID == node.id, onFocus: {
-                    focusedNodeID = (focusedNodeID == node.id) ? nil : node.id
-                }) {
-                    selectedNode = nil
-                }
+                NodeInspectorView(
+                    node: node,
+                    focused: focusedNodeID == node.id,
+                    pinned: pinnedNodeIDs.contains(node.id),
+                    onFocus: {
+                        focusedNodeID = (focusedNodeID == node.id) ? nil : node.id
+                    },
+                    onPin: {
+                        if pinnedNodeIDs.contains(node.id) {
+                            pinnedNodeIDs.remove(node.id)
+                        } else {
+                            pinnedNodeIDs.insert(node.id)
+                        }
+                    },
+                    onClose: {
+                        selectedNode = nil
+                    }
+                )
                 .transition(.opacity)
             }
 
             if frames.isEmpty && events.isEmpty {
                 IdleOverlayView()
+            }
+
+            if !pinnedNodeIDs.isEmpty {
+                PinnedNodesView(
+                    pinned: pinnedNodeIDs.sorted(),
+                    onClear: { pinnedNodeIDs.removeAll() }
+                )
             }
         }
         .clipShape(RoundedRectangle(cornerRadius: 12))
@@ -423,10 +444,43 @@ struct QuickOverlayView: View {
     }
 }
 
+struct PinnedNodesView: View {
+    let pinned: [String]
+    let onClear: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text("Pinned")
+                    .font(.system(size: 11, weight: .semibold))
+                Spacer()
+                Button("Clear") { onClear() }
+                    .buttonStyle(SecondaryActionButtonStyle())
+            }
+            ForEach(pinned, id: \.self) { id in
+                Text(id)
+                    .font(.system(size: 10, design: .monospaced))
+                    .foregroundColor(.secondary)
+            }
+        }
+        .padding(10)
+        .background(Theme.panelAlt)
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(Theme.border, lineWidth: 1)
+        )
+        .cornerRadius(10)
+        .padding(16)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+    }
+}
+
 struct NodeInspectorView: View {
     let node: SignalFieldEngine.ProjectedNode
     let focused: Bool
+    let pinned: Bool
     let onFocus: () -> Void
+    let onPin: () -> Void
     let onClose: () -> Void
 
     var body: some View {
@@ -448,8 +502,12 @@ struct NodeInspectorView: View {
             Text("Depth: \(String(format: "%.2f", node.depth))")
                 .font(.system(size: 10, design: .monospaced))
                 .foregroundColor(.secondary)
-            Button(focused ? "Clear Focus" : "Focus") { onFocus() }
-                .buttonStyle(PrimaryActionButtonStyle())
+            HStack(spacing: 8) {
+                Button(focused ? "Clear Focus" : "Focus") { onFocus() }
+                    .buttonStyle(PrimaryActionButtonStyle())
+                Button(pinned ? "Unpin" : "Pin") { onPin() }
+                    .buttonStyle(SecondaryActionButtonStyle())
+            }
         }
         .padding(12)
         .background(Theme.panelAlt)
@@ -540,6 +598,7 @@ final class SignalFieldEngine: ObservableObject {
             lastUpdate = now
         }
 
+        drawBins(context: &context, size: size, frames: frames, now: now, focusID: focusID)
         lastProjected = drawSources(context: &context, size: size, parallax: parallax, selectedID: selectedID, focusID: focusID)
         drawPulses(context: &context, size: size, now: now, parallax: parallax, focusID: focusID)
         drawParticles(context: &context, size: size, now: now, parallax: parallax, focusID: focusID)
@@ -666,6 +725,37 @@ final class SignalFieldEngine: ObservableObject {
             let alpha = 0.08 + 0.06 * (sin(now.timeIntervalSince1970 * 0.2 + seed) * 0.5 + 0.5)
             let rect = CGRect(x: x, y: y, width: 1.2, height: 1.2)
             context.fill(Path(ellipseIn: rect), with: .color(Color.white.opacity(alpha)))
+        }
+    }
+
+    private func drawBins(context: inout GraphicsContext, size: CGSize, frames: [SignalFrame], now: Date, focusID: String?) {
+        guard !frames.isEmpty else { return }
+        let center = CGPoint(x: size.width * 0.5, y: size.height * 0.5)
+        let minDim = min(size.width, size.height)
+        for frame in frames.prefix(90) {
+            let channelMax: Double
+            if frame.source == "ble" { channelMax = 39 }
+            else if frame.source == "wifi" { channelMax = 165 }
+            else { channelMax = 13 }
+            let norm = channelMax > 0 ? min(1.0, max(0.0, Double(frame.channel) / channelMax)) : 0.5
+            let angle = Angle(radians: norm * Double.pi * 2)
+            let radiusBase: Double = frame.source == "ble" ? 0.22 : frame.source == "wifi" ? 0.34 : 0.46
+            let radius = minDim * (radiusBase + Double(frame.persistence) * 0.08)
+            let arcWidth = minDim * 0.02
+            let start = Angle(radians: angle.radians - 0.08)
+            let end = Angle(radians: angle.radians + 0.08)
+            let dimmed = focusID != nil && focusID != frame.deviceID
+            let color = Color(
+                NSColor(
+                    calibratedHue: CGFloat(frame.color.h / 360.0),
+                    saturation: CGFloat(frame.color.s),
+                    brightness: CGFloat(frame.color.l),
+                    alpha: 1.0
+                )
+            )
+            var path = Path()
+            path.addArc(center: center, radius: radius, startAngle: start, endAngle: end, clockwise: false)
+            context.stroke(path, with: .color(color.opacity(dimmed ? 0.08 : 0.18)), lineWidth: arcWidth)
         }
     }
 
