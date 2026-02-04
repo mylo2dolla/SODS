@@ -30,7 +30,7 @@ final class VaultShipper: ObservableObject {
         let defaults = UserDefaults.standard
         host = defaults.string(forKey: "VaultHost") ?? "pi-logger.local"
         user = defaults.string(forKey: "VaultUser") ?? "pi"
-        basePath = defaults.string(forKey: "VaultBasePath") ?? "/mnt/vault/StrangeLab/"
+        basePath = defaults.string(forKey: "VaultBasePath") ?? "/mnt/vault/SODS/"
         autoShip = defaults.object(forKey: "VaultAutoShip") as? Bool ?? true
         intervalMinutes = defaults.object(forKey: "VaultInterval") as? Int ?? 5
         manifestURL = StoragePaths.shipperBase().appendingPathComponent("manifest.jsonl")
@@ -169,7 +169,7 @@ final class VaultShipper: ObservableObject {
     }
 
     private func relativePath(_ url: URL) -> (full: String, dir: String) {
-        let base = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("StrangeLab")
+        let base = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("SODS")
         let path = url.path
         let basePath = base.path
         let rel = path.hasPrefix(basePath) ? String(path.dropFirst(basePath.count)).trimmingCharacters(in: CharacterSet(charactersIn: "/")) : path

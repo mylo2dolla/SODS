@@ -3,19 +3,19 @@ import AppKit
 
 enum StoragePaths {
     static func inboxBase() -> URL {
-        ensureDir(homeRelative: "StrangeLab/inbox")
+        ensureDir(homeRelative: "SODS/inbox")
     }
 
     static func workspaceBase() -> URL {
-        ensureDir(homeRelative: "StrangeLab/workspace")
+        ensureDir(homeRelative: "SODS/workspace")
     }
 
     static func reportsBase() -> URL {
-        ensureDir(homeRelative: "StrangeLab/reports")
+        ensureDir(homeRelative: "SODS/reports")
     }
 
     static func shipperBase() -> URL {
-        ensureDir(homeRelative: "StrangeLab/.shipper")
+        ensureDir(homeRelative: "SODS/.shipper")
     }
 
     static func inboxSubdir(_ name: String) -> URL {

@@ -395,7 +395,7 @@ struct ContentView: View {
                     if let url = LogStore.latestReadableScanReportURL(log: logStore) {
                         NSWorkspace.shared.activateFileViewerSelecting([url])
                     } else {
-                        logStore.log(.warn, "No readable scan report found in ~/StrangeLab/reports/scan-readable/")
+                        logStore.log(.warn, "No readable scan report found in ~/SODS/reports/scan-readable/")
                     }
                 }
             )
@@ -1443,7 +1443,7 @@ struct ContentView: View {
         if let url = LogStore.latestReadableScanReportURL(log: logStore) {
             NSWorkspace.shared.activateFileViewerSelecting([url])
         } else {
-            logStore.log(.warn, "No readable scan report found in ~/StrangeLab/reports/scan-readable/")
+            logStore.log(.warn, "No readable scan report found in ~/SODS/reports/scan-readable/")
         }
     }
 
@@ -4218,14 +4218,14 @@ struct LogPanel: View {
                     if let url = LogStore.latestAuditURL(log: logStore) {
                         NSWorkspace.shared.open(url)
                     } else {
-                        logStore.log(.warn, "No audit file exists yet in ~/StrangeLab/reports/audit-raw/")
+                        logStore.log(.warn, "No audit file exists yet in ~/SODS/reports/audit-raw/")
                     }
                 }
                 Button("View Latest Readable") {
                     if let url = LogStore.latestReadableAuditURL(log: logStore) {
                         NSWorkspace.shared.open(url)
                     } else {
-                        logStore.log(.warn, "No readable audit file exists yet in ~/StrangeLab/reports/audit-readable/")
+                        logStore.log(.warn, "No readable audit file exists yet in ~/SODS/reports/audit-readable/")
                     }
                 }
                 Button("Export Runtime Log (TXT)") {

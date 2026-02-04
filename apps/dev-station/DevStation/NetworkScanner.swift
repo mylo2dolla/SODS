@@ -93,7 +93,8 @@ final class NetworkScanner: ObservableObject {
 
     private func startOUIWatcher() {
         guard ouiWatcher == nil else { return }
-        let fileURL = URL(fileURLWithPath: "/Users/letsdev/StrangeLab/oui/oui_combined.txt")
+        let home = FileManager.default.homeDirectoryForCurrentUser.path
+        let fileURL = URL(fileURLWithPath: "\(home)/SODS/oui/oui_combined.txt")
         let watcher = OUIFileWatcher(fileURL: fileURL, log: logStore) { [weak self] in
             guard let self else { return }
             Task {

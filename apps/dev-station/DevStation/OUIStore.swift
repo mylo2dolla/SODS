@@ -15,7 +15,7 @@ actor OUIStore {
 
     func reloadPreferred(log: LogStore) async -> Int? {
         let userURL = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("StrangeLab/oui/oui_combined.txt")
+            .appendingPathComponent("SODS/oui/oui_combined.txt")
         if FileManager.default.fileExists(atPath: userURL.path) {
             if let count = await loadFromURL(userURL, log: log),
                count > 0 {
