@@ -69,6 +69,7 @@ If executables lose permissions, run `/Users/letsdev/sods/SODS/tools/permfix.sh`
 - Visual model unified: hue=identity, brightness=recency, saturation=confidence, glow=correlation with smooth decay.
 - Added launchd LaunchAgent (optional) for station auto-run on login.
 - Flash UX: station serves `/api/flash` and `/flash/*` pages; Dev Station popover opens the right flasher URLs.
+- Dev Station now uses in-app sheets for tools, API inspector, tool runner, and viewer; only Flash opens external browser.
 
 ## LaunchAgent
 

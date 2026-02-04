@@ -98,6 +98,7 @@ Examples:
 - Flash buttons open:
   - `http://localhost:9123/flash/esp32`
   - `http://localhost:9123/flash/esp32c3`
+- Internal station views (tools/status) open inside the app; only Flash opens a browser window.
 
 ## Station LaunchAgent (optional)
 
