@@ -13,6 +13,7 @@ type ServerOptions = {
   piLoggerBase: string;
   publicDir: string;
   flashDir: string;
+  portalFlashDir?: string;
   localLogPath?: string;
 };
 
@@ -153,15 +154,59 @@ export class SODSServer {
     if (url.pathname === "/api/flash") {
       return this.respondJson(res, this.buildFlashInfo(req));
     }
+    if (url.pathname === "/api/tool/run" && req.method === "POST") {
+      let body = "";
+      req.on("data", (chunk) => body += chunk);
+      req.on("end", async () => {
+        try {
+          const payload = body ? JSON.parse(body) : {};
+          const name = payload.name;
+          const input = payload.input ?? {};
+          if (!name) {
+            res.writeHead(400);
+            res.end("missing tool name");
+            return;
+          }
+          const result = await runTool(name, input, this.eventBuffer);
+          this.respondJson(res, {
+            ok: result.ok,
+            stdout: result.output,
+            stderr: "",
+            json: result.data ?? {},
+            exitCode: result.ok ? 0 : 1,
+          });
+        } catch (err: any) {
+          res.writeHead(400);
+          res.end(err?.message ?? "tool error");
+        }
+      });
+      return;
+    }
+    if (url.pathname === "/api/events/recent") {
+      const limit = Number(url.searchParams.get("limit") ?? "50");
+      const safeLimit = Number.isFinite(limit) ? Math.max(1, Math.min(200, limit)) : 50;
+      const items = this.eventBuffer.slice(-safeLimit).map((ev) => ({
+        ...ev,
+        data: ev.data ?? {},
+      }));
+      return this.respondJson(res, { items });
+    }
     if (url.pathname === "/flash/esp32") {
       return this.respondFlashHtml(res, "esp32", "ESP32 DevKit", "/flash/manifest.json");
     }
     if (url.pathname === "/flash/esp32c3") {
       return this.respondFlashHtml(res, "esp32c3", "ESP32-C3 DevKit", "/flash/manifest-esp32c3.json");
     }
+    if (url.pathname === "/flash/portal-cyd") {
+      return this.respondFlashHtml(res, "portal-cyd", "Ops Portal CYD", "/flash-portal/manifest-portal-cyd.json");
+    }
     if (url.pathname.startsWith("/flash/")) {
       const rel = url.pathname.replace(/^\/flash\/+/, "");
       return this.serveStaticFrom(res, this.options.flashDir, rel || "index.html");
+    }
+    if (url.pathname.startsWith("/flash-portal/") && this.options.portalFlashDir) {
+      const rel = url.pathname.replace(/^\/flash-portal\/+/, "");
+      return this.serveStaticFrom(res, this.options.portalFlashDir, rel || "index.html");
     }
     if (url.pathname === "/opsportal/state") {
       return this.respondJson(res, this.buildOpsPortalState());
@@ -390,6 +435,12 @@ export class SODSServer {
           label: "ESP32-C3 DevKit",
           url: `${base}/flash/esp32c3`,
           manifest: `${base}/flash/manifest-esp32c3.json`,
+        },
+        {
+          id: "portal-cyd",
+          label: "Ops Portal CYD",
+          url: `${base}/flash/portal-cyd`,
+          manifest: `${base}/flash-portal/manifest-portal-cyd.json`,
         },
       ],
     };

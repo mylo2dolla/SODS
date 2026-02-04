@@ -176,6 +176,7 @@ async function cmdStart() {
     piLoggerBase: piLogger,
     publicDir: new URL("../public/", import.meta.url).pathname,
     flashDir: new URL("../../../firmware/node-agent/esp-web-tools/", import.meta.url).pathname,
+    portalFlashDir: new URL("../../../firmware/ops-portal/esp-web-tools/", import.meta.url).pathname,
     localLogPath: localLogPath && localLogPath.trim() ? localLogPath.trim() : undefined,
   });
   server.start();
