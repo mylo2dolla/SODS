@@ -3990,7 +3990,7 @@ struct VaultView: View {
             HStack {
                 Text("Destination")
                     .frame(width: 90, alignment: .leading)
-                TextField("/var/strangelab/vault/sods/", text: $shipper.destinationPath)
+                TextField("/var/sods/vault/sods/", text: $shipper.destinationPath)
                     .textFieldStyle(.roundedBorder)
             }
 

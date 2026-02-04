@@ -25,7 +25,7 @@ final class VaultTransport: ObservableObject {
         let defaults = UserDefaults.standard
         host = defaults.string(forKey: "VaultHost") ?? "pi-logger.local"
         user = defaults.string(forKey: "VaultUser") ?? "pi"
-        destinationPath = defaults.string(forKey: "VaultDestPath") ?? "/var/strangelab/vault/sods/"
+        destinationPath = defaults.string(forKey: "VaultDestPath") ?? "/var/sods/vault/sods/"
         method = VaultMethod(rawValue: defaults.string(forKey: "VaultMethod") ?? "") ?? .scp
         autoShipAfterExport = defaults.object(forKey: "VaultAutoShipAfterExport") as? Bool ?? true
     }
