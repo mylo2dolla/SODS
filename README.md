@@ -19,6 +19,11 @@ npm install
 npm run dev -- --pi-logger http://pi-logger.local:8088 --port 9123
 ```
 
+Optional local capture (append-only NDJSON):
+```bash
+SODS_LOCAL_LOG_PATH="/Users/letsdev/sods/SODS/data/local-events.ndjson" ./tools/sods start --pi-logger http://pi-logger.local:8088 --port 9123
+```
+
 Tools are runnable from any working directory. Use an absolute path or `cd` to the repo root before running `./tools/...`.
 If executables lose their permissions, run `/Users/letsdev/sods/SODS/tools/permfix.sh`.
 
@@ -36,9 +41,20 @@ Open spectrum:
 ```
 
 **Dev Station (macOS app)**
-1. Open `apps/dev-station/DevStation.xcodeproj` in Xcode.
-2. Select the `DevStation` scheme.
-3. Build + run (app display name: Strange Ops Dev Station).
+Build:
+```bash
+/Users/letsdev/sods/SODS/tools/devstation-build.sh
+```
+
+Run (starts station if needed and launches the app):
+```bash
+/Users/letsdev/sods/SODS/tools/devstation-run.sh
+```
+
+Install:
+```bash
+/Users/letsdev/sods/SODS/tools/devstation-install.sh
+```
 
 **Ops Portal (CYD)**
 ```bash
@@ -72,6 +88,16 @@ Examples:
 ./tools/sods tail lab-esp32-01
 ./tools/sods spectrum
 ```
+
+## Dev Station App Flow
+
+- App connects to the local station at `http://localhost:9123`.
+- If the station is not running, the app launches it as a child process.
+- Tools load from `/api/tools`.
+- Visualizer streams from `/ws/frames`.
+- Flash buttons open:
+  - `http://localhost:9123/flash/esp32`
+  - `http://localhost:9123/flash/esp32c3`
 
 ## Wi-Fi Scan (macOS)
 
