@@ -140,6 +140,15 @@ Scan nearby SSIDs (uses `airport` when present, falls back to `wdutil`):
 
 Passive-only tools are defined in `docs/tool-registry.json`. The CLI exposes them via `/tools`, and the Dev Station “God Button” shows them in-app.
 
+## Local Storage Paths
+
+Dev Station stores local artifacts under `~/SODS`:
+- `~/SODS/inbox`
+- `~/SODS/workspace`
+- `~/SODS/reports`
+- `~/SODS/.shipper`
+- `~/SODS/oui/oui_combined.txt`
+
 ## Demo/Replays
 ```bash
 ./tools/sods stream --frames --out ./cli/sods/public/demo.ndjson
