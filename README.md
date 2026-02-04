@@ -99,6 +99,26 @@ Examples:
   - `http://localhost:9123/flash/esp32`
   - `http://localhost:9123/flash/esp32c3`
 
+## Station LaunchAgent (optional)
+
+Enable on login:
+```bash
+/Users/letsdev/sods/SODS/tools/launchagent-install.sh
+```
+
+Disable:
+```bash
+/Users/letsdev/sods/SODS/tools/launchagent-uninstall.sh
+```
+
+Status:
+```bash
+/Users/letsdev/sods/SODS/tools/launchagent-status.sh
+```
+
+Logs:
+- `/Users/letsdev/sods/SODS/data/logs/station.launchd.log`
+
 ## Wi-Fi Scan (macOS)
 
 Scan nearby SSIDs (uses `airport` when present, falls back to `wdutil`):

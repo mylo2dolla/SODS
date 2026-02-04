@@ -25,6 +25,7 @@ targets=(
   "$TOOLS_DIR/launchagent-install.sh"
   "$TOOLS_DIR/launchagent-uninstall.sh"
   "$TOOLS_DIR/launchagent-status.sh"
+  "$TOOLS_DIR/smoke.sh"
   "$TOOLS_DIR/verify.sh"
 )
 

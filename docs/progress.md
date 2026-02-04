@@ -67,6 +67,35 @@ If executables lose permissions, run `/Users/letsdev/sods/SODS/tools/permfix.sh`
 - CLI flags split: `--logger` for pi-logger, `--station` for spine endpoints.
 - Tool Registry is now shared between CLI and Dev Station (`docs/tool-registry.json`), and only passive tools are exposed.
 - Visual model unified: hue=identity, brightness=recency, saturation=confidence, glow=correlation with smooth decay.
+- Added launchd LaunchAgent (optional) for station auto-run on login.
+- Flash UX: station serves `/api/flash` and `/flash/*` pages; Dev Station popover opens the right flasher URLs.
+
+## LaunchAgent
+
+Install:
+```bash
+/Users/letsdev/sods/SODS/tools/launchagent-install.sh
+```
+
+Uninstall:
+```bash
+/Users/letsdev/sods/SODS/tools/launchagent-uninstall.sh
+```
+
+Status:
+```bash
+/Users/letsdev/sods/SODS/tools/launchagent-status.sh
+```
+
+Logs:
+- `/Users/letsdev/sods/SODS/data/logs/station.launchd.log`
+
+## Flash Button
+
+- Flash popover opens:
+  - `http://localhost:9123/flash/esp32`
+  - `http://localhost:9123/flash/esp32c3`
+- If station is not running, Dev Station starts it and opens the URL once healthy.
 
 ## Dev Station Build Log (First 50 Lines)
 
