@@ -140,6 +140,23 @@ Scan nearby SSIDs (uses `airport` when present, falls back to `wdutil`):
 
 Passive-only tools are defined in `docs/tool-registry.json`. The CLI exposes them via `/tools`, and the Dev Station “God Button” shows them in-app.
 
+## Tool Builder + Presets
+
+User tools:
+- Registry: `docs/tool-registry.user.json` (gitignored)
+- Scripts: `tools/user/<toolName>.(sh|py|mjs)`
+
+Presets:
+- Official: `docs/presets.json`
+- User: `docs/presets.user.json` (gitignored)
+
+CLI examples:
+```bash
+./tools/sods tool add --entry '{"name":"net.sample","title":"Sample","runner":"shell","kind":"inspect"}' --script ./tools/user/net.sample.sh
+./tools/sods preset add --preset '{"id":"frontdoor.snapshot","kind":"single","tool":"camera.viewer","input":{"ip":"192.168.1.10","path":"/"}}'
+./tools/sods scratch --runner shell --input '{}' < /tmp/snippet.sh
+```
+
 ## Local Storage Paths
 
 Dev Station stores local artifacts under `~/SODS`:
