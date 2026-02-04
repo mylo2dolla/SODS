@@ -49,6 +49,10 @@ Defaults:
   process.exit(exitCode);
 }
 
+if (hasFlag("--help") || cmd === "--help") {
+  usage(0);
+}
+
 function repoRoot(): string {
   let dir = resolve(fileURLToPath(new URL(".", import.meta.url)));
   for (let i = 0; i < 6; i += 1) {
@@ -325,6 +329,10 @@ async function cmdWifiScan() {
     process.exit(2);
   }
   const child = spawn(script, pattern ? [pattern] : [], { stdio: "inherit" });
+  child.on("error", (err) => {
+    console.error(err.message);
+    process.exit(2);
+  });
   child.on("exit", (code) => process.exit(code ?? 1));
 }
 
