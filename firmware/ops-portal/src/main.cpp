@@ -1,5 +1,5 @@
 #include <Arduino.h>
-#include "portal-device-cyd/portal_device_cyd.h"
+#include "portal_device_cyd.h"
 
 static PortalDeviceCYD device;
 

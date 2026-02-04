@@ -7,7 +7,7 @@
 #include <TFT_eSPI.h>
 #include <XPT2046_Touchscreen.h>
 
-#include "portal-core/portal_core.h"
+#include "portal_core.h"
 
 #ifndef WIFI_SSID
 #define WIFI_SSID ""
