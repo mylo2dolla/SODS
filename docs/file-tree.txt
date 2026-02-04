@@ -38,6 +38,8 @@ SODS/
         SSDPDiscovery.swift
         StoragePaths.swift
         Theme.swift
+        ToolRegistry.swift
+        ToolRegistryView.swift
         VLCLauncher.swift
         VaultShipper.swift
         VaultTransport.swift
@@ -52,8 +54,6 @@ SODS/
             icon_32.png
             icon_512.png
             icon_64.png
-        CamUtil/
-          Resources/
         Resources/
           BLEAssignedNumbers.txt
           BLECompanyIDs.txt
@@ -543,231 +543,11 @@ SODS/
         server.ts
         tools.ts
         util.ts
-  data/
-    .DS_Store
-    resources/
-      deviceidfetch.txt
-      oui 2.txt
-      oui.txt
-    strangelab/
-      .DS_Store
-      StrangeLab/
-        .DS_Store
-        piloggerinfo.txt
-        .shipper/
-          outbox/
-            CamUtil-DeviceReportRaw-192.168.8.247-2026-02-03T054513Z.json
-            CamUtil-DeviceReportReadable-192.168.8.247-2026-02-03T054513Z.json
-            CamUtil-Export-2026-02-03T042853Z.json
-            CamUtil-ScanReportRaw-2026-02-03T054555Z.json
-            CamUtil-ScanReportReadable-2026-02-03T054555Z.json
-            CamUtil-SessionRaw-2026-02-03T054714Z.json
-            CamUtil-SessionReadable-2026-02-03T054714Z.json
-            CaseReportRaw-2026-02-03T054706Z.json
-            CaseReportReadable-2026-02-03T054706Z.json
-          shipped/
-        assets/
-          CamUtilIcon-1024.png
-        camutil/
-          .DS_Store
-          inbox/
-            CamUtil-BLEProbe-ce71afc8ab-2026-02-03T005814Z.json
-            CamUtil-BLEProbe-ce71afc8ab-2026-02-03T005821Z.json
-            CamUtil-BLERaw-453b5d9c16-2026-02-03T013830Z.json
-            CamUtil-BLERaw-dff8dc72b7-2026-02-03T005718Z.json
-            CamUtil-BLEReadable-453b5d9c16-2026-02-03T013830Z.json
-            CamUtil-BLEReadable-dff8dc72b7-2026-02-03T005718Z.json
-          outbox/
-            .DS_Store
-            CamUtil-BLEProbe-ce71afc8ab-2026-02-03T005814Z.json
-            CamUtil-BLEProbe-ce71afc8ab-2026-02-03T005821Z.json
-            CamUtil-BLERaw-453b5d9c16-2026-02-03T013830Z.json
-            CamUtil-BLERaw-dff8dc72b7-2026-02-03T005718Z.json
-            CamUtil-BLEReadable-453b5d9c16-2026-02-03T013830Z.json
-            CamUtil-BLEReadable-dff8dc72b7-2026-02-03T005718Z.json
-            shipped/
-          state/
-        inbox/
-          .DS_Store
-          ble-raw/
-            CamUtil-BLEProbe-ce71afc8ab-2026-02-03T005814Z.json
-            CamUtil-BLEProbe-ce71afc8ab-2026-02-03T005821Z.json
-            CamUtil-BLERaw-453b5d9c16-2026-02-03T013830Z.json
-            CamUtil-BLERaw-dff8dc72b7-2026-02-03T005718Z.json
-        oui/
-          oui_combined.txt
-          oui_update.err
-          oui_update.log
-          update_oui.sh
-          tmp/
-            ieee_norm.txt
-            ieee_oui.txt
-            manuf.gz
-            manuf.txt
-            manuf_norm.txt
-        releases/
-        reports/
-          CamUtil-Export-2026-02-03T042853Z.json
-          daily-raw/
-            CamUtil-DailyRaw-2026-02-03.txt
-          device-raw/
-            CamUtil-DeviceReportRaw-192.168.8.247-2026-02-03T054513Z.json
-          device-readable/
-            CamUtil-BLEReadable-453b5d9c16-2026-02-03T013830Z.json
-            CamUtil-BLEReadable-dff8dc72b7-2026-02-03T005718Z.json
-            CamUtil-DeviceReportReadable-192.168.8.247-2026-02-03T054513Z.json
-          scan-raw/
-            CamUtil-ScanReportRaw-2026-02-03T054555Z.json
-          scan-readable/
-            CamUtil-ScanReportReadable-2026-02-03T054555Z.json
-          session-raw/
-            CamUtil-SessionRaw-2026-02-03T054714Z.json
-          session-readable/
-            CamUtil-SessionReadable-2026-02-03T054714Z.json
-        scans/
-          CamUtil-Audit-2026-02-01T042907Z.json
-          CamUtil-Audit-2026-02-01T042934Z.json
-          CamUtil-Audit-2026-02-01T060027Z.json
-          CamUtil-Audit-20260131-204127.json
-          CamUtil-Export-2026-02-01T042830Z.json
-          CamUtil-Export-2026-02-01T080149Z.json
-          CamUtil-Export-2026-02-01T084155Z.json
-          CamUtil-Export-2026-02-01T102920Z.json
-          audit-raw/
-            CamUtil-AuditRaw-2026-02-01T083941Z.json
-            CamUtil-AuditRaw-2026-02-01T085616Z.json
-            CamUtil-AuditRaw-2026-02-01T113113Z.json
-            CamUtil-AuditRaw-2026-02-01T122726Z.json
-            CamUtil-AuditRaw-2026-02-01T125714Z.json
-            CamUtil-AuditRaw-2026-02-01T130005Z.json
-            CamUtil-AuditRaw-2026-02-01T220727Z.json
-          audit-readable/
-            CamUtil-AuditReadable-2026-02-01T083941Z.json
-            CamUtil-AuditReadable-2026-02-01T085616Z.json
-            CamUtil-AuditReadable-2026-02-01T113113Z.json
-            CamUtil-AuditReadable-2026-02-01T122726Z.json
-            CamUtil-AuditReadable-2026-02-01T125714Z.json
-            CamUtil-AuditReadable-2026-02-01T130005Z.json
-            CamUtil-AuditReadable-2026-02-01T220727Z.json
-          ble/
-            CamUtil-BLE-6989ca87db-2026-02-01T080512Z.json
-            CamUtil-BLE-b0a35b951d-2026-02-01T081649Z.json
-            CamUtil-BLE-ce71afc8ab-2026-02-01T073721Z.json
-            CamUtil-BLE-ce71afc8ab-2026-02-01T080338Z.json
-            CamUtil-BLE-e4a2f76d1f-2026-02-01T071200Z.json
-            CamUtil-BLE-e70e9814b3-2026-02-01T073811Z.json
-            CamUtil-Export-2026-02-01T084136Z.json
-          ble-probes/
-            CamUtil-BLEProbe-5ea3de4079-2026-02-01T125617Z.json
-            CamUtil-BLEProbe-7b035f7216-2026-02-01T122737Z.json
-            CamUtil-BLEProbe-ce71afc8ab-2026-02-01T080326Z.json
-            CamUtil-BLEProbe-ce71afc8ab-2026-02-01T125541Z.json
-          ble-raw/
-            CamUtil-BLERaw-7b035f7216-2026-02-01T083814Z.json
-            CamUtil-BLERaw-7b035f7216-2026-02-01T122435Z.json
-            CamUtil-BLERaw-7b035f7216-2026-02-01T122648Z.json
-          ble-readable/
-            CamUtil-BLEReadable-7b035f7216-2026-02-01T083814Z.json
-            CamUtil-BLEReadable-7b035f7216-2026-02-01T122435Z.json
-            CamUtil-BLEReadable-7b035f7216-2026-02-01T122648Z.json
-          device-report-raw/
-            CamUtil-DeviceReportRaw-192.168.8.108-2026-02-01T113025Z.json
-            CamUtil-DeviceReportRaw-192.168.8.171-2026-02-01T103104Z.json
-            CamUtil-DeviceReportRaw-192.168.8.171-2026-02-01T130029Z.json
-          device-report-readable/
-            CamUtil-DeviceReportReadable-192.168.8.108-2026-02-01T113025Z.json
-            CamUtil-DeviceReportReadable-192.168.8.171-2026-02-01T103104Z.json
-            CamUtil-DeviceReportReadable-192.168.8.171-2026-02-01T130029Z.json
-          evidence/
-            CamUtil-Evidence-192.168.8.108-2026-02-01T080924Z.json
-            CamUtil-Evidence-192.168.8.108-2026-02-01T080932Z.json
-            CamUtil-Evidence-192.168.8.171-2026-02-01T070333Z.json
-            CamUtil-Evidence-192.168.8.171-2026-02-01T073703Z.json
-            CamUtil-Evidence-192.168.8.171-2026-02-01T073941Z.json
-            CamUtil-Evidence-192.168.8.171-2026-02-01T075329Z.json
-            CamUtil-Evidence-192.168.8.171-2026-02-01T075339Z.json
-            CamUtil-Evidence-192.168.8.171-2026-02-01T081005Z.json
-            CamUtil-Evidence-192.168.8.171-2026-02-01T081037Z.json
-            CamUtil-Evidence-192.168.8.171-2026-02-01T083458Z.json
-            CamUtil-Evidence-192.168.8.171-2026-02-01T083503Z.json
-          evidence-raw/
-            CamUtil-EvidenceRaw-192.168.8.108-2026-02-01T112234Z.json
-            CamUtil-EvidenceRaw-192.168.8.148-2026-02-01T215147Z.json
-            CamUtil-EvidenceRaw-192.168.8.171-2026-02-01T084509Z.json
-          evidence-readable/
-            CamUtil-EvidenceReadable-192.168.8.108-2026-02-01T112234Z.json
-            CamUtil-EvidenceReadable-192.168.8.148-2026-02-01T215147Z.json
-            CamUtil-EvidenceReadable-192.168.8.171-2026-02-01T084509Z.json
-          logs/
-            CamUtil-Audit-2026-02-01T060901Z.json
-            CamUtil-Audit-2026-02-01T061050Z.json
-            CamUtil-Audit-2026-02-01T063030Z.json
-            CamUtil-Audit-2026-02-01T070128Z.json
-            CamUtil-Audit-2026-02-01T071720Z.json
-            CamUtil-Audit-2026-02-01T073606Z.json
-            CamUtil-Audit-2026-02-01T074051Z.json
-            CamUtil-Audit-2026-02-01T080414Z.json
-            CamUtil-Audit-2026-02-01T082812Z.json
-            CamUtil-Audit-2026-02-01T082953Z.json
-            CamUtil-Audit-2026-02-01T083938Z.json
-            CamUtil-Audit-2026-02-01T085614Z.json
-            CamUtil-Audit-2026-02-01T113108Z.json
-            CamUtil-Audit-2026-02-01T122722Z.json
-            CamUtil-Audit-2026-02-01T125714Z.json
-            CamUtil-Audit-2026-02-01T130005Z.json
-            CamUtil-Audit-2026-02-01T220727Z.json
-            CamUtil-Export-2026-02-01T061106Z.json
-            CamUtil-Export-2026-02-01T071100Z.json
-            CamUtil-Runtime-2026-02-01T082959Z.txt
-          logs-raw/
-            CamUtil-LogsRaw-2026-02-01T085620Z.txt
-            CamUtil-LogsRaw-2026-02-01T113119Z.txt
-          logs-readable/
-            CamUtil-LogsReadable-2026-02-01T085620Z.txt
-            CamUtil-LogsReadable-2026-02-01T113119Z.txt
-          rtsp-hard-probe/
-          scan-report-raw/
-            CamUtil-ScanReportRaw-2026-02-01T211321Z.json
-          scan-report-readable/
-            CamUtil-ScanReportReadable-2026-02-01T211321Z.json
-        soucres/
-          ETEC_Lab_Full_Canonical_Reference.pdf
-          ETEC_Lab_Full_Canonical_Reference_v2_Persistence.pdf
-          Flash script for C3.txt
-          Lab.txt
-          Node Agent Firmware & Flashing  .txt
-          Strange Vault Ingest – Architecture & Progress Update.txt
-          Strange Vault – Progress Update (LOCKED).txt
-          architecture.txt
-          aux logger locked in.txt
-          espcmd.txt
-          progress update.txt
-          untitled 4.txt
-          untitled.txt
-        workspace/
-          cases/
-            ce71afc8ab/
-              CamUtil-BLEProbe-ce71afc8ab-2026-02-03T005821Z.json
-              CaseReportRaw-2026-02-03T054706Z.json
-              CaseReportReadable-2026-02-03T054706Z.json
-              case.json
-            ee02ca4728/
-              case.json
   docs/
     .DS_Store
     architecture.md
     progress.md
-    archive/
-      CamUtil.zip
-    reference/
-      StrangeLab_CamUtil_Chronicle.pdf
-      StrangeLab_CamUtil_Cockpit_Vault_Architecture.pdf
-      StrangeLab_CamUtil_Cockpit_Vault_Architecture_v2.pdf
-      StrangeLab_CamUtil_Today_Chronicle 2.pdf
-      StrangeLab_CamUtil_Today_Chronicle 3.pdf
-      StrangeLab_CamUtil_Today_Chronicle.pdf
-      StrangeLab_CamUtil_Today_Full_Chronicle.pdf
-      StrangeLab_Lab_Wide_Index.pdf
+    tool-registry.json
   firmware/
     .DS_Store
     node-agent/
@@ -816,6 +596,7 @@ SODS/
       src/
         main.cpp
   tools/
+    _sods_cli.sh
     camutil
     cockpit
     dev.sh

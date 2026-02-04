@@ -1,5 +1,5 @@
 import { CanonicalEvent, SignalFrame, SignalSource } from "./schema.js";
-import { asNumber, asString, clamp, expDecay, hashToHue, rssiToLightness, stabilityToSaturation } from "./util.js";
+import { asNumber, asString, clamp, expDecay, hashToHue, recencyToLightness, stabilityToSaturation } from "./util.js";
 
 type DeviceState = {
   device_id: string;
@@ -69,12 +69,14 @@ export class FrameEngine {
         continue;
       }
       const stability = clamp(state.hitScore / 6, 0, 1);
+      const confidence = clamp(0.25 + stability * 0.75, 0.1, 1);
+      const age = now - state.lastSeen;
+      const glow = clamp(0.2 + stability * 0.6 + state.persistence * 0.4, 0.1, 1);
       const color = {
         h: hashToHue(state.device_id),
-        s: stabilityToSaturation(stability),
-        l: rssiToLightness(state.rssi),
+        s: stabilityToSaturation(confidence),
+        l: recencyToLightness(age),
       };
-      const confidence = clamp(0.4 + stability * 0.6, 0.1, 1);
       frames.push({
         t: now,
         source: state.source,
@@ -84,6 +86,7 @@ export class FrameEngine {
         frequency: state.frequency,
         rssi: state.rssi,
         color,
+        glow,
         persistence: clamp(state.persistence, 0, 1),
         velocity: stability * 0.6,
         confidence,

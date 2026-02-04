@@ -57,9 +57,9 @@ static const char *mockStateJson = R"json(
     ]}
   ],
   "visualizer": { "bins": [
-    { "id": "a", "x": 0.2, "y": 0.4, "level": 0.6, "h": 10, "s": 0.8, "l": 0.55 },
-    { "id": "b", "x": 0.6, "y": 0.3, "level": 0.5, "h": 350, "s": 0.7, "l": 0.5 },
-    { "id": "c", "x": 0.4, "y": 0.7, "level": 0.7, "h": 40, "s": 0.9, "l": 0.6 }
+    { "id": "a", "x": 0.2, "y": 0.4, "level": 0.6, "h": 10, "s": 0.8, "l": 0.55, "glow": 0.7 },
+    { "id": "b", "x": 0.6, "y": 0.3, "level": 0.5, "h": 350, "s": 0.7, "l": 0.5, "glow": 0.5 },
+    { "id": "c", "x": 0.4, "y": 0.7, "level": 0.7, "h": 40, "s": 0.9, "l": 0.6, "glow": 0.9 }
   ]}
 }
 )json";
@@ -218,8 +218,9 @@ static void parseState(const String &json) {
     bin.y = readFloat(bv["y"], random(10, 90) / 100.0f);
     bin.level = readFloat(bv["level"], 0.2f);
     bin.hue = readFloat(bv["h"], readFloat(bv["hue"], 0.0f));
-    bin.sat = readFloat(bv["s"], 0.7f);
-    bin.light = readFloat(bv["l"], 0.45f);
+    bin.sat = readFloat(bv["s"], readFloat(bv["sat"], 0.7f));
+    bin.light = readFloat(bv["l"], readFloat(bv["light"], bin.level > 0 ? (0.2f + bin.level * 0.7f) : 0.45f));
+    bin.glow = readFloat(bv["glow"], readFloat(bv["glow_level"], bin.level));
     state.bins.push_back(bin);
     if (state.bins.size() >= 16) break;
   }

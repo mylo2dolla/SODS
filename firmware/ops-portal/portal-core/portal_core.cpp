@@ -194,8 +194,14 @@ void PortalCore::drawVisualizer(int x, int y, int w, int h) {
     int px = x + (int)(bin.x * (w - 6)) + 3;
     int py = y + (int)(bin.y * (h - 6)) + 3;
     uint16_t color = hslTo565(bin.hue, bin.sat, bin.light);
+    float glowStrength = bin.glow;
     trails[i].push_back({px, py, 0});
     if (trails[i].size() > 12) trails[i].erase(trails[i].begin());
+    if (glowStrength > 0.05f) {
+      uint16_t gcol = dimColor(color, 0.2f + glowStrength * 0.8f);
+      int gr = (int)(6 + glowStrength * 10);
+      tft->fillCircle(px, py, gr, gcol);
+    }
     for (size_t t = 0; t < trails[i].size(); t++) {
       float fade = 1.0f - (float)t / trails[i].size();
       uint16_t c = dimColor(color, 0.2f + fade * 0.8f);

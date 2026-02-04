@@ -46,6 +46,12 @@ export function stabilityToSaturation(stability: number): number {
   return clamp(0.35 + stability * 0.55, 0.2, 0.9);
 }
 
+export function recencyToLightness(ageMs: number, halfLifeMs = 4500): number {
+  const decay = Math.exp(-Math.log(2) * ageMs / Math.max(1, halfLifeMs));
+  const clamped = clamp(decay, 0, 1);
+  return 0.18 + clamped * 0.72;
+}
+
 export function expDecay(value: number, dtMs: number, halfLifeMs: number): number {
   if (halfLifeMs <= 0) return 0;
   const decay = Math.exp(-Math.log(2) * dtMs / halfLifeMs);

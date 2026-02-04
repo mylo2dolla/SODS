@@ -28,6 +28,7 @@ struct VizBin {
   float hue = 0.0f;
   float sat = 0.6f;
   float light = 0.5f;
+  float glow = 0.0f;
 };
 
 struct PortalState {

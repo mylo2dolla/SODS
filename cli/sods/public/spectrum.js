@@ -144,7 +144,7 @@ function drawTrail(list, width, height, now) {
 
   ctx.save();
   ctx.strokeStyle = colorWithAlpha(last.color, 0.28);
-  ctx.lineWidth = 2 + last.persistence * 7;
+  ctx.lineWidth = 2 + last.persistence * 6;
   ctx.beginPath();
   for (let i = 0; i < recent.length; i++) {
     const frame = recent[i];
@@ -155,8 +155,8 @@ function drawTrail(list, width, height, now) {
   }
   ctx.stroke();
 
-  const glow = 14 + last.persistence * 32;
-  ctx.fillStyle = colorWithAlpha(last.color, 0.22 + last.persistence * 0.45);
+  const glow = 14 + (last.glow ?? 0.3) * 34 + last.persistence * 18;
+  ctx.fillStyle = colorWithAlpha(last.color, 0.22 + (last.glow ?? 0.3) * 0.4);
   ctx.beginPath();
   ctx.ellipse(x, baseY, glow, glow * 0.7, 0, 0, Math.PI * 2);
   ctx.fill();

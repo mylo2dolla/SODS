@@ -37,6 +37,7 @@ struct ContentView: View {
     @StateObject private var sessionManager = CaseSessionManager.shared
     @StateObject private var vaultTransport = VaultTransport.shared
     @StateObject private var flashManager = FlashServerManager()
+    @StateObject private var toolRegistry = ToolRegistry.shared
     @AppStorage("consentAcknowledged") private var consentAcknowledged = false
     @AppStorage("bleFindFingerprintID") private var bleFindFingerprintID = ""
 
@@ -77,10 +78,14 @@ struct ContentView: View {
     @State private var inboxStatus = InboxRetention.shared.currentStatus()
     @State private var bleTableWarning: String?
     @State private var sodsURLText = ""
+    @State private var showToolsRegistry = false
 
     var body: some View {
         mainContent
             .toolbar { toolbarContent }
+            .sheet(isPresented: $showToolsRegistry) {
+                ToolRegistryView(registry: toolRegistry, baseURL: sodsStore.baseURL)
+            }
     }
 
     @ViewBuilder
@@ -787,6 +792,11 @@ struct ContentView: View {
         let base = sodsStore.baseURL.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let url = URL(string: base) else { return }
         NSWorkspace.shared.open(url)
+    }
+
+    private func openSODSTools() {
+        toolRegistry.reload()
+        showToolsRegistry = true
     }
 
     private func bestONVIFXAddr(for ip: String) -> String? {

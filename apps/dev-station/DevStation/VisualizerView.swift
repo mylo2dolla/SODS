@@ -501,6 +501,7 @@ struct SignalParticle: Hashable {
     var baseSize: Double
     var color: NSColor
     var strength: Double
+    var glow: Double
     var ringRadius: Double
     var ringWidth: Double
     var trail: [SIMD3<Double>]
@@ -539,26 +540,32 @@ struct SignalParticle: Hashable {
             x: CGFloat(position.x) * size.width * 0.45 + size.width * 0.5 + parallax.x * depth,
             y: CGFloat(position.y) * size.height * 0.45 + size.height * 0.5 + parallax.y * depth
         )
+        let glowStrength = max(0.0, min(1.0, glow))
         let color = Color(color).opacity(alpha * 0.9)
 
         switch kind {
         case .spark:
             let radius = CGFloat(baseSize) * depth * 0.08
             let rect = CGRect(x: basePoint.x - radius / 2, y: basePoint.y - radius / 2, width: radius, height: radius)
+            if glowStrength > 0.05 {
+                let glowRadius = radius * (1.6 + CGFloat(glowStrength) * 2.4)
+                let glowRect = CGRect(x: basePoint.x - glowRadius / 2, y: basePoint.y - glowRadius / 2, width: glowRadius, height: glowRadius)
+                context.fill(Path(ellipseIn: glowRect), with: .color(color.opacity(0.18 + CGFloat(glowStrength) * 0.35)))
+            }
             context.fill(Path(ellipseIn: rect), with: .color(color))
             drawTrail(context: &context, size: size, parallax: parallax, alpha: alpha)
         case .ring:
             let radius = CGFloat(ringRadius) * depth
             let rect = CGRect(x: basePoint.x - radius, y: basePoint.y - radius, width: radius * 2, height: radius * 2)
-            context.stroke(Path(ellipseIn: rect), with: .color(color.opacity(0.6)), lineWidth: CGFloat(ringWidth) * depth)
+            context.stroke(Path(ellipseIn: rect), with: .color(color.opacity(0.6 + CGFloat(glowStrength) * 0.2)), lineWidth: CGFloat(ringWidth) * depth)
         case .pulse:
             let radius = CGFloat(ringRadius) * depth
             let rect = CGRect(x: basePoint.x - radius, y: basePoint.y - radius, width: radius * 2, height: radius * 2)
-            context.stroke(Path(ellipseIn: rect), with: .color(color.opacity(0.8)), lineWidth: CGFloat(ringWidth) * depth)
+            context.stroke(Path(ellipseIn: rect), with: .color(color.opacity(0.8 + CGFloat(glowStrength) * 0.15)), lineWidth: CGFloat(ringWidth) * depth)
         case .burst:
             let radius = CGFloat(ringRadius) * depth
             let rect = CGRect(x: basePoint.x - radius, y: basePoint.y - radius, width: radius * 2, height: radius * 2)
-            context.stroke(Path(ellipseIn: rect), with: .color(color.opacity(0.8)), lineWidth: CGFloat(ringWidth) * depth)
+            context.stroke(Path(ellipseIn: rect), with: .color(color.opacity(0.8 + CGFloat(glowStrength) * 0.2)), lineWidth: CGFloat(ringWidth) * depth)
             drawTrail(context: &context, size: size, parallax: parallax, alpha: alpha)
         }
     }
@@ -641,30 +648,32 @@ enum SignalEmitter {
         let kind = event.kind.lowercased()
         let strength = event.signal.strength ?? -60
         let energy = max(0.2, min(1.8, (abs(strength) / 90.0)))
-        let baseColor = SignalColor.mix(source.color, SignalColor.kindAccent(kind: kind), ratio: 0.45)
+        let style = SignalVisualStyle.from(event: event, now: now)
+        let deviceID = event.deviceID ?? event.nodeID
+        let baseColor = SignalColor.deviceColor(id: deviceID, saturation: style.saturation, brightness: style.brightness)
         let count = Int(ceil(6 * intensity.multiplier * energy))
         var particles: [SignalParticle] = []
 
         if kind.contains("ble") {
             for _ in 0..<count {
-                particles.append(makeSpark(source: source, color: baseColor, now: now, energy: energy))
+                particles.append(makeSpark(source: source, color: baseColor, now: now, energy: energy, glow: style.glow))
             }
         } else if kind.contains("wifi") {
-            particles.append(makeRing(source: source, color: baseColor, now: now, pulse: false))
+            particles.append(makeRing(source: source, color: baseColor, now: now, pulse: false, glow: style.glow))
         } else if kind.contains("node") {
-            particles.append(makeRing(source: source, color: baseColor, now: now, pulse: true))
+            particles.append(makeRing(source: source, color: baseColor, now: now, pulse: true, glow: style.glow))
         } else if kind.contains("error") || event.signal.tags.contains("error") {
             for _ in 0..<(max(2, count / 2)) {
-                particles.append(makeBurst(source: source, color: baseColor, now: now, energy: energy))
+                particles.append(makeBurst(source: source, color: baseColor, now: now, energy: energy, glow: min(1.0, style.glow + 0.2)))
             }
         } else {
-            particles.append(makeSpark(source: source, color: baseColor, now: now, energy: energy))
+            particles.append(makeSpark(source: source, color: baseColor, now: now, energy: energy, glow: style.glow))
         }
 
         return particles
     }
 
-    private static func makeSpark(source: SignalSource, color: NSColor, now: Date, energy: Double) -> SignalParticle {
+    private static func makeSpark(source: SignalSource, color: NSColor, now: Date, energy: Double, glow: Double) -> SignalParticle {
         let jitter = SignalEmitter.randomVector(scale: 0.02)
         let velocity = SignalEmitter.randomVector(scale: 0.16 * energy)
         return SignalParticle(
@@ -677,13 +686,14 @@ enum SignalEmitter {
             baseSize: 12 * energy,
             color: color,
             strength: energy,
+            glow: glow,
             ringRadius: 0,
             ringWidth: 1.6,
             trail: []
         )
     }
 
-    private static func makeRing(source: SignalSource, color: NSColor, now: Date, pulse: Bool) -> SignalParticle {
+    private static func makeRing(source: SignalSource, color: NSColor, now: Date, pulse: Bool, glow: Double) -> SignalParticle {
         SignalParticle(
             id: UUID(),
             kind: pulse ? .pulse : .ring,
@@ -694,13 +704,14 @@ enum SignalEmitter {
             baseSize: 10,
             color: color,
             strength: 1.0,
+            glow: glow,
             ringRadius: 10,
             ringWidth: pulse ? 2.2 : 1.6,
             trail: []
         )
     }
 
-    private static func makeBurst(source: SignalSource, color: NSColor, now: Date, energy: Double) -> SignalParticle {
+    private static func makeBurst(source: SignalSource, color: NSColor, now: Date, energy: Double, glow: Double) -> SignalParticle {
         let velocity = SignalEmitter.randomVector(scale: 0.12 * energy)
         return SignalParticle(
             id: UUID(),
@@ -712,6 +723,7 @@ enum SignalEmitter {
             baseSize: 14 * energy,
             color: color,
             strength: energy,
+            glow: glow,
             ringRadius: 6,
             ringWidth: 2.6,
             trail: []
@@ -726,10 +738,46 @@ enum SignalEmitter {
     }
 }
 
+struct SignalVisualStyle: Hashable {
+    let hue: Double
+    let saturation: Double
+    let brightness: Double
+    let glow: Double
+    let confidence: Double
+
+    static func from(event: NormalizedEvent, now: Date) -> SignalVisualStyle {
+        let deviceID = event.deviceID ?? event.nodeID
+        let hue = SignalColor.stableHue(for: deviceID)
+
+        let timestamp = event.eventTs ?? event.recvTs ?? now
+        let age = max(0.0, now.timeIntervalSince(timestamp))
+        let recency = exp(-age / 6.0)
+        let brightness = clamp(0.22 + recency * 0.72)
+
+        let strength = event.signal.strength ?? -65
+        let strengthNorm = clamp(((-strength) - 30.0) / 70.0)
+        let confidence = clamp(0.2 + strengthNorm * 0.8)
+        let saturation = clamp(0.25 + confidence * 0.7)
+
+        var glow = 0.2 + confidence * 0.6 + recency * 0.25
+        if event.kind.lowercased().contains("node") { glow += 0.1 }
+        if event.kind.lowercased().contains("error") { glow += 0.2 }
+        glow = clamp(glow)
+
+        return SignalVisualStyle(hue: hue, saturation: saturation, brightness: brightness, glow: glow, confidence: confidence)
+    }
+
+    private static func clamp(_ value: Double, min: Double = 0.0, max: Double = 1.0) -> Double {
+        return Swift.max(min, Swift.min(max, value))
+    }
+}
+
 enum SignalColor {
-    static func deviceColor(id: String) -> NSColor {
+    static func deviceColor(id: String, saturation: Double = 0.65, brightness: Double = 0.9) -> NSColor {
         let hue = stableHue(for: id)
-        return NSColor(calibratedHue: hue, saturation: 0.65, brightness: 0.9, alpha: 1.0)
+        let s = max(0.2, min(1.0, saturation))
+        let b = max(0.2, min(1.0, brightness))
+        return NSColor(calibratedHue: hue, saturation: s, brightness: b, alpha: 1.0)
     }
 
     static func kindAccent(kind: String) -> NSColor {
@@ -759,7 +807,7 @@ enum SignalColor {
         return NSColor(calibratedRed: r, green: g, blue: b, alpha: 1.0)
     }
 
-    private static func stableHue(for string: String) -> CGFloat {
+    static func stableHue(for string: String) -> CGFloat {
         let hash = abs(string.hashValue)
         return CGFloat(hash % 360) / 360.0
     }

@@ -1,0 +1,63 @@
+{
+  "version": "1.0",
+  "policy": {
+    "passive_only": true,
+    "notes": "Tools are observational and non-intrusive. No exploits or active probing."
+  },
+  "tools": [
+    {
+      "name": "camera.viewer",
+      "scope": "camera",
+      "kind": "passive",
+      "description": "Compose a viewer URL for a device camera endpoint.",
+      "input": "ip (required), path (optional)",
+      "output": "url",
+      "output_schema": {"url": "string"}
+    },
+    {
+      "name": "net.arp",
+      "scope": "network",
+      "kind": "passive",
+      "description": "Read local ARP cache entries.",
+      "input": "none",
+      "output": "entries",
+      "output_schema": {"lines": "string[]"}
+    },
+    {
+      "name": "net.dhcp_packet",
+      "scope": "network",
+      "kind": "passive",
+      "description": "Read the last DHCP packet for an interface.",
+      "input": "interface (required)",
+      "output": "dhcp packet info",
+      "output_schema": {"packet": "string"}
+    },
+    {
+      "name": "net.dns_timing",
+      "scope": "network",
+      "kind": "passive",
+      "description": "Measure DNS lookup time for a hostname.",
+      "input": "hostname (required)",
+      "output": "resolution ms + addresses",
+      "output_schema": {"ms": "number", "addrs": "string[]"}
+    },
+    {
+      "name": "ble.rssi_trend",
+      "scope": "ble",
+      "kind": "passive",
+      "description": "Summarize recent RSSI values for a device.",
+      "input": "device_id (optional)",
+      "output": "recent RSSI trend",
+      "output_schema": {"points": "string[]"}
+    },
+    {
+      "name": "events.replay",
+      "scope": "automation",
+      "kind": "passive",
+      "description": "Validate an NDJSON file for replay.",
+      "input": "path (required)",
+      "output": "replay status",
+      "output_schema": {"path": "string", "status": "string"}
+    }
+  ]
+}

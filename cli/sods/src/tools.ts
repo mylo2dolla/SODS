@@ -1,5 +1,6 @@
 import { spawn } from "node:child_process";
 import { performance } from "node:perf_hooks";
+import { readFileSync, existsSync } from "node:fs";
 import { CanonicalEvent } from "./schema.js";
 
 export type ToolDef = {
@@ -8,57 +9,25 @@ export type ToolDef = {
   input: string;
   output: string;
   kind: "passive" | "active";
+  description?: string;
+  output_schema?: Record<string, unknown>;
 };
 
-type RunResult = { ok: boolean; output: string; duration_ms: number };
-
-const tools: ToolDef[] = [
-  {
-    name: "camera.viewer",
-    scope: "camera",
-    input: "ip (required), path (optional)",
-    output: "URL string",
-    kind: "passive",
-  },
-  {
-    name: "net.arp",
-    scope: "network",
-    input: "none",
-    output: "arp table",
-    kind: "passive",
-  },
-  {
-    name: "net.dhcp_packet",
-    scope: "network",
-    input: "interface (required)",
-    output: "dhcp packet info",
-    kind: "passive",
-  },
-  {
-    name: "net.dns_timing",
-    scope: "network",
-    input: "hostname (required)",
-    output: "resolution ms + addresses",
-    kind: "passive",
-  },
-  {
-    name: "ble.rssi_trend",
-    scope: "ble",
-    input: "device_id (optional)",
-    output: "recent RSSI trend",
-    kind: "passive",
-  },
-  {
-    name: "events.replay",
-    scope: "automation",
-    input: "ndjson path (required)",
-    output: "replay status",
-    kind: "passive",
-  },
-];
+type RunResult = { ok: boolean; output: string; duration_ms: number; data?: Record<string, unknown> };
 
 export function listTools(): ToolDef[] {
-  return tools;
+  const registryPath = new URL("../../../docs/tool-registry.json", import.meta.url).pathname;
+  if (!existsSync(registryPath)) return [];
+  try {
+    const raw = JSON.parse(readFileSync(registryPath, "utf8"));
+    if (Array.isArray(raw.tools)) {
+      const list = raw.tools as ToolDef[];
+      return list.filter((tool) => tool.kind === "passive");
+    }
+  } catch {
+    return [];
+  }
+  return [];
 }
 
 export async function runTool(
@@ -71,15 +40,18 @@ export async function runTool(
     const ip = input.ip;
     if (!ip) throw new Error("ip is required");
     const path = input.path ?? "/";
-    return { ok: true, output: `http://${ip}${path}`, duration_ms: performance.now() - start };
+    const url = `http://${ip}${path}`;
+    return { ok: true, output: url, data: { url }, duration_ms: performance.now() - start };
   }
   if (name === "net.arp") {
-    return await runCmd("/usr/sbin/arp", ["-a"], start);
+    const result = await runCmd("/usr/sbin/arp", ["-a"], start);
+    return { ...result, data: { lines: result.output.split("\n").filter(Boolean) } };
   }
   if (name === "net.dhcp_packet") {
     const iface = input.interface;
     if (!iface) throw new Error("interface is required");
-    return await runCmd("/usr/sbin/ipconfig", ["getpacket", iface], start);
+    const result = await runCmd("/usr/sbin/ipconfig", ["getpacket", iface], start);
+    return { ...result, data: { packet: result.output } };
   }
   if (name === "net.dns_timing") {
     const hostname = input.hostname;
@@ -88,7 +60,7 @@ export async function runTool(
     const { resolve4 } = await import("node:dns/promises");
     const addrs = await resolve4(hostname);
     const ms = performance.now() - t0;
-    return { ok: true, output: `ms=${ms.toFixed(1)} addrs=${addrs.join(",")}`, duration_ms: performance.now() - start };
+    return { ok: true, output: `ms=${ms.toFixed(1)} addrs=${addrs.join(",")}`, data: { ms: Number(ms.toFixed(1)), addrs }, duration_ms: performance.now() - start };
   }
   if (name === "ble.rssi_trend") {
     const device = input.device_id;
@@ -97,12 +69,12 @@ export async function runTool(
       .slice(-50)
       .map((e) => `${e.event_ts} rssi=${e.data?.["rssi"] ?? "?"}`)
       .join("\n");
-    return { ok: true, output: points || "no ble events", duration_ms: performance.now() - start };
+    return { ok: true, output: points || "no ble events", data: { points: points ? points.split("\n") : [] }, duration_ms: performance.now() - start };
   }
   if (name === "events.replay") {
     const file = input.path;
     if (!file) throw new Error("path is required");
-    return { ok: true, output: `replay-ready path=${file}`, duration_ms: performance.now() - start };
+    return { ok: true, output: `replay-ready path=${file}`, data: { path: file, status: "replay-ready" }, duration_ms: performance.now() - start };
   }
   throw new Error("unknown tool");
 }

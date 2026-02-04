@@ -20,6 +20,7 @@ export type SignalFrame = {
   frequency: number;
   rssi: number;
   color: { h: number; s: number; l: number };
+  glow: number;
   persistence: number;
   velocity?: number;
   confidence: number;
