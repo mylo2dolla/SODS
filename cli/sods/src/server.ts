@@ -4,7 +4,7 @@ import { join, resolve } from "node:path";
 import { WebSocketServer, WebSocket } from "ws";
 import { Ingestor } from "./ingest.js";
 import { FrameEngine } from "./frame-engine.js";
-import { CanonicalEvent } from "./schema.js";
+import { CanonicalEvent, SignalFrame } from "./schema.js";
 import { nowMs } from "./util.js";
 import { listTools, runTool } from "./tools.js";
 
@@ -19,6 +19,7 @@ export class SODSServer {
   private frameEngine = new FrameEngine(30);
   private lastEvent?: CanonicalEvent;
   private eventBuffer: CanonicalEvent[] = [];
+  private lastFrames: SignalFrame[] = [];
   private lastError: string | null = null;
   private lastIngestAt = 0;
   private eventsClients: Set<WebSocket> = new Set();
@@ -87,6 +88,7 @@ export class SODSServer {
   private emitFrames() {
     const frames = this.frameEngine.tick();
     if (frames.length === 0) return;
+    this.lastFrames = frames;
     const payload = JSON.stringify({ t: nowMs(), frames });
     for (const ws of this.frameClients) {
       ws.send(payload);
@@ -124,6 +126,31 @@ export class SODSServer {
     }
     if (url.pathname === "/tools") {
       return this.respondJson(res, { items: listTools() });
+    }
+    if (url.pathname === "/opsportal/state") {
+      return this.respondJson(res, this.buildOpsPortalState());
+    }
+    if (url.pathname === "/opsportal/cmd" && req.method === "POST") {
+      let body = "";
+      req.on("data", (chunk) => body += chunk);
+      req.on("end", async () => {
+        try {
+          const payload = body ? JSON.parse(body) : {};
+          const cmd = payload.cmd;
+          const args = payload.args ?? {};
+          if (!cmd) {
+            res.writeHead(400);
+            res.end("missing cmd");
+            return;
+          }
+          const result = await runTool(cmd, args, this.eventBuffer);
+          this.respondJson(res, { ok: result.ok, output: result.output, data: result.data ?? {} });
+        } catch (err: any) {
+          res.writeHead(400);
+          res.end(err?.message ?? "cmd error");
+        }
+      });
+      return;
     }
     if (url.pathname === "/tools/run" && req.method === "POST") {
       let body = "";
@@ -205,5 +232,43 @@ export class SODSServer {
     }
     res.writeHead(200, { "Content-Type": "application/x-ndjson" });
     createReadStream(demoPath).pipe(res);
+  }
+
+  private buildOpsPortalState() {
+    const counters = this.ingestor.getCounters();
+    const nodes = this.ingestor.getNodes();
+    const tools = listTools();
+    const buttons = tools.slice(0, 6).map((tool) => ({
+      id: tool.name,
+      label: tool.name.split(".").pop() ?? tool.name,
+      kind: "tool",
+      enabled: tool.kind === "passive",
+      glow_level: 0.2,
+      actions: [{ id: tool.name, label: tool.name, cmd: tool.name }],
+    }));
+    return {
+      connection: {
+        ok: true,
+        last_ok_ms: nowMs(),
+        error: this.lastError ?? "",
+      },
+      mode: {
+        name: "sods",
+        since_ms: nowMs() - 30_000,
+      },
+      nodes: {
+        total: nodes.length,
+        online: nodes.filter((n) => nowMs() - n.last_seen < 60_000).length,
+        last_announce_ms: nodes[0]?.last_seen ?? 0,
+      },
+      ingest: {
+        ok_rate: counters.events_out,
+        err_rate: counters.events_bad_json,
+        last_ok_ms: this.lastIngestAt,
+        last_err_ms: 0,
+      },
+      buttons,
+      frames: this.lastFrames,
+    };
   }
 }

@@ -72,6 +72,16 @@ static float readFloat(const JsonVariant &v, float fallback) {
   return fallback;
 }
 
+static float hash01(const String &value, float offset) {
+  uint32_t hash = 2166136261u;
+  for (size_t i = 0; i < value.length(); i++) {
+    hash ^= (uint8_t)value[i];
+    hash *= 16777619u;
+  }
+  uint32_t mix = hash ^ (uint32_t)(offset * 1000.0f);
+  return (mix % 1000) / 1000.0f;
+}
+
 static void updateOrientation() {
   int w = tft.width();
   int h = tft.height();
@@ -210,6 +220,27 @@ static void parseState(const String &json) {
   }
 
   state.bins.clear();
+  JsonArray frames = root["frames"].as<JsonArray>();
+  if (!frames.isNull() && frames.size() > 0) {
+    for (JsonVariant fv : frames) {
+      VizBin bin;
+      String id = String((const char*)(fv["device_id"] | fv["node_id"] | "frame"));
+      bin.id = id;
+      bin.x = readFloat(fv["x"], 0.1f + hash01(id, 0.2f) * 0.8f);
+      bin.y = readFloat(fv["y"], 0.1f + hash01(id, 0.6f) * 0.8f);
+      JsonObject color = fv["color"];
+      bin.hue = readFloat(color["h"], 0.0f);
+      bin.sat = readFloat(color["s"], 0.7f);
+      bin.light = readFloat(color["l"], 0.5f);
+      float persistence = readFloat(fv["persistence"], 0.4f);
+      float confidence = readFloat(fv["confidence"], 0.6f);
+      bin.level = max(0.2f, min(1.0f, persistence + confidence * 0.3f));
+      bin.glow = readFloat(fv["glow"], confidence);
+      state.bins.push_back(bin);
+      if (state.bins.size() >= 16) break;
+    }
+    return;
+  }
   JsonArray bins = root["visualizer"]["bins"].as<JsonArray>();
   for (JsonVariant bv : bins) {
     VizBin bin;
