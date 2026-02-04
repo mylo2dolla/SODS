@@ -51,6 +51,15 @@
       "output_schema": {"lines": "string[]"}
     },
     {
+      "name": "portal.flash_targets",
+      "scope": "portal",
+      "kind": "passive",
+      "description": "Fetch station flash targets for portal devices.",
+      "input": "station_url (required)",
+      "output": "flash targets",
+      "output_schema": {"items": "object[]"}
+    },
+    {
       "name": "ble.rssi_trend",
       "scope": "ble",
       "kind": "passive",

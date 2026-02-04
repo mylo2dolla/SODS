@@ -91,6 +91,14 @@ export async function runTool(
     const result = await runCmd(script, args, start);
     return { ...result, data: { lines: result.output.split("\n").filter(Boolean) } };
   }
+  if (name === "portal.flash_targets") {
+    const station = input.station_url;
+    if (!station) throw new Error("station_url is required");
+    const res = await fetch(`${station}/api/flash`, { method: "GET" });
+    if (!res.ok) throw new Error(`station responded ${res.status}`);
+    const json = await res.json();
+    return { ok: true, output: JSON.stringify(json), data: json, duration_ms: performance.now() - start };
+  }
   if (name === "ble.rssi_trend") {
     const device = input.device_id;
     const points = events
