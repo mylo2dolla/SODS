@@ -57,6 +57,13 @@ cd firmware/ops-portal
 pio run -e ops-portal
 ```
 
+CLI build required for `./tools/sods --help`:
+```bash
+cd cli/sods
+npm install
+npm run build
+```
+
 ## Notes
 
 - `/v1/events` only supports `node_id` + `limit`, so CLI filters client-side for `wifi.status` and `node.announce`.

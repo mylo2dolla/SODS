@@ -19,6 +19,13 @@ npm install
 npm run dev -- --pi-logger http://pi-logger.local:8088 --port 9123
 ```
 
+Note: `./tools/sods --help` works only after the CLI is built:
+```bash
+cd cli/sods
+npm install
+npm run build
+```
+
 Build + run:
 ```bash
 cd cli/sods

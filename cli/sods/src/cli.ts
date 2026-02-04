@@ -268,7 +268,7 @@ async function cmdTools() {
 async function cmdTool() {
   const name = positional(1);
   if (!name) return usage(1);
-  const inputArg = getArg("--input", "{}");
+  const inputArg = getArg("--input") ?? "{}";
   let input = {};
   try { input = JSON.parse(inputArg); } catch { console.error("--input must be JSON"); process.exit(1); }
   const res = await fetch(`${stationURL()}/tools/run`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, input }) });
@@ -284,7 +284,7 @@ async function cmdTool() {
 async function cmdStream() {
   if (!hasFlag("--frames")) return usage(1);
   const wsURL = stationURL().replace(/^http/, "ws") + "/ws/frames";
-  const outPath = getArg("--out", "");
+  const outPath = getArg("--out") ?? "";
   const out = outPath ? createWriteStream(outPath) : null;
   const ws = new WebSocket(wsURL);
   ws.on("message", (data) => {
