@@ -53,6 +53,7 @@ struct ContentView: View {
         case toolBuilder
         case presetBuilder
         case scratchpad
+        case aliasManager
         case viewer(url: URL)
 
         var id: String {
@@ -64,6 +65,7 @@ struct ContentView: View {
             case .toolBuilder: return "toolBuilder"
             case .presetBuilder: return "presetBuilder"
             case .scratchpad: return "scratchpad"
+            case .aliasManager: return "aliasManager"
             case .viewer(let url): return "viewer:\(url.absoluteString)"
             }
         }
@@ -81,6 +83,7 @@ struct ContentView: View {
     @StateObject private var flashManager = FlashServerManager()
     @StateObject private var toolRegistry = ToolRegistry.shared
     @StateObject private var presetRegistry = PresetRegistry.shared
+    @StateObject private var aliasStore = SODSStore.shared
     @AppStorage("consentAcknowledged") private var consentAcknowledged = false
     @AppStorage("bleFindFingerprintID") private var bleFindFingerprintID = ""
 
@@ -177,6 +180,12 @@ struct ContentView: View {
                     ScratchpadView(
                         baseURL: sodsStore.baseURL,
                         onSaveAsTool: { _, _ in activeSheet = .toolBuilder },
+                        onClose: { activeSheet = nil }
+                    )
+                case .aliasManager:
+                    AliasManagerView(
+                        aliases: aliasStore.aliasOverrides,
+                        onSave: { id, alias in aliasStore.setAlias(id: id, alias: alias) },
                         onClose: { activeSheet = nil }
                     )
                 case .viewer(let url):
@@ -818,6 +827,8 @@ struct ContentView: View {
         }
         ToolbarItemGroup(placement: .automatic) {
             Button("Tools") { openSODSTools() }
+                .buttonStyle(SecondaryActionButtonStyle())
+            Button("Aliases") { activeSheet = .aliasManager }
                 .buttonStyle(SecondaryActionButtonStyle())
             Picker("View", selection: $viewMode) {
                 ForEach(ViewMode.allCases) { mode in
