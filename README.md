@@ -79,6 +79,8 @@ Stage Ops Portal CYD for station flashing:
 ```bash
 /Users/letsdev/sods/SODS/tools/portal-cyd-stage.sh
 ```
+Docs:
+- `docs/ops-portal.md`
 
 ## CLI (Unified)
 
