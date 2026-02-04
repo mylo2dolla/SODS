@@ -4,6 +4,7 @@
 #include <WiFi.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
+#include <WebSocketsClient.h>
 #include <TFT_eSPI.h>
 #include <XPT2046_Touchscreen.h>
 
@@ -38,29 +39,46 @@ static String wifiPass;
 
 static unsigned long lastPollMs = 0;
 static unsigned long pollIntervalMs = 1200;
+static unsigned long lastToolsMs = 0;
+static unsigned long toolsIntervalMs = 8000;
 static unsigned long lastRenderMs = 0;
 static bool wifiOk = false;
 static unsigned long lastWifiOkMs = 0;
 static String lastWifiErr = "";
-static const char *mockStateJson = R"json(
+static bool stationOk = false;
+static unsigned long lastStationOkMs = 0;
+
+static WebSocketsClient wsClient;
+static bool wsConnected = false;
+static unsigned long lastWsAttemptMs = 0;
+static unsigned long wsBackoffMs = 2000;
+static String wsHost = "";
+static int wsPort = 80;
+static String wsPath = "/ws/frames";
+static unsigned long lastFrameMs = 0;
+static const char *mockStatusJson = R"json(
 {
-  "connection": { "ok": false, "error": "mock" },
-  "mode": { "name": "mock", "since_ms": 0 },
-  "nodes": { "total": 6, "online": 3, "last_announce_ms": 0 },
-  "ingest": { "ok_rate": 4.2, "err_rate": 0.3, "last_ok_ms": 0, "last_err_ms": 0 },
-  "buttons": [
-    { "id": "sync", "label": "Sync", "kind": "action", "enabled": true, "glow_level": 0.6, "actions": ["sync"] },
-    { "id": "scan", "label": "Scan", "kind": "action", "enabled": true, "glow_level": 0.3, "actions": ["scan"] },
-    { "id": "tools", "label": "Tools", "kind": "menu", "enabled": true, "glow_level": 0.2, "actions": [
-      { "id": "spectrum", "label": "Spectrum", "cmd": "spectrum" },
-      { "id": "rebuild", "label": "Rebuild", "cmd": "rebuild" }
-    ]}
-  ],
-  "visualizer": { "bins": [
-    { "id": "a", "x": 0.2, "y": 0.4, "level": 0.6, "h": 10, "s": 0.8, "l": 0.55, "glow": 0.7 },
-    { "id": "b", "x": 0.6, "y": 0.3, "level": 0.5, "h": 350, "s": 0.7, "l": 0.5, "glow": 0.5 },
-    { "id": "c", "x": 0.4, "y": 0.7, "level": 0.7, "h": 40, "s": 0.9, "l": 0.6, "glow": 0.9 }
-  ]}
+  "station": {
+    "ok": false,
+    "uptime_ms": 0,
+    "last_ingest_ms": 0,
+    "last_error": "mock",
+    "pi_logger": "mock",
+    "nodes_total": 6,
+    "nodes_online": 3,
+    "tools": 3
+  },
+  "logger": { "ok": false, "status": "offline" }
+}
+)json";
+
+static const char *mockToolsJson = R"json(
+{
+  "tools": [
+    { "name": "net.wifi_scan", "kind": "passive" },
+    { "name": "net.arp", "kind": "passive" },
+    { "name": "camera.viewer", "kind": "passive" }
+  ]
 }
 )json";
 
@@ -82,26 +100,48 @@ static float hash01(const String &value, float offset) {
   return (mix % 1000) / 1000.0f;
 }
 
+static bool parseBaseUrl(const String &baseUrl, String &hostOut, int &portOut) {
+  if (baseUrl.length() == 0) return false;
+  String work = baseUrl;
+  if (work.startsWith("http://")) {
+    work = work.substring(7);
+  } else if (work.startsWith("https://")) {
+    work = work.substring(8);
+  }
+  int slash = work.indexOf('/');
+  if (slash >= 0) work = work.substring(0, slash);
+  int colon = work.indexOf(':');
+  if (colon >= 0) {
+    hostOut = work.substring(0, colon);
+    portOut = work.substring(colon + 1).toInt();
+  } else {
+    hostOut = work;
+    portOut = 80;
+  }
+  return hostOut.length() > 0;
+}
+
 static void updateOrientation() {
   int w = tft.width();
   int h = tft.height();
   core.setScreen(w, h);
   PortalMode mode = (w >= h) ? PortalMode::Utility : PortalMode::Watch;
   core.setMode(mode);
+  core.state().modeName = (mode == PortalMode::Utility) ? "utility" : "watch";
 }
 
 static void sendCommand(const ButtonAction &action) {
   if (sodsBaseUrl.length() == 0) return;
   HTTPClient http;
-  String url = sodsBaseUrl + "/opsportal/cmd";
+  String url = sodsBaseUrl + "/api/tool/run";
   http.begin(url);
   http.addHeader("Content-Type", "application/json");
   String payload = "{";
-  payload += "\"cmd\":\"" + action.cmd + "\"";
+  payload += "\"name\":\"" + action.cmd + "\"";
   if (action.argsJson.length() > 0) {
-    payload += ",\"args\":" + action.argsJson;
+    payload += ",\"input\":" + action.argsJson;
   } else {
-    payload += ",\"args\":{}";
+    payload += ",\"input\":{}";
   }
   payload += "}";
   http.POST(payload);
@@ -158,7 +198,40 @@ static void handleTouch() {
   }
 }
 
-static void parseState(const String &json) {
+static void applyFrames(JsonArray frames) {
+  PortalState &state = core.state();
+  std::vector<VizBin> nextBins;
+  for (JsonVariant fv : frames) {
+    VizBin bin;
+    String id = String((const char*)(fv["device_id"] | fv["node_id"] | fv["id"] | "frame"));
+    bin.id = id;
+    bin.x = readFloat(fv["x"], 0.1f + hash01(id, 0.2f) * 0.8f);
+    bin.y = readFloat(fv["y"], 0.1f + hash01(id, 0.6f) * 0.8f);
+    JsonObject color = fv["color"];
+    bin.hue = readFloat(color["h"], readFloat(fv["h"], hash01(id, 0.9f) * 360.0f));
+    bin.sat = readFloat(color["s"], readFloat(fv["s"], 0.7f));
+    bin.light = readFloat(color["l"], readFloat(fv["l"], 0.5f));
+    float persistence = readFloat(fv["persistence"], 0.4f);
+    float confidence = readFloat(fv["confidence"], 0.6f);
+    float rssi = readFloat(fv["rssi"], -70.0f);
+    float rssiNorm = (rssi + 100.0f) / 70.0f;
+    rssiNorm = max(0.0f, min(1.0f, rssiNorm));
+    bin.level = max(0.2f, min(1.0f, persistence + confidence * 0.3f + rssiNorm * 0.2f));
+    bin.glow = readFloat(fv["glow"], confidence);
+    nextBins.push_back(bin);
+    if (nextBins.size() >= 16) break;
+  }
+  if (!nextBins.empty()) {
+    state.bins = nextBins;
+  } else {
+    for (auto &bin : state.bins) {
+      bin.level *= 0.92f;
+      bin.glow *= 0.85f;
+    }
+  }
+}
+
+static void parseStatus(const String &json) {
   DynamicJsonDocument doc(8192);
   DeserializationError err = deserializeJson(doc, json);
   if (err) return;
@@ -166,115 +239,124 @@ static void parseState(const String &json) {
 
   PortalState &state = core.state();
 
-  JsonObject conn = root["connection"];
-  if (!conn.isNull()) {
-    state.connOk = conn["ok"] | false;
-    state.connLastOkMs = conn["last_ok_ms"] | 0;
-    state.connErr = String((const char*)(conn["error"] | ""));
-  }
-  JsonObject mode = root["mode"];
-  if (!mode.isNull()) {
-    state.modeName = String((const char*)(mode["name"] | ""));
-    state.modeSinceMs = mode["since_ms"] | 0;
-  }
-  JsonObject nodes = root["nodes"];
-  if (!nodes.isNull()) {
-    state.nodesTotal = nodes["total"] | 0;
-    state.nodesOnline = nodes["online"] | 0;
-    state.nodesLastAnnounceMs = nodes["last_announce_ms"] | 0;
-  }
-  JsonObject ingest = root["ingest"];
-  if (!ingest.isNull()) {
-    state.ingestOkRate = readFloat(ingest["ok_rate"], 0);
-    state.ingestErrRate = readFloat(ingest["err_rate"], 0);
-    state.ingestLastOkMs = ingest["last_ok_ms"] | 0;
-    state.ingestLastErrMs = ingest["last_err_ms"] | 0;
-  }
-  state.buttons.clear();
-  JsonArray buttons = root["buttons"].as<JsonArray>();
-  for (JsonVariant v : buttons) {
-    ButtonState b;
-    b.id = String((const char*)(v["id"] | ""));
-    b.label = String((const char*)(v["label"] | ""));
-    b.kind = String((const char*)(v["kind"] | ""));
-    b.enabled = v["enabled"] | true;
-    b.glow = readFloat(v["glow_level"], 0.0f);
-    JsonArray actions = v["actions"].as<JsonArray>();
-    for (JsonVariant av : actions) {
-      ButtonAction a;
-      if (av.is<const char*>()) {
-        a.id = String((const char*)av.as<const char*>());
-        a.label = a.id;
-        a.cmd = a.id;
-      } else {
-        a.id = String((const char*)(av["id"] | ""));
-        a.label = String((const char*)(av["label"] | a.id.c_str()));
-        a.cmd = String((const char*)(av["cmd"] | a.id.c_str()));
-        if (av.containsKey("args")) {
-          String args; serializeJson(av["args"], args); a.argsJson = args;
-        }
-      }
-      b.actions.push_back(a);
-    }
-    state.buttons.push_back(b);
-  }
-
-  state.bins.clear();
-  JsonArray frames = root["frames"].as<JsonArray>();
-  if (!frames.isNull() && frames.size() > 0) {
-    for (JsonVariant fv : frames) {
-      VizBin bin;
-      String id = String((const char*)(fv["device_id"] | fv["node_id"] | "frame"));
-      bin.id = id;
-      bin.x = readFloat(fv["x"], 0.1f + hash01(id, 0.2f) * 0.8f);
-      bin.y = readFloat(fv["y"], 0.1f + hash01(id, 0.6f) * 0.8f);
-      JsonObject color = fv["color"];
-      bin.hue = readFloat(color["h"], 0.0f);
-      bin.sat = readFloat(color["s"], 0.7f);
-      bin.light = readFloat(color["l"], 0.5f);
-      float persistence = readFloat(fv["persistence"], 0.4f);
-      float confidence = readFloat(fv["confidence"], 0.6f);
-      bin.level = max(0.2f, min(1.0f, persistence + confidence * 0.3f));
-      bin.glow = readFloat(fv["glow"], confidence);
-      state.bins.push_back(bin);
-      if (state.bins.size() >= 16) break;
-    }
-    return;
-  }
-  JsonArray bins = root["visualizer"]["bins"].as<JsonArray>();
-  for (JsonVariant bv : bins) {
-    VizBin bin;
-    bin.id = String((const char*)(bv["id"] | ""));
-    bin.x = readFloat(bv["x"], random(10, 90) / 100.0f);
-    bin.y = readFloat(bv["y"], random(10, 90) / 100.0f);
-    bin.level = readFloat(bv["level"], 0.2f);
-    bin.hue = readFloat(bv["h"], readFloat(bv["hue"], 0.0f));
-    bin.sat = readFloat(bv["s"], readFloat(bv["sat"], 0.7f));
-    bin.light = readFloat(bv["l"], readFloat(bv["light"], bin.level > 0 ? (0.2f + bin.level * 0.7f) : 0.45f));
-    bin.glow = readFloat(bv["glow"], readFloat(bv["glow_level"], bin.level));
-    state.bins.push_back(bin);
-    if (state.bins.size() >= 16) break;
+  JsonObject station = root["station"];
+  if (!station.isNull()) {
+    stationOk = station["ok"] | false;
+    state.connOk = stationOk && wsConnected;
+    state.connLastOkMs = station["last_ingest_ms"] | 0;
+    state.connErr = String((const char*)(station["last_error"] | ""));
+    state.nodesTotal = station["nodes_total"] | 0;
+    state.nodesOnline = station["nodes_online"] | 0;
+    state.ingestLastOkMs = station["last_ingest_ms"] | 0;
+    state.ingestOkRate = (state.ingestLastOkMs > 0 && (millis() - lastStationOkMs) < 60 * 1000) ? 1.0f : 0.0f;
+    state.ingestErrRate = 0.0f;
+    state.nodesLastAnnounceMs = state.ingestLastOkMs;
   }
 }
 
-static void pollState() {
+static void parseTools(const String &json) {
+  DynamicJsonDocument doc(8192);
+  DeserializationError err = deserializeJson(doc, json);
+  if (err) return;
+  JsonObject root = doc.as<JsonObject>();
+  JsonArray tools = root["tools"].as<JsonArray>();
+  if (tools.isNull()) tools = root["items"].as<JsonArray>();
+  if (tools.isNull()) return;
+
+  PortalState &state = core.state();
+  state.buttons.clear();
+  for (JsonVariant v : tools) {
+    ButtonState b;
+    b.id = String((const char*)(v["name"] | ""));
+    b.label = b.id;
+    int dot = b.label.lastIndexOf('.');
+    if (dot >= 0 && dot + 1 < b.label.length()) {
+      b.label = b.label.substring(dot + 1);
+    }
+    b.kind = String((const char*)(v["kind"] | ""));
+    b.enabled = b.kind == "passive";
+    b.glow = 0.2f;
+    ButtonAction a;
+    a.id = b.id;
+    a.label = b.id;
+    a.cmd = b.id;
+    b.actions.push_back(a);
+    state.buttons.push_back(b);
+    if (state.buttons.size() >= 6) break;
+  }
+}
+
+static void pollStatus() {
   if (sodsBaseUrl.length() == 0) {
-    parseState(String(mockStateJson));
+    parseStatus(String(mockStatusJson));
     core.state().connOk = false;
     return;
   }
   HTTPClient http;
-  String url = sodsBaseUrl + "/opsportal/state";
+  String url = sodsBaseUrl + "/api/status";
   http.begin(url);
   int code = http.GET();
   if (code >= 200 && code < 300) {
     String body = http.getString();
-    parseState(body);
-    core.state().connOk = true;
+    parseStatus(body);
+    stationOk = true;
+    lastStationOkMs = millis();
   } else {
-    core.state().connOk = false;
+    stationOk = false;
   }
   http.end();
+}
+
+static void pollTools() {
+  if (sodsBaseUrl.length() == 0) {
+    parseTools(String(mockToolsJson));
+    return;
+  }
+  HTTPClient http;
+  String url = sodsBaseUrl + "/api/tools";
+  http.begin(url);
+  int code = http.GET();
+  if (code >= 200 && code < 300) {
+    String body = http.getString();
+    parseTools(body);
+  }
+  http.end();
+}
+
+static void handleWsEvent(WStype_t type, uint8_t *payload, size_t length) {
+  switch (type) {
+    case WStype_DISCONNECTED:
+      wsConnected = false;
+      break;
+    case WStype_CONNECTED:
+      wsConnected = true;
+      break;
+    case WStype_TEXT: {
+      DynamicJsonDocument doc(8192);
+      DeserializationError err = deserializeJson(doc, payload, length);
+      if (err) break;
+      JsonArray frames = doc["frames"].as<JsonArray>();
+      if (!frames.isNull()) {
+        applyFrames(frames);
+        lastFrameMs = millis();
+      }
+      break;
+    }
+    default:
+      break;
+  }
+}
+
+static void ensureWebSocket(unsigned long now) {
+  if (!wifiOk || sodsBaseUrl.length() == 0) return;
+  if (wsConnected) return;
+  if (now - lastWsAttemptMs < wsBackoffMs) return;
+  lastWsAttemptMs = now;
+  if (!parseBaseUrl(sodsBaseUrl, wsHost, wsPort)) return;
+  wsPath = "/ws/frames";
+  wsClient.begin(wsHost.c_str(), wsPort, wsPath.c_str());
+  wsClient.onEvent(handleWsEvent);
+  wsClient.setReconnectInterval(2000);
 }
 
 static void ensureWiFi() {
@@ -320,6 +402,9 @@ void PortalDeviceCYD::setup() {
   tft.print("SODS Ops Portal boot");
 
   ensureWiFi();
+  if (parseBaseUrl(sodsBaseUrl, wsHost, wsPort)) {
+    wsClient.onEvent(handleWsEvent);
+  }
 }
 
 void PortalDeviceCYD::loop() {
@@ -328,9 +413,28 @@ void PortalDeviceCYD::loop() {
     lastPollMs = now;
     ensureWiFi();
     if (WiFi.isConnected()) {
-      pollState();
+      pollStatus();
+    } else {
+      core.state().connErr = lastWifiErr;
     }
     core.updateTrails();
+  }
+  if (now - lastToolsMs > toolsIntervalMs) {
+    lastToolsMs = now;
+    if (WiFi.isConnected()) {
+      pollTools();
+    }
+  }
+  if (WiFi.isConnected()) {
+    ensureWebSocket(now);
+    wsClient.loop();
+  }
+  core.state().connOk = stationOk && wsConnected;
+  if (lastFrameMs > 0 && now - lastFrameMs > 2000) {
+    for (auto &bin : core.state().bins) {
+      bin.level *= 0.95f;
+      bin.glow *= 0.9f;
+    }
   }
   if (now - lastRenderMs > 120) {
     lastRenderMs = now;
