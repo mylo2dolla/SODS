@@ -24,6 +24,15 @@
       "output_schema": {"lines": "string[]"}
     },
     {
+      "name": "net.status_snapshot",
+      "scope": "network",
+      "kind": "passive",
+      "description": "Capture Wi-Fi and interface status (no changes).",
+      "input": "interface (optional, default en0)",
+      "output": "network snapshot",
+      "output_schema": {"wifi": "string", "ifconfig": "string"}
+    },
+    {
       "name": "net.dhcp_packet",
       "scope": "network",
       "kind": "passive",
@@ -51,12 +60,48 @@
       "output_schema": {"lines": "string[]"}
     },
     {
+      "name": "net.whoami_rollcall",
+      "scope": "network",
+      "kind": "passive",
+      "description": "Enumerate /whoami responses for reachable hosts.",
+      "input": "ip_list (optional CSV), timeout_ms (optional)",
+      "output": "whoami responses",
+      "output_schema": {"results": "object"}
+    },
+    {
       "name": "portal.flash_targets",
       "scope": "portal",
       "kind": "passive",
       "description": "Fetch station flash targets for portal devices.",
       "input": "station_url (required)",
       "output": "flash targets",
+      "output_schema": {"items": "object[]"}
+    },
+    {
+      "name": "station.portal_state",
+      "scope": "station",
+      "kind": "passive",
+      "description": "Fetch the station portal state snapshot.",
+      "input": "station_url (optional)",
+      "output": "portal state",
+      "output_schema": {"station": "object", "logger": "object", "nodes": "object"}
+    },
+    {
+      "name": "station.frames_health",
+      "scope": "station",
+      "kind": "passive",
+      "description": "Summarize frames count by source.",
+      "input": "station_url (optional)",
+      "output": "frames summary",
+      "output_schema": {"frames": "number", "by_source": "object"}
+    },
+    {
+      "name": "ble.scan_snapshot",
+      "scope": "ble",
+      "kind": "passive",
+      "description": "Summarize BLE sightings in the recent event window.",
+      "input": "window_ms (optional)",
+      "output": "ble snapshot",
       "output_schema": {"items": "object[]"}
     },
     {
@@ -67,6 +112,15 @@
       "input": "device_id (optional)",
       "output": "recent RSSI trend",
       "output_schema": {"points": "string[]"}
+    },
+    {
+      "name": "events.activity_snapshot",
+      "scope": "events",
+      "kind": "passive",
+      "description": "Summarize events by kind and node.",
+      "input": "window_s (optional)",
+      "output": "event summary",
+      "output_schema": {"by_kind": "object", "by_node": "object"}
     },
     {
       "name": "events.replay",

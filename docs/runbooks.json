@@ -1,0 +1,77 @@
+{
+  "version": "1.0",
+  "runbooks": [
+    {
+      "id": "triangulation",
+      "title": "Triangulation",
+      "description": "Multi-node temporal correlation (4D presence), no physical mapping.",
+      "kind": "runbook",
+      "vars": {
+        "pattern": "esp|portal|sods|ops",
+        "window_ms": 15000
+      },
+      "steps": [
+        { "id": "wifi", "tool": "net.wifi_scan", "input": { "pattern": "${pattern}" } },
+        { "id": "ble", "tool": "ble.scan_snapshot", "input": { "window_ms": "${window_ms}" } },
+        { "id": "arp", "tool": "net.arp", "input": {} },
+        { "id": "events", "tool": "events.activity_snapshot", "input": { "window_s": 30 } }
+      ],
+      "tags": ["triangulation", "presence", "signals"],
+      "ui": { "capsule": true, "color": "red", "icon": "sparkle" }
+    },
+    {
+      "id": "front-door-snapshot",
+      "title": "Front Door Snapshot",
+      "description": "Camera viewer + net/wifi status + BLE snapshot + report.",
+      "kind": "runbook",
+      "input_schema": {
+        "ip": "string (required)",
+        "path": "string (optional, default /)"
+      },
+      "vars": {
+        "path": "/"
+      },
+      "steps": [
+        { "id": "viewer", "tool": "camera.viewer", "input": { "ip": "${ip}", "path": "${path}" } },
+        { "id": "net", "tool": "net.status_snapshot", "input": { "interface": "en0" } },
+        { "id": "wifi", "tool": "net.wifi_scan", "input": {} },
+        { "id": "ble", "tool": "ble.scan_snapshot", "input": { "window_ms": 10000 } },
+        { "id": "arp", "tool": "net.arp", "input": {} }
+      ],
+      "tags": ["camera", "snapshot", "report"],
+      "ui": { "capsule": true, "color": "red", "icon": "camera" }
+    },
+    {
+      "id": "portal-baseline",
+      "title": "Portal Baseline",
+      "description": "Validate portal state + frames + flash targets.",
+      "kind": "runbook",
+      "vars": {
+        "station_url": "http://localhost:9123",
+        "logger_host": "pi-logger.local"
+      },
+      "steps": [
+        { "id": "portal", "tool": "station.portal_state", "input": { "station_url": "${station_url}" } },
+        { "id": "frames", "tool": "station.frames_health", "input": { "station_url": "${station_url}" } },
+        { "id": "flash", "tool": "portal.flash_targets", "input": { "station_url": "${station_url}" } },
+        { "id": "dns", "tool": "net.dns_timing", "input": { "hostname": "${logger_host}" } }
+      ],
+      "tags": ["portal", "baseline"],
+      "ui": { "capsule": true, "color": "red", "icon": "bolt" }
+    },
+    {
+      "id": "firmware-rollcall",
+      "title": "Firmware Rollcall",
+      "description": "Scan LAN for /whoami and correlate results.",
+      "kind": "runbook",
+      "vars": {
+        "timeout_ms": 0
+      },
+      "steps": [
+        { "id": "rollcall", "tool": "net.whoami_rollcall", "input": { "timeout_ms": "${timeout_ms}" } }
+      ],
+      "tags": ["firmware", "rollcall"],
+      "ui": { "capsule": true, "color": "red", "icon": "chip" }
+    }
+  ]
+}

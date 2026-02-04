@@ -14,6 +14,7 @@ struct CaseSessionReadable: Codable {
     let confidence: String
     let evidenceRefs: [String]
     let rawRef: String
+    let aliases: [String: String]
 }
 
 @MainActor
@@ -53,11 +54,19 @@ final class CaseSessionManager: ObservableObject {
             let rawData = try encoder.encode(manifest)
             let rawURL = LogStore.exportURL(subdir: "session-raw", filename: "SODS-SessionRaw-\(iso).json", log: log)
             _ = LogStore.writeDataReturning(rawData, to: rawURL, log: log)
+            let aliasOverrides = SODSStore.shared.aliasOverrides
+            var aliases: [String: String] = [:]
+            for node in selectedNodes {
+                if let alias = aliasOverrides[node] {
+                    aliases[node] = alias
+                }
+            }
             let readable = CaseSessionReadable(
                 summary: "Case session with \(selectedNodes.count) nodes and \(selectedSources.count) sources.",
                 confidence: "Operator-initiated session; evidence references are raw and append-only.",
                 evidenceRefs: refs,
-                rawRef: rawURL.lastPathComponent
+                rawRef: rawURL.lastPathComponent,
+                aliases: aliases
             )
             let readableData = try encoder.encode(readable)
             let readableURL = LogStore.exportURL(subdir: "session-readable", filename: "SODS-SessionReadable-\(iso).json", log: log)

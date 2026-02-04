@@ -6,6 +6,7 @@ struct ToolRegistryView: View {
     let onFlash: () -> Void
     let onInspect: (ContentView.APIEndpoint) -> Void
     let onRunTool: (ToolDefinition) -> Void
+    let onRunRunbook: (String) -> Void
     let onBuildTool: () -> Void
     let onBuildPreset: () -> Void
     let onScratchpad: () -> Void
@@ -45,9 +46,9 @@ struct ToolRegistryView: View {
                 if searchText.isEmpty { return true }
                 let needle = searchText.lowercased()
                 return tool.name.lowercased().contains(needle)
-                    || tool.scope.lowercased().contains(needle)
-                    || tool.kind.lowercased().contains(needle)
-                    || tool.description.lowercased().contains(needle)
+                    || (tool.scope ?? "").lowercased().contains(needle)
+                    || (tool.kind ?? "").lowercased().contains(needle)
+                    || (tool.description ?? "").lowercased().contains(needle)
             }
 
             if filtered.isEmpty {
@@ -60,7 +61,13 @@ struct ToolRegistryView: View {
                         ForEach(filtered) { tool in
                             ToolRow(
                                 tool: tool,
-                                onRun: { onRunTool(tool) },
+                                onRun: {
+                                    if tool.kind == "runbook" {
+                                        onRunRunbook(tool.name)
+                                    } else {
+                                        onRunTool(tool)
+                                    }
+                                },
                                 onInspect: { onInspect(.tools) }
                             )
                         }

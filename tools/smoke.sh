@@ -26,6 +26,8 @@ echo "Checking /api/flash"
 curl -fsS "http://localhost:${PORT}/api/flash"
 echo "Checking /api/presets"
 curl -fsS "http://localhost:${PORT}/api/presets" | head -n 5
+echo "Checking /api/runbooks"
+curl -fsS "http://localhost:${PORT}/api/runbooks" | head -n 5
 
 echo "Audit: internal URLs should not use NSWorkspace.open (flash is allowed)"
 HTTP_OPENS="$(rg -n "NSWorkspace\\.shared\\.open\\(.*http" "$REPO_ROOT/apps/dev-station/DevStation" || true)"
@@ -37,3 +39,23 @@ if [[ -n "$HTTP_OPENS" ]]; then
     exit 2
   fi
 fi
+
+echo "Audit: modal sheets should include ModalHeaderView"
+REQUIRED_SHEETS=(
+  "ToolRegistryView.swift"
+  "APIInspectorView.swift"
+  "ToolRunnerView.swift"
+  "PresetRunnerView.swift"
+  "RunbookRunnerView.swift"
+  "ToolBuilderView.swift"
+  "PresetBuilderView.swift"
+  "ScratchpadView.swift"
+  "AliasManagerView.swift"
+  "ViewerSheet.swift"
+)
+for sheet in "${REQUIRED_SHEETS[@]}"; do
+  if ! rg -n "ModalHeaderView" "$REPO_ROOT/apps/dev-station/DevStation/$sheet" >/dev/null 2>&1; then
+    echo "Missing ModalHeaderView in $sheet"
+    exit 3
+  fi
+done

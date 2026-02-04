@@ -14,6 +14,7 @@ struct ContentView: View {
         case spectral = "Spectrum"
         case nodes = "Nodes"
         case buttons = "Buttons"
+        case runbooks = "Runbooks"
         case cases = "Cases"
         case vault = "Vault"
 
@@ -32,6 +33,7 @@ struct ContentView: View {
         case tools = "/api/tools"
         case status = "/api/status"
         case presets = "/api/presets"
+        case runbooks = "/api/runbooks"
         case health = "/health"
 
         var id: String { rawValue }
@@ -40,6 +42,7 @@ struct ContentView: View {
             case .tools: return "/api/tools"
             case .status: return "/api/status"
             case .presets: return "/api/presets"
+            case .runbooks: return "/api/runbooks"
             case .health: return "/health"
             }
         }
@@ -50,6 +53,7 @@ struct ContentView: View {
         case apiInspector(endpoint: APIEndpoint)
         case toolRunner(tool: ToolDefinition)
         case presetRunner(preset: PresetDefinition)
+        case runbookRunner(runbook: RunbookDefinition)
         case toolBuilder
         case presetBuilder
         case scratchpad
@@ -62,6 +66,7 @@ struct ContentView: View {
             case .apiInspector(let endpoint): return "apiInspector:\(endpoint.rawValue)"
             case .toolRunner(let tool): return "toolRunner:\(tool.name)"
             case .presetRunner(let preset): return "presetRunner:\(preset.id)"
+            case .runbookRunner(let runbook): return "runbookRunner:\(runbook.id)"
             case .toolBuilder: return "toolBuilder"
             case .presetBuilder: return "presetBuilder"
             case .scratchpad: return "scratchpad"
@@ -83,6 +88,7 @@ struct ContentView: View {
     @StateObject private var flashManager = FlashServerManager()
     @StateObject private var toolRegistry = ToolRegistry.shared
     @StateObject private var presetRegistry = PresetRegistry.shared
+    @StateObject private var runbookRegistry = RunbookRegistry.shared
     @StateObject private var aliasStore = SODSStore.shared
     @AppStorage("consentAcknowledged") private var consentAcknowledged = false
     @AppStorage("bleFindFingerprintID") private var bleFindFingerprintID = ""
@@ -139,6 +145,14 @@ struct ContentView: View {
                         onFlash: { showFlashPopover = true },
                         onInspect: { endpoint in activeSheet = .apiInspector(endpoint: endpoint) },
                         onRunTool: { tool in activeSheet = .toolRunner(tool: tool) },
+                        onRunRunbook: { name in
+                            let id = name.replacingOccurrences(of: "runbook.", with: "")
+                            if let runbook = runbookRegistry.runbooks.first(where: { $0.id == id }) {
+                                activeSheet = .runbookRunner(runbook: runbook)
+                            } else {
+                                activeSheet = .apiInspector(endpoint: .runbooks)
+                            }
+                        },
                         onBuildTool: { activeSheet = .toolBuilder },
                         onBuildPreset: { activeSheet = .presetBuilder },
                         onScratchpad: { activeSheet = .scratchpad },
@@ -162,6 +176,13 @@ struct ContentView: View {
                 case .presetRunner(let preset):
                     PresetRunnerView(
                         preset: preset,
+                        baseURL: sodsStore.baseURL,
+                        onOpenViewer: { url in activeSheet = .viewer(url: url) },
+                        onClose: { activeSheet = nil }
+                    )
+                case .runbookRunner(let runbook):
+                    RunbookRunnerView(
+                        runbook: runbook,
                         baseURL: sodsStore.baseURL,
                         onOpenViewer: { url in activeSheet = .viewer(url: url) },
                         onClose: { activeSheet = nil }
@@ -452,6 +473,12 @@ struct ContentView: View {
                 registry: presetRegistry,
                 onRunPreset: { preset in activeSheet = .presetRunner(preset: preset) },
                 onOpenBuilder: { activeSheet = .presetBuilder }
+            )
+        } else if viewMode == .runbooks {
+            RunbookListView(
+                registry: runbookRegistry,
+                onRunbook: { runbook in activeSheet = .runbookRunner(runbook: runbook) },
+                onInspect: { activeSheet = .apiInspector(endpoint: .runbooks) }
             )
         } else if viewMode == .cases {
             CasesView(
@@ -779,6 +806,9 @@ struct ContentView: View {
             scanner: bleScanner,
             prober: bleProber,
             peripherals: bleScanner.peripherals,
+            aliasForPeripheral: { peripheral in
+                SODSStore.shared.aliasOverrides[peripheral.fingerprintID]
+            },
             selectedID: $selectedBleID,
             findFingerprintID: $bleFindFingerprintID,
             warningText: bleTableWarning,
@@ -2214,6 +2244,11 @@ struct UnifiedDetailView: View {
         return VStack(alignment: .leading, spacing: 8) {
             Text("Details")
                 .font(.system(size: 16, weight: .semibold))
+            if let alias = resolvedAlias(), !alias.isEmpty {
+                Text("Alias: \(alias)")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(Theme.accent)
+            }
             ActionMenuView(sections: sections)
             quickActionsBar
             VStack(alignment: .leading, spacing: 4) {
@@ -2243,6 +2278,20 @@ struct UnifiedDetailView: View {
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color(NSColor.windowBackgroundColor))
+    }
+
+    private func resolvedAlias() -> String? {
+        let overrides = SODSStore.shared.aliasOverrides
+        if let ip = selectedIP ?? host?.ip ?? device?.ip, let alias = overrides[ip] {
+            return alias
+        }
+        if let mac = host?.macAddress ?? device?.macAddress, let alias = overrides[mac] {
+            return alias
+        }
+        if let hostname = host?.hostname, let alias = overrides[hostname] {
+            return alias
+        }
+        return nil
     }
 
     @ViewBuilder
@@ -2430,6 +2479,11 @@ struct DeviceDetailView: View {
 
             Text("IP: \(device.ip)")
                 .font(.system(size: 13))
+            if let alias = resolvedAlias(), !alias.isEmpty {
+                Text("Alias: \(alias)")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(Theme.accent)
+            }
 
             if let title = device.httpTitle {
                 Text("HTTP Title: \(title)")
@@ -2633,6 +2687,17 @@ struct DeviceDetailView: View {
             }
         }
     }
+
+    private func resolvedAlias() -> String? {
+        let overrides = SODSStore.shared.aliasOverrides
+        if let alias = overrides[device.ip] {
+            return alias
+        }
+        if let mac = device.macAddress, let alias = overrides[mac] {
+            return alias
+        }
+        return nil
+    }
 }
 
 struct HostDetailView: View {
@@ -2646,6 +2711,11 @@ struct HostDetailView: View {
             if let host = host {
                 Text("IP: \(host.ip)")
                     .font(.system(size: 13))
+                if let alias = resolvedAlias(for: host), !alias.isEmpty {
+                    Text("Alias: \(alias)")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(Theme.accent)
+                }
                 Text("Status: \(host.isAlive ? "Alive" : "No Response")")
                     .font(.system(size: 12))
                     .foregroundColor(host.isAlive ? .green : .secondary)
@@ -2771,6 +2841,7 @@ struct BLEListView: View {
     let scanner: BLEScanner
     let prober: BLEProber
     let peripherals: [BLEPeripheral]
+    let aliasForPeripheral: (BLEPeripheral) -> String?
     @Binding var selectedID: UUID?
     @Binding var findFingerprintID: String
     let warningText: String?
@@ -2867,6 +2938,9 @@ struct BLEListView: View {
                         Text("Label")
                             .font(.system(size: 12, weight: .semibold))
                             .frame(width: 200, alignment: .leading)
+                        Text("Alias")
+                            .font(.system(size: 12, weight: .semibold))
+                            .frame(width: 200, alignment: .leading)
                         Text("Company")
                             .font(.system(size: 12, weight: .semibold))
                             .frame(width: 180, alignment: .leading)
@@ -2900,6 +2974,8 @@ struct BLEListView: View {
                                         .frame(width: 50, alignment: .leading)
                                     Text(labelForPeripheral(peripheral))
                                         .frame(width: 200, alignment: .leading)
+                                    Text(aliasForPeripheral(peripheral) ?? "")
+                                        .frame(width: 200, alignment: .leading)
                                     Text(companyLabel(peripheral.fingerprint))
                                         .frame(width: 180, alignment: .leading)
                                     Text(serviceNamesLabel(peripheral.fingerprint))
@@ -2925,10 +3001,24 @@ struct BLEListView: View {
                                     selectedID = peripheral.id
                                     if lockFindTarget {
                                         findFingerprintID = peripheral.fingerprintID
-                                    }
-                                }
-                            }
-                        }
+            }
+        }
+    }
+
+    private func resolvedAlias(for host: HostEntry) -> String? {
+        let overrides = SODSStore.shared.aliasOverrides
+        if let alias = overrides[host.ip] {
+            return alias
+        }
+        if let mac = host.macAddress, let alias = overrides[mac] {
+            return alias
+        }
+        if let hostname = host.hostname, let alias = overrides[hostname] {
+            return alias
+        }
+        return nil
+    }
+}
                         .padding(.horizontal, 2)
                     }
                 }
@@ -2936,12 +3026,15 @@ struct BLEListView: View {
 
                 Divider()
 
-                BLEDetailView(
-                    peripheral: selectedPeripheral,
-                    prober: prober,
-                    findFingerprintID: $findFingerprintID,
-                    onGenerateScanReport: onGenerateScanReport,
-                    onRevealLatestReport: onRevealLatestReport,
+        BLEDetailView(
+            peripheral: selectedPeripheral,
+            prober: prober,
+            findFingerprintID: $findFingerprintID,
+            aliasForPeripheral: { peripheral in
+                SODSStore.shared.aliasOverrides[peripheral.fingerprintID]
+            },
+            onGenerateScanReport: onGenerateScanReport,
+            onRevealLatestReport: onRevealLatestReport,
                     onExportAudit: onExportAudit,
                     onExportRuntimeLog: onExportRuntimeLog,
                     onRevealExports: onRevealExports,
@@ -2964,6 +3057,9 @@ struct BLEListView: View {
     }
 
     private func labelForPeripheral(_ peripheral: BLEPeripheral) -> String {
+        if let alias = aliasForPeripheral(peripheral), !alias.isEmpty {
+            return alias
+        }
         if let label = scanner.label(for: peripheral.fingerprintID), !label.isEmpty {
             return label
         }
@@ -3006,6 +3102,7 @@ struct BLEDetailView: View {
     let peripheral: BLEPeripheral?
     let prober: BLEProber
     @Binding var findFingerprintID: String
+    let aliasForPeripheral: (BLEPeripheral) -> String?
     let onGenerateScanReport: () -> Void
     let onRevealLatestReport: () -> Void
     let onExportAudit: () -> Void
@@ -3039,6 +3136,13 @@ struct BLEDetailView: View {
                         }
                         .onChange(of: labelText) { value in
                             BLEScanner.shared.setLabel(value, for: peripheral.fingerprintID)
+                            SODSStore.shared.setAlias(id: peripheral.fingerprintID, alias: value)
+                        }
+
+                        if let alias = aliasForPeripheral(peripheral), !alias.isEmpty {
+                            Text("Alias: \(alias)")
+                                .font(.system(size: 12))
+                                .foregroundColor(.secondary)
                         }
 
                         Text("Name: \(peripheral.name ?? "Unknown")")
@@ -3930,10 +4034,17 @@ struct CasesView: View {
     var body: some View {
         HStack(spacing: 0) {
             List(selection: $selectedCase) {
+                let aliases = SODSStore.shared.aliasOverrides
                 ForEach(caseManager.cases) { item in
+                    let alias = aliases[item.targetID]
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(item.targetID)
-                            .font(.system(size: 12, weight: .semibold))
+                        if let alias, !alias.isEmpty {
+                            Text("\(alias) (\(item.targetID))")
+                                .font(.system(size: 12, weight: .semibold))
+                        } else {
+                            Text(item.targetID)
+                                .font(.system(size: 12, weight: .semibold))
+                        }
                         Text("\(item.targetType) • \(item.confidenceLevel) (\(item.confidenceScore))")
                             .font(.system(size: 11))
                             .foregroundColor(.secondary)
@@ -3963,10 +4074,17 @@ struct CasesView: View {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text("Active Nodes")
                                     .font(.system(size: 11, weight: .semibold))
+                                let aliasOverrides = SODSStore.shared.aliasOverrides
                                 ForEach(piAuxStore.activeNodes) { node in
+                                    let alias = aliasOverrides[node.id]
                                     HStack {
-                                        Text("\(node.label) (\(node.id))")
-                                            .font(.system(size: 11))
+                                        if let alias, !alias.isEmpty {
+                                            Text("\(alias) (\(node.label) • \(node.id))")
+                                                .font(.system(size: 11))
+                                        } else {
+                                            Text("\(node.label) (\(node.id))")
+                                                .font(.system(size: 11))
+                                        }
                                         Spacer()
                                         Button("Add") {
                                             appendNodeID(node.id)
@@ -4012,8 +4130,14 @@ struct CasesView: View {
                     Spacer()
                 }
                 if let selectedCase {
-                    Text("Target: \(selectedCase.targetID)")
-                        .font(.system(size: 12))
+                    let alias = SODSStore.shared.aliasOverrides[selectedCase.targetID]
+                    if let alias, !alias.isEmpty {
+                        Text("Target: \(alias) (\(selectedCase.targetID))")
+                            .font(.system(size: 12))
+                    } else {
+                        Text("Target: \(selectedCase.targetID)")
+                            .font(.system(size: 12))
+                    }
                     Text("Type: \(selectedCase.targetType)")
                         .font(.system(size: 12))
                     Text("Confidence: \(selectedCase.confidenceLevel) (\(selectedCase.confidenceScore))")
@@ -4475,7 +4599,7 @@ private func buildReadableLog(rawFilename: String, scanner: NetworkScanner, bleS
         return "\(seconds)s"
     }()
 
-    lines.append("CAMUTIL READABLE LOG")
+    lines.append("SODS READABLE LOG")
     lines.append("Generated: \(formatter.string(from: Date()))")
     lines.append("")
     lines.append("SCAN SUMMARY")
@@ -4490,6 +4614,7 @@ private func buildReadableLog(rawFilename: String, scanner: NetworkScanner, bleS
     lines.append("Toggles: ONVIF=\(scanToggles.onvifDiscovery), ServiceDiscovery=\(scanToggles.serviceDiscovery), ARPWarmup=\(scanToggles.arpWarmup), BLE=\(scanToggles.bleDiscovery)")
     lines.append("")
 
+    let aliasOverrides = SODSStore.shared.aliasOverrides
     let highConfidence = scanner.allHosts
         .filter { $0.hostConfidence.level == .high }
         .sorted { $0.hostConfidence.score > $1.hostConfidence.score }
@@ -4499,7 +4624,11 @@ private func buildReadableLog(rawFilename: String, scanner: NetworkScanner, bleS
         lines.append("None.")
     } else {
         for host in highConfidence {
-            lines.append("- \(host.ip) \(host.vendor ?? "") conf=\(host.hostConfidence.score) ports=\(host.openPorts.sorted().map(String.init).joined(separator: ","))")
+            let alias = aliasOverrides[host.ip]
+                ?? host.macAddress.flatMap { aliasOverrides[$0] }
+                ?? host.hostname.flatMap { aliasOverrides[$0] }
+            let aliasTag = alias.map { " alias=\($0)" } ?? ""
+            lines.append("- \(host.ip)\(aliasTag) \(host.vendor ?? "") conf=\(host.hostConfidence.score) ports=\(host.openPorts.sorted().map(String.init).joined(separator: ","))")
         }
     }
     lines.append("")
@@ -4515,7 +4644,7 @@ private func buildReadableLog(rawFilename: String, scanner: NetworkScanner, bleS
     if !topBle.isEmpty {
         lines.append("Strongest RSSI:")
         for item in topBle {
-            let label = bleScanner.label(for: item.fingerprintID) ?? item.name ?? "Unknown"
+            let label = aliasOverrides[item.fingerprintID] ?? bleScanner.label(for: item.fingerprintID) ?? item.name ?? "Unknown"
             lines.append("- \(label) rssi=\(item.rssi) dBm")
         }
     }
@@ -4786,8 +4915,9 @@ private func exportProbeReport(_ result: BLEProbeResult) {
             let summary = [
                 "BLE probe report",
                 "Fingerprint: \(result.fingerprintID)",
+                result.alias == nil ? nil : "Alias: \(result.alias!)",
                 "Status: \(result.status)"
-            ].joined(separator: "\n")
+            ].compactMap { $0 }.joined(separator: "\n")
             LogStore.copyExportSummaryToClipboard(path: written.path, summary: summary)
             log.log(.info, "BLE probe report copied to clipboard")
         }

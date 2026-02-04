@@ -241,8 +241,11 @@ async function cmdWhereis() {
     process.exit(2);
   }
 
+  const aliases = await fetchAliases();
+  const alias = resolveAlias(aliases, nodeId, ip, parseJsonMaybe(match.data_json));
   const seenAt = new Date(eventTime(match)).toISOString();
   console.log(`node_id:   ${nodeId}`);
+  if (alias) console.log(`alias:     ${alias}`);
   console.log(`ip:        ${ip}`);
   console.log(`kind:      ${match.kind ?? "?"}`);
   console.log(`last_seen: ${seenAt}`);
@@ -256,8 +259,9 @@ async function cmdOpen() {
   events.sort((a, b) => eventTime(b) - eventTime(a));
 
   let ip: string | undefined;
+  let data: any = {};
   for (const ev of events) {
-    const data = parseJsonMaybe(ev.data_json);
+    data = parseJsonMaybe(ev.data_json);
     ip = extractIp(data);
     if (ip) break;
   }
@@ -267,6 +271,11 @@ async function cmdOpen() {
     process.exit(2);
   }
 
+  const aliases = await fetchAliases();
+  const alias = resolveAlias(aliases, nodeId, ip, data);
+  if (alias) {
+    console.log(`alias: ${alias}`);
+  }
   const urls = [`http://${ip}/health`, `http://${ip}/metrics`, `http://${ip}/whoami`];
   for (const url of urls) {
     console.log(url);
@@ -286,8 +295,14 @@ async function cmdTail() {
   const limit = Number(getArg("--limit", "200"));
   const interval = Number(getArg("--interval", "1200"));
   const seen = new Set<string>();
+  let aliases: Record<string, string> = {};
+  let aliasFetchedAt = 0;
   while (true) {
     try {
+      if (Date.now() - aliasFetchedAt > 60_000) {
+        aliases = await fetchAliases();
+        aliasFetchedAt = Date.now();
+      }
       const events = await fetchEvents(nodeId, limit);
       events.sort((a, b) => eventTime(a) - eventTime(b));
       for (const ev of events) {
@@ -302,13 +317,42 @@ async function cmdTail() {
         const ts = new Date(eventTime(ev)).toISOString();
         const data = parseJsonMaybe(ev.data_json);
         const summary = ev.summary ?? ev.kind ?? "event";
-        console.log(JSON.stringify({ ts, node_id: nodeId, kind: ev.kind, summary, data }));
+        const alias = resolveAlias(aliases, nodeId, undefined, data);
+        console.log(JSON.stringify({ ts, node_id: nodeId, alias, kind: ev.kind, summary, data }));
       }
     } catch (err: any) {
       console.error(err?.message ?? "tail error");
     }
     await new Promise((resolve) => setTimeout(resolve, interval));
   }
+}
+
+async function fetchAliases(): Promise<Record<string, string>> {
+  try {
+    const res = await fetch(`${stationURL()}/api/aliases`, { method: "GET" });
+    if (!res.ok) return {};
+    const json = await res.json();
+    return json.aliases ?? {};
+  } catch {
+    return {};
+  }
+}
+
+function resolveAlias(
+  aliases: Record<string, string>,
+  nodeId: string | undefined,
+  ip: string | undefined,
+  data: any
+): string | undefined {
+  if (!aliases || Object.keys(aliases).length === 0) return undefined;
+  const deviceId = data?.device_id ?? data?.deviceId ?? data?.device ?? data?.addr ?? data?.address ?? data?.mac ?? data?.mac_address ?? data?.bssid;
+  const hostname = data?.hostname ?? data?.host;
+  if (nodeId && aliases[`node:${nodeId}`]) return aliases[`node:${nodeId}`];
+  if (nodeId && aliases[nodeId]) return aliases[nodeId];
+  if (ip && aliases[ip]) return aliases[ip];
+  if (deviceId && aliases[String(deviceId)]) return aliases[String(deviceId)];
+  if (hostname && aliases[String(hostname)]) return aliases[String(hostname)];
+  return undefined;
 }
 
 async function cmdTools() {
@@ -480,15 +524,6 @@ async function cmdAliasImport() {
     });
   }
   console.log("ok");
-}
-
-async function readStdin(): Promise<string> {
-  return await new Promise((resolve) => {
-    let data = "";
-    process.stdin.setEncoding("utf8");
-    process.stdin.on("data", (chunk) => data += chunk);
-    process.stdin.on("end", () => resolve(data.trim()));
-  });
 }
 
 async function readStdin(): Promise<string> {

@@ -154,7 +154,22 @@ CLI examples:
 ```bash
 ./tools/sods tool add --entry '{"name":"net.sample","title":"Sample","runner":"shell","kind":"inspect"}' --script ./tools/user/net.sample.sh
 ./tools/sods preset add --preset '{"id":"frontdoor.snapshot","kind":"single","tool":"camera.viewer","input":{"ip":"192.168.1.10","path":"/"}}'
+curl -s -X POST http://localhost:9123/api/runbook/run -H 'Content-Type: application/json' -d '{"name":"triangulation","input":{}}'
 ./tools/sods scratch --runner shell --input '{}' < /tmp/snippet.sh
+```
+
+## Runbooks
+
+Runbooks are first-class actions defined in `docs/runbooks.json` and exposed via:
+- `GET /api/runbooks`
+- `POST /api/runbook/run`
+
+Dev Station renders runbooks in-app (no external browser).
+
+Audit helper:
+```bash
+./tools/audit-tools.sh
+./tools/audit-repo.sh
 ```
 
 ## Local Storage Paths

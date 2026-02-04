@@ -25,6 +25,7 @@
 # SODS user registries/tools
 docs/tool-registry.user.json
 docs/presets.user.json
+docs/runbooks.user.json
 tools/user/
 docs/aliases.user.json
 

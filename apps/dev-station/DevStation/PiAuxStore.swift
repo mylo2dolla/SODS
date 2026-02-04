@@ -333,7 +333,7 @@ final class PiAuxStore: ObservableObject {
 
     private func parseNodeType(_ raw: String) -> NodeType {
         switch raw.lowercased() {
-        case "mac", "cockpit", "dev-station", "sods":
+        case "mac", "dev-station", "devstation", "station", "sods":
             return .mac
         case "pi-aux", "piaux", "pi":
             return .piAux

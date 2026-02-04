@@ -91,6 +91,7 @@ If executables lose permissions, run `/Users/letsdev/sods/SODS/tools/permfix.sh`
 - Ops Portal Watch Mode: tap anywhere to show a 2–3 stat overlay that auto-hides.
 - CLI flags split: `--logger` for pi-logger, `--station` for spine endpoints.
 - Tool Registry is now shared between CLI and Dev Station (`docs/tool-registry.json`), and only passive tools are exposed.
+- 2026-02-04: Audit completed across Station, Dev Station, Ops Portal. Runbooks added with `/api/runbooks` and `/api/runbook/run`, portal state enriched (actions, quick stats, frames summary), simulated frames toggle added for Spectrum, and audit scripts added (`tools/audit-tools.sh`, `tools/audit-repo.sh`). See `docs/audit-report.md`.
 - Visual model unified: hue=identity, brightness=recency, saturation=confidence, glow=correlation with smooth decay.
 - Added launchd LaunchAgent (optional) for station auto-run on login.
 - Flash UX: station serves `/api/flash` and `/flash/*` pages; Dev Station popover opens the right flasher URLs.

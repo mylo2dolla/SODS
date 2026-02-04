@@ -132,6 +132,8 @@ struct VisualizerView: View {
                 }
                 Toggle("Ghost trails", isOn: $ghostTrails)
                     .font(.system(size: 11))
+                Toggle("Simulate frames (dev)", isOn: $store.simulateFrames)
+                    .font(.system(size: 11))
             }
             .padding(6)
         }
@@ -219,8 +221,9 @@ struct VisualizerView: View {
         GroupBox("Devices") {
             VStack(alignment: .leading, spacing: 6) {
                 ForEach(availableDevices, id: \.self) { deviceID in
+                    let label = deviceLabel(for: deviceID)
                     FilterRow(
-                        label: deviceID,
+                        label: label,
                         color: SignalColor.deviceColor(id: deviceID),
                         selected: selectedDeviceIDs.contains(deviceID),
                         onToggle: {
@@ -241,6 +244,13 @@ struct VisualizerView: View {
     private var availableDevices: [String] {
         let devices = store.events.compactMap { $0.deviceID }
         return Array(Set(devices)).sorted()
+    }
+
+    private func deviceLabel(for deviceID: String) -> String {
+        if let alias = nodeAliases[deviceID], !alias.isEmpty, alias != deviceID {
+            return "\(alias) (\(deviceID))"
+        }
+        return deviceID
     }
 
     private var filteredEvents: [NormalizedEvent] {

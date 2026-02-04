@@ -190,15 +190,24 @@ void PortalCore::drawStatusLeft() {
   tft->print("logger: ");
   tft->print(stateValue.loggerOk ? "ok" : "err");
   tft->setCursor(10, 80);
+  tft->print("action: ");
+  if (stateValue.actionLabel.length() > 0) {
+    tft->print(stateValue.actionLabel);
+    if (stateValue.actionState.length() > 0) {
+      tft->print(" ");
+      tft->print(stateValue.actionState);
+    }
+  } else {
+    tft->print("idle");
+  }
+  tft->setCursor(10, 94);
   tft->print("ingest ok:");
   tft->print(stateValue.ingestOkRate, 1);
-  tft->setCursor(10, 94);
+  tft->setCursor(10, 108);
   tft->print("ingest err:");
   tft->print(stateValue.ingestErrRate, 1);
-  tft->setCursor(10, 108);
-  tft->print("legend: BLE/WiFi/Node");
   tft->setCursor(10, 122);
-  tft->print("tap: focus / replay");
+  tft->print("legend: BLE/WiFi/Node");
   tft->setCursor(10, 136);
   tft->print("replay: ");
   if (replayOn) {
@@ -300,15 +309,23 @@ void PortalCore::drawWatchOverlay() {
   tft->setTextColor(TFT_WHITE, base);
   tft->setTextSize(1);
   tft->setCursor(x + 10, y + 12);
-  tft->print(stateValue.connOk ? "conn: ok" : "conn: err");
-  tft->setCursor(x + 10, y + 28);
-  tft->print("nodes: ");
-  tft->print(stateValue.nodesOnline);
-  tft->print("/");
-  tft->print(stateValue.nodesTotal);
-  tft->setCursor(x + 10, y + 44);
-  tft->print("logger: ");
-  tft->print(stateValue.loggerOk ? "ok" : "err");
+  if (stateValue.quick1.length() || stateValue.quick2.length() || stateValue.quick3.length()) {
+    tft->print(stateValue.quick1.length() ? stateValue.quick1 : "status");
+    tft->setCursor(x + 10, y + 28);
+    tft->print(stateValue.quick2.length() ? stateValue.quick2 : "nodes");
+    tft->setCursor(x + 10, y + 44);
+    tft->print(stateValue.quick3.length() ? stateValue.quick3 : "frames");
+  } else {
+    tft->print(stateValue.connOk ? "conn: ok" : "conn: err");
+    tft->setCursor(x + 10, y + 28);
+    tft->print("nodes: ");
+    tft->print(stateValue.nodesOnline);
+    tft->print("/");
+    tft->print(stateValue.nodesTotal);
+    tft->setCursor(x + 10, y + 44);
+    tft->print("logger: ");
+    tft->print(stateValue.loggerOk ? "ok" : "err");
+  }
 }
 
 void PortalCore::drawPopup() {

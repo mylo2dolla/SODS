@@ -185,10 +185,12 @@ final class BLEProber: NSObject, ObservableObject, @preconcurrency CBCentralMana
         guard let context = activeContext else { return }
         let fingerprintID = context.fingerprintID
 
+        let alias = SODSStore.shared.aliasOverrides[fingerprintID]
         let result = BLEProbeResult(
             fingerprintID: fingerprintID,
             peripheralID: context.peripheralID.uuidString,
             name: context.name,
+            alias: alias,
             lastUpdated: ISO8601DateFormatter().string(from: Date()),
             status: success ? "success" : "failed",
             error: error ?? "",

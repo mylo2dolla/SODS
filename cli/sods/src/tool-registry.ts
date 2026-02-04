@@ -12,7 +12,7 @@ export type ToolEntry = {
   entry?: string;
   cwd?: string;
   timeout_ms?: number;
-  kind?: "inspect" | "action" | "report";
+  kind?: "inspect" | "action" | "report" | "runbook" | "passive";
   tags?: string[];
   input_schema?: Record<string, unknown>;
   output?: { format?: "text" | "json" | "url" | "ndjson" };
@@ -41,7 +41,10 @@ function readJson(path: string) {
 function normalizeLegacyTool(tool: any): ToolEntry | null {
   if (!tool?.name) return null;
   const scope = tool.scope || "tool";
-  const kind = tool.kind === "passive" ? "inspect" : (tool.kind === "active" ? "action" : undefined);
+  const kind =
+    tool.kind === "passive" ? "passive" :
+    tool.kind === "active" ? "action" :
+    tool.kind;
   return {
     name: tool.name,
     title: tool.title ?? tool.name,
@@ -49,7 +52,7 @@ function normalizeLegacyTool(tool: any): ToolEntry | null {
     runner: "builtin",
     entry: undefined,
     cwd: "${REPO_ROOT}",
-    timeout_ms: 15000,
+    timeout_ms: (typeof tool.timeout_ms === "number" ? tool.timeout_ms : undefined),
     kind,
     tags: [scope],
     scope,

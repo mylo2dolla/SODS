@@ -240,13 +240,17 @@ static void sendCommand(const ButtonAction &action) {
   if (sodsBaseUrl.length() == 0) return;
   HTTPClient http;
   bool isPreset = action.cmd.startsWith("preset:");
-  String url = sodsBaseUrl + (isPreset ? "/api/preset/run" : "/api/tool/run");
+  bool isRunbook = action.cmd.startsWith("runbook:");
+  String url = sodsBaseUrl + (isPreset ? "/api/preset/run" : (isRunbook ? "/api/runbook/run" : "/api/tool/run"));
   http.begin(url);
   http.addHeader("Content-Type", "application/json");
   String payload = "{";
   if (isPreset) {
     String id = action.cmd.substring(7);
     payload += "\"id\":\"" + id + "\"";
+  } else if (isRunbook) {
+    String id = action.cmd.substring(8);
+    payload += "\"name\":\"" + id + "\"";
   } else {
     payload += "\"name\":\"" + action.cmd + "\"";
     if (action.argsJson.length() > 0) {
@@ -415,29 +419,64 @@ static void parsePortalState(const String &json) {
     state.loggerLastEventMs = logger["last_event_ms"] | 0;
   }
 
-  JsonObject tools = root["tools"];
-  JsonArray toolItems = tools["items"].as<JsonArray>();
-  if (!toolItems.isNull()) {
-    PortalState &s = core.state();
-    s.buttons.clear();
-    for (JsonVariant v : toolItems) {
-      ButtonState b;
-      b.id = String((const char*)(v["name"] | ""));
-      b.label = b.id;
-      int dot = b.label.lastIndexOf('.');
-      if (dot >= 0 && dot + 1 < b.label.length()) {
-        b.label = b.label.substring(dot + 1);
-      }
-      b.kind = String((const char*)(v["kind"] | ""));
-      b.enabled = b.kind == "passive";
-      b.glow = 0.2f;
-      ButtonAction a;
-      a.id = b.id;
-      a.label = b.id;
-      a.cmd = b.id;
-      b.actions.push_back(a);
-      s.buttons.push_back(b);
+  PortalState &s = core.state();
+  s.buttons.clear();
+  auto pushButton = [&](const String &id, const String &label, const String &kind, const String &cmd, float glow) {
+    ButtonState b;
+    b.id = id;
+    b.label = label;
+    b.kind = kind;
+    b.enabled = true;
+    b.glow = glow;
+    ButtonAction a;
+    a.id = id;
+    a.label = label;
+    a.cmd = cmd;
+    b.actions.push_back(a);
+    s.buttons.push_back(b);
+  };
+
+  JsonObject runbooks = root["runbooks"];
+  JsonArray runbookItems = runbooks["items"].as<JsonArray>();
+  if (!runbookItems.isNull() && runbookItems.size() > 0) {
+    for (JsonVariant v : runbookItems) {
+      String id = String((const char*)(v["id"] | ""));
+      String title = String((const char*)(v["title"] | id.c_str()));
+      JsonObject ui = v["ui"];
+      bool capsule = ui["capsule"] | true;
+      if (!capsule) continue;
+      pushButton(id, title, "runbook", "runbook:" + id, 0.5f);
       if (s.buttons.size() >= 6) break;
+    }
+  }
+
+  if (s.buttons.empty()) {
+    JsonArray presets = root["presets"]["items"].as<JsonArray>();
+    if (!presets.isNull()) {
+      for (JsonVariant v : presets) {
+        JsonObject ui = v["ui"];
+        bool capsule = ui["capsule"] | false;
+        if (!capsule) continue;
+        String id = String((const char*)(v["id"] | ""));
+        String title = String((const char*)(v["title"] | id.c_str()));
+        pushButton(id, title, "preset", "preset:" + id, 0.4f);
+        if (s.buttons.size() >= 6) break;
+      }
+    }
+  }
+
+  if (s.buttons.empty()) {
+    JsonArray toolItems = root["tools"]["items"].as<JsonArray>();
+    if (!toolItems.isNull()) {
+      for (JsonVariant v : toolItems) {
+        String id = String((const char*)(v["name"] | ""));
+        String label = id;
+        int dot = label.lastIndexOf('.');
+        if (dot >= 0 && dot + 1 < label.length()) label = label.substring(dot + 1);
+        String kind = String((const char*)(v["kind"] | ""));
+        pushButton(id, label, kind, id, 0.2f);
+        if (s.buttons.size() >= 6) break;
+      }
     }
   }
 
@@ -459,6 +498,36 @@ static void parsePortalState(const String &json) {
         aliasMap.push_back({id, alias});
       }
     }
+  }
+
+  JsonObject actions = root["actions"];
+  if (!actions.isNull()) {
+    JsonObject tool = actions["tool"];
+    JsonObject runbook = actions["runbook"];
+    if (!runbook.isNull() && String((const char*)(runbook["id"] | "")).length()) {
+      s.actionLabel = String("runbook ") + String((const char*)(runbook["id"] | ""));
+      s.actionState = String((const char*)(runbook["status"] | ""));
+    } else if (!tool.isNull() && String((const char*)(tool["name"] | "")).length()) {
+      s.actionLabel = String("tool ") + String((const char*)(tool["name"] | ""));
+      s.actionState = String((const char*)(tool["status"] | ""));
+    } else {
+      s.actionLabel = "";
+      s.actionState = "";
+    }
+  } else {
+    s.actionLabel = "";
+    s.actionState = "";
+  }
+
+  JsonArray quickStats = root["quick_stats"].as<JsonArray>();
+  if (!quickStats.isNull()) {
+    s.quick1 = String((const char*)(quickStats[0] | ""));
+    s.quick2 = String((const char*)(quickStats[1] | ""));
+    s.quick3 = String((const char*)(quickStats[2] | ""));
+  } else {
+    s.quick1 = "";
+    s.quick2 = "";
+    s.quick3 = "";
   }
 }
 
@@ -642,9 +711,6 @@ void PortalDeviceCYD::loop() {
   }
   if (now - lastPresetPollMs > presetPollIntervalMs) {
     lastPresetPollMs = now;
-    if (WiFi.isConnected()) {
-      pollPresets();
-    }
   }
   stationReachable = stationOk;
   if (!stationReachable) {

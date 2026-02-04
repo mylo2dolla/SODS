@@ -9,8 +9,10 @@ import { nowMs } from "./util.js";
 import { listTools, runTool } from "./tools.js";
 import { loadToolRegistry, ToolEntry } from "./tool-registry.js";
 import { loadPresets, presetRegistryPaths } from "./presets.js";
+import { loadRunbooks } from "./runbooks.js";
 import { runScriptTool, runScratch, RunResult as ToolRunResult } from "./tool-runner.js";
 import { runPreset } from "./preset-runner.js";
+import { runRunbook } from "./runbook-runner.js";
 import { toolRegistryPaths } from "./tool-registry.js";
 
 type ServerOptions = {
@@ -30,6 +32,8 @@ export class SODSServer {
   private lastFrames: SignalFrame[] = [];
   private lastError: string | null = null;
   private lastIngestAt = 0;
+  private activeTool: { name: string; started_at: number; status: string; ok?: boolean } | null = null;
+  private activeRunbook: { id: string; started_at: number; status: string; step?: string; ok?: boolean } | null = null;
   private eventsClients: Set<WebSocket> = new Set();
   private frameClients: Set<WebSocket> = new Set();
   private server?: http.Server;
@@ -129,6 +133,12 @@ export class SODSServer {
     }
     if (url.pathname === "/api/tools") {
       return this.respondJson(res, this.buildToolRegistry());
+    }
+    if (url.pathname === "/api/runbooks") {
+      return this.respondJson(res, this.buildRunbooks());
+    }
+    if (url.pathname === "/api/runbook/run" && req.method === "POST") {
+      return this.handleRunbookRun(req, res);
     }
     if (url.pathname === "/api/presets") {
       return this.respondJson(res, this.buildPresets());
@@ -429,6 +439,11 @@ export class SODSServer {
 
     const now = nowMs();
     const modeStats = this.computeModeStats();
+    const framesSummary = this.buildFramesSummary();
+    const actionState = {
+      tool: this.activeTool,
+      runbook: this.activeRunbook,
+    };
 
     const topNodes = [...nodes]
       .sort((a, b) => b.last_seen - a.last_seen)
@@ -492,12 +507,53 @@ export class SODSServer {
         count: listTools().length,
         items: listTools(),
       },
+      presets: {
+        count: loadPresets().presets.length,
+        items: loadPresets().presets,
+      },
+      runbooks: {
+        count: loadRunbooks().runbooks.length,
+        items: loadRunbooks().runbooks,
+      },
       aliases,
       flash: this.buildFlashInfo(req),
+      actions: actionState,
+      quick_stats: this.buildQuickStats(framesSummary),
+      frames_summary: framesSummary,
       frames: this.lastFrames,
     };
 
     this.respondJson(res, payload);
+  }
+
+  private buildFramesSummary() {
+    const bySource: Record<string, number> = {};
+    const byNode: Record<string, number> = {};
+    const byChannel: Record<string, number> = {};
+    for (const frame of this.lastFrames) {
+      const src = frame.source ?? "unknown";
+      bySource[src] = (bySource[src] ?? 0) + 1;
+      const node = frame.node_id ?? "unknown";
+      byNode[node] = (byNode[node] ?? 0) + 1;
+      const ch = Number.isFinite(frame.channel) ? String(frame.channel) : "unknown";
+      byChannel[ch] = (byChannel[ch] ?? 0) + 1;
+    }
+    const bins = Object.entries(byChannel)
+      .map(([channel, count]) => ({ channel, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 8);
+    return { total: this.lastFrames.length, by_source: bySource, by_node: byNode, bins };
+  }
+
+  private buildQuickStats(summary: { total: number }) {
+    const now = nowMs();
+    const lastEventTs = this.lastEvent?.event_ts ? Date.parse(this.lastEvent.event_ts) : 0;
+    const lastAge = lastEventTs > 0 ? Math.max(0, Math.round((now - lastEventTs) / 1000)) : 0;
+    return [
+      `frames:${summary.total}`,
+      `nodes:${this.ingestor.getNodes().filter((n) => now - n.last_seen < 60_000).length}`,
+      lastAge > 0 ? `last:${lastAge}s` : "last:na",
+    ];
   }
 
   private async fetchLoggerHealth() {
@@ -554,11 +610,29 @@ export class SODSServer {
   private buildToolRegistry() {
     const registry = loadToolRegistry();
     const presets = loadPresets();
+    const runbooks = loadRunbooks();
+    const runbookTools = runbooks.runbooks.map((rb) => ({
+      name: `runbook.${rb.id}`,
+      title: rb.title ?? rb.id,
+      description: rb.description ?? "",
+      runner: "builtin",
+      kind: "runbook",
+      tags: ["runbook"],
+      scope: "runbook",
+      output: { format: "json" },
+      input_schema: rb.input_schema ?? undefined,
+      runbook_id: rb.id,
+    }));
     return {
       ...registry,
+      tools: [...registry.tools, ...runbookTools],
       presets: {
         count: presets.presets.length,
         items: presets.presets,
+      },
+      runbooks: {
+        count: runbooks.runbooks.length,
+        items: runbooks.runbooks,
       },
     };
   }
@@ -567,7 +641,15 @@ export class SODSServer {
     return loadPresets();
   }
 
-  private async runToolByName(name: string, input: Record<string, unknown>): Promise<ToolRunResult> {
+  private buildRunbooks() {
+    return loadRunbooks();
+  }
+
+  private async runToolByName(
+    name: string,
+    input: Record<string, unknown>,
+    context?: { runbookId?: string; stepId?: string }
+  ): Promise<ToolRunResult> {
     const registry = loadToolRegistry();
     const tool = registry.tools.find((t) => t.name === name);
     if (!tool) {
@@ -579,6 +661,9 @@ export class SODSServer {
         stdout: "",
         stderr: `unknown tool: ${name}`,
       };
+    }
+    if (!context?.runbookId) {
+      this.activeTool = { name, started_at: nowMs(), status: "running" };
     }
     if (tool.runner === "builtin") {
       const result = await runTool(name, input as Record<string, string | undefined>, this.eventBuffer);
@@ -594,10 +679,16 @@ export class SODSServer {
         urls: urls.length ? urls : undefined,
       };
       this.emitToolEvents(name, payload);
+      if (!context?.runbookId) {
+        this.activeTool = { name, started_at: this.activeTool?.started_at ?? nowMs(), status: "done", ok: payload.ok };
+      }
       return payload;
     }
     const result = await runScriptTool(tool as ToolEntry, input);
     this.emitToolEvents(name, result);
+    if (!context?.runbookId) {
+      this.activeTool = { name, started_at: this.activeTool?.started_at ?? nowMs(), status: "done", ok: result.ok };
+    }
     return result;
   }
 
@@ -709,6 +800,90 @@ export class SODSServer {
         res.end(err?.message ?? "preset error");
       }
     });
+  }
+
+  private async handleRunbookRun(req: http.IncomingMessage, res: http.ServerResponse) {
+    let body = "";
+    req.on("data", (chunk) => body += chunk);
+    req.on("end", async () => {
+      try {
+        const payload = body ? JSON.parse(body) : {};
+        const id = payload.name || payload.id;
+        const input = payload.input ?? {};
+        if (!id) {
+          res.writeHead(400);
+          res.end("missing runbook name");
+          return;
+        }
+        const registry = loadRunbooks();
+        const runbook = registry.runbooks.find((r) => r.id === id);
+        if (!runbook) {
+          res.writeHead(404);
+          res.end("runbook not found");
+          return;
+        }
+        const startedAt = nowMs();
+        this.activeTool = null;
+        this.activeRunbook = { id, started_at: startedAt, status: "running" };
+        const result = await runRunbook(
+          runbook,
+          (name, inputArgs) => this.runToolByName(name, inputArgs, { runbookId: id }),
+          input,
+          (stepId, tool) => {
+            this.activeRunbook = { id, started_at: startedAt, status: "running", step: `${stepId}:${tool}` };
+          },
+          (stepId, tool, stepResult) => {
+            if (!stepResult.ok) {
+              this.activeRunbook = { id, started_at: startedAt, status: "error", step: `${stepId}:${tool}`, ok: false };
+            }
+          }
+        );
+        const endedAt = nowMs();
+        this.activeRunbook = { id, started_at: startedAt, status: "done", ok: result.ok };
+
+        const report = this.writeRunbookReport(id, input, startedAt, endedAt, result);
+        this.respondJson(res, {
+          ok: result.ok,
+          id,
+          results: result.results,
+          summary: `runbook ${id} ${result.ok ? "ok" : "err"}`,
+          artifacts: report ? [report] : [],
+        });
+      } catch (err: any) {
+        this.activeRunbook = null;
+        res.writeHead(400);
+        res.end(err?.message ?? "runbook error");
+      }
+    });
+  }
+
+  private writeRunbookReport(
+    id: string,
+    input: Record<string, unknown>,
+    startedAt: number,
+    endedAt: number,
+    result: { ok: boolean; results: Record<string, ToolRunResult> }
+  ) {
+    try {
+      const { repoRoot } = toolRegistryPaths();
+      const outDir = join(repoRoot, "data", "reports", "runbooks");
+      mkdirSync(outDir, { recursive: true });
+      const iso = new Date().toISOString().replace(/[:.]/g, "-");
+      const filename = `Runbook-${id}-${iso}.json`;
+      const path = join(outDir, filename);
+      const payload = {
+        id,
+        ok: result.ok,
+        started_at: startedAt,
+        ended_at: endedAt,
+        input,
+        results: result.results,
+      };
+      writeFileSync(path, JSON.stringify(payload, null, 2));
+      return { path, filename };
+    } catch {
+      return null;
+    }
   }
 
   private async handleScratchRun(req: http.IncomingMessage, res: http.ServerResponse) {

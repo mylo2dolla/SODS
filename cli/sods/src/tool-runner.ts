@@ -78,7 +78,7 @@ export async function runScriptTool(tool: ToolEntry, input: Record<string, unkno
   const scriptPath = tool.entry.startsWith("/")
     ? tool.entry
     : resolve(join(repoRoot, tool.entry));
-  const timeout = tool.timeout_ms ?? 15000;
+  const timeout = Number.isFinite(tool.timeout_ms) ? (tool.timeout_ms ?? 0) : 0;
   const cwd = resolveCwd(tool);
   const env = { ...process.env, SODS_INPUT: JSON.stringify(input ?? {}), SODS_REPO_ROOT: repoRoot };
   const { cmd, args } = runnerCommand(tool.runner, scriptPath);
@@ -89,7 +89,7 @@ export async function runScratch(runner: ToolRunnerType, content: string, input:
   const start = performance.now();
   const { dir, path } = makeTempScript(runner, content);
   const { repoRoot } = toolRegistryPaths();
-  const timeout = 15000;
+  const timeout = 0;
   const cwd = repoRoot;
   const env = { ...process.env, SODS_INPUT: JSON.stringify(input ?? {}), SODS_REPO_ROOT: repoRoot };
   const { cmd, args } = runnerCommand(runner, path);
@@ -109,17 +109,21 @@ function runProcess(
   timeout: number,
   start: number
 ): Promise<RunResult> {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     const child = spawn(cmd, args, { cwd, env });
     let stdout = "";
     let stderr = "";
-    const timer = setTimeout(() => {
+    const timer = timeout > 0 ? setTimeout(() => {
       child.kill("SIGKILL");
-    }, timeout);
+    }, timeout) : null;
     child.stdout.on("data", (d) => (stdout += d.toString()));
     child.stderr.on("data", (d) => (stderr += d.toString()));
+    child.on("error", (e) => {
+      if (timer) clearTimeout(timer);
+      reject(e);
+    });
     child.on("close", (code) => {
-      clearTimeout(timer);
+      if (timer) clearTimeout(timer);
       const duration = performance.now() - start;
       const resultJson = parseJson(stdout.trim());
       const urls = extractUrls(`${stdout}\n${stderr}`);

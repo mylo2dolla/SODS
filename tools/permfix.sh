@@ -22,6 +22,8 @@ targets=(
   "$TOOLS_DIR/devstation-build.sh"
   "$TOOLS_DIR/devstation-run.sh"
   "$TOOLS_DIR/devstation-install.sh"
+  "$TOOLS_DIR/audit-tools.sh"
+  "$TOOLS_DIR/audit-repo.sh"
   "$TOOLS_DIR/launchagent-install.sh"
   "$TOOLS_DIR/launchagent-uninstall.sh"
   "$TOOLS_DIR/launchagent-status.sh"

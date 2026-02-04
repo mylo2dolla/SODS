@@ -198,6 +198,7 @@ struct BLEProbeResult: Codable, Hashable {
     let fingerprintID: String
     let peripheralID: String
     let name: String?
+    let alias: String?
     let lastUpdated: String
     let status: String
     let error: String

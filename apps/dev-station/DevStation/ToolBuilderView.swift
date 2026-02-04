@@ -10,7 +10,7 @@ struct ToolBuilderView: View {
     @State private var runner = "shell"
     @State private var kind = "inspect"
     @State private var tags = ""
-    @State private var timeoutMs = "15000"
+    @State private var timeoutMs = "0"
     @State private var script = ""
     @State private var inputSchema = "{}"
     @State private var outputFormat = "text"
@@ -94,17 +94,19 @@ struct ToolBuilderView: View {
         lastError = nil
         let tagList = tags.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
         let inputSchemaObj = parseJson(inputSchema)
-        let entry: [String: Any] = [
+        var entry: [String: Any] = [
             "name": name,
             "title": title.isEmpty ? name : title,
             "description": description,
             "runner": runner,
-            "timeout_ms": Int(timeoutMs) ?? 15000,
             "kind": kind,
             "tags": tagList,
             "input_schema": inputSchemaObj,
             "output": ["format": outputFormat]
         ]
+        if let timeoutValue = Int(timeoutMs), timeoutValue > 0 {
+            entry["timeout_ms"] = timeoutValue
+        }
         guard let url = URL(string: baseURL.trimmingCharacters(in: .whitespacesAndNewlines) + "/api/tools/user/add") else {
             lastError = "Invalid station URL"
             isSaving = false

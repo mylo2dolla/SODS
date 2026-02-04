@@ -47,6 +47,11 @@ struct PortalState {
   float ingestErrRate = 0;
   unsigned long ingestLastOkMs = 0;
   unsigned long ingestLastErrMs = 0;
+  String actionLabel;
+  String actionState;
+  String quick1;
+  String quick2;
+  String quick3;
   std::vector<ButtonState> buttons;
   std::vector<VizBin> bins;
 };
