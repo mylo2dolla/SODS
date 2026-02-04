@@ -35,6 +35,9 @@ struct PortalState {
   bool connOk = false;
   unsigned long connLastOkMs = 0;
   String connErr;
+  bool loggerOk = false;
+  String loggerStatus;
+  unsigned long loggerLastEventMs = 0;
   String modeName;
   unsigned long modeSinceMs = 0;
   int nodesTotal = 0;

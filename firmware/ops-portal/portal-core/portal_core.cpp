@@ -151,9 +151,12 @@ void PortalCore::drawStatusLeft() {
   tft->print("/");
   tft->print(stateValue.nodesTotal);
   tft->setCursor(10, 66);
+  tft->print("logger: ");
+  tft->print(stateValue.loggerOk ? "ok" : "err");
+  tft->setCursor(10, 80);
   tft->print("ingest ok:");
   tft->print(stateValue.ingestOkRate, 1);
-  tft->setCursor(10, 80);
+  tft->setCursor(10, 94);
   tft->print("ingest err:");
   tft->print(stateValue.ingestErrRate, 1);
 }
@@ -230,8 +233,8 @@ void PortalCore::drawWatchOverlay() {
   tft->print("/");
   tft->print(stateValue.nodesTotal);
   tft->setCursor(x + 10, y + 44);
-  tft->print("ingest ok:");
-  tft->print(stateValue.ingestOkRate, 1);
+  tft->print("logger: ");
+  tft->print(stateValue.loggerOk ? "ok" : "err");
 }
 
 void PortalCore::drawPopup() {

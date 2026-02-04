@@ -5,6 +5,8 @@
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
 #include <WebSocketsClient.h>
+#include <WebServer.h>
+#include <Preferences.h>
 #include <TFT_eSPI.h>
 #include <XPT2046_Touchscreen.h>
 
@@ -22,6 +24,10 @@
 #define SODS_BASE_URL ""
 #endif
 
+#ifndef SODS_LOGGER_URL
+#define SODS_LOGGER_URL ""
+#endif
+
 #ifndef PORTAL_ROTATION
 #define PORTAL_ROTATION 1
 #endif
@@ -34,13 +40,12 @@ static XPT2046_Touchscreen touch(TOUCH_CS, TOUCH_IRQ);
 static PortalCore core;
 
 static String sodsBaseUrl;
+static String sodsLoggerUrl;
 static String wifiSsid;
 static String wifiPass;
 
 static unsigned long lastPollMs = 0;
 static unsigned long pollIntervalMs = 1200;
-static unsigned long lastToolsMs = 0;
-static unsigned long toolsIntervalMs = 8000;
 static unsigned long lastRenderMs = 0;
 static bool wifiOk = false;
 static unsigned long lastWifiOkMs = 0;
@@ -56,6 +61,11 @@ static String wsHost = "";
 static int wsPort = 80;
 static String wsPath = "/ws/frames";
 static unsigned long lastFrameMs = 0;
+
+static Preferences prefs;
+static WebServer configServer(80);
+static bool configMode = false;
+static unsigned long lastConfigDrawMs = 0;
 static const char *mockStatusJson = R"json(
 {
   "station": {
@@ -68,19 +78,90 @@ static const char *mockStatusJson = R"json(
     "nodes_online": 3,
     "tools": 3
   },
-  "logger": { "ok": false, "status": "offline" }
+  "logger": { "ok": false, "status": "offline" },
+  "tools": {
+    "items": [
+      { "name": "net.wifi_scan", "kind": "passive" },
+      { "name": "net.arp", "kind": "passive" },
+      { "name": "camera.viewer", "kind": "passive" }
+    ]
+  }
 }
 )json";
 
-static const char *mockToolsJson = R"json(
-{
-  "tools": [
-    { "name": "net.wifi_scan", "kind": "passive" },
-    { "name": "net.arp", "kind": "passive" },
-    { "name": "camera.viewer", "kind": "passive" }
-  ]
+static void loadConfig() {
+  prefs.begin("sods", true);
+  wifiSsid = prefs.getString("ssid", WIFI_SSID);
+  wifiPass = prefs.getString("pass", WIFI_PASS);
+  sodsBaseUrl = prefs.getString("station", SODS_BASE_URL);
+  sodsLoggerUrl = prefs.getString("logger", SODS_LOGGER_URL);
+  prefs.end();
 }
-)json";
+
+static void saveConfig(const String &ssid, const String &pass, const String &station, const String &logger) {
+  prefs.begin("sods", false);
+  prefs.putString("ssid", ssid);
+  prefs.putString("pass", pass);
+  prefs.putString("station", station);
+  prefs.putString("logger", logger);
+  prefs.end();
+}
+
+static void drawConfigScreen() {
+  if (millis() - lastConfigDrawMs < 1000) return;
+  lastConfigDrawMs = millis();
+  tft.fillScreen(TFT_BLACK);
+  tft.setTextColor(TFT_WHITE, TFT_BLACK);
+  tft.setTextSize(1);
+  tft.setCursor(10, 10);
+  tft.print("SODS Ops Portal Setup");
+  tft.setCursor(10, 28);
+  tft.print("AP: SODS-Portal-Setup");
+  tft.setCursor(10, 44);
+  tft.print("Open: http://192.168.4.1");
+  tft.setCursor(10, 60);
+  tft.print("Enter Wi-Fi + Station URL");
+}
+
+static void startConfigPortal() {
+  if (configMode) return;
+  configMode = true;
+  WiFi.mode(WIFI_AP);
+  WiFi.softAP("SODS-Portal-Setup");
+  configServer.on("/", HTTP_GET, []() {
+    String stationValue = sodsBaseUrl.length() ? sodsBaseUrl : String("http://pi-logger.local:9123");
+    String loggerValue = sodsLoggerUrl.length() ? sodsLoggerUrl : String("http://pi-logger.local:8088");
+    String page =
+      "<!doctype html><html><head><meta charset='utf-8'/>"
+      "<meta name='viewport' content='width=device-width, initial-scale=1'/>"
+      "<title>SODS Portal Setup</title></head><body>"
+      "<h2>SODS Ops Portal Setup</h2>"
+      "<form method='POST' action='/save'>"
+      "Wi-Fi SSID<br/><input name='ssid' /><br/>"
+      "Wi-Fi Password<br/><input name='pass' type='password' /><br/>"
+      "Station URL<br/><input name='station' value='" + stationValue + "' /><br/>"
+      "Logger URL<br/><input name='logger' value='" + loggerValue + "' /><br/>"
+      "<button type='submit'>Save</button>"
+      "</form></body></html>";
+    configServer.send(200, "text/html", page);
+  });
+  configServer.on("/save", HTTP_POST, []() {
+    String ssid = configServer.arg("ssid");
+    String pass = configServer.arg("pass");
+    String station = configServer.arg("station");
+    String logger = configServer.arg("logger");
+    if (ssid.length() == 0 || station.length() == 0) {
+      configServer.send(400, "text/plain", "SSID and Station URL required.");
+      return;
+    }
+    saveConfig(ssid, pass, station, logger);
+    configServer.send(200, "text/plain", "Saved. Rebooting.");
+    delay(300);
+    ESP.restart();
+  });
+  configServer.begin();
+  drawConfigScreen();
+}
 
 static float readFloat(const JsonVariant &v, float fallback) {
   if (v.is<float>()) return v.as<float>();
@@ -231,7 +312,7 @@ static void applyFrames(JsonArray frames) {
   }
 }
 
-static void parseStatus(const String &json) {
+static void parsePortalState(const String &json) {
   DynamicJsonDocument doc(8192);
   DeserializationError err = deserializeJson(doc, json);
   if (err) return;
@@ -252,73 +333,62 @@ static void parseStatus(const String &json) {
     state.ingestErrRate = 0.0f;
     state.nodesLastAnnounceMs = state.ingestLastOkMs;
   }
-}
+  JsonObject logger = root["logger"];
+  if (!logger.isNull()) {
+    state.loggerOk = logger["ok"] | false;
+    state.loggerStatus = String((const char*)(logger["status"] | ""));
+    state.loggerLastEventMs = logger["last_event_ms"] | 0;
+  }
 
-static void parseTools(const String &json) {
-  DynamicJsonDocument doc(8192);
-  DeserializationError err = deserializeJson(doc, json);
-  if (err) return;
-  JsonObject root = doc.as<JsonObject>();
-  JsonArray tools = root["tools"].as<JsonArray>();
-  if (tools.isNull()) tools = root["items"].as<JsonArray>();
-  if (tools.isNull()) return;
-
-  PortalState &state = core.state();
-  state.buttons.clear();
-  for (JsonVariant v : tools) {
-    ButtonState b;
-    b.id = String((const char*)(v["name"] | ""));
-    b.label = b.id;
-    int dot = b.label.lastIndexOf('.');
-    if (dot >= 0 && dot + 1 < b.label.length()) {
-      b.label = b.label.substring(dot + 1);
+  JsonObject tools = root["tools"];
+  JsonArray toolItems = tools["items"].as<JsonArray>();
+  if (!toolItems.isNull()) {
+    PortalState &s = core.state();
+    s.buttons.clear();
+    for (JsonVariant v : toolItems) {
+      ButtonState b;
+      b.id = String((const char*)(v["name"] | ""));
+      b.label = b.id;
+      int dot = b.label.lastIndexOf('.');
+      if (dot >= 0 && dot + 1 < b.label.length()) {
+        b.label = b.label.substring(dot + 1);
+      }
+      b.kind = String((const char*)(v["kind"] | ""));
+      b.enabled = b.kind == "passive";
+      b.glow = 0.2f;
+      ButtonAction a;
+      a.id = b.id;
+      a.label = b.id;
+      a.cmd = b.id;
+      b.actions.push_back(a);
+      s.buttons.push_back(b);
+      if (s.buttons.size() >= 6) break;
     }
-    b.kind = String((const char*)(v["kind"] | ""));
-    b.enabled = b.kind == "passive";
-    b.glow = 0.2f;
-    ButtonAction a;
-    a.id = b.id;
-    a.label = b.id;
-    a.cmd = b.id;
-    b.actions.push_back(a);
-    state.buttons.push_back(b);
-    if (state.buttons.size() >= 6) break;
+  }
+
+  JsonArray frames = root["frames"].as<JsonArray>();
+  if (!frames.isNull() && frames.size() > 0) {
+    applyFrames(frames);
   }
 }
 
-static void pollStatus() {
+static void pollPortalState() {
   if (sodsBaseUrl.length() == 0) {
-    parseStatus(String(mockStatusJson));
+    parsePortalState(String(mockStatusJson));
     core.state().connOk = false;
     return;
   }
   HTTPClient http;
-  String url = sodsBaseUrl + "/api/status";
+  String url = sodsBaseUrl + "/api/portal/state";
   http.begin(url);
   int code = http.GET();
   if (code >= 200 && code < 300) {
     String body = http.getString();
-    parseStatus(body);
+    parsePortalState(body);
     stationOk = true;
     lastStationOkMs = millis();
   } else {
     stationOk = false;
-  }
-  http.end();
-}
-
-static void pollTools() {
-  if (sodsBaseUrl.length() == 0) {
-    parseTools(String(mockToolsJson));
-    return;
-  }
-  HTTPClient http;
-  String url = sodsBaseUrl + "/api/tools";
-  http.begin(url);
-  int code = http.GET();
-  if (code >= 200 && code < 300) {
-    String body = http.getString();
-    parseTools(body);
   }
   http.end();
 }
@@ -360,14 +430,24 @@ static void ensureWebSocket(unsigned long now) {
 }
 
 static void ensureWiFi() {
+  if (configMode) {
+    configServer.handleClient();
+    return;
+  }
   if (WiFi.isConnected()) {
     wifiOk = true;
     lastWifiOkMs = millis();
     return;
   }
-  if (wifiSsid.length() == 0 || wifiPass.length() == 0) {
+  if (wifiSsid.length() == 0) {
     wifiOk = false;
-    lastWifiErr = "wifi creds missing";
+    lastWifiErr = "wifi ssid missing";
+    startConfigPortal();
+    return;
+  }
+  if (millis() - lastWifiOkMs > 20000 && !WiFi.isConnected()) {
+    lastWifiErr = "wifi timeout";
+    startConfigPortal();
     return;
   }
   WiFi.mode(WIFI_STA);
@@ -379,9 +459,7 @@ void PortalDeviceCYD::setup() {
   Serial.begin(115200);
   delay(200);
 
-  wifiSsid = WIFI_SSID;
-  wifiPass = WIFI_PASS;
-  sodsBaseUrl = SODS_BASE_URL;
+  loadConfig();
 
   tft.init();
   tft.setRotation(PORTAL_ROTATION);
@@ -409,21 +487,21 @@ void PortalDeviceCYD::setup() {
 
 void PortalDeviceCYD::loop() {
   unsigned long now = millis();
+  if (configMode) {
+    configServer.handleClient();
+    drawConfigScreen();
+    delay(20);
+    return;
+  }
   if (now - lastPollMs > pollIntervalMs) {
     lastPollMs = now;
     ensureWiFi();
     if (WiFi.isConnected()) {
-      pollStatus();
+      pollPortalState();
     } else {
       core.state().connErr = lastWifiErr;
     }
     core.updateTrails();
-  }
-  if (now - lastToolsMs > toolsIntervalMs) {
-    lastToolsMs = now;
-    if (WiFi.isConnected()) {
-      pollTools();
-    }
   }
   if (WiFi.isConnected()) {
     ensureWebSocket(now);
