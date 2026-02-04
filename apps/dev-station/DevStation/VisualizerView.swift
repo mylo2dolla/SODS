@@ -1,6 +1,10 @@
 import SwiftUI
 import AppKit
 
+extension Notification.Name {
+    static let sodsReplaySeek = Notification.Name("sods.replay.seek")
+}
+
 struct VisualizerView: View {
     @ObservedObject var store: SODSStore
     let onOpenTools: () -> Void
@@ -13,6 +17,7 @@ struct VisualizerView: View {
     @State private var replayEnabled: Bool = false
     @State private var replayOffset: Double = 0
     @State private var replayAutoPlay: Bool = false
+    @State private var ghostTrails: Bool = true
     @State private var selectedNodeIDs: Set<String> = []
     @State private var selectedKinds: Set<String> = []
     @State private var selectedDeviceIDs: Set<String> = []
@@ -30,7 +35,8 @@ struct VisualizerView: View {
                 maxParticles: Int(maxParticles),
                 intensity: intensityMode,
                 replayEnabled: replayEnabled,
-                replayOffset: replayOffset
+                replayOffset: replayOffset,
+                ghostTrails: ghostTrails
             )
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
@@ -43,6 +49,11 @@ struct VisualizerView: View {
             guard replayEnabled, replayAutoPlay else { return }
             replayOffset += 1
             if replayOffset > 60 { replayOffset = 0 }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .sodsReplaySeek)) { notification in
+            if let value = notification.object as? Double {
+                replayOffset = max(0, min(60, value))
+            }
         }
     }
 
@@ -116,6 +127,8 @@ struct VisualizerView: View {
                         .font(.system(size: 11))
                     sliderRow(title: "Offset", value: $replayOffset, range: 0...60, format: "%.0fs")
                 }
+                Toggle("Ghost trails", isOn: $ghostTrails)
+                    .font(.system(size: 11))
             }
             .padding(6)
         }
@@ -246,6 +259,8 @@ struct VisualizerView: View {
         }
     }
 
+    // persistence handled inside SignalFieldView
+
     private func toggleFilter(id: String, in set: inout Set<String>) {
         if set.contains(id) {
             set.remove(id)
@@ -338,6 +353,7 @@ struct SignalFieldView: View {
     let intensity: SignalIntensity
     let replayEnabled: Bool
     let replayOffset: Double
+    let ghostTrails: Bool
 
     @StateObject private var engine = SignalFieldEngine()
     @State private var mousePoint: CGPoint = .zero
@@ -366,7 +382,8 @@ struct SignalFieldView: View {
                         intensity: intensity,
                         parallax: parallax,
                         selectedID: selectedNode?.id,
-                        focusID: focusedNodeID
+                        focusID: focusedNodeID,
+                        ghostTrails: ghostTrails
                     )
                 }
             }
@@ -410,6 +427,7 @@ struct SignalFieldView: View {
                     pinned: pinnedNodeIDs.contains(node.id),
                     onFocus: {
                         focusedNodeID = (focusedNodeID == node.id) ? nil : node.id
+                        persistState()
                     },
                     onPin: {
                         if pinnedNodeIDs.contains(node.id) {
@@ -417,6 +435,7 @@ struct SignalFieldView: View {
                         } else {
                             pinnedNodeIDs.insert(node.id)
                         }
+                        persistState()
                     },
                     onClose: {
                         selectedNode = nil
@@ -432,14 +451,17 @@ struct SignalFieldView: View {
             if !pinnedNodeIDs.isEmpty {
                 PinnedNodesView(
                     pinned: pinnedNodeIDs.sorted(),
-                    onClear: { pinnedNodeIDs.removeAll() },
-                    onFocus: { id in focusedNodeID = id }
+                    onClear: { pinnedNodeIDs.removeAll(); persistState() },
+                    onFocus: { id in focusedNodeID = id; persistState() }
                 )
             }
 
             LegendOverlayView()
             if replayEnabled {
-                ReplayBarView(progress: replayOffset / 60.0, label: "\(Int(replayOffset))s")
+                ReplayBarView(progress: replayOffset / 60.0, label: "\(Int(replayOffset))s", onSeek: { progress in
+                    let next = progress * 60.0
+                    NotificationCenter.default.post(name: .sodsReplaySeek, object: next)
+                })
             }
         }
         .clipShape(RoundedRectangle(cornerRadius: 12))
@@ -447,6 +469,9 @@ struct SignalFieldView: View {
             RoundedRectangle(cornerRadius: 12)
                 .stroke(Theme.border, lineWidth: 1)
         )
+        .onAppear {
+            loadPersistedState()
+        }
     }
 
     private var hottestLabel: String {
@@ -454,6 +479,22 @@ struct SignalFieldView: View {
             return "idle"
         }
         return hottest.deviceID
+    }
+
+    private func loadPersistedState() {
+        let defaults = UserDefaults.standard
+        if let focused = defaults.string(forKey: "SODSFocusNodeID") {
+            focusedNodeID = focused
+        }
+        if let pinned = defaults.array(forKey: "SODSPinnedNodeIDs") as? [String] {
+            pinnedNodeIDs = Set(pinned)
+        }
+    }
+
+    private func persistState() {
+        let defaults = UserDefaults.standard
+        defaults.set(focusedNodeID, forKey: "SODSFocusNodeID")
+        defaults.set(Array(pinnedNodeIDs), forKey: "SODSPinnedNodeIDs")
     }
 }
 
@@ -562,6 +603,7 @@ struct PinnedNodesView: View {
 struct ReplayBarView: View {
     let progress: Double
     let label: String
+    let onSeek: (Double) -> Void
 
     var body: some View {
         VStack(spacing: 6) {
@@ -575,6 +617,11 @@ struct ReplayBarView: View {
                     Capsule().fill(Theme.panelAlt)
                     Capsule().fill(Color.red.opacity(0.7)).frame(width: filled)
                 }
+                .contentShape(Rectangle())
+                .gesture(DragGesture(minimumDistance: 0).onChanged { value in
+                    let p = max(0, min(1, value.location.x / max(1, width)))
+                    onSeek(p)
+                })
             }
             .frame(height: 6)
         }
@@ -698,7 +745,8 @@ final class SignalFieldEngine: ObservableObject {
         intensity: SignalIntensity,
         parallax: CGPoint,
         selectedID: String?,
-        focusID: String?
+        focusID: String?,
+        ghostTrails: Bool
     ) {
         drawBackground(context: &context, size: size, now: now)
 
@@ -715,6 +763,10 @@ final class SignalFieldEngine: ObservableObject {
 
         drawBins(context: &context, size: size, frames: frames, now: now, focusID: focusID)
         lastProjected = drawSources(context: &context, size: size, parallax: parallax, selectedID: selectedID, focusID: focusID)
+        if ghostTrails {
+            updateGhosts(now: now)
+            drawGhosts(context: &context, size: size, parallax: parallax, focusID: focusID)
+        }
         drawConnections(context: &context, focusID: focusID)
         drawPulses(context: &context, size: size, now: now, parallax: parallax, focusID: focusID)
         drawParticles(context: &context, size: size, now: now, parallax: parallax, focusID: focusID)
@@ -951,6 +1003,33 @@ final class SignalFieldEngine: ObservableObject {
         String(id.split(separator: ":").first ?? Substring(id))
     }
 
+    private func updateGhosts(now: Date) {
+        if now.timeIntervalSince(ghostLastFlush) > 0.12 {
+            ghostLastFlush = now
+            for source in sources.values {
+                ghostAccumulator.append(source.position)
+            }
+            if ghostAccumulator.count > 180 {
+                ghostAccumulator.removeFirst(ghostAccumulator.count - 180)
+            }
+        }
+    }
+
+    private func drawGhosts(context: inout GraphicsContext, size: CGSize, parallax: CGPoint, focusID: String?) {
+        guard !ghostAccumulator.isEmpty else { return }
+        for (idx, pos) in ghostAccumulator.enumerated() {
+            let depth = CGFloat(0.6 + pos.z * 0.7)
+            let basePoint = CGPoint(
+                x: CGFloat(pos.x) * size.width * 0.45 + size.width * 0.5 + parallax.x * depth,
+                y: CGFloat(pos.y) * size.height * 0.45 + size.height * 0.5 + parallax.y * depth
+            )
+            let alpha = Double(idx) / Double(ghostAccumulator.count)
+            let radius = CGFloat(1.2 + alpha * 2.2) * depth
+            context.fill(Path(ellipseIn: CGRect(x: basePoint.x - radius, y: basePoint.y - radius, width: radius * 2, height: radius * 2)),
+                         with: .color(Color.white.opacity(0.04 + alpha * 0.08)))
+        }
+    }
+
     private func drawPulses(context: inout GraphicsContext, size: CGSize, now: Date, parallax: CGPoint, focusID: String?) {
         for pulse in pulses {
             let age = now.timeIntervalSince(pulse.birth)
@@ -967,6 +1046,9 @@ final class SignalFieldEngine: ObservableObject {
             context.stroke(Path(ellipseIn: rect), with: .color(color), lineWidth: CGFloat(1.4 + pulse.strength * 2))
         }
     }
+
+    private var ghostAccumulator: [SIMD3<Double>] = []
+    private var ghostLastFlush: Date = .distantPast
 
     private func seedPulse(id: String, source: SignalSource, event: NormalizedEvent, now: Date) {
         let color = SignalColor.deviceColor(id: id)
