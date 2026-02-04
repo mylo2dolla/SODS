@@ -294,6 +294,7 @@ struct ContentView: View {
                                 status: sodsStore.health,
                                 onFlashEsp32: { openFlashPath("/flash/esp32") },
                                 onFlashEsp32c3: { openFlashPath("/flash/esp32c3") },
+                                onFlashPortalCyd: { openFlashPath("/flash/portal-cyd") },
                                 onOpenWebTools: { openFlashPath("/flash/") }
                             )
                         }
@@ -787,6 +788,7 @@ struct ContentView: View {
                         status: sodsStore.health,
                         onFlashEsp32: { openFlashPath("/flash/esp32") },
                         onFlashEsp32c3: { openFlashPath("/flash/esp32c3") },
+                        onFlashPortalCyd: { openFlashPath("/flash/portal-cyd") },
                         onOpenWebTools: { openFlashPath("/flash/") }
                     )
                 }
@@ -4773,6 +4775,7 @@ struct FlashPopoverView: View {
     let status: APIHealth
     let onFlashEsp32: () -> Void
     let onFlashEsp32c3: () -> Void
+    let onFlashPortalCyd: () -> Void
     let onOpenWebTools: () -> Void
 
     var body: some View {
@@ -4807,6 +4810,10 @@ struct FlashPopoverView: View {
                 Button("ESP32 DevKit") { onFlashEsp32() }
                     .buttonStyle(PrimaryActionButtonStyle())
                 Button("ESP32-C3 DevKit") { onFlashEsp32c3() }
+                    .buttonStyle(PrimaryActionButtonStyle())
+            }
+            HStack(spacing: 10) {
+                Button("Ops Portal CYD") { onFlashPortalCyd() }
                     .buttonStyle(PrimaryActionButtonStyle())
             }
 
