@@ -1,3 +1,4 @@
+// Spectrum Frame Spec: docs/spectrum-frame-spec.md
 export type SignalSource = "ble" | "wifi" | "esp";
 
 export type CanonicalEvent = {
@@ -19,6 +20,9 @@ export type SignalFrame = {
   channel: number;
   frequency: number;
   rssi: number;
+  x?: number;
+  y?: number;
+  z?: number;
   color: { h: number; s: number; l: number };
   glow: number;
   persistence: number;

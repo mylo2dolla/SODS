@@ -72,6 +72,7 @@ export class FrameEngine {
       const confidence = clamp(0.25 + stability * 0.75, 0.1, 1);
       const age = now - state.lastSeen;
       const glow = clamp(0.2 + stability * 0.6 + state.persistence * 0.4, 0.1, 1);
+      const position = framePosition(state, stability);
       const color = {
         h: hashToHue(state.device_id),
         s: stabilityToSaturation(confidence),
@@ -85,6 +86,9 @@ export class FrameEngine {
         channel: state.channel,
         frequency: state.frequency,
         rssi: state.rssi,
+        x: position.x,
+        y: position.y,
+        z: position.z,
         color,
         glow,
         persistence: clamp(state.persistence, 0, 1),
@@ -94,6 +98,21 @@ export class FrameEngine {
     }
     return frames;
   }
+}
+
+function framePosition(state: DeviceState, stability: number) {
+  const hue = hashToHue(state.device_id);
+  const offset = (hue / 360) * Math.PI * 2;
+  const maxChannel = state.source === "ble" ? 39 : state.source === "wifi" ? 165 : 13;
+  const channelNorm = maxChannel > 0 ? clamp(state.channel / maxChannel, 0, 1) : 0.5;
+  const angle = channelNorm * Math.PI * 2 + offset * 0.35;
+  const baseRadius = state.source === "ble" ? 0.28 : state.source === "wifi" ? 0.52 : 0.7;
+  const jitter = (hashToHue(state.device_id + ":r") / 360) * 0.06;
+  const radius = clamp(baseRadius + jitter + state.persistence * 0.08 + stability * 0.06, 0.2, 0.95);
+  const x = 0.5 + Math.cos(angle) * radius;
+  const y = 0.5 + Math.sin(angle) * radius;
+  const z = clamp(0.2 + state.persistence * 0.6 + stability * 0.2, 0.1, 1);
+  return { x, y, z };
 }
 
 function deriveDeviceId(ev: CanonicalEvent): string | null {

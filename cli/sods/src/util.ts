@@ -1,5 +1,3 @@
-import crypto from "node:crypto";
-
 export function nowMs(): number {
   return Date.now();
 }
@@ -32,9 +30,12 @@ export function clamp(value: number, min: number, max: number): number {
 }
 
 export function hashToHue(input: string): number {
-  const hash = crypto.createHash("sha1").update(input).digest();
-  const n = hash.readUInt32BE(0);
-  return n % 360;
+  let hash = 2166136261;
+  for (let i = 0; i < input.length; i += 1) {
+    hash ^= input.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0) % 360;
 }
 
 export function rssiToLightness(rssi: number): number {
