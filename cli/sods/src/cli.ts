@@ -1,10 +1,12 @@
 #!/usr/bin/env node
 import { SODSServer } from "./server.js";
 import { WebSocket } from "ws";
-import { createWriteStream, existsSync } from "node:fs";
+import { createWriteStream, existsSync, readFileSync, writeFileSync, mkdirSync, chmodSync } from "node:fs";
 import { spawn } from "node:child_process";
-import { resolve } from "node:path";
+import { resolve, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { toolRegistryPaths, ToolEntry } from "./tool-registry.js";
+import { presetRegistryPaths } from "./presets.js";
 
 const args = process.argv.slice(2);
 const cmd = args[0] ?? "help";
@@ -39,6 +41,15 @@ Commands:
   wifi-scan [--pattern <regex>]
   tools [--station <url>]
   tool <name> [--station <url>] [--input <json>]
+  tool add --entry <json> --script <path|->
+  tool edit --entry <json> [--script <path|->]
+  tool rm --name <tool_name>
+  presets [--station <url>]
+  preset run <preset_id> [--station <url>]
+  preset add --preset <json>
+  preset edit --preset <json>
+  preset rm --id <preset_id>
+  scratch --runner <shell|python|node> [--input <json>] < script
 
 Defaults:
   --pi-logger http://pi-logger.local:8088
@@ -134,6 +145,20 @@ async function httpJson(path: string) {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
+}
+
+async function httpPost(path: string, payload: any) {
+  const url = `${stationURL()}${path}`;
+  const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`HTTP ${res.status}: ${text}`);
+  }
+  return res.json();
+}
+
+function isStationExplicit() {
+  return args.includes("--station");
 }
 
 async function fetchEvents(nodeId: string, limit: number) {
@@ -285,10 +310,10 @@ async function cmdTail() {
 }
 
 async function cmdTools() {
-  const data = await httpJson("/tools");
-  const items = data.items ?? [];
+  const data = await httpJson("/api/tools");
+  const items = data.tools ?? data.items ?? [];
   for (const tool of items) {
-    console.log(`${tool.name}  scope=${tool.scope}  input=${tool.input}  output=${tool.output}  kind=${tool.kind}`);
+    console.log(`${tool.name}  runner=${tool.runner ?? "builtin"}  kind=${tool.kind ?? ""}`);
   }
 }
 
@@ -298,14 +323,157 @@ async function cmdTool() {
   const inputArg = getArg("--input") ?? "{}";
   let input = {};
   try { input = JSON.parse(inputArg); } catch { console.error("--input must be JSON"); process.exit(1); }
-  const res = await fetch(`${stationURL()}/tools/run`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, input }) });
-  if (!res.ok) {
-    console.error(`HTTP ${res.status}`);
-    console.error(await res.text());
-    process.exit(2);
-  }
-  const json = await res.json();
+  const json = await httpPost("/api/tool/run", { name, input });
   console.log(JSON.stringify(json, null, 2));
+}
+
+async function cmdToolEdit(action: "add" | "update" | "delete") {
+  const entryArg = getArg("--entry");
+  const nameArg = getArg("--name");
+  const scriptPath = getArg("--script");
+  if (action === "delete") {
+    if (!nameArg) return usage(1);
+  } else if (!entryArg) {
+    return usage(1);
+  }
+  const entry = entryArg ? parseJsonMaybe(entryArg) as ToolEntry : { name: nameArg } as ToolEntry;
+  if (entryArg && !entry.name) {
+    console.error("--entry must include name");
+    process.exit(1);
+  }
+  const payload: any = { entry };
+  if (scriptPath) {
+    const content = scriptPath === "-" ? await readStdin() : readFileSync(scriptPath, "utf8");
+    payload.script = content;
+  }
+  if (isStationExplicit()) {
+    const path = action === "delete" ? "/api/tools/user/delete" : action === "add" ? "/api/tools/user/add" : "/api/tools/user/update";
+    await httpPost(path, payload);
+    console.log("ok");
+    return;
+  }
+  writeUserTool(entry, payload.script, action);
+  console.log("ok");
+}
+
+async function cmdPresets() {
+  const data = await httpJson("/api/presets");
+  const items = data.presets ?? [];
+  for (const p of items) {
+    console.log(`${p.id}  kind=${p.kind}`);
+  }
+}
+
+async function cmdPresetRun() {
+  const id = positional(2) ?? positional(1);
+  if (!id) return usage(1);
+  const json = await httpPost("/api/preset/run", { id });
+  console.log(JSON.stringify(json, null, 2));
+}
+
+async function cmdPresetEdit(action: "add" | "update" | "delete") {
+  if (action === "delete") {
+    const id = getArg("--id");
+    if (!id) return usage(1);
+    if (isStationExplicit()) {
+      await httpPost("/api/presets/user/delete", { preset: { id } });
+      console.log("ok");
+      return;
+    }
+    writeUserPreset({ id }, action);
+    console.log("ok");
+    return;
+  }
+  const presetArg = getArg("--preset");
+  if (!presetArg) return usage(1);
+  const preset = parseJsonMaybe(presetArg);
+  if (!preset.id) {
+    console.error("--preset must include id");
+    process.exit(1);
+  }
+  if (isStationExplicit()) {
+    const path = action === "add" ? "/api/presets/user/add" : "/api/presets/user/update";
+    await httpPost(path, { preset });
+    console.log("ok");
+    return;
+  }
+  writeUserPreset(preset, action);
+  console.log("ok");
+}
+
+async function cmdScratch() {
+  const runner = getArg("--runner");
+  if (!runner) return usage(1);
+  const inputArg = getArg("--input") ?? "{}";
+  const input = parseJsonMaybe(inputArg);
+  const script = await readStdin();
+  const json = await httpPost("/api/scratch/run", { runner, script, input });
+  console.log(JSON.stringify(json, null, 2));
+}
+
+async function readStdin(): Promise<string> {
+  const chunks: Buffer[] = [];
+  for await (const chunk of process.stdin) {
+    chunks.push(Buffer.from(chunk));
+  }
+  return Buffer.concat(chunks).toString("utf8");
+}
+
+function readUserRegistry() {
+  const { userPath } = toolRegistryPaths();
+  if (!existsSync(userPath)) return { tools: [] as ToolEntry[] };
+  return JSON.parse(readFileSync(userPath, "utf8"));
+}
+
+function writeUserRegistry(tools: ToolEntry[]) {
+  const { userPath } = toolRegistryPaths();
+  writeFileSync(userPath, JSON.stringify({ version: "1.0", tools }, null, 2));
+}
+
+function writeUserTool(entry: ToolEntry, script: string | undefined, action: "add" | "update" | "delete") {
+  const { repoRoot, userToolsDir } = toolRegistryPaths();
+  mkdirSync(userToolsDir, { recursive: true });
+  const registry = readUserRegistry();
+  if (action === "delete") {
+    registry.tools = registry.tools.filter((t: ToolEntry) => t.name !== entry.name);
+    writeUserRegistry(registry.tools);
+    return;
+  }
+  const ext = entry.runner === "python" ? "py" : entry.runner === "node" ? "mjs" : "sh";
+  const safeName = entry.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+  const scriptRel = `tools/user/${safeName}.${ext}`;
+  if (script) {
+    const scriptAbs = resolve(join(repoRoot, scriptRel));
+    writeFileSync(scriptAbs, script, "utf8");
+    if (entry.runner === "shell") chmodSync(scriptAbs, 0o755);
+  }
+  entry.entry = scriptRel;
+  registry.tools = registry.tools.filter((t: ToolEntry) => t.name !== entry.name);
+  registry.tools.push(entry);
+  writeUserRegistry(registry.tools);
+}
+
+function readUserPresets() {
+  const { userPath } = presetRegistryPaths();
+  if (!existsSync(userPath)) return { presets: [] as any[] };
+  return JSON.parse(readFileSync(userPath, "utf8"));
+}
+
+function writeUserPresets(presets: any[]) {
+  const { userPath } = presetRegistryPaths();
+  writeFileSync(userPath, JSON.stringify({ version: "1.0", presets }, null, 2));
+}
+
+function writeUserPreset(preset: any, action: "add" | "update" | "delete") {
+  const registry = readUserPresets();
+  if (action === "delete") {
+    registry.presets = registry.presets.filter((p: any) => p.id !== preset.id);
+    writeUserPresets(registry.presets);
+    return;
+  }
+  registry.presets = registry.presets.filter((p: any) => p.id !== preset.id);
+  registry.presets.push(preset);
+  writeUserPresets(registry.presets);
 }
 
 async function cmdStream() {
@@ -360,7 +528,33 @@ if (cmd === "start") {
 } else if (cmd === "tools") {
   await cmdTools();
 } else if (cmd === "tool") {
-  await cmdTool();
+  const sub = positional(1);
+  if (sub === "add") {
+    await cmdToolEdit("add");
+  } else if (sub === "edit" || sub === "update") {
+    await cmdToolEdit("update");
+  } else if (sub === "rm" || sub === "delete") {
+    await cmdToolEdit("delete");
+  } else {
+    await cmdTool();
+  }
+} else if (cmd === "presets") {
+  await cmdPresets();
+} else if (cmd === "preset") {
+  const sub = positional(1);
+  if (sub === "run") {
+    await cmdPresetRun();
+  } else if (sub === "add") {
+    await cmdPresetEdit("add");
+  } else if (sub === "edit" || sub === "update") {
+    await cmdPresetEdit("update");
+  } else if (sub === "rm" || sub === "delete") {
+    await cmdPresetEdit("delete");
+  } else {
+    await cmdPresetRun();
+  }
+} else if (cmd === "scratch") {
+  await cmdScratch();
 } else {
   usage(cmd === "help" ? 0 : 1);
 }
