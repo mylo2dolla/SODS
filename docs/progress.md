@@ -29,6 +29,7 @@ Date: 2026-02-04
 - Added alias override editor in Dev Station; overrides persist locally and flow to portal via station.
 - Added an Alias Manager panel for bulk edits (Tools toolbar button).
 - Alias Manager supports delete actions.
+- Alias Manager now supports JSON import/export.
 - Ops Portal visualizer now renders rings, pulses, and legend text for parity.
 - Ops Portal: touch toggles focus mode + replay bar scrub (basic parity).
 - Ops Portal status now shows focused source label and replay state.

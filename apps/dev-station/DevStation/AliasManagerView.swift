@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 
 struct AliasManagerView: View {
     let aliases: [String: String]
@@ -8,6 +9,8 @@ struct AliasManagerView: View {
 
     @State private var searchText = ""
     @State private var editing: [String: String] = [:]
+    @State private var showImport = false
+    @State private var importText = ""
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -15,6 +18,10 @@ struct AliasManagerView: View {
             HStack {
                 TextField("Search", text: $searchText)
                     .textFieldStyle(.roundedBorder)
+                Button("Export") { exportAliases() }
+                    .buttonStyle(SecondaryActionButtonStyle())
+                Button("Import") { showImport = true }
+                    .buttonStyle(SecondaryActionButtonStyle())
                 Button("Close") { onClose() }
                     .buttonStyle(SecondaryActionButtonStyle())
             }
@@ -34,6 +41,30 @@ struct AliasManagerView: View {
         .padding(16)
         .background(Theme.background)
         .frame(minWidth: 500, minHeight: 420)
+        .sheet(isPresented: $showImport) {
+            VStack(alignment: .leading, spacing: 12) {
+                ModalHeaderView(title: "Import Aliases", onBack: nil, onClose: { showImport = false })
+                Text("Paste JSON mapping of id -> alias.")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                TextEditor(text: $importText)
+                    .font(.system(size: 11, design: .monospaced))
+                    .frame(minHeight: 240)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(Theme.border, lineWidth: 1)
+                    )
+                HStack {
+                    Button("Apply") { importAliases() }
+                        .buttonStyle(PrimaryActionButtonStyle())
+                    Button("Cancel") { showImport = false }
+                        .buttonStyle(SecondaryActionButtonStyle())
+                }
+                Spacer()
+            }
+            .padding(16)
+            .frame(minWidth: 520, minHeight: 420)
+        }
     }
 
     private var filteredKeys: [String] {
@@ -45,6 +76,26 @@ struct AliasManagerView: View {
     private func aliasValue(for id: String) -> String {
         if let edit = editing[id] { return edit }
         return aliases[id] ?? ""
+    }
+
+    private func exportAliases() {
+        let payload = ["aliases": aliases]
+        if let data = try? JSONSerialization.data(withJSONObject: payload, options: [.prettyPrinted, .sortedKeys]),
+           let text = String(data: data, encoding: .utf8) {
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(text, forType: .string)
+        }
+    }
+
+    private func importAliases() {
+        guard let data = importText.data(using: .utf8) else { return }
+        if let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+            let map = (obj["aliases"] as? [String: String]) ?? (obj as? [String: String]) ?? [:]
+            for (id, alias) in map {
+                onSave(id, alias)
+            }
+            showImport = false
+        }
     }
 }
 

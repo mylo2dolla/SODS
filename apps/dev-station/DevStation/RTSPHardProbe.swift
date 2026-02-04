@@ -9,6 +9,7 @@ struct RTSPHardProbe {
         let status: String
         let reason: String?
         let ip: String
+        let alias: String?
         let port: Int
         let safeMode: Bool
         let tcpReachable: Bool
@@ -21,6 +22,7 @@ struct RTSPHardProbe {
         let rtspURI = device.onvifRtspURI
         let rtspState = (rtspURI?.isEmpty == false) ? "present" : "missing"
         log.log(.info, "HardProbe click: ip=\(device.ip) safeMode=\(safeMode) rtspURI=\(rtspState) selectedIP=\(selectedIP)")
+        let alias = SODSStore.shared.aliasOverrides[device.ip]
         let iso = LogStore.isoTimestamp()
         let baseDir = LogStore.exportSubdirectory("rtsp-hard-probe", log: log)
         let safeIP = LogStore.sanitizeFilename(device.ip)
@@ -44,6 +46,7 @@ struct RTSPHardProbe {
                 status: "blocked",
                 reason: reason,
                 ip: ip,
+                alias: alias,
                 port: port,
                 safeMode: safeMode,
                 tcpReachable: false,
@@ -99,6 +102,7 @@ struct RTSPHardProbe {
                 status: status,
                 reason: reason,
                 ip: ip,
+                alias: alias,
                 port: port,
                 safeMode: safeMode,
                 tcpReachable: reachable,

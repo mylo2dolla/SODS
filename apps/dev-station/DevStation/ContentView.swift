@@ -905,6 +905,31 @@ struct ContentView: View {
         scanner.updateCredentials(for: device.id, username: credentialUsername, password: credentialPassword)
     }
 
+    private func aliasForDevice(ip: String, host: HostEntry?, device: Device?) -> String? {
+        let overrides = SODSStore.shared.aliasOverrides
+        if let alias = overrides[ip] { return alias }
+        if let mac = host?.macAddress, let alias = overrides[mac] { return alias }
+        if let mac = device?.macAddress, let alias = overrides[mac] { return alias }
+        if let hostname = host?.hostname, !hostname.isEmpty { return hostname }
+        return nil
+    }
+
+    private func buildAliasMap(for snapshot: ExportSnapshot) -> [String: String] {
+        var out: [String: String] = [:]
+        let overrides = SODSStore.shared.aliasOverrides
+        for record in snapshot.records {
+            if let alias = overrides[record.ip] {
+                out[record.ip] = alias
+            } else if let hostname = record.hostname, !hostname.isEmpty {
+                out[record.ip] = hostname
+            }
+        }
+        for (key, value) in overrides where out[key] == nil {
+            out[key] = value
+        }
+        return out
+    }
+
     private func credentialBinding(_ field: String) -> Binding<String> {
         Binding(
             get: {
@@ -1120,14 +1145,17 @@ struct ContentView: View {
             return
         }
         logStore.log(.info, "Generate Device Report: ip=\(ip)")
+        let alias = aliasForDevice(ip: ip, host: host, device: device)
 
         struct DeviceReportRaw: Codable {
             let generatedAt: String
             let hostEvidence: EvidencePayload?
             let device: DevicePayload?
+            let alias: String?
         }
         struct DevicePayload: Codable {
             let ip: String
+            let alias: String?
             let openPorts: [Int]
             let httpTitle: String?
             let macAddress: String?
@@ -1184,6 +1212,7 @@ struct ContentView: View {
         let devicePayload = device.map {
             DevicePayload(
                 ip: $0.ip,
+                alias: alias,
                 openPorts: $0.openPorts,
                 httpTitle: $0.httpTitle,
                 macAddress: $0.macAddress,
@@ -1214,7 +1243,8 @@ struct ContentView: View {
             let raw = DeviceReportRaw(
                 generatedAt: ISO8601DateFormatter().string(from: Date()),
                 hostEvidence: evidencePayload,
-                device: devicePayload
+                device: devicePayload,
+                alias: alias
             )
             let rawData = try encoder.encode(raw)
             _ = LogStore.writeDataReturning(rawData, to: rawURL, log: logStore)
@@ -1230,6 +1260,9 @@ struct ContentView: View {
             let clientSummary = "Device \(ip) is assessed as \(classification.lowercased()) with confidence \(confidence.score)."
 
             var evidenceItems: [DeviceReportReadable.EvidenceItem] = []
+            if let alias, !alias.isEmpty {
+                evidenceItems.append(.init(label: "Alias", rawField: "alias", rawValue: alias, meaning: "User or inferred alias for this device."))
+            }
             if let host {
                 let ports = host.openPorts.sorted().map(String.init).joined(separator: ", ")
                 let portHints = portHintsText(for: host.openPorts).joined(separator: "; ")
@@ -1257,6 +1290,9 @@ struct ContentView: View {
             }
 
             var identityMappings: [DeviceReportReadable.IdentityMapping] = []
+            if let alias, !alias.isEmpty {
+                identityMappings.append(.init(label: "Alias", rawField: "alias", rawValue: alias, friendly: alias))
+            }
             if let host {
                 let hostnameRaw = host.hostname ?? "Unknown"
                 let vendorRaw = bestVendor(for: host.ip)
@@ -1277,6 +1313,7 @@ struct ContentView: View {
 
             let appendix: [String] = [
                 "Raw reference: \(rawFilename)",
+                "Alias: \(alias ?? "Unknown")",
                 "Open ports (raw): \(host?.openPorts.sorted().map(String.init).joined(separator: ", ") ?? "")",
                 "Open ports (friendly): \(portLabelsString(host?.openPorts ?? []))",
                 "SSDP Server (raw): \(host?.ssdpServer ?? "Unknown")",
@@ -1331,11 +1368,13 @@ struct ContentView: View {
         AppTruth.shared.lastExportSnapshot = snapshot
         let bleEvidence = bleScanner.snapshotEvidence()
         let piAuxEvidence = PiAuxStore.shared.events
+        let aliasMap = buildAliasMap(for: snapshot)
         struct ScanReportRaw: Codable {
             let generatedAt: String
             let snapshot: ExportSnapshot
             let bleEvidence: [BLEEvidence]
             let piAuxEvidence: [PiAuxEvent]
+            let aliases: [String: String]
         }
         struct ScanReportReadable: Codable {
             struct Meta: Codable {
@@ -1377,6 +1416,7 @@ struct ContentView: View {
             let topConfidence: [ConfidenceItem]
             let identityMapping: [IdentityMapping]
             let technicalAppendix: [String]
+            let aliases: [String: String]
         }
 
         let iso = LogStore.isoTimestamp()
@@ -1389,7 +1429,8 @@ struct ContentView: View {
                 generatedAt: ISO8601DateFormatter().string(from: Date()),
                 snapshot: snapshot,
                 bleEvidence: bleEvidence,
-                piAuxEvidence: piAuxEvidence
+                piAuxEvidence: piAuxEvidence,
+                aliases: aliasMap
             )
             let rawData = try encoder.encode(raw)
             _ = LogStore.writeDataReturning(rawData, to: rawURL, log: logStore)
@@ -1450,7 +1491,8 @@ struct ContentView: View {
                 evidence: evidenceItems,
                 topConfidence: topConfidence,
                 identityMapping: identityMappings,
-                technicalAppendix: appendix
+                technicalAppendix: appendix,
+                aliases: aliasMap
             )
             let readableData = try encoder.encode(readable)
             let readableFilename = "SODS-ScanReportReadable-\(iso).json"
