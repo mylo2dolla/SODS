@@ -76,28 +76,32 @@ private struct ToolRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Text(tool.name)
+                Text(tool.title ?? tool.name)
                     .font(.system(size: 13, weight: .semibold))
-                Text(tool.scope)
+                Text(tool.scope ?? (tool.tags?.first ?? "tool"))
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
                 Spacer()
-                Text(tool.kind.uppercased())
+                Text((tool.kind ?? "tool").uppercased())
                     .font(.system(size: 10, weight: .bold))
                     .padding(.horizontal, 8)
                     .padding(.vertical, 2)
                     .background(Theme.panelAlt)
                     .clipShape(Capsule())
             }
-            Text(tool.description)
+            Text(tool.description ?? "")
                 .font(.system(size: 12))
                 .foregroundColor(.secondary)
-            Text("Input: \(tool.input)")
-                .font(.system(size: 11))
-                .foregroundColor(.secondary)
-            Text("Output: \(tool.output)")
-                .font(.system(size: 11))
-                .foregroundColor(.secondary)
+            if let input = tool.input {
+                Text("Input: \(input)")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+            }
+            if let output = tool.output?.format {
+                Text("Output: \(output)")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+            }
 
             HStack(spacing: 8) {
                 Button("Run") { onRun() }

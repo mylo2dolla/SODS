@@ -13,6 +13,7 @@ struct ContentView: View {
         case ble = "BLE Discovery"
         case spectral = "Spectrum"
         case nodes = "Nodes"
+        case buttons = "Buttons"
         case cases = "Cases"
         case vault = "Vault"
 
@@ -30,6 +31,7 @@ struct ContentView: View {
     enum APIEndpoint: String, CaseIterable, Identifiable {
         case tools = "/api/tools"
         case status = "/api/status"
+        case presets = "/api/presets"
         case health = "/health"
 
         var id: String { rawValue }
@@ -37,6 +39,7 @@ struct ContentView: View {
             switch self {
             case .tools: return "/api/tools"
             case .status: return "/api/status"
+            case .presets: return "/api/presets"
             case .health: return "/health"
             }
         }
@@ -46,6 +49,7 @@ struct ContentView: View {
         case toolRegistry
         case apiInspector(endpoint: APIEndpoint)
         case toolRunner(tool: ToolDefinition)
+        case presetRunner(preset: PresetDefinition)
         case viewer(url: URL)
 
         var id: String {
@@ -53,6 +57,7 @@ struct ContentView: View {
             case .toolRegistry: return "toolRegistry"
             case .apiInspector(let endpoint): return "apiInspector:\(endpoint.rawValue)"
             case .toolRunner(let tool): return "toolRunner:\(tool.name)"
+            case .presetRunner(let preset): return "presetRunner:\(preset.id)"
             case .viewer(let url): return "viewer:\(url.absoluteString)"
             }
         }
@@ -69,6 +74,7 @@ struct ContentView: View {
     @StateObject private var vaultTransport = VaultTransport.shared
     @StateObject private var flashManager = FlashServerManager()
     @StateObject private var toolRegistry = ToolRegistry.shared
+    @StateObject private var presetRegistry = PresetRegistry.shared
     @AppStorage("consentAcknowledged") private var consentAcknowledged = false
     @AppStorage("bleFindFingerprintID") private var bleFindFingerprintID = ""
 
@@ -140,6 +146,13 @@ struct ContentView: View {
                         onOpenViewer: { url in activeSheet = .viewer(url: url) },
                         onClose: { activeSheet = nil },
                         onBack: { activeSheet = .toolRegistry }
+                    )
+                case .presetRunner(let preset):
+                    PresetRunnerView(
+                        preset: preset,
+                        baseURL: sodsStore.baseURL,
+                        onOpenViewer: { url in activeSheet = .viewer(url: url) },
+                        onClose: { activeSheet = nil }
                     )
                 case .viewer(let url):
                     ViewerSheet(url: url, onClose: { activeSheet = nil })
@@ -398,6 +411,12 @@ struct ContentView: View {
                         logStore.log(.warn, "No readable scan report found in ~/SODS/reports/scan-readable/")
                     }
                 }
+            )
+        } else if viewMode == .buttons {
+            PresetButtonsView(
+                registry: presetRegistry,
+                onRunPreset: { preset in activeSheet = .presetRunner(preset: preset) },
+                onOpenBuilder: { activeSheet = .presetBuilder }
             )
         } else if viewMode == .cases {
             CasesView(

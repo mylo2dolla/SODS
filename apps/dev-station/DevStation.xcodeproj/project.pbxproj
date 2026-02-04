@@ -16,6 +16,9 @@
 		A1A1A1A1A1A1A1A1A1A1A1E5 /* APIInspectorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1E5 /* APIInspectorView.swift */; };
 		A1A1A1A1A1A1A1A1A1A1A1E6 /* ToolRunnerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1E6 /* ToolRunnerView.swift */; };
 		A1A1A1A1A1A1A1A1A1A1A1E7 /* ViewerSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1E7 /* ViewerSheet.swift */; };
+		A1A1A1A1A1A1A1A1A1A1A1F0 /* PresetRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1F0 /* PresetRegistry.swift */; };
+		A1A1A1A1A1A1A1A1A1A1A1F1 /* PresetButtonsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1F1 /* PresetButtonsView.swift */; };
+		A1A1A1A1A1A1A1A1A1A1A1F2 /* PresetRunnerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1F2 /* PresetRunnerView.swift */; };
 		A1A1A1A1A1A1A1A1A1A1A1A3 /* NetworkScanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1B3 /* NetworkScanner.swift */; };
 		A1A1A1A1A1A1A1A1A1A1A1A4 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1B4 /* Models.swift */; };
 		A1A1A1A1A1A1A1A1A1A1A1A5 /* AsyncSemaphore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1B6 /* AsyncSemaphore.swift */; };
@@ -66,6 +69,9 @@
 		B1B1B1B1B1B1B1B1B1B1B1E5 /* APIInspectorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIInspectorView.swift; sourceTree = "<group>"; };
 		B1B1B1B1B1B1B1B1B1B1B1E6 /* ToolRunnerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolRunnerView.swift; sourceTree = "<group>"; };
 		B1B1B1B1B1B1B1B1B1B1B1E7 /* ViewerSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewerSheet.swift; sourceTree = "<group>"; };
+		B1B1B1B1B1B1B1B1B1B1B1F0 /* PresetRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PresetRegistry.swift; sourceTree = "<group>"; };
+		B1B1B1B1B1B1B1B1B1B1B1F1 /* PresetButtonsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PresetButtonsView.swift; sourceTree = "<group>"; };
+		B1B1B1B1B1B1B1B1B1B1B1F2 /* PresetRunnerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PresetRunnerView.swift; sourceTree = "<group>"; };
 		B1B1B1B1B1B1B1B1B1B1B1B3 /* NetworkScanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkScanner.swift; sourceTree = "<group>"; };
 		B1B1B1B1B1B1B1B1B1B1B1B4 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
 		B1B1B1B1B1B1B1B1B1B1B1B5 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -137,6 +143,9 @@
 				B1B1B1B1B1B1B1B1B1B1B1E5 /* APIInspectorView.swift */,
 				B1B1B1B1B1B1B1B1B1B1B1E6 /* ToolRunnerView.swift */,
 				B1B1B1B1B1B1B1B1B1B1B1E7 /* ViewerSheet.swift */,
+				B1B1B1B1B1B1B1B1B1B1B1F0 /* PresetRegistry.swift */,
+				B1B1B1B1B1B1B1B1B1B1B1F1 /* PresetButtonsView.swift */,
+				B1B1B1B1B1B1B1B1B1B1B1F2 /* PresetRunnerView.swift */,
 				B1B1B1B1B1B1B1B1B1B1B1B3 /* NetworkScanner.swift */,
 				B1B1B1B1B1B1B1B1B1B1B1B4 /* Models.swift */,
 				B1B1B1B1B1B1B1B1B1B1B1B6 /* AsyncSemaphore.swift */,
@@ -264,6 +273,9 @@
 				A1A1A1A1A1A1A1A1A1A1A1E5 /* APIInspectorView.swift in Sources */,
 				A1A1A1A1A1A1A1A1A1A1A1E6 /* ToolRunnerView.swift in Sources */,
 				A1A1A1A1A1A1A1A1A1A1A1E7 /* ViewerSheet.swift in Sources */,
+				A1A1A1A1A1A1A1A1A1A1A1F0 /* PresetRegistry.swift in Sources */,
+				A1A1A1A1A1A1A1A1A1A1A1F1 /* PresetButtonsView.swift in Sources */,
+				A1A1A1A1A1A1A1A1A1A1A1F2 /* PresetRunnerView.swift in Sources */,
 				A1A1A1A1A1A1A1A1A1A1A1A3 /* NetworkScanner.swift in Sources */,
 				A1A1A1A1A1A1A1A1A1A1A1A4 /* Models.swift in Sources */,
 				A1A1A1A1A1A1A1A1A1A1A1A5 /* AsyncSemaphore.swift in Sources */,

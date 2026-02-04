@@ -154,9 +154,12 @@ struct ToolRunnerView: View {
     }
 
     private func tryOpenViewer(from data: Data) {
-        guard let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let dataObj = obj["data"] as? [String: Any] else { return }
-        if let urlString = dataObj["url"] as? String, let url = URL(string: urlString) {
+        guard let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return }
+        if let urls = obj["urls"] as? [String], let first = urls.first, let url = URL(string: first) {
+            onOpenViewer(url)
+            return
+        }
+        if let result = obj["result_json"] as? [String: Any], let urlString = result["url"] as? String, let url = URL(string: urlString) {
             onOpenViewer(url)
         }
     }
