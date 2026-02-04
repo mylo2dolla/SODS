@@ -6,14 +6,17 @@ final class SODSStore: ObservableObject {
     static let shared = SODSStore()
 
     @Published private(set) var events: [NormalizedEvent] = []
+    @Published private(set) var frames: [SignalFrame] = []
     @Published private(set) var nodes: [SignalNode] = []
     @Published private(set) var health: APIHealth = .offline
     @Published private(set) var lastError: String?
     @Published private(set) var lastPoll: Date?
+    @Published private(set) var lastFramesAt: Date?
     @Published var baseURL: String
 
     private let baseURLKey = "SODSBaseURL"
     private var wsTask: URLSessionWebSocketTask?
+    private var wsFramesTask: URLSessionWebSocketTask?
     private var pollTimer: Timer?
     private var maxEvents = 1200
 
@@ -39,10 +42,14 @@ final class SODSStore: ObservableObject {
     func connect() {
         wsTask?.cancel()
         wsTask = nil
+        wsFramesTask?.cancel()
+        wsFramesTask = nil
         pollTimer?.invalidate()
         pollTimer = nil
         events.removeAll()
+        frames.removeAll()
         connectWebSocket()
+        connectFramesWebSocket()
         schedulePoll()
     }
 
@@ -63,6 +70,16 @@ final class SODSStore: ObservableObject {
         receiveLoop()
     }
 
+    private func connectFramesWebSocket() {
+        guard let url = makeURL(path: "/ws/frames") else { return }
+        let wsURL = url.absoluteString.replacingOccurrences(of: "http", with: "ws")
+        guard let finalURL = URL(string: wsURL) else { return }
+        let task = URLSession.shared.webSocketTask(with: finalURL)
+        wsFramesTask = task
+        task.resume()
+        receiveFramesLoop()
+    }
+
     private func receiveLoop() {
         wsTask?.receive { [weak self] result in
             guard let self else { return }
@@ -77,6 +94,19 @@ final class SODSStore: ObservableObject {
         }
     }
 
+    private func receiveFramesLoop() {
+        wsFramesTask?.receive { [weak self] result in
+            guard let self else { return }
+            switch result {
+            case .failure:
+                break
+            case .success(let message):
+                self.handleFrames(message: message)
+            }
+            self.receiveFramesLoop()
+        }
+    }
+
     private func handle(message: URLSessionWebSocketTask.Message) {
         switch message {
         case .string(let text):
@@ -85,6 +115,19 @@ final class SODSStore: ObservableObject {
             }
         case .data(let data):
             decodeEvent(data)
+        @unknown default:
+            break
+        }
+    }
+
+    private func handleFrames(message: URLSessionWebSocketTask.Message) {
+        switch message {
+        case .string(let text):
+            if let data = text.data(using: .utf8) {
+                decodeFrames(data)
+            }
+        case .data(let data):
+            decodeFrames(data)
         @unknown default:
             break
         }
@@ -103,6 +146,17 @@ final class SODSStore: ObservableObject {
             lastPoll = Date()
         } catch {
             lastError = error.localizedDescription
+        }
+    }
+
+    private func decodeFrames(_ data: Data) {
+        do {
+            let decoder = JSONDecoder()
+            let payload = try decoder.decode(SignalFrameEnvelope.self, from: data)
+            frames = payload.frames
+            lastFramesAt = Date()
+        } catch {
+            // ignore frame decode errors
         }
     }
 
@@ -241,6 +295,38 @@ struct CanonicalEvent: Decodable, Hashable {
         case summary
         case data
     }
+}
+
+struct SignalFrameEnvelope: Decodable {
+    let t: Int
+    let frames: [SignalFrame]
+}
+
+struct SignalFrame: Decodable, Hashable {
+    let t: Int
+    let source: String
+    let nodeID: String
+    let deviceID: String
+    let channel: Int
+    let frequency: Int
+    let rssi: Double
+    let color: FrameColor
+    let glow: Double?
+    let persistence: Double
+    let velocity: Double?
+    let confidence: Double
+
+    enum CodingKeys: String, CodingKey {
+        case t, source, channel, frequency, rssi, color, glow, persistence, velocity, confidence
+        case nodeID = "node_id"
+        case deviceID = "device_id"
+    }
+}
+
+struct FrameColor: Decodable, Hashable {
+    let h: Double
+    let s: Double
+    let l: Double
 }
 
 struct NormalizedEvent: Identifiable, Hashable {

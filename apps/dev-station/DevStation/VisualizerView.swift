@@ -19,6 +19,7 @@ struct VisualizerView: View {
                 .frame(minWidth: 320, maxWidth: 360)
             SignalFieldView(
                 events: filteredEvents,
+                frames: store.frames,
                 paused: paused,
                 decayRate: decayRate,
                 timeScale: timeScale,
@@ -311,6 +312,7 @@ struct FilterRow: View {
 
 struct SignalFieldView: View {
     let events: [NormalizedEvent]
+    let frames: [SignalFrame]
     let paused: Bool
     let decayRate: Double
     let timeScale: Double
@@ -331,6 +333,7 @@ struct SignalFieldView: View {
                         size: size,
                         now: timeline.date,
                         events: events,
+                        frames: frames,
                         paused: paused,
                         decayRate: decayRate,
                         timeScale: timeScale,
@@ -364,6 +367,7 @@ final class SignalFieldEngine: ObservableObject {
         size: CGSize,
         now: Date,
         events: [NormalizedEvent],
+        frames: [SignalFrame],
         paused: Bool,
         decayRate: Double,
         timeScale: Double,
@@ -374,7 +378,11 @@ final class SignalFieldEngine: ObservableObject {
         drawBackground(context: &context, size: size, now: now)
 
         if !paused {
-            ingest(events: events, intensity: intensity, now: now)
+            if !frames.isEmpty {
+                ingest(frames: frames, now: now)
+            } else {
+                ingest(events: events, intensity: intensity, now: now)
+            }
             step(now: now, timeScale: timeScale, decayRate: decayRate)
         } else {
             lastUpdate = now
@@ -398,6 +406,33 @@ final class SignalFieldEngine: ObservableObject {
         }
         if processedIDs.count > 4000 {
             processedIDs.removeAll(keepingCapacity: true)
+        }
+    }
+
+    private func ingest(frames: [SignalFrame], now: Date) {
+        particles.removeAll(keepingCapacity: true)
+        for frame in frames {
+            let key = frame.deviceID
+            let source = sources[key] ?? SignalSource(id: key)
+            sources[key] = source
+            let style = SignalFrameStyle.from(frame: frame)
+            particles.append(
+                SignalParticle(
+                    id: UUID(),
+                    kind: .spark,
+                    position: source.position,
+                    velocity: SIMD3<Double>(0, 0, 0),
+                    birth: now,
+                    lifespan: 1.2,
+                    baseSize: 10 + style.glow * 12,
+                    color: style.color,
+                    strength: max(0.2, style.confidence * 1.4),
+                    glow: style.glow,
+                    ringRadius: 0,
+                    ringWidth: 1.6,
+                    trail: []
+                )
+            )
         }
     }
 
@@ -765,6 +800,25 @@ struct SignalVisualStyle: Hashable {
         glow = clamp(glow)
 
         return SignalVisualStyle(hue: hue, saturation: saturation, brightness: brightness, glow: glow, confidence: confidence)
+    }
+
+    private static func clamp(_ value: Double, min: Double = 0.0, max: Double = 1.0) -> Double {
+        return Swift.max(min, Swift.min(max, value))
+    }
+}
+
+struct SignalFrameStyle: Hashable {
+    let color: NSColor
+    let glow: Double
+    let confidence: Double
+
+    static func from(frame: SignalFrame) -> SignalFrameStyle {
+        let hue = frame.color.h / 360.0
+        let saturation = clamp(frame.color.s)
+        let brightness = clamp(frame.color.l)
+        let color = NSColor(calibratedHue: hue, saturation: saturation, brightness: brightness, alpha: 1.0)
+        let glow = clamp(frame.glow ?? (0.2 + frame.confidence * 0.6))
+        return SignalFrameStyle(color: color, glow: glow, confidence: clamp(frame.confidence))
     }
 
     private static func clamp(_ value: Double, min: Double = 0.0, max: Double = 1.0) -> Double {
