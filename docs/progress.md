@@ -22,6 +22,7 @@ Date: 2026-02-04
 - Added replay scrub (last 60s window), connection lines, and legend overlay for signal families.
 - Added replay autoplay + replay progress bar; pinned list now supports focus shortcuts.
 - Ghost trails + scrub bar seek make the spectrum replay feel alive and controllable.
+- Replay speed control added; ghost trails now decay by real time age.
 
 ## Current Architecture (Locked)
 

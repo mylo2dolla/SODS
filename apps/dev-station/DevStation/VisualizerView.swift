@@ -17,6 +17,7 @@ struct VisualizerView: View {
     @State private var replayEnabled: Bool = false
     @State private var replayOffset: Double = 0
     @State private var replayAutoPlay: Bool = false
+    @State private var replaySpeed: Double = 1.0
     @State private var ghostTrails: Bool = true
     @State private var selectedNodeIDs: Set<String> = []
     @State private var selectedKinds: Set<String> = []
@@ -47,7 +48,7 @@ struct VisualizerView: View {
         }
         .onReceive(Timer.publish(every: 0.5, on: .main, in: .common).autoconnect()) { _ in
             guard replayEnabled, replayAutoPlay else { return }
-            replayOffset += 1
+            replayOffset += replaySpeed
             if replayOffset > 60 { replayOffset = 0 }
         }
         .onReceive(NotificationCenter.default.publisher(for: .sodsReplaySeek)) { notification in
@@ -126,6 +127,7 @@ struct VisualizerView: View {
                     Toggle("Auto Play", isOn: $replayAutoPlay)
                         .font(.system(size: 11))
                     sliderRow(title: "Offset", value: $replayOffset, range: 0...60, format: "%.0fs")
+                    sliderRow(title: "Speed", value: $replaySpeed, range: 0.25...4.0, format: "%.2fx")
                 }
                 Toggle("Ghost trails", isOn: $ghostTrails)
                     .font(.system(size: 11))
@@ -732,6 +734,11 @@ final class SignalFieldEngine: ObservableObject {
         let strength: Double
     }
 
+    struct GhostPoint: Hashable {
+        let position: SIMD3<Double>
+        let ts: Date
+    }
+
     func render(
         context: inout GraphicsContext,
         size: CGSize,
@@ -1007,7 +1014,7 @@ final class SignalFieldEngine: ObservableObject {
         if now.timeIntervalSince(ghostLastFlush) > 0.12 {
             ghostLastFlush = now
             for source in sources.values {
-                ghostAccumulator.append(source.position)
+                ghostAccumulator.append(GhostPoint(position: source.position, ts: now))
             }
             if ghostAccumulator.count > 180 {
                 ghostAccumulator.removeFirst(ghostAccumulator.count - 180)
@@ -1017,16 +1024,18 @@ final class SignalFieldEngine: ObservableObject {
 
     private func drawGhosts(context: inout GraphicsContext, size: CGSize, parallax: CGPoint, focusID: String?) {
         guard !ghostAccumulator.isEmpty else { return }
-        for (idx, pos) in ghostAccumulator.enumerated() {
-            let depth = CGFloat(0.6 + pos.z * 0.7)
+        let now = Date()
+        for ghost in ghostAccumulator {
+            let ageSeconds = max(0.0, now.timeIntervalSince(ghost.ts))
+            let alpha = max(0.02, 0.18 * exp(-ageSeconds / 4.5))
+            let depth = CGFloat(0.6 + ghost.position.z * 0.7)
             let basePoint = CGPoint(
-                x: CGFloat(pos.x) * size.width * 0.45 + size.width * 0.5 + parallax.x * depth,
-                y: CGFloat(pos.y) * size.height * 0.45 + size.height * 0.5 + parallax.y * depth
+                x: CGFloat(ghost.position.x) * size.width * 0.45 + size.width * 0.5 + parallax.x * depth,
+                y: CGFloat(ghost.position.y) * size.height * 0.45 + size.height * 0.5 + parallax.y * depth
             )
-            let alpha = Double(idx) / Double(ghostAccumulator.count)
-            let radius = CGFloat(1.2 + alpha * 2.2) * depth
+            let radius = CGFloat(1.0 + alpha * 10.0) * depth
             context.fill(Path(ellipseIn: CGRect(x: basePoint.x - radius, y: basePoint.y - radius, width: radius * 2, height: radius * 2)),
-                         with: .color(Color.white.opacity(0.04 + alpha * 0.08)))
+                         with: .color(Color.white.opacity(alpha)))
         }
     }
 
@@ -1047,7 +1056,7 @@ final class SignalFieldEngine: ObservableObject {
         }
     }
 
-    private var ghostAccumulator: [SIMD3<Double>] = []
+    private var ghostAccumulator: [GhostPoint] = []
     private var ghostLastFlush: Date = .distantPast
 
     private func seedPulse(id: String, source: SignalSource, event: NormalizedEvent, now: Date) {
