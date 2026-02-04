@@ -901,7 +901,7 @@ static void handleWifiEvent(WiFiEvent_t event, WiFiEventInfo_t info) {
 
 static void startCaptivePortal() {
   WiFi.mode(WIFI_AP);
-  String apName = "StrangeLab-Setup-" + String((uint32_t)ESP.getEfuseMac(), HEX);
+  String apName = "SODS-Node-Setup-" + String((uint32_t)ESP.getEfuseMac(), HEX);
   WiFi.softAP(apName.c_str());
   server.on("/", HTTP_GET, handlePortalRoot);
   server.on("/save", HTTP_POST, handlePortalSave);

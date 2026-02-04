@@ -1,5 +1,5 @@
 {
-  "name": "StrangeLab Node Agent (ESP32)",
+  "name": "SODS Node Agent (ESP32)",
   "version": "0.1.0",
   "chipFamily": "ESP32",
   "new_install_prompt_erase": true,

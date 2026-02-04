@@ -16,7 +16,7 @@ cp -f "$BUILD_DIR/firmware.bin" "$STAGE_DIR/firmware.bin"
 
 cat >"$MANIFEST" <<EOF_MANIFEST
 {
-  "name": "StrangeLab Node Agent (ESP32-C3)",
+  "name": "SODS Node Agent (ESP32-C3)",
   "version": "0.1.0",
   "chipFamily": "ESP32-C3",
   "new_install_prompt_erase": true,
