@@ -159,6 +159,8 @@ void PortalCore::drawStatusLeft() {
   tft->setCursor(10, 94);
   tft->print("ingest err:");
   tft->print(stateValue.ingestErrRate, 1);
+  tft->setCursor(10, 108);
+  tft->print("legend: BLE/WiFi/Node");
 }
 
 void PortalCore::drawButtonsRight() {
@@ -191,6 +193,13 @@ void PortalCore::drawButtonsRight() {
 
 void PortalCore::drawVisualizer(int x, int y, int w, int h) {
   if (!tft) return;
+  int cx = x + w / 2;
+  int cy = y + h / 2;
+  int ringMax = min(w, h) / 2;
+  for (int r = 1; r <= 3; r++) {
+    int rr = ringMax * r / 4;
+    tft->drawCircle(cx, cy, rr, tft->color565(40, 20, 20));
+  }
   tft->drawRect(x - 2, y - 2, w + 4, h + 4, tft->color565(120, 40, 40));
   if (stateValue.bins.empty()) {
     tft->setTextColor(TFT_WHITE, TFT_BLACK);
@@ -205,6 +214,12 @@ void PortalCore::drawVisualizer(int x, int y, int w, int h) {
     int py = y + (int)(bin.y * (h - 6)) + 3;
     uint16_t color = hslTo565(bin.hue, bin.sat, bin.light);
     float glowStrength = bin.glow;
+    unsigned long nowMs = millis();
+    float delta = bin.level - lastLevels[i];
+    lastLevels[i] = bin.level;
+    if (delta > 0.25f) {
+      lastPulseMs[i] = nowMs;
+    }
     trails[i].push_back({px, py, 0});
     if (trails[i].size() > 12) trails[i].erase(trails[i].begin());
     if (glowStrength > 0.05f) {
@@ -216,6 +231,11 @@ void PortalCore::drawVisualizer(int x, int y, int w, int h) {
       float fade = 1.0f - (float)t / trails[i].size();
       uint16_t c = dimColor(color, 0.2f + fade * 0.8f);
       tft->fillCircle(trails[i][t].x, trails[i][t].y, (int)(2 + bin.level * 4 * fade), c);
+    }
+    if (lastPulseMs[i] > 0 && nowMs - lastPulseMs[i] < 600) {
+      int pr = 10 + (int)((nowMs - lastPulseMs[i]) / 30);
+      uint16_t pc = dimColor(color, 0.6f);
+      tft->drawCircle(px, py, pr, pc);
     }
   }
 }

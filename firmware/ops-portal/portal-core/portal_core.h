@@ -113,6 +113,8 @@ private:
   PopupState popup;
 
   std::vector<TrailPoint> trails[16];
+  float lastLevels[16] = {0};
+  unsigned long lastPulseMs[16] = {0};
 
   void drawBackground();
   void drawStatusLeft();
