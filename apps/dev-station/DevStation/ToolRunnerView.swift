@@ -108,7 +108,7 @@ struct ToolRunnerView: View {
         lastError = nil
         outputText = ""
         let payload = buildInputPayload()
-        guard let url = URL(string: baseURL.trimmingCharacters(in: .whitespacesAndNewlines) + "/tools/run") else {
+        guard let url = URL(string: baseURL.trimmingCharacters(in: .whitespacesAndNewlines) + "/api/tool/run") else {
             lastError = "Invalid station URL"
             isRunning = false
             return
