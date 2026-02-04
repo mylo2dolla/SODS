@@ -324,12 +324,14 @@ static void handleTouch() {
 static void applyFrames(JsonArray frames) {
   PortalState &state = core.state();
   std::vector<VizBin> nextBins;
+  String firstId = "";
   for (JsonVariant fv : frames) {
     VizBin bin;
     String id = String((const char*)(fv["device_id"] | fv["node_id"] | fv["id"] | "frame"));
     if (focusMode && focusId.length() && id != focusId) {
       continue;
     }
+    if (firstId.length() == 0) firstId = id;
     bin.id = id;
     bin.x = readFloat(fv["x"], 0.1f + hash01(id, 0.2f) * 0.8f);
     bin.y = readFloat(fv["y"], 0.1f + hash01(id, 0.6f) * 0.8f);
@@ -359,7 +361,13 @@ static void applyFrames(JsonArray frames) {
   }
   if (focusMode) {
     if (focusId.length()) {
-      core.setFocusLabel("focus:" + focusId);
+      String shortId = focusId;
+      int lastColon = shortId.lastIndexOf(':');
+      if (lastColon >= 0 && lastColon + 1 < shortId.length()) {
+        shortId = shortId.substring(lastColon + 1);
+      }
+      if (shortId.length() > 6) shortId = shortId.substring(shortId.length() - 6);
+      core.setFocusLabel("focus:" + shortId);
     } else {
       core.setFocusLabel("focus");
     }

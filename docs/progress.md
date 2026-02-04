@@ -27,6 +27,7 @@ Date: 2026-02-04
 - Ops Portal visualizer now renders rings, pulses, and legend text for parity.
 - Ops Portal: touch toggles focus mode + replay bar scrub (basic parity).
 - Ops Portal status now shows focused source label and replay state.
+- Focus label shortened to friendly suffix (last segment or last 6 chars).
 
 ## Current Architecture (Locked)
 
