@@ -11,6 +11,7 @@
 		A1A1A1A1A1A1A1A1A1A1A1E0 /* ToolRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1E0 /* ToolRegistry.swift */; };
 		A1A1A1A1A1A1A1A1A1A1A1E1 /* ToolRegistryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1E1 /* ToolRegistryView.swift */; };
 		A1A1A1A1A1A1A1A1A1A1A1E2 /* StationProcessManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1E2 /* StationProcessManager.swift */; };
+		A1A1A1A1A1A1A1A1A1A1A1E3 /* PiLoggerStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1E3 /* PiLoggerStore.swift */; };
 		A1A1A1A1A1A1A1A1A1A1A1A3 /* NetworkScanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1B3 /* NetworkScanner.swift */; };
 		A1A1A1A1A1A1A1A1A1A1A1A4 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1B4 /* Models.swift */; };
 		A1A1A1A1A1A1A1A1A1A1A1A5 /* AsyncSemaphore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1B6 /* AsyncSemaphore.swift */; };
@@ -56,6 +57,7 @@
 		B1B1B1B1B1B1B1B1B1B1B1E0 /* ToolRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolRegistry.swift; sourceTree = "<group>"; };
 		B1B1B1B1B1B1B1B1B1B1B1E1 /* ToolRegistryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolRegistryView.swift; sourceTree = "<group>"; };
 		B1B1B1B1B1B1B1B1B1B1B1E2 /* StationProcessManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StationProcessManager.swift; sourceTree = "<group>"; };
+		B1B1B1B1B1B1B1B1B1B1B1E3 /* PiLoggerStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PiLoggerStore.swift; sourceTree = "<group>"; };
 		B1B1B1B1B1B1B1B1B1B1B1B3 /* NetworkScanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkScanner.swift; sourceTree = "<group>"; };
 		B1B1B1B1B1B1B1B1B1B1B1B4 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
 		B1B1B1B1B1B1B1B1B1B1B1B5 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -122,6 +124,7 @@
 				B1B1B1B1B1B1B1B1B1B1B1E0 /* ToolRegistry.swift */,
 				B1B1B1B1B1B1B1B1B1B1B1E1 /* ToolRegistryView.swift */,
 				B1B1B1B1B1B1B1B1B1B1B1E2 /* StationProcessManager.swift */,
+				B1B1B1B1B1B1B1B1B1B1B1E3 /* PiLoggerStore.swift */,
 				B1B1B1B1B1B1B1B1B1B1B1B3 /* NetworkScanner.swift */,
 				B1B1B1B1B1B1B1B1B1B1B1B4 /* Models.swift */,
 				B1B1B1B1B1B1B1B1B1B1B1B6 /* AsyncSemaphore.swift */,
@@ -244,6 +247,7 @@
 				A1A1A1A1A1A1A1A1A1A1A1E0 /* ToolRegistry.swift in Sources */,
 				A1A1A1A1A1A1A1A1A1A1A1E1 /* ToolRegistryView.swift in Sources */,
 				A1A1A1A1A1A1A1A1A1A1A1E2 /* StationProcessManager.swift in Sources */,
+				A1A1A1A1A1A1A1A1A1A1A1E3 /* PiLoggerStore.swift in Sources */,
 				A1A1A1A1A1A1A1A1A1A1A1A3 /* NetworkScanner.swift in Sources */,
 				A1A1A1A1A1A1A1A1A1A1A1A4 /* Models.swift in Sources */,
 				A1A1A1A1A1A1A1A1A1A1A1A5 /* AsyncSemaphore.swift in Sources */,
@@ -285,6 +289,7 @@
 		F1F1F1F1F1F1F1F1F1F1F1F3 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
 				CODE_SIGNING_ALLOWED = NO;
 				CODE_SIGNING_REQUIRED = NO;
 				DEVELOPMENT_TEAM = "";
@@ -301,6 +306,7 @@
 		F1F1F1F1F1F1F1F1F1F1F1F4 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
 				CODE_SIGNING_ALLOWED = NO;
 				CODE_SIGNING_REQUIRED = NO;
 				DEVELOPMENT_TEAM = "";
@@ -316,6 +322,7 @@
 		F1F1F1F1F1F1F1F1F1F1F1F5 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGNING_ALLOWED = NO;
 				CODE_SIGNING_REQUIRED = NO;
@@ -337,6 +344,7 @@
 		F1F1F1F1F1F1F1F1F1F1F1F6 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGNING_ALLOWED = NO;
 				CODE_SIGNING_REQUIRED = NO;

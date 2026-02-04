@@ -4691,6 +4691,7 @@ struct FlashPrepStatus: Equatable {
     let buildCommand: String
 }
 
+@MainActor
 final class FlashServerManager: ObservableObject {
     enum State: Equatable {
         case idle

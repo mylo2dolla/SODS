@@ -63,7 +63,7 @@ private struct ToolRow: View {
                     .font(.system(size: 10, weight: .bold))
                     .padding(.horizontal, 8)
                     .padding(.vertical, 2)
-                    .background(Theme.surface)
+                    .background(Theme.panelAlt)
                     .clipShape(Capsule())
             }
             Text(tool.description)
@@ -77,7 +77,7 @@ private struct ToolRow: View {
                 .foregroundColor(.secondary)
         }
         .padding(10)
-        .background(Theme.surface)
+        .background(Theme.panelAlt)
         .clipShape(RoundedRectangle(cornerRadius: 10))
         .overlay(
             RoundedRectangle(cornerRadius: 10)

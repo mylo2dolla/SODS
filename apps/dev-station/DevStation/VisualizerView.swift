@@ -389,7 +389,7 @@ final class SignalFieldEngine: ObservableObject {
         }
 
         drawSources(context: &context, size: size, parallax: parallax)
-        drawParticles(context: &context, size: size, parallax: parallax)
+        drawParticles(context: &context, size: size, now: now, parallax: parallax)
 
         if particles.count > maxParticles {
             particles.removeFirst(particles.count - maxParticles)
@@ -491,7 +491,7 @@ final class SignalFieldEngine: ObservableObject {
         }
     }
 
-    private func drawParticles(context: inout GraphicsContext, size: CGSize, parallax: CGPoint) {
+    private func drawParticles(context: inout GraphicsContext, size: CGSize, now: Date, parallax: CGPoint) {
         for particle in particles {
             particle.draw(context: &context, size: size, now: now, parallax: parallax)
         }
