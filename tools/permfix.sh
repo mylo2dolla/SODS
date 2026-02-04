@@ -19,6 +19,9 @@ targets=(
   "$TOOLS_DIR/permfix.sh"
   "$TOOLS_DIR/wifi-scan.sh"
   "$TOOLS_DIR/dev.sh"
+  "$TOOLS_DIR/devstation-build.sh"
+  "$TOOLS_DIR/devstation-run.sh"
+  "$TOOLS_DIR/devstation-install.sh"
   "$TOOLS_DIR/verify.sh"
 )
 
