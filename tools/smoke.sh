@@ -25,9 +25,13 @@ curl -fsS "http://localhost:${PORT}/api/tools" | head -n 5
 echo "Checking /api/flash"
 curl -fsS "http://localhost:${PORT}/api/flash"
 
-echo "Audit: internal URLs should not use NSWorkspace.open"
-if rg -n "NSWorkspace\\.shared\\.open\\(.*http" "$REPO_ROOT/apps/dev-station/DevStation" >/dev/null; then
-  echo "Found external http opens in Dev Station Swift files."
-  rg -n "NSWorkspace\\.shared\\.open\\(.*http" "$REPO_ROOT/apps/dev-station/DevStation"
-  exit 2
+echo "Audit: internal URLs should not use NSWorkspace.open (flash is allowed)"
+HTTP_OPENS="$(rg -n "NSWorkspace\\.shared\\.open\\(.*http" "$REPO_ROOT/apps/dev-station/DevStation" || true)"
+if [[ -n "$HTTP_OPENS" ]]; then
+  DISALLOWED="$(echo "$HTTP_OPENS" | rg -v "/flash/")"
+  if [[ -n "$DISALLOWED" ]]; then
+    echo "Found external http opens outside /flash/ in Dev Station Swift files."
+    echo "$DISALLOWED"
+    exit 2
+  fi
 fi
