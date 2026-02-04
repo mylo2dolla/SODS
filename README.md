@@ -33,8 +33,8 @@ Open spectrum:
 ```
 
 **Dev Station (macOS app)**
-1. Open `apps/dev-station/CamUtil.xcodeproj` in Xcode.
-2. Select the `CamUtil` scheme.
+1. Open `apps/dev-station/DevStation.xcodeproj` in Xcode.
+2. Select the `DevStation` scheme.
 3. Build + run (app display name: Strange Ops Dev Station).
 
 **Ops Portal (CYD)**
@@ -59,8 +59,8 @@ Launch local ESP Web Tools:
 ## CLI (Unified)
 
 Defaults:
-- `sods whereis/open/tail` use `http://pi-logger.local:8088` (`/v1/events`)
-- `sods spectrum/tools/stream` use `http://localhost:9123`
+- `sods whereis/open/tail` use `http://pi-logger.local:8088` via `--logger`
+- `sods spectrum/tools/stream` use `http://localhost:9123` via `--station`
 
 Examples:
 ```bash
@@ -89,6 +89,7 @@ open "http://localhost:9123/?demo=1"
 
 Legacy aliases remain:
 - `tools/camutil`
+- `tools/devstation`
 - `tools/cockpit`
 
 Canonical CLI:

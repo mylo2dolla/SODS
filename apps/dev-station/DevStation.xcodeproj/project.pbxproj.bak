@@ -6,7 +6,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		A1A1A1A1A1A1A1A1A1A1A1A1 /* CamUtilApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1B1 /* CamUtilApp.swift */; };
+		A1A1A1A1A1A1A1A1A1A1A1A1 /* DevStationApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1B1 /* DevStationApp.swift */; };
 		A1A1A1A1A1A1A1A1A1A1A1A2 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1B2 /* ContentView.swift */; };
 		A1A1A1A1A1A1A1A1A1A1A1A3 /* NetworkScanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1B3 /* NetworkScanner.swift */; };
 		A1A1A1A1A1A1A1A1A1A1A1A4 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1B4 /* Models.swift */; };
@@ -47,8 +47,8 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		B1B1B1B1B1B1B1B1B1B1B1B0 /* CamUtil.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CamUtil.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		B1B1B1B1B1B1B1B1B1B1B1B1 /* CamUtilApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CamUtilApp.swift; sourceTree = "<group>"; };
+		B1B1B1B1B1B1B1B1B1B1B1B0 /* DevStation.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DevStation.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		B1B1B1B1B1B1B1B1B1B1B1B1 /* DevStationApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevStationApp.swift; sourceTree = "<group>"; };
 		B1B1B1B1B1B1B1B1B1B1B1B2 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		B1B1B1B1B1B1B1B1B1B1B1B3 /* NetworkScanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkScanner.swift; sourceTree = "<group>"; };
 		B1B1B1B1B1B1B1B1B1B1B1B4 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
@@ -103,15 +103,15 @@
 		D1D1D1D1D1D1D1D1D1D1D1D1 = {
 			isa = PBXGroup;
 			children = (
-				D1D1D1D1D1D1D1D1D1D1D1D2 /* CamUtil */,
-				B1B1B1B1B1B1B1B1B1B1B1B0 /* CamUtil.app */,
+				D1D1D1D1D1D1D1D1D1D1D1D2 /* DevStation */,
+				B1B1B1B1B1B1B1B1B1B1B1B0 /* DevStation.app */,
 			);
 			sourceTree = "<group>";
 		};
-		D1D1D1D1D1D1D1D1D1D1D1D2 /* CamUtil */ = {
+		D1D1D1D1D1D1D1D1D1D1D1D2 /* DevStation */ = {
 			isa = PBXGroup;
 			children = (
-				B1B1B1B1B1B1B1B1B1B1B1B1 /* CamUtilApp.swift */,
+				B1B1B1B1B1B1B1B1B1B1B1B1 /* DevStationApp.swift */,
 				B1B1B1B1B1B1B1B1B1B1B1B2 /* ContentView.swift */,
 				B1B1B1B1B1B1B1B1B1B1B1B3 /* NetworkScanner.swift */,
 				B1B1B1B1B1B1B1B1B1B1B1B4 /* Models.swift */,
@@ -147,7 +147,7 @@
 				B1B1B1B1B1B1B1B1B1B1B1BB /* OUIStore.swift */,
 				D1D1D1D1D1D1D1D1D1D1D1D3 /* Resources */,
 			);
-			path = CamUtil;
+			path = DevStation;
 			sourceTree = "<group>";
 		};
 		D1D1D1D1D1D1D1D1D1D1D1D3 /* Resources */ = {
@@ -165,9 +165,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		E1E1E1E1E1E1E1E1E1E1E1E1 /* CamUtil */ = {
+		E1E1E1E1E1E1E1E1E1E1E1E1 /* DevStation */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = F1F1F1F1F1F1F1F1F1F1F1F1 /* Build configuration list for PBXNativeTarget "CamUtil" */;
+			buildConfigurationList = F1F1F1F1F1F1F1F1F1F1F1F1 /* Build configuration list for PBXNativeTarget "DevStation" */;
 			buildPhases = (
 				C1C1C1C1C1C1C1C1C1C1C1C2 /* Sources */,
 				C1C1C1C1C1C1C1C1C1C1C1C1 /* Frameworks */,
@@ -177,9 +177,9 @@
 			);
 			dependencies = (
 			);
-			name = CamUtil;
-			productName = CamUtil;
-			productReference = B1B1B1B1B1B1B1B1B1B1B1B0 /* CamUtil.app */;
+			name = DevStation;
+			productName = DevStation;
+			productReference = B1B1B1B1B1B1B1B1B1B1B1B0 /* DevStation.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -197,7 +197,7 @@
 					};
 				};
 			};
-			buildConfigurationList = F1F1F1F1F1F1F1F1F1F1F1F2 /* Build configuration list for PBXProject "CamUtil" */;
+			buildConfigurationList = F1F1F1F1F1F1F1F1F1F1F1F2 /* Build configuration list for PBXProject "DevStation" */;
 			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -206,7 +206,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				E1E1E1E1E1E1E1E1E1E1E1E1 /* CamUtil */,
+				E1E1E1E1E1E1E1E1E1E1E1E1 /* DevStation */,
 			);
 		};
 /* End PBXProject section */
@@ -230,7 +230,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				A1A1A1A1A1A1A1A1A1A1A1A1 /* CamUtilApp.swift in Sources */,
+				A1A1A1A1A1A1A1A1A1A1A1A1 /* DevStationApp.swift in Sources */,
 				A1A1A1A1A1A1A1A1A1A1A1A2 /* ContentView.swift in Sources */,
 				A1A1A1A1A1A1A1A1A1A1A1A3 /* NetworkScanner.swift in Sources */,
 				A1A1A1A1A1A1A1A1A1A1A1A4 /* Models.swift in Sources */,
@@ -277,10 +277,10 @@
 				CODE_SIGNING_REQUIRED = NO;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_HARDENED_RUNTIME = NO;
-				INFOPLIST_FILE = CamUtil/Resources/Info.plist;
+				INFOPLIST_FILE = DevStation/Resources/Info.plist;
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.example.CamUtil;
-				PRODUCT_NAME = CamUtil;
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.DevStation;
+				PRODUCT_NAME = DevStation;
 				SWIFT_VERSION = 5.0;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 			};
@@ -293,10 +293,10 @@
 				CODE_SIGNING_REQUIRED = NO;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_HARDENED_RUNTIME = NO;
-				INFOPLIST_FILE = CamUtil/Resources/Info.plist;
+				INFOPLIST_FILE = DevStation/Resources/Info.plist;
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.example.CamUtil;
-				PRODUCT_NAME = CamUtil;
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.DevStation;
+				PRODUCT_NAME = DevStation;
 				SWIFT_VERSION = 5.0;
 			};
 			name = Release;
@@ -310,14 +310,14 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_HARDENED_RUNTIME = NO;
-				INFOPLIST_FILE = CamUtil/Resources/Info.plist;
+				INFOPLIST_FILE = DevStation/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.example.CamUtil;
-				PRODUCT_NAME = CamUtil;
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.DevStation;
+				PRODUCT_NAME = DevStation;
 				SWIFT_VERSION = 5.0;
 			};
 			name = Debug;
@@ -331,14 +331,14 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_HARDENED_RUNTIME = NO;
-				INFOPLIST_FILE = CamUtil/Resources/Info.plist;
+				INFOPLIST_FILE = DevStation/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.example.CamUtil;
-				PRODUCT_NAME = CamUtil;
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.DevStation;
+				PRODUCT_NAME = DevStation;
 				SWIFT_VERSION = 5.0;
 			};
 			name = Release;
@@ -346,7 +346,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		F1F1F1F1F1F1F1F1F1F1F1F1 /* Build configuration list for PBXNativeTarget "CamUtil" */ = {
+		F1F1F1F1F1F1F1F1F1F1F1F1 /* Build configuration list for PBXNativeTarget "DevStation" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				F1F1F1F1F1F1F1F1F1F1F1F5 /* Debug */,
@@ -355,7 +355,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
 		};
-		F1F1F1F1F1F1F1F1F1F1F1F2 /* Build configuration list for PBXProject "CamUtil" */ = {
+		F1F1F1F1F1F1F1F1F1F1F1F2 /* Build configuration list for PBXProject "DevStation" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				F1F1F1F1F1F1F1F1F1F1F1F3 /* Debug */,

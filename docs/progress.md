@@ -23,7 +23,7 @@ Date: 2026-02-04
 ## Canonical Paths
 
 - CLI + spine server: `cli/sods`
-- Dev Station app: `apps/dev-station/CamUtil.xcodeproj`
+- Dev Station app: `apps/dev-station/DevStation.xcodeproj`
 - Node agent firmware: `firmware/node-agent`
 - Ops Portal firmware: `firmware/ops-portal`
 - Scripts + shims: `tools`
@@ -61,3 +61,4 @@ pio run -e ops-portal
 
 - `/v1/events` only supports `node_id` + `limit`, so CLI filters client-side for `wifi.status` and `node.announce`.
 - Ops Portal Watch Mode: tap anywhere to show a 2–3 stat overlay that auto-hides.
+- CLI flags split: `--logger` for pi-logger, `--station` for spine endpoints.

@@ -29,29 +29,29 @@ function usage(exitCode = 0) {
 
 Commands:
   start --pi-logger <url> --port <port>
-  whereis <node_id> [--base <url>] [--limit <n>]
-  open <node_id> [--base <url>] [--limit <n>]
-  spectrum [--base <url>]
-  tail <node_id> [--base <url>] [--limit <n>] [--interval <ms>]
-  stream --frames [--base <url>] [--out <path>]
-  tools [--base <url>]
-  tool <name> [--base <url>] [--input <json>]
+  whereis <node_id> [--logger <url>] [--limit <n>]
+  open <node_id> [--logger <url>] [--limit <n>]
+  spectrum [--station <url>]
+  tail <node_id> [--logger <url>] [--limit <n>] [--interval <ms>]
+  stream --frames [--station <url>] [--out <path>]
+  tools [--station <url>]
+  tool <name> [--station <url>] [--input <json>]
 
 Defaults:
   --pi-logger http://pi-logger.local:8088
   --port 9123
-  --base http://localhost:9123 (spectrum/tools/stream)
-  --base http://pi-logger.local:8088 (whereis/open/tail)
+  --station http://localhost:9123
+  --logger http://pi-logger.local:8088
 `);
   process.exit(exitCode);
 }
 
-function baseURL() {
-  return (getArg("--base", "http://localhost:9123") ?? "http://localhost:9123").replace(/\/+$/, "");
+function stationURL() {
+  return (getArg("--station", "http://localhost:9123") ?? "http://localhost:9123").replace(/\/+$/, "");
 }
 
-function eventsBaseURL() {
-  return (getArg("--base", "http://pi-logger.local:8088") ?? "http://pi-logger.local:8088").replace(/\/+$/, "");
+function loggerURL() {
+  return (getArg("--logger", "http://pi-logger.local:8088") ?? "http://pi-logger.local:8088").replace(/\/+$/, "");
 }
 
 function parseJsonMaybe(value: any): Record<string, unknown> {
@@ -71,11 +71,20 @@ function parseJsonMaybe(value: any): Record<string, unknown> {
 function extractIp(data: Record<string, unknown>): string | undefined {
   const direct = pickString(data, ["ip", "ip_addr", "ip_address"]);
   if (direct) return direct;
-  const wifi = data["wifi"];
-  if (wifi && typeof wifi === "object") {
-    const ip = pickString(wifi as Record<string, unknown>, ["ip", "ip_addr", "ip_address"]);
-    if (ip) return ip;
-  }
+
+  const wifi = parseJsonMaybe(data["wifi"]);
+  const net = parseJsonMaybe(data["net"]);
+  const sta = parseJsonMaybe(data["sta"]);
+
+  const wifiIp = pickString(wifi, ["ip", "ip_addr", "ip_address"]);
+  if (wifiIp) return wifiIp;
+
+  const netIp = pickString(net, ["ip", "ip_addr", "ip_address"]);
+  if (netIp) return netIp;
+
+  const staIp = pickString(sta, ["ip", "ip_addr", "ip_address"]);
+  if (staIp) return staIp;
+
   return undefined;
 }
 
@@ -98,14 +107,14 @@ type RawEvent = {
 };
 
 async function httpJson(path: string) {
-  const url = `${baseURL()}${path}`;
+  const url = `${stationURL()}${path}`;
   const res = await fetch(url);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
 }
 
 async function fetchEvents(nodeId: string, limit: number) {
-  const url = new URL(`${eventsBaseURL()}/v1/events`);
+  const url = new URL(`${loggerURL()}/v1/events`);
   url.searchParams.set("node_id", nodeId);
   url.searchParams.set("limit", String(limit));
   const res = await fetch(url, { headers: { "Accept": "application/json" } });
@@ -159,7 +168,7 @@ async function cmdWhereis() {
   let ip: string | undefined;
 
   for (const ev of events) {
-    const data = (ev.data_json ?? {}) as Record<string, unknown>;
+    const data = parseJsonMaybe(ev.data_json);
     const found = extractIp(data);
     if (!found) continue;
     if (preferredKinds.has(ev.kind ?? "")) {
@@ -194,7 +203,7 @@ async function cmdOpen() {
 
   let ip: string | undefined;
   for (const ev of events) {
-    const data = (ev.data_json ?? {}) as Record<string, unknown>;
+    const data = parseJsonMaybe(ev.data_json);
     ip = extractIp(data);
     if (ip) break;
   }
@@ -212,7 +221,7 @@ async function cmdOpen() {
 }
 
 async function cmdSpectrum() {
-  const url = `${baseURL()}/`;
+  const url = `${stationURL()}/`;
   console.log(url);
   if (process.platform === "darwin") spawn("open", [url], { stdio: "ignore", detached: true }).unref();
 }
@@ -223,7 +232,6 @@ async function cmdTail() {
   const limit = Number(getArg("--limit", "200"));
   const interval = Number(getArg("--interval", "1200"));
   const seen = new Set<string>();
-
   while (true) {
     try {
       const events = await fetchEvents(nodeId, limit);
@@ -238,7 +246,7 @@ async function cmdTail() {
           for (const k of keep) seen.add(k);
         }
         const ts = new Date(eventTime(ev)).toISOString();
-        const data = (ev.data_json ?? {}) as Record<string, unknown>;
+        const data = parseJsonMaybe(ev.data_json);
         const summary = ev.summary ?? ev.kind ?? "event";
         console.log(JSON.stringify({ ts, node_id: nodeId, kind: ev.kind, summary, data }));
       }
@@ -263,7 +271,7 @@ async function cmdTool() {
   const inputArg = getArg("--input", "{}");
   let input = {};
   try { input = JSON.parse(inputArg); } catch { console.error("--input must be JSON"); process.exit(1); }
-  const res = await fetch(`${baseURL()}/tools/run`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, input }) });
+  const res = await fetch(`${stationURL()}/tools/run`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, input }) });
   if (!res.ok) {
     console.error(`HTTP ${res.status}`);
     console.error(await res.text());
@@ -275,7 +283,7 @@ async function cmdTool() {
 
 async function cmdStream() {
   if (!hasFlag("--frames")) return usage(1);
-  const wsURL = baseURL().replace(/^http/, "ws") + "/ws/frames";
+  const wsURL = stationURL().replace(/^http/, "ws") + "/ws/frames";
   const outPath = getArg("--out", "");
   const out = outPath ? createWriteStream(outPath) : null;
   const ws = new WebSocket(wsURL);
