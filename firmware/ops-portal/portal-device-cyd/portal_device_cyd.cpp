@@ -55,6 +55,9 @@ static String lastWifiErr = "";
 static bool stationOk = false;
 static unsigned long lastStationOkMs = 0;
 static bool stationReachable = false;
+static bool focusMode = false;
+static String focusId = "";
+static unsigned long lastReplayStepMs = 0;
 
 static WebSocketsClient wsClient;
 static bool wsConnected = false;
@@ -279,6 +282,26 @@ static void handleTouch() {
     return;
   }
 
+  if (x < tft.width() / 3 && y < 40) {
+    focusMode = !focusMode;
+    focusId = "";
+    return;
+  }
+
+  if (x < tft.width() / 3 && y > 40 && y < 80) {
+    core.toggleReplay(millis());
+    return;
+  }
+
+  if (core.replayEnabled()) {
+    int barY = tft.height() - 24;
+    if (y >= barY) {
+      float progress = (float)x / (float)tft.width();
+      core.setReplayProgress(progress);
+      return;
+    }
+  }
+
   int idx = -1;
   if (!core.hitButton(x, y, idx)) return;
   auto &state = core.state();
@@ -302,6 +325,9 @@ static void applyFrames(JsonArray frames) {
   for (JsonVariant fv : frames) {
     VizBin bin;
     String id = String((const char*)(fv["device_id"] | fv["node_id"] | fv["id"] | "frame"));
+    if (focusMode && focusId.length() && id != focusId) {
+      continue;
+    }
     bin.id = id;
     bin.x = readFloat(fv["x"], 0.1f + hash01(id, 0.2f) * 0.8f);
     bin.y = readFloat(fv["y"], 0.1f + hash01(id, 0.6f) * 0.8f);
@@ -388,6 +414,9 @@ static void parsePortalState(const String &json) {
   JsonArray frames = root["frames"].as<JsonArray>();
   if (!frames.isNull() && frames.size() > 0) {
     applyFrames(frames);
+    if (focusMode && focusId.length() == 0 && core.state().bins.size() > 0) {
+      focusId = core.state().bins[0].id;
+    }
   }
 }
 

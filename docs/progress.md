@@ -25,6 +25,7 @@ Date: 2026-02-04
 - Replay speed control added; ghost trails now decay by real time age.
 - Ghost trails now tinted by source color for identity continuity.
 - Ops Portal visualizer now renders rings, pulses, and legend text for parity.
+- Ops Portal: touch toggles focus mode + replay bar scrub (basic parity).
 
 ## Current Architecture (Locked)
 

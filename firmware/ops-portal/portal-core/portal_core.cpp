@@ -50,6 +50,26 @@ bool PortalCore::overlayVisible() const {
   return overlayOn;
 }
 
+void PortalCore::toggleReplay(unsigned long nowMs) {
+  replayOn = !replayOn;
+  if (replayOn) {
+    replayPos = 0.0f;
+    overlayHideAtMs = nowMs + 2000;
+  }
+}
+
+void PortalCore::setReplayProgress(float progress) {
+  replayPos = max(0.0f, min(1.0f, progress));
+}
+
+float PortalCore::replayProgress() const {
+  return replayPos;
+}
+
+bool PortalCore::replayEnabled() const {
+  return replayOn;
+}
+
 void PortalCore::showPopup(int buttonIdx, unsigned long nowMs) {
   popup.active = true;
   popup.buttonIdx = buttonIdx;
@@ -118,6 +138,18 @@ void PortalCore::render(unsigned long nowMs) {
     if (overlayOn) drawWatchOverlay();
   }
 
+  if (replayOn) {
+    int w = screenW - 40;
+    int h = 8;
+    int x = 20;
+    int y = screenH - 20;
+    uint16_t base = tft->color565(30, 30, 35);
+    uint16_t fill = tft->color565(200, 40, 40);
+    tft->fillRoundRect(x, y, w, h, 4, base);
+    int filled = (int)(w * replayPos);
+    if (filled > 2) tft->fillRoundRect(x, y, filled, h, 4, fill);
+  }
+
   if (popup.active) drawPopup();
 }
 
@@ -161,6 +193,8 @@ void PortalCore::drawStatusLeft() {
   tft->print(stateValue.ingestErrRate, 1);
   tft->setCursor(10, 108);
   tft->print("legend: BLE/WiFi/Node");
+  tft->setCursor(10, 122);
+  tft->print("tap: focus / replay");
 }
 
 void PortalCore::drawButtonsRight() {

@@ -74,6 +74,10 @@ public:
 
   void toggleOverlay(unsigned long nowMs);
   bool overlayVisible() const;
+  void toggleReplay(unsigned long nowMs);
+  void setReplayProgress(float progress);
+  float replayProgress() const;
+  bool replayEnabled() const;
 
   void showPopup(int buttonIdx, unsigned long nowMs);
   int popupHit(int x, int y) const;
@@ -110,6 +114,8 @@ private:
 
   unsigned long overlayHideAtMs = 0;
   bool overlayOn = false;
+  bool replayOn = false;
+  float replayPos = 0.0f;
   PopupState popup;
 
   std::vector<TrailPoint> trails[16];
