@@ -118,6 +118,10 @@ export class SODSServer {
       void this.handleStatus(res);
       return;
     }
+    if (url.pathname === "/api/portal/state") {
+      void this.handlePortalState(req, res);
+      return;
+    }
     if (url.pathname === "/api/tools") {
       return this.respondJson(res, this.buildToolRegistry());
     }
@@ -395,6 +399,63 @@ export class SODSServer {
     this.respondJson(res, { station, logger });
   }
 
+  private async handlePortalState(req: http.IncomingMessage, res: http.ServerResponse) {
+    const counters = this.ingestor.getCounters();
+    const nodes = this.ingestor.getNodes();
+    const stationVersion = this.readStationVersion();
+    const logger = await this.fetchLoggerHealth();
+    const lastEventTs = this.lastEvent?.event_ts ?? null;
+    const lastEventMs = lastEventTs ? Date.parse(lastEventTs) : 0;
+
+    const now = nowMs();
+    const modeStats = this.computeModeStats();
+
+    const topNodes = [...nodes]
+      .sort((a, b) => b.last_seen - a.last_seen)
+      .slice(0, 5)
+      .map((n) => ({ node_id: n.node_id, last_seen: n.last_seen, confidence: n.confidence }));
+
+    const lastSeenByNode: Record<string, number> = {};
+    for (const n of nodes) {
+      lastSeenByNode[n.node_id] = n.last_seen;
+    }
+
+    const payload = {
+      station: {
+        ok: true,
+        version: stationVersion,
+        uptime_ms: Math.floor(process.uptime() * 1000),
+        last_ingest_ms: this.lastIngestAt,
+        last_error: this.lastError ?? "",
+        pi_logger: this.options.piLoggerBase,
+        nodes_total: nodes.length,
+        nodes_online: nodes.filter((n) => now - n.last_seen < 60_000).length,
+        tools: listTools().length,
+      },
+      logger: {
+        ok: logger.ok,
+        url: this.options.piLoggerBase,
+        status: logger.status ?? "",
+        last_event_ts: lastEventTs,
+        last_event_ms: lastEventMs,
+      },
+      nodes: {
+        active_count: nodes.filter((n) => now - n.last_seen < 60_000).length,
+        last_seen_by_node_id: lastSeenByNode,
+        top_nodes: topNodes,
+      },
+      modes: modeStats,
+      tools: {
+        count: listTools().length,
+        items: listTools(),
+      },
+      flash: this.buildFlashInfo(req),
+      frames: this.lastFrames,
+    };
+
+    this.respondJson(res, payload);
+  }
+
   private async fetchLoggerHealth() {
     try {
       const res = await fetch(`${this.options.piLoggerBase}/health`, { method: "GET" });
@@ -406,6 +467,44 @@ export class SODSServer {
     } catch (err: any) {
       return { ok: false, status: err?.message ?? "offline" };
     }
+  }
+
+  private readStationVersion() {
+    try {
+      const pkgPath = new URL("../../package.json", import.meta.url).pathname;
+      const raw = JSON.parse(readFileSync(pkgPath, "utf8"));
+      return raw.version ?? "unknown";
+    } catch {
+      return "unknown";
+    }
+  }
+
+  private computeModeStats() {
+    const now = nowMs();
+    const getLast = (matcher: (k: string) => boolean) => {
+      for (let i = this.eventBuffer.length - 1; i >= 0; i -= 1) {
+        const ev = this.eventBuffer[i];
+        if (matcher(ev.kind)) {
+          const ts = Date.parse(ev.event_ts);
+          return Number.isFinite(ts) ? ts : 0;
+        }
+      }
+      return 0;
+    };
+    const wifiLast = getLast((k) => k.includes("wifi"));
+    const bleLast = getLast((k) => k.includes("ble"));
+    const rfLast = getLast((k) => k.includes("rf"));
+    const gpsLast = getLast((k) => k.includes("gps"));
+    const build = (last: number) => ({
+      active: last > 0 && now - last < 60_000,
+      last_ms: last,
+    });
+    return {
+      net: build(wifiLast),
+      ble: build(bleLast),
+      rf: build(rfLast),
+      gps: build(gpsLast),
+    };
   }
 
   private buildToolRegistry() {
