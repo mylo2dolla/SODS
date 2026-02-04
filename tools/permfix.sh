@@ -26,6 +26,8 @@ targets=(
   "$TOOLS_DIR/launchagent-uninstall.sh"
   "$TOOLS_DIR/launchagent-status.sh"
   "$TOOLS_DIR/smoke.sh"
+  "$TOOLS_DIR/portal-cyd-build.sh"
+  "$TOOLS_DIR/portal-cyd-stage.sh"
   "$TOOLS_DIR/verify.sh"
 )
 
