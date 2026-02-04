@@ -19,6 +19,7 @@ Date: 2026-02-04
 - Visualizer now renders subtle bin arcs and supports pinning nodes for persistent tracking.
 - Added gentle attraction for related sources plus orbital drift to make the field feel alive.
 - Quick overlay now surfaces hottest source + current focus for at-a-glance context.
+- Added replay scrub (last 60s window), connection lines, and legend overlay for signal families.
 
 ## Current Architecture (Locked)
 

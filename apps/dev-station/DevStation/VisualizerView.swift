@@ -10,6 +10,8 @@ struct VisualizerView: View {
     @State private var timeScale: Double = 1.0
     @State private var maxParticles: Double = 1400
     @State private var intensityMode: SignalIntensity = .calm
+    @State private var replayEnabled: Bool = false
+    @State private var replayOffset: Double = 0
     @State private var selectedNodeIDs: Set<String> = []
     @State private var selectedKinds: Set<String> = []
     @State private var selectedDeviceIDs: Set<String> = []
@@ -98,6 +100,11 @@ struct VisualizerView: View {
                     sliderRow(title: "Decay", value: $decayRate, range: 0.6...2.0, format: "%.2f")
                     sliderRow(title: "Time", value: $timeScale, range: 0.5...2.0, format: "%.2f")
                     sliderRow(title: "Particles", value: $maxParticles, range: 600...2400, format: "%.0f")
+                }
+                Toggle("Replay last 60s", isOn: $replayEnabled)
+                    .font(.system(size: 11))
+                if replayEnabled {
+                    sliderRow(title: "Offset", value: $replayOffset, range: 0...60, format: "%.0fs")
                 }
             }
             .padding(6)
@@ -210,7 +217,7 @@ struct VisualizerView: View {
     }
 
     private var filteredEvents: [NormalizedEvent] {
-        store.events.filter { event in
+        let base = store.events.filter { event in
             if !selectedNodeIDs.isEmpty && !selectedNodeIDs.contains(event.nodeID) { return false }
             if !selectedKinds.isEmpty && !selectedKinds.contains(event.kind) { return false }
             if !selectedDeviceIDs.isEmpty {
@@ -218,6 +225,14 @@ struct VisualizerView: View {
                 if !selectedDeviceIDs.contains(deviceID) { return false }
             }
             return true
+        }
+        guard replayEnabled else { return base }
+        let now = Date()
+        let cursor = now.addingTimeInterval(-replayOffset)
+        let window: TimeInterval = 3.0
+        return base.filter { event in
+            let ts = event.eventTs ?? event.recvTs ?? now
+            return abs(ts.timeIntervalSince(cursor)) <= window
         }
     }
 
@@ -408,6 +423,8 @@ struct SignalFieldView: View {
                     onClear: { pinnedNodeIDs.removeAll() }
                 )
             }
+
+            LegendOverlayView()
         }
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .overlay(
@@ -421,6 +438,37 @@ struct SignalFieldView: View {
             return "idle"
         }
         return hottest.deviceID
+    }
+}
+
+struct LegendOverlayView: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Legend")
+                .font(.system(size: 11, weight: .semibold))
+            legendRow(color: SignalColor.kindAccent(kind: "ble.seen"), label: "BLE")
+            legendRow(color: SignalColor.kindAccent(kind: "wifi.status"), label: "Wi-Fi")
+            legendRow(color: SignalColor.kindAccent(kind: "node.heartbeat"), label: "Node")
+        }
+        .padding(10)
+        .background(Theme.panelAlt)
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(Theme.border, lineWidth: 1)
+        )
+        .cornerRadius(10)
+        .padding(16)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+    }
+
+    private func legendRow(color: NSColor, label: String) -> some View {
+        HStack(spacing: 8) {
+            Circle()
+                .fill(Color(color))
+                .frame(width: 8, height: 8)
+            Text(label)
+                .font(.system(size: 10))
+        }
     }
 }
 
@@ -614,6 +662,7 @@ final class SignalFieldEngine: ObservableObject {
 
         drawBins(context: &context, size: size, frames: frames, now: now, focusID: focusID)
         lastProjected = drawSources(context: &context, size: size, parallax: parallax, selectedID: selectedID, focusID: focusID)
+        drawConnections(context: &context, focusID: focusID)
         drawPulses(context: &context, size: size, now: now, parallax: parallax, focusID: focusID)
         drawParticles(context: &context, size: size, now: now, parallax: parallax, focusID: focusID)
 
@@ -822,6 +871,31 @@ final class SignalFieldEngine: ObservableObject {
             let dimmed = focusID != nil && focusID != particle.sourceID
             particle.draw(context: &context, size: size, now: now, parallax: parallax, dimmed: dimmed)
         }
+    }
+
+    private func drawConnections(context: inout GraphicsContext, focusID: String?) {
+        guard lastProjected.count > 1 else { return }
+        for i in 0..<(lastProjected.count - 1) {
+            for j in (i + 1)..<lastProjected.count {
+                let a = lastProjected[i]
+                let b = lastProjected[j]
+                if groupFor(id: a.id) != groupFor(id: b.id) { continue }
+                if focusID != nil && focusID != a.id && focusID != b.id { continue }
+                let dx = a.point.x - b.point.x
+                let dy = a.point.y - b.point.y
+                let dist = sqrt(dx * dx + dy * dy)
+                if dist > 220 { continue }
+                var path = Path()
+                path.move(to: a.point)
+                path.addLine(to: b.point)
+                let alpha = 0.08 + (1.0 - min(1.0, dist / 220)) * 0.18
+                context.stroke(path, with: .color(Color(a.color).opacity(alpha)), lineWidth: 1.0)
+            }
+        }
+    }
+
+    private func groupFor(id: String) -> String {
+        String(id.split(separator: ":").first ?? Substring(id))
     }
 
     private func drawPulses(context: inout GraphicsContext, size: CGSize, now: Date, parallax: CGPoint, focusID: String?) {
