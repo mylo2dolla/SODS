@@ -1,0 +1,94 @@
+{
+  "classification" : "Likely camera\/streaming device",
+  "clientSummary" : "Device 192.168.8.247 is assessed as likely camera\/streaming device with confidence 25.",
+  "confidence" : {
+    "level" : "Low",
+    "reasons" : [
+      "ONVIF discovery without XAddrs (+10)",
+      "RTSP port 554 open (+10)",
+      "HTTP reachable (404) (+5)"
+    ],
+    "score" : 25
+  },
+  "evidence" : [
+    {
+      "label" : "Open Ports",
+      "meaning" : "443: HTTPS web UI; 554: RTSP media stream; 8443: Alternate HTTPS",
+      "rawField" : "hostEvidence.openPorts",
+      "rawValue" : "443, 554, 8443"
+    },
+    {
+      "label" : "HTTP Status",
+      "meaning" : "Not Found (common on embedded devices).",
+      "rawField" : "hostEvidence.httpStatus",
+      "rawValue" : "404"
+    },
+    {
+      "label" : "HTTP Server",
+      "meaning" : "No server header observed.",
+      "rawField" : "hostEvidence.httpServer",
+      "rawValue" : ""
+    },
+    {
+      "label" : "HTTP Title",
+      "meaning" : "No title observed.",
+      "rawField" : "hostEvidence.httpTitle",
+      "rawValue" : ""
+    },
+    {
+      "label" : "ONVIF Discovery",
+      "meaning" : "ONVIF discovery response observed.",
+      "rawField" : "device.discoveredViaOnvif",
+      "rawValue" : "true"
+    },
+    {
+      "label" : "RTSP URI",
+      "meaning" : "Stream URI from probe\/ONVIF.",
+      "rawField" : "device.bestRtspURI",
+      "rawValue" : "rtsp:\/\/192.168.8.247:554\/"
+    }
+  ],
+  "failures" : [
+    "No failures recorded."
+  ],
+  "howToAccess" : [
+    "HTTP: https:\/\/192.168.8.247:443",
+    "RTSP: rtsp:\/\/192.168.8.247:554\/",
+    "ONVIF XAddr: Unknown",
+    "SSDP Location: Unknown"
+  ],
+  "identityMapping" : [
+    {
+      "friendly" : "Unknown",
+      "label" : "Hostname",
+      "rawField" : "hostEvidence.hostname",
+      "rawValue" : "Unknown"
+    },
+    {
+      "friendly" : "Unknown",
+      "label" : "Vendor",
+      "rawField" : "hostEvidence.vendor",
+      "rawValue" : "Unknown"
+    },
+    {
+      "friendly" : "HTTPS, RTSP, HTTPS (alt)",
+      "label" : "Port Labels",
+      "rawField" : "hostEvidence.openPorts",
+      "rawValue" : "443, 554, 8443"
+    }
+  ],
+  "meta" : {
+    "hostIP" : "192.168.8.247",
+    "isoTimestamp" : "2026-02-03T054513Z",
+    "rawRef" : "CamUtil-DeviceReportRaw-192.168.8.247-2026-02-03T054513Z.json"
+  },
+  "summary" : "Report for 192.168.8.247. Likely camera\/streaming device.",
+  "technicalAppendix" : [
+    "Raw reference: CamUtil-DeviceReportRaw-192.168.8.247-2026-02-03T054513Z.json",
+    "Open ports (raw): 443, 554, 8443",
+    "Open ports (friendly): HTTPS, RTSP, HTTPS (alt)",
+    "SSDP Server (raw): Unknown",
+    "SSDP Location (raw): Unknown",
+    "ONVIF XAddrs (raw): "
+  ]
+}

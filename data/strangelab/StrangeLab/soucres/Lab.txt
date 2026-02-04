@@ -1,0 +1,83 @@
+Strange Lab — Node Agent Progress (ESP32 / ESP32-C3)
+
+Status
+	•	Builds: ✅ esp32dev + esp32c3 compile successfully.
+	•	Flash flow: ✅ ESP Web Tools flow is staged (artifacts copied into stable paths + manifests updated).
+	•	Ingestion: ✅ Firmware emits events intended for pi-logger ingestion; verification is now designed to avoid serial monitor.
+
+What’s been implemented (high-level)
+
+Firmware
+	•	Event IP self-discovery
+	•	IP/network details now included in node.boot and node.heartbeat.
+	•	Added wifi.status event on connect / IP change (includes network details).
+	•	Added node.announce event on connect and every 60s (IP/mac/hostname) so pi-logger becomes the authoritative “who is where” index.
+	•	Device introspection endpoints
+	•	Added GET /whoami endpoint (identity + network info).
+	•	Existing /health and /metrics remain the no-serial verification path.
+	•	mDNS (best effort)
+	•	Device advertises HTTP via mDNS using <node_id>.local when available.
+	•	mDNS init failures are silent/non-blocking (no boot dependency).
+
+Config
+	•	Added ANNOUNCE_INTERVAL_MS and related schema tuning.
+
+Cockpit CLI (Mac)
+	•	Added whereis and open commands:
+	•	whereis: discovers a node’s current IP via pi-logger events.
+	•	open: launches browser to the node’s endpoints (health/metrics/whoami) using discovered IP.
+
+Build + ESP Web Tools packaging
+	•	Artifacts are staged into stable paths under the repo for web flashing.
+	•	Both targets now have manifests:
+	•	esp-web-tools/manifest.json (ESP32)
+	•	esp-web-tools/manifest-esp32c3.json (ESP32-C3)
+	•	Flash launcher scripts exist for both:
+	•	tools/build-stage-esp32dev.sh, tools/flash-esp32dev.sh
+	•	tools/build-stage-esp32c3.sh, tools/flash-esp32c3.sh
+
+Files changed / added
+	•	Firmware: src/main.cpp
+	•	Config: include/config.h
+	•	Docs: README.md
+	•	ESP Web Tools: esp-web-tools/index.html, manifests
+	•	Tooling: build/stage + flash scripts (esp32dev + esp32c3)
+	•	Cockpit: /Users/letsdev/strange/cockpit/cockpit.mjs
+
+Verification model (no serial monitor)
+
+Primary (authoritative): pi-logger
+	•	Confirm wifi.status and node.announce are arriving for the node_id.
+	•	Confirm node.boot (once) and node.heartbeat (periodic).
+
+Secondary: device HTTP endpoints (once IP is known)
+	•	http://<device-ip>/whoami
+	•	http://<device-ip>/health
+	•	http://<device-ip>/metrics
+
+Convenience: mDNS (best effort)
+	•	http://<node_id>.local/whoami (only if mDNS works on the LAN)
+
+Known friction points observed so far
+	•	Serial ports on macOS are exclusive and can block uploads if a monitor grabs the device.
+	•	Router / DNS instability has caused intermittent resolution problems.
+	•	Random IPs discovered via ARP/curl can be misleading (non-ESP devices responding with nginx, etc.) — hence the shift to “announce → pi-logger → cockpit whereis/open”.
+
+Next steps (recommended)
+	1.	Flash ESP32-C3 using the staged ESP Web Tools flow.
+	2.	Confirm IP discovery via pi-logger (wifi.status/node.announce).
+	3.	Use cockpit whereis/open as the standard workflow for:
+	•	finding the node
+	•	opening health/metrics
+	•	avoiding serial monitor entirely
+	4.	Expand scan coverage (still passive/benign):
+	•	strengthen BLE scanning reliability under load
+	•	validate schema for all emitted events
+	•	ensure rate limits + queue behavior match expectations
+
+Goal alignment
+
+This update moves the node firmly into the Strange Lab architecture:
+	•	Tier-0 cockpit drives UX and discovery.
+	•	Tier-1 pi-logger is authoritative truth for “what nodes exist and where they are.”
+	•	Nodes stay untrusted + non-blocking, with robust telemetry paths that do not depend on serial access.

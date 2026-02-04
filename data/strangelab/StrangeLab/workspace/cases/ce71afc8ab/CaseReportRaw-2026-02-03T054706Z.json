@@ -1,0 +1,12 @@
+{
+  "confidenceLevel" : "Low",
+  "confidenceScore" : 20,
+  "createdAt" : "2026-02-03T04:25:27Z",
+  "id" : "ce71afc8ab",
+  "references" : [
+    "\/Users\/letsdev\/StrangeLab\/inbox\/ble-raw\/CamUtil-BLEProbe-ce71afc8ab-2026-02-03T005821Z.json"
+  ],
+  "targetID" : "ce71afc8ab",
+  "targetType" : "ble",
+  "updatedAt" : "2026-02-03T04:25:27Z"
+}

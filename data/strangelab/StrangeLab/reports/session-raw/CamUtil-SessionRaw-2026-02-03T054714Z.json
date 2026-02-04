@@ -1,0 +1,18 @@
+{
+  "endedAt" : "2026-02-03T05:47:14Z",
+  "evidenceRefs" : [
+
+  ],
+  "id" : "Session-2026-02-03T054714Z",
+  "nodes" : [
+
+  ],
+  "sources" : [
+    "ble",
+    "wifi",
+    "rf",
+    "gps",
+    "net"
+  ],
+  "startedAt" : "2026-02-03T05:47:12Z"
+}

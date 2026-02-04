@@ -1,0 +1,22 @@
+{
+  "bonjourServices" : [
+
+  ],
+  "hostConfidence" : {
+    "level" : "Low",
+    "reasons" : [
+
+    ],
+    "score" : 0
+  },
+  "hostname" : "iphone.lan",
+  "ip" : "192.168.8.148",
+  "mac" : "66:f5:12:8e:5d:4a",
+  "openPorts" : [
+
+  ],
+  "vendorConfidenceReasons" : [
+    "No OUI match"
+  ],
+  "vendorConfidenceScore" : 0
+}

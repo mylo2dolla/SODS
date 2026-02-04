@@ -1,0 +1,328 @@
+Yep — what you described does not conflict with the vault shipper approach. It actually fits it perfectly.
+
+Here’s the “actual truth” version of the architecture, written in a way you can treat as source-of-truth docs.
+
+⸻
+
+Canonical flow
+
+1) Sensors/Nodes emit events
+	•	Pi-Aux (and future nodes) produce event bundles (JSON), not “reports.”
+	•	Events are raw-ish telemetry + minimal structure (timestamps, nodeID, type, payload, signatures/hashes later).
+
+2) Mac is the staging + report forge
+	•	CamUtil (Mac) is the operator cockpit and report generator.
+	•	It receives:
+	•	network scan results (local)
+	•	BLE scan results (local)
+	•	Pi-Aux events (ingested)
+	•	It writes all artifacts into a single staging root:
+	•	~/StrangeLab/scans/
+	•	Reports are generated from staged raw evidence:
+	•	per-device report
+	•	per-scan report
+	•	per-node report (Pi-Aux)
+	•	per-time-window report (optional)
+
+3) Vault Pi is the canonical truth store
+	•	Vault Pi receives a mirror/copy of the staging artifacts.
+	•	Vault becomes the “truth archive” (append-only eventually).
+	•	Later: analysis pipeline reads from vault, not from the Mac.
+
+4) Analysis is separate + modular
+	•	Next app (“analysis cockpit”) reads from vault datasets (locally mounted or pulled).
+	•	CamUtil can remain a lightweight acquisition/report tool.
+
+This makes replacement clean:
+	•	Mac dies → new Mac can rebuild staged outputs (or just keep operating from vault)
+	•	Pi dies → replace Pi, point shipper to new host, keep same directory schema
+	•	Sensors die → replace node, keep nodeID registry stable
+
+⸻
+
+Does the vault shipper break Pi-Aux reporting to Mac?
+
+No.
+
+The shipper only touches files under:
+	•	~/StrangeLab/scans/
+
+It does not affect:
+	•	the Pi-Aux tab
+	•	the Pi-Aux HTTP listener (your ingest endpoint)
+	•	BLE scanning
+	•	network scanning
+	•	the UI state
+
+All it does is: “whatever lands in staging gets mirrored to vault.”
+
+So your logic stays:
+
+Pi-Aux → Mac ingest → staged artifacts → ship to vault.
+
+⸻
+
+One change you should make now to match the vision
+
+Right now you have Pi-Aux evidence included in scan/audit exports, but you’re thinking “tab per active node.”
+
+That’s the right UX model:
+
+Add a node registry + per-node inbox folder in staging
+
+Use this staging structure:
+	•	~/StrangeLab/scans/nodes/<nodeID>/events/
+	•	~/StrangeLab/scans/nodes/<nodeID>/reports-raw/
+	•	~/StrangeLab/scans/nodes/<nodeID>/reports-readable/
+
+Then the Pi-Aux (and future nodes) all behave the same:
+	•	each node posts events
+	•	events are stored under its nodeID
+	•	you can generate reports from that node’s history at any time
+	•	shipper mirrors everything to vault automatically
+
+This is modular and “replaceable node” friendly.
+
+⸻
+
+How the UI should work (what you asked for)
+
+Pi-Aux tab becomes “Nodes” tab
+	•	List of nodes that have checked in recently (and historical)
+	•	Selecting a node shows:
+	•	last seen
+	•	endpoint/token
+	•	recent events
+	•	“Generate Node Report”
+	•	“Generate Time Window Report” (optional)
+	•	“Reveal Node Folder”
+
+No “node-specific reports created on Pi”
+
+Correct: nodes don’t generate reports. Nodes generate events.
+Mac generates reports from staged events.
+
+⸻
+
+Vault shipping: best practice tweak for this model
+
+The shipper should mirror:
+	•	~/StrangeLab/scans/
+
+…and that includes:
+	•	/nodes/<nodeID>/...
+	•	scan reports
+	•	ble exports
+	•	rtsp-hard-probe outputs
+	•	logs
+
+So you do not need to change the shipper to support this.
+You only need to make sure Pi-Aux ingestion writes into staging folders.
+
+⸻
+
+The one thing you should avoid (so it stays deterministic)
+
+Don’t make reports depend on “whatever is currently in RAM/UI.”
+Make reports depend on files already staged (events + evidence).
+
+Rule:
+	•	UI triggers report generation
+	•	generator reads staged files for that node / scan / device
+	•	writes new report artifacts back into staging
+
+That keeps it reproducible and makes the vault truly authoritative.
+
+⸻
+
+If you want Codex to “reform” the app quickly
+
+You can, and it’s aligned with your plan.
+
+Goal: convert “Pi-Aux tab” → “Nodes tab” with per-node staging folders + node report generation.
+
+If you want, I’ll write a single Codex prompt that does exactly this without breaking what you already have:
+	•	preserves existing Pi-Aux ingestion
+	•	adds nodeID concept
+	•	writes events to ~/StrangeLab/scans/nodes/<nodeID>/events/
+	•	adds “Generate Node Report” (raw + readable)
+	•	keeps shipper compatible
+
+(And we won’t touch the vault scripts—those remain correct.)
+
+⸻
+
+Bottom line
+
+What you described is the correct truth model:
+	•	Mac = staging + reporting forge
+	•	Vault Pi = canonical archive
+	•	Nodes = event emitters
+	•	Reports = generated on Mac from staged evidence
+	•	Modular replacement is a first-class requirement
+
+When you’re ready, I’ll give you the exact Codex prompt for the Nodes tab + node staging folders + node reports.You’re not overthinking it — you’re noticing a real systems-design fork:
+	•	“staging = everything” (simple, reliable, but can get noisy)
+vs
+	•	“working set = only what I care about right now” (clean UX, but you must not lose provenance)
+
+The trick is: don’t replace staging. Split it.
+One folder is truthy intake, one folder is operator workspace.
+
+⸻
+
+The clean model
+
+A) Inbox (truthy intake)
+
+This is where everything you scan or ingest lands.
+	•	immutable-ish
+	•	append-only style
+	•	shipped to vault
+	•	never “cleaned” except by an explicit retention policy
+
+Example:
+	•	~/StrangeLab/inbox/
+
+Contents:
+	•	raw scan exports
+	•	raw BLE exports
+	•	Pi-Aux events
+	•	runtime logs/audits (optional)
+
+B) Workspace (operator working set)
+
+This is where only what you click / pin / investigate goes.
+	•	curated
+	•	safe to delete/reset
+	•	can be re-generated from inbox (or re-copied)
+	•	shipped to vault optionally (I’d ship it too, but as “operator artifacts”)
+
+Example:
+	•	~/StrangeLab/workspace/
+
+Contents:
+	•	per-device “case files”
+	•	hard-probe bundles
+	•	generated reports
+	•	“selected targets” snapshots
+
+C) Reports (derived artifacts)
+
+Reports should not be mixed into inbox, because reports are derivatives.
+
+Example:
+	•	~/StrangeLab/reports/
+
+⸻
+
+How the app behavior changes (without breaking your flow)
+
+Rule 1: scans always write to inbox
+
+So you always have full evidence.
+
+Rule 2: clicking “Pin / Add to Case / Investigate” copies just that target into workspace
+
+So your “staging” feeling becomes clean and intentional.
+
+Rule 3: “Generate Report”
+	•	per device: reads from inbox + workspace context → writes to reports + workspace
+	•	full scan report: reads from inbox → writes to reports
+
+That gets you:
+	•	raw for everything
+	•	curated working set for your brain
+	•	reports for clients
+
+⸻
+
+Vault shipping becomes deterministic
+
+You ship:
+	•	~/StrangeLab/inbox/ ✅ always
+	•	~/StrangeLab/reports/ ✅ always
+	•	~/StrangeLab/workspace/ ✅ optional (but recommended)
+
+So the vault never “re-downloads stuff” — it’s not downloading; it’s mirroring new files.
+The only way you get duplication is if:
+	•	filenames aren’t stable/unique, or
+	•	the shipper copies the same file repeatedly because it can’t tell it already shipped.
+
+The correct shipper rule
+
+Ship only new files by tracking a shipped-manifest on the Mac side, e.g.:
+	•	~/StrangeLab/.shipper/shipped.sqlite (or a flat JSON lines log)
+
+Then it never re-sends the same path+hash twice.
+
+⸻
+
+Cleaning out “staging” safely
+
+If you adopt inbox/workspace, you basically stop “cleaning staging” at all.
+
+What you can safely clear any time:
+	•	~/StrangeLab/workspace/ (curated working set)
+	•	~/StrangeLab/reports/ (derived artifacts)
+
+What you generally don’t “clear”:
+	•	~/StrangeLab/inbox/ (evidence)
+
+Instead you apply retention, like:
+	•	keep last N days
+	•	keep only high-confidence targets + pinned items
+	•	archive older inbox into vault-only storage
+
+⸻
+
+What you’re worried about: “the vault re-downloading stuff”
+
+Two separate fears hide in that sentence:
+
+Fear A: “I’ll keep copying the same stuff forever”
+
+Solved by shipper manifest (path+hash).
+
+Fear B: “Inbox is huge, but I only care about a few devices”
+
+Solved by workspace “case files” + pinning.
+
+So yes: two staging folders is actually the right instinct — just name them accurately:
+	•	Inbox (truthy intake)
+	•	Workspace (operator working set)
+
+⸻
+
+Minimal change that gives you 80% of the benefit
+
+If you want the smallest step (no big refactor):
+	1.	Keep current behavior writing to:
+
+	•	~/StrangeLab/scans/ (treat it as Inbox)
+
+	2.	Add a new folder:
+
+	•	~/StrangeLab/cases/
+
+	3.	Add one button in UI:
+
+	•	“Pin to Case”
+	•	copies the selected device’s evidence + fingerprints + probe artifacts into:
+	•	~/StrangeLab/cases/<ip-or-fingerprintID>/
+
+	4.	Reports for clients generated from case folder.
+
+That preserves everything and gives you the “working set” you want.
+
+⸻
+
+Next move
+
+If you want, I’ll write the Codex prompt to implement this split without breaking current exports:
+	•	introduce StrangeLab/inbox, workspace, reports (or scans + cases)
+	•	add “Pin to Case” + “Generate Case Report”
+	•	shipper-friendly unique naming + shipped manifest hook points
+	•	keep all existing export buttons working
+
+No code blocks from me unless you ask; this can be delivered as a single Codex task prompt when you’re ready.

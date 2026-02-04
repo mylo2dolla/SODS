@@ -1,0 +1,73 @@
+{
+  "classification" : "Likely camera\/streaming device",
+  "clientSummary" : "Device 192.168.8.171 is assessed as likely camera\/streaming device with confidence 20.",
+  "confidence" : {
+    "level" : "Low",
+    "reasons" : [
+      "RTSP port 554 open (+10)",
+      "HTTP reachable (404) (+5)",
+      "Vendor\/OUI match (+5)"
+    ],
+    "score" : 20
+  },
+  "evidence" : [
+    {
+      "label" : "Open Ports",
+      "meaning" : "80: HTTP web UI; 554: RTSP media stream",
+      "rawField" : "hostEvidence.openPorts",
+      "rawValue" : "80, 554"
+    },
+    {
+      "label" : "HTTP Status",
+      "meaning" : "Not Found (common on embedded devices).",
+      "rawField" : "hostEvidence.httpStatus",
+      "rawValue" : "404"
+    },
+    {
+      "label" : "HTTP Server",
+      "meaning" : "Server header reported by device.",
+      "rawField" : "hostEvidence.httpServer",
+      "rawValue" : "nginx"
+    },
+    {
+      "label" : "HTTP Title",
+      "meaning" : "Web UI title hint.",
+      "rawField" : "hostEvidence.httpTitle",
+      "rawValue" : "404 Not Found"
+    }
+  ],
+  "identityMapping" : [
+    {
+      "friendly" : "ipc_3786.lan",
+      "label" : "Hostname",
+      "rawField" : "hostEvidence.hostname",
+      "rawValue" : "ipc_3786.lan"
+    },
+    {
+      "friendly" : "JuanIntellig Guangdong Juan Intelligent Technology Joint Stock Co., Ltd.",
+      "label" : "Vendor",
+      "rawField" : "hostEvidence.vendor",
+      "rawValue" : "JuanIntellig Guangdong Juan Intelligent Technology Joint Stock Co., Ltd."
+    },
+    {
+      "friendly" : "HTTP, RTSP",
+      "label" : "Port Labels",
+      "rawField" : "hostEvidence.openPorts",
+      "rawValue" : "80, 554"
+    }
+  ],
+  "meta" : {
+    "hostIP" : "192.168.8.171",
+    "isoTimestamp" : "2026-02-01T103104Z",
+    "rawRef" : "CamUtil-DeviceReportRaw-192.168.8.171-2026-02-01T103104Z.json"
+  },
+  "summary" : "Report for 192.168.8.171. Likely camera\/streaming device.",
+  "technicalAppendix" : [
+    "Raw reference: CamUtil-DeviceReportRaw-192.168.8.171-2026-02-01T103104Z.json",
+    "Open ports (raw): 80, 554",
+    "Open ports (friendly): HTTP, RTSP",
+    "SSDP Server (raw): Unknown",
+    "SSDP Location (raw): Unknown",
+    "ONVIF XAddrs (raw): "
+  ]
+}

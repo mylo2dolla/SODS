@@ -1,0 +1,57 @@
+{
+  "device" : {
+    "discoveredViaOnvif" : true,
+    "hostConfidence" : {
+      "level" : "Low",
+      "reasons" : [
+        "ONVIF discovery without XAddrs (+10)",
+        "RTSP port 554 open (+10)",
+        "HTTP reachable (404) (+5)"
+      ],
+      "score" : 25
+    },
+    "ip" : "192.168.8.247",
+    "macAddress" : "f0:9:d:4c:30:bb",
+    "onvifRequiresAuth" : false,
+    "onvifXAddrs" : [
+
+    ],
+    "openPorts" : [
+      443,
+      554,
+      3702,
+      8443
+    ],
+    "vendorConfidenceReasons" : [
+      "No OUI match"
+    ],
+    "vendorConfidenceScore" : 0
+  },
+  "generatedAt" : "2026-02-03T05:45:13Z",
+  "hostEvidence" : {
+    "bonjourServices" : [
+
+    ],
+    "hostConfidence" : {
+      "level" : "Low",
+      "reasons" : [
+        "ONVIF discovery without XAddrs (+10)",
+        "RTSP port 554 open (+10)",
+        "HTTP reachable (404) (+5)"
+      ],
+      "score" : 25
+    },
+    "httpStatus" : 404,
+    "ip" : "192.168.8.247",
+    "mac" : "f0:9:d:4c:30:bb",
+    "openPorts" : [
+      443,
+      554,
+      8443
+    ],
+    "vendorConfidenceReasons" : [
+      "No OUI match"
+    ],
+    "vendorConfidenceScore" : 0
+  }
+}

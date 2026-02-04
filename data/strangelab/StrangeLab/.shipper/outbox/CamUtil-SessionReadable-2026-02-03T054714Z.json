@@ -1,0 +1,8 @@
+{
+  "confidence" : "Operator-initiated session; evidence references are raw and append-only.",
+  "evidenceRefs" : [
+
+  ],
+  "rawRef" : "CamUtil-SessionRaw-2026-02-03T054714Z.json",
+  "summary" : "Case session with 0 nodes and 5 sources."
+}

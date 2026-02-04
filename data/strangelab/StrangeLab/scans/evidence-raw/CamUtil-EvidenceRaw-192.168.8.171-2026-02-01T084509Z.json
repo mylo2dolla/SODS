@@ -1,0 +1,28 @@
+{
+  "bonjourServices" : [
+
+  ],
+  "hostConfidence" : {
+    "level" : "Low",
+    "reasons" : [
+      "ONVIF discovery without XAddrs (+10)",
+      "RTSP port 554 open (+10)",
+      "HTTP reachable (404) (+5)"
+    ],
+    "score" : 25
+  },
+  "hostname" : "ipc_3786.lan",
+  "httpServer" : "nginx",
+  "httpStatus" : 404,
+  "httpTitle" : "404 Not Found",
+  "ip" : "192.168.8.171",
+  "mac" : "a4:86:db:59:b7:d3",
+  "openPorts" : [
+    80,
+    554
+  ],
+  "vendorConfidenceReasons" : [
+    "No OUI match"
+  ],
+  "vendorConfidenceScore" : 0
+}

@@ -1,0 +1,16 @@
+{
+  "name": "StrangeLab Node Agent (ESP32-C3)",
+  "version": "0.1.0",
+  "chipFamily": "ESP32-C3",
+  "new_install_prompt_erase": true,
+  "builds": [
+    {
+      "chipFamily": "ESP32-C3",
+      "parts": [
+        { "path": "firmware/esp32c3/bootloader.bin", "offset": 4096 },
+        { "path": "firmware/esp32c3/partitions.bin", "offset": 32768 },
+        { "path": "firmware/esp32c3/firmware.bin", "offset": 65536 }
+      ]
+    }
+  ]
+}

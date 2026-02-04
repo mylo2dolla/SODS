@@ -1,0 +1,138 @@
+CAMUTIL READABLE LOG
+Generated: 2026-02-01T11:31:19Z
+
+SCAN SUMMARY
+Scope: 192.168.8.124/24
+Start: 2026-02-01T11:28:54Z
+End: 2026-02-01T11:29:52Z
+Duration: 57s
+Total IPs: 254
+Alive: 14
+Interesting: 4
+Safe Mode: OFF
+Toggles: ONVIF=true, ServiceDiscovery=true, ARPWarmup=true, BLE=true
+
+FINDINGS (HIGH CONFIDENCE)
+None.
+
+BLE SUMMARY
+Devices: 28
+Strongest RSSI:
+- Unknown rssi=127 dBm
+- Quest 3S rssi=127 dBm
+- macgr3y rssi=-31 dBm
+- Unknown rssi=-31 dBm
+- Unknown rssi=-37 dBm
+
+KEY EVENTS
+Warnings:
+- 04:30:39 [WARN] RTSP probe FAIL rtsp://192.168.8.108:554/ status=-
+- 04:30:40 [WARN] RTSP probe FAIL rtsp://192.168.8.108:554/live status=-
+- 04:30:41 [WARN] RTSP probe FAIL rtsp://192.168.8.108:554/live.sdp status=-
+- 04:30:42 [WARN] RTSP probe FAIL rtsp://192.168.8.108:554/h264 status=-
+- 04:30:43 [WARN] RTSP probe FAIL rtsp://192.168.8.108:554/h265 status=-
+- 04:30:44 [WARN] RTSP probe FAIL rtsp://192.168.8.108:554/stream1 status=-
+- 04:30:45 [WARN] RTSP probe FAIL rtsp://192.168.8.108:554/stream2 status=-
+- 04:30:47 [WARN] RTSP probe FAIL rtsp://192.168.8.108:554/cam/realmonitor?channel=1&subtype=0 status=-
+- 04:30:48 [WARN] RTSP probe FAIL rtsp://192.168.8.108:554/Streaming/Channels/101 status=-
+- 04:30:49 [WARN] RTSP probe FAIL rtsp://192.168.8.108:554/Streaming/Channels/102 status=-
+
+RAW LOG REF: CamUtil-LogsRaw-2026-02-01T113119Z.txt
+RAW LOG (last 200 lines)
+04:28:41 [INFO] BLE manager init: auth=allowedAlways, state=unknown
+04:28:42 [INFO] OUI file watcher started
+04:28:42 [INFO] Pi-Aux server listening on 127.0.0.1:8787
+04:28:42 [INFO] BLE company map entries: 10
+04:28:42 [INFO] BLE service map entries: 12
+04:28:42 [INFO] BLE state: poweredOn
+04:28:42 [INFO] CBCentralManager didUpdateState: poweredOn, auth=allowedAlways
+04:28:42 [INFO] OUI import loaded 39045 entries
+04:28:50 [INFO] BLE toggle on
+04:28:50 [INFO] BLE scan started
+04:28:50 [INFO] BLE first device discovered
+04:28:50 [INFO] BLE device D6F40FC2-76BF-A21D-FE26-82338DDA284B name=Pod company=Apple beacon= services=0
+04:28:50 [INFO] BLE device 405C099E-2964-5299-AF2A-0D1398C6126D name= company=Microsoft beacon= services=0
+04:28:50 [INFO] BLE device B19D527B-8AAC-7F8E-992B-07A4618A1CEF name= company=Apple beacon= services=0
+04:28:50 [INFO] BLE device 3CE66F91-F236-7AA4-A0A8-412EC92C35B3 name=PHONE company=Apple beacon= services=0
+04:28:50 [INFO] BLE device A468C5BE-7DEB-B6F3-4B21-5F9FE829E83C name= company=Apple beacon= services=0
+04:28:50 [INFO] BLE device 0F786E01-3C43-6D3E-8424-275F9490A8A0 name=macgr3y company=Apple beacon= services=0
+04:28:50 [INFO] BLE device F61BFA9B-E8F6-DDE7-5B6C-BF992B9B2A04 name= company=Apple beacon= services=0
+04:28:50 [INFO] BLE device E70ABBF9-A4FC-FF40-FBE0-5EE9FC9C49B8 name=SYLVANIA BR30 C-M942A company= beacon= services=1
+04:28:50 [INFO] BLE device 6A318D58-9FDB-57BC-75A5-A188A8643F21 name= company=Apple beacon= services=0
+04:28:50 [INFO] BLE device A6C9839A-ECA0-3F20-158F-E86A31CFFBA5 name=Base company=Apple beacon= services=0
+04:28:51 [INFO] BLE device DB0D0AC9-E1A6-5B19-1D6F-7C1BFA4EC240 name= company=Apple beacon= services=0
+04:28:52 [INFO] BLE device 142FF1DB-EB2D-8E09-756D-1FBE8A6543A6 name= company=Apple beacon= services=0
+04:28:52 [INFO] BLE device 9AEEF068-88BA-ED14-A1DD-3351B5E9EBCE name= company= beacon= services=1
+04:28:52 [INFO] BLE device 89F930CA-1ABF-D83C-8608-12D3EF468A17 name= company=Apple beacon= services=0
+04:28:52 [INFO] BLE device E193BCC6-2EDC-4BEE-0750-AEEC60F2B7E3 name=Mini7 company=Apple beacon= services=0
+04:28:53 [INFO] BLE device 5ECD646C-5DFE-8E8A-C746-536A01A17C1E name=FukuMEAN company=Apple beacon= services=0
+04:28:54 [INFO] Scan started (ONVIF discovery enabled, service discovery enabled, ARP warmup enabled, safe mode off)
+04:28:55 [INFO] Scan scope: 192.168.8.124/24
+04:28:55 [INFO] Total IPs to scan: 254
+04:28:55 [INFO] ARP warmup started: 254 IPs
+04:28:55 [INFO] BLE device 7D801206-BD36-F528-C34A-319DBFD5183F name= company=Apple beacon= services=0
+04:28:55 [INFO] ARP warmup finished
+04:28:55 [INFO] ARP parsed entries: 18
+04:28:55 [INFO] ARP hosts with MAC: 13
+04:28:55 [INFO] ARP marked alive: 13
+04:28:55 [INFO] OUI vendor hits: 6, misses: 7
+04:28:55 [INFO] ARP vendor scoring: hosts scored 6, high-confidence 0; devices scored 0, high-confidence 0
+04:28:55 [INFO] SSDP discovery started
+04:28:55 [INFO] Bonjour discovery started
+04:28:56 [INFO] WS-Discovery started (timeout 3.0s)
+04:28:57 [INFO] BLE device 9FCA0C63-C50E-1831-BA8E-978E3671F4EF name= company=Apple beacon= services=0
+04:28:58 [INFO] WS-Discovery found device 192.168.8.108
+04:28:58 [INFO] WS-Discovery found device 192.168.8.171
+04:28:58 [INFO] WS-Discovery finished: found 2 device(s)
+04:28:59 [INFO] SSDP responses: 0
+04:28:59 [INFO] Bonjour services: 5
+04:29:01 [INFO] BLE device 1BC659A4-2EF7-6AA8-8AE5-DE5C4FAD92D0 name= company=Apple beacon= services=0
+04:29:18 [INFO] BLE device BD1A680A-EB6B-5AD1-0A4C-F31FB166D97B name= company=Apple beacon= services=0
+04:29:25 [INFO] BLE device 96528955-956F-57C7-CB01-7678B0903AD4 name= company=Apple beacon= services=0
+04:29:25 [INFO] BLE device BE0E9D95-1139-B8EB-225E-93899E2A7E8A name= company=Apple beacon= services=0
+04:29:30 [INFO] BLE device 1B59E8F7-C28B-CBF4-1626-2C7348975EB9 name=Crusher Evo company= beacon= services=3
+04:29:31 [INFO] BLE device 7B007A95-2B63-4DF7-2F00-ECF4826841D7 name= company=Apple beacon= services=0
+04:29:49 [INFO] BLE device 29322310-5C31-6E5D-FC22-541809F86F4E name=Quest 3S company= beacon= services=1
+04:29:52 [INFO] Scan finished: alive 14 / 255
+04:29:52 [INFO] Scan complete
+04:29:52 [INFO] Hostname lookups started
+04:29:54 [INFO] Hostname lookups finished
+04:29:54 [INFO] ARP parsed entries: 18
+04:29:54 [INFO] ARP hosts with MAC: 13
+04:29:54 [INFO] ARP marked alive: 0
+04:29:54 [INFO] OUI vendor hits: 6, misses: 7
+04:29:54 [INFO] ARP vendor scoring: hosts scored 6, high-confidence 0; devices scored 3, high-confidence 0
+04:29:54 [INFO] HTTP fingerprinting started (5 requests)
+04:29:54 [INFO] HTTP fingerprinting attempted 5, succeeded 5
+04:29:54 [INFO] HTTP vendor scoring: hosts scored 6, high-confidence 0; devices scored 3, high-confidence 0
+04:29:54 [INFO] Scored hosts: 255 (high: 0, med: 0, low: 255)
+04:30:01 [INFO] BLE device E7349550-A311-79B2-AA41-D7DAA44B7E48 name= company=Apple beacon= services=0
+04:30:05 [INFO] BLE device 41BAF2A1-9FD5-A6DB-5E3C-79EB794E21AA name= company=Apple beacon= services=0
+04:30:10 [INFO] BLE device 28252BD9-AD64-4008-D72D-EB23DF70A6F7 name= company=Apple beacon= services=0
+04:30:25 [INFO] Exported file to /Users/letsdev/StrangeLab/scans/device-report-raw/CamUtil-DeviceReportRaw-192.168.8.108-2026-02-01T113025Z.json
+04:30:25 [INFO] Exported file to /Users/letsdev/StrangeLab/scans/device-report-readable/CamUtil-DeviceReportReadable-192.168.8.108-2026-02-01T113025Z.json
+04:30:25 [INFO] Device report generated for 192.168.8.108 classification=Likely camera/streaming device confidence=15
+04:30:25 [INFO] BLE mapping stats: company hits=2940 misses=25; service hits=0 misses=0
+04:30:38 [INFO] Probe RTSP clicked ip=192.168.8.108 safeMode=false
+04:30:38 [INFO] RTSP probe started for 192.168.8.108
+04:30:39 [WARN] RTSP probe FAIL rtsp://192.168.8.108:554/ status=-
+04:30:40 [WARN] RTSP probe FAIL rtsp://192.168.8.108:554/live status=-
+04:30:41 [WARN] RTSP probe FAIL rtsp://192.168.8.108:554/live.sdp status=-
+04:30:42 [WARN] RTSP probe FAIL rtsp://192.168.8.108:554/h264 status=-
+04:30:43 [WARN] RTSP probe FAIL rtsp://192.168.8.108:554/h265 status=-
+04:30:44 [WARN] RTSP probe FAIL rtsp://192.168.8.108:554/stream1 status=-
+04:30:45 [WARN] RTSP probe FAIL rtsp://192.168.8.108:554/stream2 status=-
+04:30:47 [WARN] RTSP probe FAIL rtsp://192.168.8.108:554/cam/realmonitor?channel=1&subtype=0 status=-
+04:30:48 [WARN] RTSP probe FAIL rtsp://192.168.8.108:554/Streaming/Channels/101 status=-
+04:30:49 [WARN] RTSP probe FAIL rtsp://192.168.8.108:554/Streaming/Channels/102 status=-
+04:30:50 [WARN] RTSP probe FAIL rtsp://192.168.8.108:554/axis-media/media.amp status=-
+04:30:51 [WARN] RTSP probe FAIL rtsp://192.168.8.108:554/media/video1 status=-
+04:30:52 [WARN] RTSP probe FAIL rtsp://192.168.8.108:554/ch0_0.h264 status=-
+04:30:53 [WARN] RTSP probe FAIL rtsp://192.168.8.108:554/ch1/main/av_stream status=-
+04:30:53 [INFO] RTSP probe finished for 192.168.8.108: No working RTSP URLs found
+04:31:01 [INFO] Copied evidence JSON to clipboard
+04:31:04 [WARN] No hard probe folder found for 192.168.8.108
+04:31:13 [INFO] Audit log exported to /Users/letsdev/StrangeLab/scans/logs/CamUtil-Audit-2026-02-01T113108Z.json
+04:31:13 [INFO] Exported file to /Users/letsdev/StrangeLab/scans/audit-raw/CamUtil-AuditRaw-2026-02-01T113113Z.json
+04:31:14 [INFO] Exported file to /Users/letsdev/StrangeLab/scans/audit-readable/CamUtil-AuditReadable-2026-02-01T113113Z.json
+04:31:19 [INFO] Exported file to /Users/letsdev/StrangeLab/scans/logs-raw/CamUtil-LogsRaw-2026-02-01T113119Z.txt

@@ -1,0 +1,80 @@
+{
+  "confidence" : {
+    "explanations" : [
+      "ONVIF discovery without XAddrs (+10)",
+      "Vendor\/OUI match (+5)"
+    ],
+    "level" : "Low",
+    "score" : 15
+  },
+  "glossary" : [
+    {
+      "meaning" : "Open Network Video Interface Forum standard for IP cameras.",
+      "term" : "ONVIF"
+    },
+    {
+      "meaning" : "Real Time Streaming Protocol for media streams.",
+      "term" : "RTSP"
+    },
+    {
+      "meaning" : "Simple Service Discovery Protocol for UPnP devices.",
+      "term" : "SSDP"
+    },
+    {
+      "meaning" : "Apple's mDNS-based local service discovery.",
+      "term" : "Bonjour"
+    }
+  ],
+  "meta" : {
+    "appVersion" : "1.0",
+    "buildNumber" : "1",
+    "hostIP" : "192.168.8.108",
+    "isoTimestamp" : "2026-02-01T112234Z"
+  },
+  "rawRef" : {
+    "filename" : "CamUtil-EvidenceRaw-192.168.8.108-2026-02-01T112234Z.json"
+  },
+  "recommendations" : [
+    "Open the web UI to confirm device identity.",
+    "If RTSP is available, open in VLC to validate streams.",
+    "Verify credentials locally; do not attempt unauthorized access.",
+    "Label the device and record its physical location.",
+    "Re-scan after changes to confirm inventory."
+  ],
+  "signals" : {
+    "bonjour" : {
+      "meaning" : "No Bonjour services found."
+    },
+    "httpAuth" : {
+      "meaning" : "No WWW-Authenticate header observed."
+    },
+    "httpServer" : {
+      "meaning" : "No server header observed."
+    },
+    "httpStatus" : {
+      "meaning" : "No HTTP response observed."
+    },
+    "httpTitle" : {
+      "meaning" : "No title observed."
+    },
+    "onvif" : {
+      "meaning" : "ONVIF-related signal observed.",
+      "raw" : true
+    },
+    "openPorts" : {
+      "meaning" : [
+
+      ],
+      "raw" : [
+
+      ]
+    },
+    "rtsp" : {
+      "meaning" : "No RTSP port detected."
+    },
+    "ssdp" : {
+      "meaning" : "No SSDP response."
+    }
+  },
+  "summary" : "Host 192.168.8.108 shows signs of life. Vendor hint: SichuanAILin Sichuan AI-Link Technology Co., Ltd.."
+}

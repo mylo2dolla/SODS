@@ -1,0 +1,227 @@
+# Progress Update — Node Agent Firmware & Flashing
+
+## Status: **Major Milestone Reached** ✅
+
+This session closed the loop on a stable, repeatable firmware + flashing workflow for both **ESP32** and **ESP32‑C3** boards, without relying on serial monitors.
+
+---
+
+## What Is Now Working
+
+### Firmware
+
+* ESP32 (esp32dev) firmware builds and boots cleanly
+* ESP32‑C3 firmware builds and boots cleanly
+* First‑boot `Preferences.cpp: nvs_open failed: NOT_FOUND` confirmed **normal**
+* BLE scanning active
+* Ingest logic active
+* Health + metrics endpoints live
+
+### Networking
+
+* Devices successfully join Wi‑Fi
+* IPs observable via router client list
+* ESP32‑C3 identified at **192.168.8.171** (2.4 GHz)
+* Router UI behavior (online/offline duplication) confirmed as expected
+
+### Flashing Workflow (Big Win)
+
+* **ESP Web Tools** fully integrated
+* No serial monitor required
+* Deterministic artifacts
+* One‑click browser flashing
+* Works locally, offline‑friendly after build
+
+---
+
+## Current Flashing Flow (Authoritative)
+
+### Build + Stage
+
+```bash
+./tools/build-stage-esp32dev.sh
+```
+
+(or esp32c3 equivalent)
+
+### Flash
+
+```bash
+./tools/flash-esp32dev.sh
+```
+
+* Launches local static server
+* Opens ESP Web Tools UI
+* Handles correct offsets automatically
+
+---
+
+## Firmware Artifacts Layout
+
+```
+esp-web-tools/
+  ├─ index.html
+  ├─ manifest.json
+  └─ firmware/
+      ├─ bootloader.bin   @ 0x1000
+      ├─ partitions.bin   @ 0x8000
+      └─ firmware.bin     @ 0x10000
+```
+
+404 issues fully eliminated by design.
+
+---
+
+## Runtime Verification (No Serial)
+
+### Health
+
+```
+curl http://<device-ip>/health
+```
+
+### Metrics
+
+```
+curl http://<device-ip>/metrics
+```
+
+### Ingest Confirmation
+
+* Monitor Pi logger or Cockpit CLI
+* Expect events:
+
+  * `node.boot`
+  * `node.heartbeat`
+  * `ble.seen`
+
+---
+
+## Known Non‑Issues (Confirmed)
+
+* `nvs_open failed: NOT_FOUND` on first boot
+* Router showing same MAC/IP under online + offline lists
+* Initial empty ingest results immediately after boot
+
+All expected behaviors.
+
+---
+
+## Architectural Wins
+
+* Serial port fragility removed from the workflow
+* Flashing is browser‑native and repeatable
+* Firmware is environment‑agnostic once built
+* Node Agent is now "plug‑in, flash, deploy"
+
+This unblocks scaling to many nodes.
+
+---
+
+## Next Logical Steps (Not Required Yet)
+
+1. mDNS hostname (`lab‑esp32‑01.local`, `lab‑esp32c3‑01.local`)
+2. Router IP reservations
+3. Cockpit UI button → ESP Web Tools launcher
+4. First‑class node registration event
+
+---
+
+## Summary
+
+This session crossed the hardest boundary: **reliable embedded deployment**.
+
+From here on, work shifts from infrastructure pain to feature development.
+
+**State: Stable. Confidence: High.**
+
+Progress Doc Update — StrangeLab Node Agent (ESP32 / ESP32-C3)
+
+✅ Current Status (as of now)
+	•	ESP Web Tools flashing flow: working for ESP32 + ESP32-C3 (separate manifests + launcher scripts).
+	•	No-serial verification: first-class (HTTP endpoints + server-side events).
+	•	Wi-Fi stability work: WPA2-only enforcement + reconnect/backoff + rich state telemetry is implemented.
+	•	IP discovery: handled via events to pi-logger, plus /whoami and best-effort mDNS.
+
+⸻
+
+What We Built
+
+1) Flashing System (ESP Web Tools)
+
+Goal: “Flash and go” without PlatformIO monitor.
+
+Artifacts staged to stable paths
+	•	esp-web-tools/firmware/... (no more .pio path 404s)
+
+Manifests
+	•	esp-web-tools/manifest.json (ESP32)
+	•	esp-web-tools/manifest-esp32c3.json (ESP32-C3)
+
+Launchers
+	•	tools/build-stage-esp32dev.sh
+	•	tools/flash-esp32dev.sh
+	•	tools/build-stage-esp32c3.sh
+	•	tools/flash-esp32c3.sh
+
+⸻
+
+2) Device Telemetry + Debug Without Serial
+
+HTTP endpoints (device-side)
+	•	/health
+	•	/metrics
+	•	/whoami
+	•	/wifi (new)
+
+Events (server-side / pi-logger authoritative)
+	•	node.boot (includes ingest_url and now Wi-Fi state details)
+	•	node.heartbeat
+	•	wifi.status (connect/disconnect/IP-change/attempt w/ reason)
+	•	node.announce (periodic “here I am” w/ IP + identity)
+
+⸻
+
+3) Wi-Fi Hardening (WPA2-only + Stability)
+
+Build flags (current defaults)
+	•	WIFI_FORCE_WPA2=1
+	•	WIFI_RESET_ON_BOOT=0
+
+Behavior
+	•	Forces WPA2 auth threshold at connect time (rejects WPA3/transition weirdness)
+	•	Disables Wi-Fi sleep
+	•	Backoff-based reconnect (no thrash loop)
+	•	Tracks reason codes, state, and emits them via wifi.status, /health, /wifi, /whoami
+
+Tuning flags
+	•	WIFI_RETRY_BASE_MS=1000
+	•	WIFI_RETRY_MAX_MS=30000
+	•	WIFI_CONNECT_TIMEOUT_MS=15000
+
+⸻
+
+Cockpit Integration
+
+Cockpit CLI updated
+	•	whereis → finds the most recent IP from pi-logger events
+	•	open → opens browser to health/metrics (when host open works)
+
+This is the right direction for “Cockpit is Tier-0 brain; devices are dumb nodes.”
+
+⸻
+
+Known Issues / Observations
+
+A) “IP thing” confusion
+	•	Devices can appear briefly as “Unknown” clients (router UI) until DHCP stabilizes.
+	•	When SSIDs were renamed, ESPs were still trying old SSID creds → looked like “flapping” or missing endpoints.
+
+B) ESP Web Tools error: Invalid head of packet (0xFF)
+	•	Almost always transport noise / bootloader handshake instability:
+	•	bad cable / hub
+	•	board power brownout
+	•	other process grabbing the port
+	•	occasionally Wi-Fi changes during flashing are irrelevant — flashing is serial/USB only
+
+⸻

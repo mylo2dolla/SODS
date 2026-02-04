@@ -1,0 +1,923 @@
+21:11:19 [INFO] BLE manager init: auth=notDetermined, state=unknown
+21:11:19 [INFO] OUI file watcher started
+21:11:19 [INFO] Pi-Aux server listening on 127.0.0.1:8787
+21:11:19 [INFO] BLE company map entries: 10
+21:11:19 [INFO] BLE assigned numbers entries: 18
+21:11:19 [WARN] BLE tables appear to be sample-sized; decoding coverage will be limited.
+21:11:19 [INFO] OUI import loaded 39045 entries
+21:11:22 [INFO] BLE state: poweredOn
+21:11:22 [INFO] CBCentralManager didUpdateState: poweredOn, auth=allowedAlways
+21:20:22 [INFO] BLE toggle on
+21:20:22 [INFO] BLE scan started
+21:20:22 [INFO] BLE first device discovered
+21:20:22 [INFO] BLE device D6F40FC2-76BF-A21D-FE26-82338DDA284B name=Pod company=Apple, Inc. beacon= services=0
+21:20:22 [INFO] BLE device 5ECD646C-5DFE-8E8A-C746-536A01A17C1E name=FukuMEAN company=Apple, Inc. beacon= services=0
+21:20:22 [INFO] BLE device 0F786E01-3C43-6D3E-8424-275F9490A8A0 name=macgr3y company=Apple, Inc. beacon= services=0
+21:20:22 [INFO] BLE device A6C9839A-ECA0-3F20-158F-E86A31CFFBA5 name=Base company=Apple, Inc. beacon= services=0
+21:20:22 [INFO] BLE device 4FF8B082-446B-138B-0302-E740BE540797 name= company=Apple, Inc. beacon= services=0
+21:20:22 [INFO] BLE device A81083A1-1A71-877D-AB4C-25FDAED6E10E name= company=Apple, Inc. beacon= services=0
+21:20:22 [INFO] BLE device 82D9F11E-D257-1067-EF2A-563EB209FE10 name= company=Apple, Inc. beacon= services=0
+21:20:22 [INFO] BLE device 4A900217-F9AC-E15D-8EAB-555EBD5FB2D3 name= company=Apple, Inc. beacon= services=0
+21:20:22 [INFO] BLE device 2788E5F0-9AFE-FE0E-F934-236C9C7AE27D name= company=Microsoft beacon= services=0
+21:20:22 [INFO] BLE device 198CF33C-E311-FA44-7E1E-B6F6FBE9242A name= company=Apple, Inc. beacon= services=0
+21:20:23 [INFO] BLE device F74E9BF5-C6FA-22CD-47E0-4C88CD74CF77 name= company=Apple, Inc. beacon= services=0
+21:20:23 [INFO] BLE device 8331D71B-861D-24F2-76CD-5572B4E87262 name=Quest 3S company= beacon= services=1
+21:20:23 [INFO] BLE device 3FC5FBF8-7939-E178-F5E9-8AB8D5FC9CF5 name= company=Apple, Inc. beacon= services=0
+21:20:24 [INFO] BLE device 102860A2-807B-4C95-1488-84E85E7279A0 name= company=Apple, Inc. beacon= services=0
+21:20:24 [INFO] BLE device E193BCC6-2EDC-4BEE-0750-AEEC60F2B7E3 name=Mini7 company=Apple, Inc. beacon= services=0
+21:20:24 [INFO] BLE device 6B9A71FA-A9EA-BE23-C272-6120CEF54121 name= company=Apple, Inc. beacon= services=0
+21:20:24 [INFO] BLE device 3CE66F91-F236-7AA4-A0A8-412EC92C35B3 name=PHONE company=Apple, Inc. beacon= services=0
+21:20:26 [INFO] BLE device 1B59E8F7-C28B-CBF4-1626-2C7348975EB9 name=Crusher Evo company= beacon= services=3
+21:20:28 [INFO] BLE device E70ABBF9-A4FC-FF40-FBE0-5EE9FC9C49B8 name=SYLVANIA BR30 C-M942A company= beacon= services=1
+21:20:41 [INFO] BLE device A9EAA196-75CA-A684-A11B-8151315E3BFA name= company=Apple, Inc. beacon= services=0
+21:21:00 [INFO] BLE device E01FFFD4-2DFD-5A1D-83E7-2CB375ABE251 name= company= beacon= services=0
+21:22:00 [INFO] BLE device 4F264772-482B-3854-C1E0-ADD2097EA5E4 name= company=Microsoft beacon= services=0
+21:22:22 [INFO] Scan started (ONVIF discovery enabled, service discovery enabled, ARP warmup enabled, safe mode off)
+21:22:22 [INFO] Scan scope: 192.168.8.124/24
+21:22:22 [INFO] Total IPs to scan: 254
+21:22:22 [INFO] ARP warmup started: 254 IPs
+21:22:23 [INFO] ARP warmup finished
+21:22:23 [INFO] ARP parsed entries: 26
+21:22:23 [INFO] ARP hosts with MAC: 17
+21:22:23 [INFO] ARP marked alive: 17
+21:22:23 [INFO] OUI vendor hits: 9, misses: 8
+21:22:23 [INFO] ARP vendor scoring: hosts scored 9, high-confidence 0; devices scored 0, high-confidence 0
+21:22:23 [INFO] SSDP discovery started
+21:22:23 [INFO] Bonjour discovery started
+21:22:23 [INFO] WS-Discovery started (timeout 3.0s)
+21:22:26 [INFO] WS-Discovery found device 192.168.8.108
+21:22:26 [INFO] WS-Discovery found device 192.168.8.119
+21:22:26 [INFO] WS-Discovery found device 192.168.8.171
+21:22:26 [INFO] WS-Discovery found device 192.168.8.234
+21:22:26 [INFO] WS-Discovery found device 192.168.8.247
+21:22:26 [INFO] WS-Discovery finished: found 5 device(s)
+21:22:26 [INFO] SSDP responses: 0
+21:22:26 [INFO] Bonjour services: 5
+21:22:46 [INFO] BLE device 0E28334D-30BA-20AF-CF5D-E5A3D32AE242 name=Quest 3S company= beacon= services=1
+21:22:56 [INFO] BLE probe connect start id=ff5849d4ad
+21:22:57 [INFO] BLE probe connected id=ff5849d4ad
+21:22:57 [INFO] BLE probe services discovered id=ff5849d4ad count=1
+21:22:57 [INFO] BLE probe complete id=ff5849d4ad
+21:22:59 [INFO] BLE probe connect start id=1135ddd78c
+21:23:00 [INFO] BLE probe connected id=1135ddd78c
+21:23:00 [INFO] BLE probe services discovered id=1135ddd78c count=1
+21:23:00 [INFO] BLE probe complete id=1135ddd78c
+21:23:19 [INFO] Scan finished: alive 18 / 255
+21:23:19 [INFO] Scan complete
+21:23:19 [INFO] Hostname lookups started
+21:23:20 [INFO] Hostname lookups finished
+21:23:20 [INFO] ARP parsed entries: 26
+21:23:20 [INFO] ARP hosts with MAC: 17
+21:23:20 [INFO] ARP marked alive: 0
+21:23:20 [INFO] OUI vendor hits: 9, misses: 8
+21:23:20 [INFO] ARP vendor scoring: hosts scored 9, high-confidence 0; devices scored 5, high-confidence 0
+21:23:20 [INFO] HTTP fingerprinting started (10 requests)
+21:23:20 [INFO] HTTP fingerprinting attempted 10, succeeded 7
+21:23:20 [INFO] HTTP vendor scoring: hosts scored 9, high-confidence 0; devices scored 5, high-confidence 0
+21:23:20 [INFO] Scored hosts: 255 (high: 0, med: 0, low: 255)
+21:23:25 [WARN] Node scan trigger not supported by Pi-Aux endpoint.
+21:24:12 [WARN] Ping not supported by Pi-Aux endpoint for node pi-aux.
+21:24:13 [WARN] Ping not supported by Pi-Aux endpoint for node pi-aux.
+21:24:15 [WARN] Node scan trigger not supported by Pi-Aux endpoint.
+21:24:42 [INFO] BLE device 375D2C7D-F1C4-294B-6779-E1407D6E362E name= company= beacon= services=0
+21:24:53 [INFO] Case session started nodes= sources=ble,wifi,rf,gps,net
+21:25:11 [INFO] BLE device 8AAA38D2-BB95-7C63-055F-021F805AF420 name= company=Apple, Inc. beacon= services=0
+21:25:20 [INFO] BLE probe connect start id=ce71afc8ab
+21:25:21 [INFO] BLE probe connected id=ce71afc8ab
+21:25:21 [INFO] BLE probe services discovered id=ce71afc8ab count=1
+21:25:21 [INFO] BLE probe complete id=ce71afc8ab
+21:25:23 [INFO] Pinned case for BLE ee02ca4728 with 0 references
+21:25:24 [INFO] Pinned case for BLE ee02ca4728 with 0 references
+21:25:25 [INFO] Pinned case for BLE ee02ca4728 with 0 references
+21:25:25 [INFO] Pinned case for BLE ee02ca4728 with 0 references
+21:25:25 [INFO] Pinned case for BLE ee02ca4728 with 0 references
+21:25:27 [INFO] Pinned case for BLE ce71afc8ab with 1 references
+21:25:27 [INFO] Pinned case for BLE ce71afc8ab with 1 references
+21:26:03 [INFO] BLE device 1C656E59-D561-CCA7-0719-FF9C72710CBD name= company=Apple, Inc. beacon= services=0
+21:26:04 [INFO] BLE device D5F7F365-0228-B2A3-98F1-B6122FF8A036 name= company=Apple, Inc. beacon= services=0
+21:26:46 [INFO] BLE device 0B2067A7-E735-0A7D-6727-95D5DD0BA47D name= company=Apple, Inc. beacon= services=0
+21:28:38 [INFO] BLE device 67537F57-B3A0-B7CF-F0DC-139A77162D7D name= company=Apple, Inc. beacon= services=0
+21:29:41 [INFO] Exported 255 records to /Users/letsdev/StrangeLab/reports/CamUtil-Export-2026-02-03T042853Z.json
+21:29:41 [INFO] Enqueued artifact to outbox: /Users/letsdev/StrangeLab/.shipper/outbox/CamUtil-Export-2026-02-03T042853Z.json
+21:29:41 [INFO] Export path copied to clipboard
+21:29:41 [INFO] Prune skipped (referenced): /Users/letsdev/StrangeLab/inbox/ble-raw/CamUtil-BLEProbe-ce71afc8ab-2026-02-03T005821Z.json
+21:29:42 [INFO] Vault ship queued: 1 files
+21:29:42 [ERROR] Vault ship error: failed to create /var/strangelab/vault/camutil/2026/02/03
+21:30:04 [INFO] BLE device 3A95D664-AF65-24A9-6DE1-6F875400FAC4 name= company=Apple, Inc. beacon= services=0
+21:30:05 [INFO] BLE device 7F617D63-4CB2-B484-FBF4-784FB3F3A258 name= company=Apple, Inc. beacon= services=0
+21:30:10 [INFO] BLE device 62ED343D-D737-0252-C744-B2D2D882EA0D name= company=Apple, Inc. beacon= services=0
+21:31:20 [INFO] BLE device 98E35B9F-D1A0-3ECE-30F2-3EC6A59F2947 name= company= beacon= services=0
+21:31:34 [INFO] BLE device E4B018A7-8E49-B95E-2A3D-D42A4BC405E0 name= company=Apple, Inc. beacon= services=0
+21:32:00 [INFO] BLE device A9A25DEF-3CEB-B9EB-3EA8-417F36FD4F9C name= company=Microsoft beacon= services=0
+21:34:07 [INFO] BLE device 451CE256-7B37-AF8F-E4A4-AE7CF91680C0 name= company=Apple, Inc. beacon= services=0
+21:35:14 [INFO] BLE device 044054C1-31A4-9A5F-F2B7-8B7B24A43BD5 name= company=Apple, Inc. beacon= services=0
+21:35:14 [INFO] BLE device AF26F9F6-7BF6-B167-9486-BF9634759FB2 name= company=Apple, Inc. beacon= services=0
+21:40:32 [INFO] BLE device FF32F3AA-81CC-80B6-8233-A3B73A1AF779 name= company= beacon= services=0
+21:41:04 [INFO] BLE device 5F3993E1-61A9-96A2-ECBC-1537FCEB524D name= company=Apple, Inc. beacon= services=0
+21:41:59 [INFO] BLE device 87889940-2ADC-140D-E0B2-9BC24B199787 name= company=Microsoft beacon= services=0
+21:42:41 [INFO] BLE device AE91535F-0D8D-CDE4-A9D1-96B369401AEF name= company= beacon= services=0
+21:43:52 [INFO] BLE device B6ECC92B-6CC4-36D8-193F-A5D41FF23B65 name= company=Apple, Inc. beacon= services=0
+21:44:23 [INFO] BLE device 283ED57E-0E8C-BE6C-1155-16FFE5E5A0C8 name= company=Apple, Inc. beacon= services=0
+21:45:04 [INFO] BLE device E5989578-9EC0-1214-AC39-2212FA5337EB name= company=Apple, Inc. beacon= services=0
+21:45:13 [INFO] BLE device E9F58682-A7BA-E805-08EA-7458683A80EB name= company=Apple, Inc. beacon= services=0
+21:45:14 [INFO] BLE device 4EA1BA8D-39BC-6D6D-DA37-CA86A2C36A72 name= company=Apple, Inc. beacon= services=0
+21:45:14 [INFO] BLE device 1993E0DA-9D63-2177-A227-469711799306 name= company=Apple, Inc. beacon= services=0
+21:45:15 [INFO] BLE device 9A44C8C2-F95D-94EB-219E-D669E4747565 name= company=Samsung beacon= services=0
+21:45:43 [INFO] BLE device 545F2189-45A4-7900-24D8-892A8DBF90CF name= company= beacon= services=0
+21:46:51 [INFO] BLE device 97EDA8EC-7908-33EE-6687-10EC6C06D9BC name= company=Apple, Inc. beacon= services=0
+21:46:52 [INFO] BLE device ABE79853-A4BE-0A02-F990-E704D715C04F name= company=Apple, Inc. beacon= services=0
+21:47:21 [INFO] BLE device 20EB8B52-99FF-261E-61B2-5575D41F61C9 name= company=Apple, Inc. beacon= services=0
+21:47:42 [INFO] BLE probe connect start id=7114d7b5e3
+21:47:43 [INFO] BLE probe connected id=7114d7b5e3
+21:47:43 [INFO] BLE probe services discovered id=7114d7b5e3 count=1
+21:47:43 [INFO] BLE probe complete id=7114d7b5e3
+21:47:45 [INFO] BLE probe connect start id=be4a63a766
+21:47:48 [WARN] BLE probe blocked (not connectable) id=bebb4688a8
+21:47:53 [WARN] BLE probe blocked (not connectable) id=b68ca13867
+21:49:59 [INFO] BLE device DC5A381E-9095-02D7-DC6D-30C3F0A8777A name= company=Apple, Inc. beacon= services=0
+21:50:39 [WARN] BLE probe blocked (not connectable) id=b68ca13867
+21:50:40 [WARN] BLE probe blocked (not connectable) id=b68ca13867
+21:50:48 [WARN] BLE probe blocked (busy) id=7114d7b5e3
+21:50:54 [WARN] BLE probe blocked (busy) id=ce71afc8ab
+22:40:31 [INFO] BLE manager init: auth=notDetermined, state=unknown
+22:40:31 [INFO] OUI file watcher started
+22:40:31 [INFO] Pi-Aux server listening on 127.0.0.1:8787
+22:40:31 [INFO] BLE company map entries: 10
+22:40:31 [INFO] BLE assigned numbers entries: 18
+22:40:31 [WARN] BLE tables appear to be sample-sized; decoding coverage will be limited.
+22:40:31 [INFO] Prune skipped (referenced): /Users/letsdev/StrangeLab/inbox/ble-raw/CamUtil-BLEProbe-ce71afc8ab-2026-02-03T005821Z.json
+22:40:31 [INFO] OUI import loaded 39045 entries
+22:40:35 [INFO] BLE state: poweredOn
+22:40:35 [INFO] CBCentralManager didUpdateState: poweredOn, auth=allowedAlways
+22:41:40 [INFO] BLE toggle on
+22:41:40 [INFO] BLE scan started
+22:41:40 [INFO] BLE first device discovered
+22:41:40 [INFO] BLE device D6EEA5A3-CB0F-68C9-B7DC-B83399DC9184 name= company=Microsoft beacon= services=0
+22:41:40 [INFO] BLE device 5ECD646C-5DFE-8E8A-C746-536A01A17C1E name=FukuMEAN company=Apple, Inc. beacon= services=0
+22:41:40 [INFO] BLE device D6F40FC2-76BF-A21D-FE26-82338DDA284B name=Pod company=Apple, Inc. beacon= services=0
+22:41:40 [INFO] BLE device CFE639AE-D4E8-D973-F16D-257B10B1F097 name= company=Apple, Inc. beacon= services=0
+22:41:40 [INFO] BLE device 1253DDE1-6221-0795-BAC3-039D45416D71 name= company=Apple, Inc. beacon= services=0
+22:41:41 [INFO] BLE device C5443F41-DC59-9828-7F87-D782C80B0477 name= company=Apple, Inc. beacon= services=0
+22:41:41 [INFO] BLE device E70ABBF9-A4FC-FF40-FBE0-5EE9FC9C49B8 name=SYLVANIA BR30 C-M942A company= beacon= services=1
+22:41:41 [INFO] BLE device E193BCC6-2EDC-4BEE-0750-AEEC60F2B7E3 name=Mini7 company=Apple, Inc. beacon= services=0
+22:41:42 [INFO] BLE device 517B815C-2B16-FC96-2DF2-D6952C2FF685 name= company=Apple, Inc. beacon= services=0
+22:41:42 [INFO] BLE device D15E69E2-5F7B-933F-2500-2B613B893C6A name= company=Apple, Inc. beacon= services=0
+22:41:42 [INFO] BLE device 0F786E01-3C43-6D3E-8424-275F9490A8A0 name=macgr3y company=Apple, Inc. beacon= services=0
+22:41:43 [INFO] BLE device CA9D40BE-6829-D19F-D4FB-59A616ABD503 name= company=Apple, Inc. beacon= services=0
+22:41:43 [INFO] BLE device 01D41AF7-BB03-CA3A-3EB3-2BC053758B9E name= company=Apple, Inc. beacon= services=0
+22:41:43 [INFO] BLE device 3CE66F91-F236-7AA4-A0A8-412EC92C35B3 name=PHONE company=Apple, Inc. beacon= services=0
+22:41:46 [INFO] BLE device 9612EEFB-088A-CEA2-83C5-92C4B068BE02 name=Quest 3S company= beacon= services=1
+22:41:46 [INFO] BLE device 15CF0C9D-DE77-032E-2A41-B0F3FE8100FB name= company=Apple, Inc. beacon= services=0
+22:41:47 [INFO] BLE device 1B59E8F7-C28B-CBF4-1626-2C7348975EB9 name=Crusher Evo company= beacon= services=3
+22:41:48 [INFO] BLE device A6C9839A-ECA0-3F20-158F-E86A31CFFBA5 name=Base company=Apple, Inc. beacon= services=0
+22:41:50 [INFO] BLE device C45A0C0D-DB68-45A9-9C4A-B35CA30DB881 name= company=Apple, Inc. beacon= services=0
+22:41:52 [INFO] Scan started (ONVIF discovery enabled, service discovery enabled, ARP warmup enabled, safe mode on)
+22:41:52 [INFO] Scan scope: 192.168.8.124/24
+22:41:52 [INFO] Total IPs to scan: 254
+22:41:52 [INFO] ARP warmup started: 254 IPs
+22:41:53 [INFO] ARP warmup finished
+22:41:53 [INFO] ARP parsed entries: 27
+22:41:53 [INFO] ARP hosts with MAC: 18
+22:41:53 [INFO] ARP marked alive: 17
+22:41:53 [INFO] OUI vendor hits: 9, misses: 9
+22:41:53 [INFO] ARP vendor scoring: hosts scored 9, high-confidence 0; devices scored 0, high-confidence 0
+22:41:53 [INFO] SSDP discovery started
+22:41:53 [INFO] Bonjour discovery started
+22:41:53 [INFO] WS-Discovery started (timeout 3.0s)
+22:41:56 [INFO] WS-Discovery found device 192.168.8.108
+22:41:56 [INFO] WS-Discovery found device 192.168.8.119
+22:41:56 [INFO] WS-Discovery found device 192.168.8.171
+22:41:56 [INFO] WS-Discovery found device 192.168.8.234
+22:41:56 [INFO] WS-Discovery found device 192.168.8.247
+22:41:56 [INFO] WS-Discovery finished: found 5 device(s)
+22:41:56 [INFO] SSDP responses: 0
+22:41:56 [INFO] Bonjour services: 5
+22:41:59 [INFO] BLE device 4071596A-FEF1-6C4E-4BB8-60BAA812266D name= company=Microsoft beacon= services=0
+22:42:03 [INFO] BLE device BF0979F4-FBAD-3639-01EC-39466CC0792E name= company=Apple, Inc. beacon= services=0
+22:42:16 [INFO] BLE probe connect start id=ce71afc8ab
+22:42:16 [INFO] BLE probe connected id=ce71afc8ab
+22:42:17 [INFO] BLE probe services discovered id=ce71afc8ab count=1
+22:42:17 [INFO] BLE probe complete id=ce71afc8ab
+22:42:21 [INFO] BLE probe connect start id=ce71afc8ab
+22:42:22 [INFO] BLE probe connected id=ce71afc8ab
+22:42:22 [INFO] BLE probe services discovered id=ce71afc8ab count=1
+22:42:22 [INFO] BLE probe complete id=ce71afc8ab
+22:42:26 [INFO] BLE probe connect start id=ce71afc8ab
+22:42:28 [INFO] BLE probe connected id=ce71afc8ab
+22:42:28 [INFO] BLE probe services discovered id=ce71afc8ab count=1
+22:42:28 [INFO] BLE probe complete id=ce71afc8ab
+22:42:29 [INFO] BLE probe connect start id=ce71afc8ab
+22:42:29 [INFO] BLE probe connected id=ce71afc8ab
+22:42:30 [INFO] BLE probe services discovered id=ce71afc8ab count=1
+22:42:30 [INFO] BLE probe complete id=ce71afc8ab
+22:42:33 [INFO] BLE device 92D152B5-0C8C-22F5-1E73-A8B186808D89 name= company=Apple, Inc. beacon= services=0
+22:42:35 [INFO] BLE device F938AAA2-4850-40EF-A568-1325E5215D98 name= company=Apple, Inc. beacon= services=0
+22:42:36 [INFO] BLE probe connect start id=7735331a8b
+22:42:38 [INFO] BLE probe connected id=7735331a8b
+22:42:38 [INFO] BLE probe services discovered id=7735331a8b count=1
+22:42:38 [INFO] BLE probe complete id=7735331a8b
+22:42:39 [INFO] BLE device C965CDF8-DDC3-3478-396E-4B08C5A91917 name= company= beacon= services=0
+22:42:49 [INFO] Scan finished: alive 19 / 255
+22:42:49 [INFO] Scan complete
+22:42:49 [INFO] Hostname lookups started
+22:42:50 [INFO] Hostname lookups finished
+22:42:50 [INFO] ARP parsed entries: 27
+22:42:51 [INFO] ARP hosts with MAC: 18
+22:42:51 [INFO] ARP marked alive: 0
+22:42:51 [INFO] OUI vendor hits: 9, misses: 9
+22:42:51 [INFO] ARP vendor scoring: hosts scored 9, high-confidence 0; devices scored 5, high-confidence 0
+22:42:51 [INFO] HTTP fingerprinting started (10 requests)
+22:42:51 [INFO] HTTP fingerprinting attempted 10, succeeded 7
+22:42:51 [INFO] HTTP vendor scoring: hosts scored 9, high-confidence 0; devices scored 5, high-confidence 0
+22:42:51 [INFO] Scored hosts: 255 (high: 0, med: 0, low: 255)
+22:43:49 [INFO] Copied IP 192.168.8.108 to clipboard
+22:43:55 [WARN] VLC not installed at /Applications/VLC.app
+22:43:55 [INFO] Opened RTSP URL for 192.168.8.108: 192.168.8.108
+22:44:09 [INFO] Open Web UI: ip=192.168.8.172 url=http://192.168.8.172:80
+22:44:42 [INFO] Open Web UI: ip=192.168.8.247 url=https://192.168.8.247:443
+22:44:51 [INFO] Opened RTSP URL for 192.168.8.247: rtsp://192.168.8.247:554/
+22:44:52 [INFO] Opened RTSP URL for 192.168.8.247: rtsp://192.168.8.247:554/
+22:44:53 [INFO] BLE device CD74611A-26EA-06CF-6DF5-B5BC35AE4391 name= company=Apple, Inc. beacon= services=0
+22:44:54 [INFO] Opened RTSP URL for 192.168.8.247: rtsp://192.168.8.247:554/
+22:44:58 [INFO] Copied RTSP URL for rtsp://192.168.8.247:554/
+22:45:02 [INFO] Opened RTSP URL for 192.168.8.247: rtsp://192.168.8.247:554/
+22:45:07 [INFO] BLE device 7011C1A1-500C-82BE-3E12-D621675B99EE name= company=Apple, Inc. beacon= services=0
+22:45:10 [INFO] BLE device 7C8E9BDD-9796-723B-9BAA-83C7703DB266 name= company=Apple, Inc. beacon= services=0
+22:45:13 [INFO] Generate Device Report: ip=192.168.8.247
+22:45:13 [INFO] Exported file to /Users/letsdev/StrangeLab/reports/device-raw/CamUtil-DeviceReportRaw-192.168.8.247-2026-02-03T054513Z.json
+22:45:13 [INFO] Exported file to /Users/letsdev/StrangeLab/reports/device-readable/CamUtil-DeviceReportReadable-192.168.8.247-2026-02-03T054513Z.json
+22:45:13 [INFO] Enqueued artifact to outbox: /Users/letsdev/StrangeLab/.shipper/outbox/CamUtil-DeviceReportRaw-192.168.8.247-2026-02-03T054513Z.json
+22:45:13 [INFO] Prune skipped (referenced): /Users/letsdev/StrangeLab/inbox/ble-raw/CamUtil-BLEProbe-ce71afc8ab-2026-02-03T005821Z.json
+22:45:14 [INFO] Vault ship queued: 2 files
+22:45:14 [ERROR] Vault ship error: failed to create /var/strangelab/vault/camutil/2026/02/03
+22:45:15 [INFO] Device report generated for 192.168.8.247 classification=Likely camera/streaming device confidence=25
+22:45:15 [INFO] BLE mapping stats: company hits=4382 misses=169; assigned hits=32 misses=278; parse errors=0
+22:45:15 [INFO] Enqueued artifact to outbox: /Users/letsdev/StrangeLab/.shipper/outbox/CamUtil-DeviceReportReadable-192.168.8.247-2026-02-03T054513Z.json
+22:45:15 [ERROR] Vault ship error: failed to create /var/strangelab/vault/camutil/2026/02/03
+22:45:15 [INFO] Prune skipped (referenced): /Users/letsdev/StrangeLab/inbox/ble-raw/CamUtil-BLEProbe-ce71afc8ab-2026-02-03T005821Z.json
+22:45:15 [INFO] Vault ship queued: 3 files
+22:45:15 [ERROR] Vault ship error: failed to create /var/strangelab/vault/camutil/2026/02/03
+22:45:15 [ERROR] Vault ship error: failed to create /var/strangelab/vault/camutil/2026/02/03
+22:45:15 [ERROR] Vault ship error: failed to create /var/strangelab/vault/camutil/2026/02/03
+22:45:29 [INFO] BLE device 5084B418-C864-3EE9-D573-5D6B42959EAD name= company= beacon= services=0
+22:45:55 [INFO] Exported file to /Users/letsdev/StrangeLab/reports/scan-raw/CamUtil-ScanReportRaw-2026-02-03T054555Z.json
+22:45:56 [INFO] Exported file to /Users/letsdev/StrangeLab/reports/scan-readable/CamUtil-ScanReportReadable-2026-02-03T054555Z.json
+22:45:56 [INFO] Enqueued artifact to outbox: /Users/letsdev/StrangeLab/.shipper/outbox/CamUtil-ScanReportRaw-2026-02-03T054555Z.json
+22:45:56 [INFO] Prune skipped (referenced): /Users/letsdev/StrangeLab/inbox/ble-raw/CamUtil-BLEProbe-ce71afc8ab-2026-02-03T005821Z.json
+22:45:56 [INFO] Vault ship queued: 4 files
+22:45:56 [ERROR] Vault ship error: failed to create /var/strangelab/vault/camutil/2026/02/03
+22:45:57 [INFO] Scan report generated: hosts=255 ble=28 high=0 top=192.168.8.119 (30), 192.168.8.171 (30), 192.168.8.234 (30), 192.168.8.247 (25), 192.168.8.1 (15)
+22:45:57 [INFO] BLE mapping stats: company hits=5138 misses=192; assigned hits=42 misses=325; parse errors=0
+22:45:57 [INFO] Enqueued artifact to outbox: /Users/letsdev/StrangeLab/.shipper/outbox/CamUtil-ScanReportReadable-2026-02-03T054555Z.json
+22:45:57 [ERROR] Vault ship error: failed to create /var/strangelab/vault/camutil/2026/02/03
+22:45:57 [INFO] Prune skipped (referenced): /Users/letsdev/StrangeLab/inbox/ble-raw/CamUtil-BLEProbe-ce71afc8ab-2026-02-03T005821Z.json
+22:45:57 [ERROR] Vault ship error: failed to create /var/strangelab/vault/camutil/2026/02/03
+22:45:57 [ERROR] Vault ship error: failed to create /var/strangelab/vault/camutil/2026/02/03
+22:45:57 [INFO] Vault ship queued: 5 files
+22:45:57 [ERROR] Vault ship error: failed to create /var/strangelab/vault/camutil/2026/02/03
+22:45:58 [ERROR] Vault ship error: failed to create /var/strangelab/vault/camutil/2026/02/03
+22:45:58 [ERROR] Vault ship error: failed to create /var/strangelab/vault/camutil/2026/02/03
+22:45:58 [ERROR] Vault ship error: failed to create /var/strangelab/vault/camutil/2026/02/03
+22:45:58 [ERROR] Vault ship error: failed to create /var/strangelab/vault/camutil/2026/02/03
+22:46:28 [INFO] BLE device D127AC3A-D43D-80EA-6464-D7906D6F483D name= company=Apple, Inc. beacon= services=0
+22:46:35 [INFO] Vault ship queued: 5 files
+22:46:35 [ERROR] Vault ship error: failed to create /var/strangelab/vault/camutil/2026/02/03
+22:46:36 [ERROR] Vault ship error: failed to create /var/strangelab/vault/camutil/2026/02/03
+22:46:36 [ERROR] Vault ship error: failed to create /var/strangelab/vault/camutil/2026/02/03
+22:46:36 [ERROR] Vault ship error: failed to create /var/strangelab/vault/camutil/2026/02/03
+22:46:36 [ERROR] Vault ship error: failed to create /var/strangelab/vault/camutil/2026/02/03
+22:46:41 [INFO] BLE device 88E9C3A6-5966-7659-75D2-FEAC5FDCDE90 name= company=Apple, Inc. beacon= services=0
+22:47:06 [INFO] Enqueued artifact to outbox: /Users/letsdev/StrangeLab/.shipper/outbox/CaseReportRaw-2026-02-03T054706Z.json
+22:47:06 [INFO] Enqueued artifact to outbox: /Users/letsdev/StrangeLab/.shipper/outbox/CaseReportReadable-2026-02-03T054706Z.json
+22:47:07 [INFO] Case report generated: /Users/letsdev/StrangeLab/workspace/cases/ce71afc8ab/CaseReportReadable-2026-02-03T054706Z.json
+22:47:13 [INFO] Case session started nodes= sources=ble,wifi,rf,gps,net
+22:47:14 [INFO] Exported file to /Users/letsdev/StrangeLab/reports/session-raw/CamUtil-SessionRaw-2026-02-03T054714Z.json
+22:47:14 [INFO] Exported file to /Users/letsdev/StrangeLab/reports/session-readable/CamUtil-SessionReadable-2026-02-03T054714Z.json
+22:47:14 [INFO] Enqueued artifact to outbox: /Users/letsdev/StrangeLab/.shipper/outbox/CamUtil-SessionRaw-2026-02-03T054714Z.json
+22:47:15 [INFO] Prune skipped (referenced): /Users/letsdev/StrangeLab/inbox/ble-raw/CamUtil-BLEProbe-ce71afc8ab-2026-02-03T005821Z.json
+22:47:16 [INFO] Vault ship queued: 8 files
+22:47:16 [ERROR] Vault ship error: failed to create /var/strangelab/vault/camutil/2026/02/03
+22:47:16 [INFO] Case session ended: /Users/letsdev/StrangeLab/reports/session-readable/CamUtil-SessionReadable-2026-02-03T054714Z.json
+22:47:16 [INFO] Enqueued artifact to outbox: /Users/letsdev/StrangeLab/.shipper/outbox/CamUtil-SessionReadable-2026-02-03T054714Z.json
+22:47:16 [ERROR] Vault ship error: failed to create /var/strangelab/vault/camutil/2026/02/03
+22:47:16 [INFO] Prune skipped (referenced): /Users/letsdev/StrangeLab/inbox/ble-raw/CamUtil-BLEProbe-ce71afc8ab-2026-02-03T005821Z.json
+22:47:16 [ERROR] Vault ship error: failed to create /var/strangelab/vault/camutil/2026/02/03
+22:47:16 [ERROR] Vault ship error: failed to create /var/strangelab/vault/camutil/2026/02/03
+22:47:17 [ERROR] Vault ship error: failed to create /var/strangelab/vault/camutil/2026/02/03
+22:47:17 [INFO] Vault ship queued: 9 files
+22:47:17 [ERROR] Vault ship error: failed to create /var/strangelab/vault/camutil/2026/02/03
+22:47:17 [ERROR] Vault ship error: failed to create /var/strangelab/vault/camutil/2026/02/03
+22:47:17 [ERROR] Vault ship error: failed to create /var/strangelab/vault/camutil/2026/02/03
+22:47:17 [ERROR] Vault ship error: failed to create /var/strangelab/vault/camutil/2026/02/03
+22:47:18 [ERROR] Vault ship error: failed to create /var/strangelab/vault/camutil/2026/02/03
+22:47:18 [ERROR] Vault ship error: failed to create /var/strangelab/vault/camutil/2026/02/03
+22:47:18 [ERROR] Vault ship error: failed to create /var/strangelab/vault/camutil/2026/02/03
+22:47:18 [ERROR] Vault ship error: failed to create /var/strangelab/vault/camutil/2026/02/03
+22:47:18 [ERROR] Vault ship error: failed to create /var/strangelab/vault/camutil/2026/02/03
+22:47:18 [ERROR] Vault ship error: failed to create /var/strangelab/vault/camutil/2026/02/03
+22:47:18 [ERROR] Vault ship error: failed to create /var/strangelab/vault/camutil/2026/02/03
+22:47:19 [ERROR] Vault ship error: failed to create /var/strangelab/vault/camutil/2026/02/03
+22:47:30 [INFO] Vault ship queued: 9 files
+22:47:30 [ERROR] Vault ship error: failed to create /var/strangelab/vault/camutil/2026/02/03
+22:47:30 [ERROR] Vault ship error: failed to create /var/strangelab/vault/camutil/2026/02/03
+22:47:30 [ERROR] Vault ship error: failed to create /var/strangelab/vault/camutil/2026/02/03
+22:47:30 [ERROR] Vault ship error: failed to create /var/strangelab/vault/camutil/2026/02/03
+22:47:30 [ERROR] Vault ship error: failed to create /var/strangelab/vault/camutil/2026/02/03
+22:47:30 [ERROR] Vault ship error: failed to create /var/strangelab/vault/camutil/2026/02/03
+22:47:31 [ERROR] Vault ship error: failed to create /var/strangelab/vault/camutil/2026/02/03
+22:47:31 [ERROR] Vault ship error: failed to create /var/strangelab/vault/camutil/2026/02/03
+22:47:31 [ERROR] Vault ship error: failed to create /var/strangelab/vault/camutil/2026/02/03
+22:47:38 [INFO] Scan started (ONVIF discovery enabled, service discovery enabled, ARP warmup enabled, safe mode on)
+22:47:38 [INFO] Scan scope: 192.168.8.124/24
+22:47:38 [INFO] Total IPs to scan: 254
+22:47:38 [INFO] ARP warmup started: 254 IPs
+22:47:39 [INFO] ARP warmup finished
+22:47:39 [INFO] ARP parsed entries: 27
+22:47:39 [INFO] ARP hosts with MAC: 18
+22:47:39 [INFO] ARP marked alive: 17
+22:47:39 [INFO] OUI vendor hits: 9, misses: 9
+22:47:39 [INFO] ARP vendor scoring: hosts scored 9, high-confidence 0; devices scored 0, high-confidence 0
+22:47:39 [INFO] SSDP discovery started
+22:47:39 [INFO] Bonjour discovery started
+22:47:39 [INFO] WS-Discovery started (timeout 3.0s)
+22:47:42 [INFO] WS-Discovery found device 192.168.8.108
+22:47:42 [INFO] WS-Discovery found device 192.168.8.119
+22:47:42 [INFO] WS-Discovery found device 192.168.8.171
+22:47:42 [INFO] WS-Discovery found device 192.168.8.234
+22:47:42 [INFO] WS-Discovery found device 192.168.8.247
+22:47:42 [INFO] WS-Discovery finished: found 5 device(s)
+22:47:42 [INFO] SSDP responses: 0
+22:47:43 [INFO] Bonjour services: 6
+22:48:36 [INFO] Scan finished: alive 19 / 255
+22:48:36 [INFO] Scan complete
+22:48:36 [INFO] Hostname lookups started
+22:48:38 [INFO] Hostname lookups finished
+22:48:38 [INFO] ARP parsed entries: 27
+22:48:38 [INFO] ARP hosts with MAC: 18
+22:48:38 [INFO] ARP marked alive: 0
+22:48:38 [INFO] OUI vendor hits: 9, misses: 9
+22:48:38 [INFO] ARP vendor scoring: hosts scored 9, high-confidence 0; devices scored 5, high-confidence 0
+22:48:38 [INFO] HTTP fingerprinting started (10 requests)
+22:48:39 [INFO] HTTP fingerprinting attempted 10, succeeded 7
+22:48:39 [INFO] HTTP vendor scoring: hosts scored 9, high-confidence 0; devices scored 5, high-confidence 0
+22:48:39 [INFO] Scored hosts: 255 (high: 0, med: 0, low: 255)
+22:49:59 [INFO] BLE device DC5A381E-9095-02D7-DC6D-30C3F0A8777A name= company=Apple, Inc. beacon= services=0
+22:51:44 [INFO] BLE device 0DABBE7A-1D5E-832C-71F8-B5B1E2450228 name= company=Apple, Inc. beacon= services=0
+22:51:45 [INFO] BLE device 67DD7A78-45C0-3C47-846F-8E0C6E1A32AA name= company=Apple, Inc. beacon= services=0
+22:52:00 [INFO] BLE device 70770732-FB8A-BEFD-CF79-B3D08D3428E5 name= company=Microsoft beacon= services=0
+22:54:08 [INFO] BLE device 243E0EF5-5066-C2F3-AC2F-A7E87BC417F1 name= company= beacon= services=0
+22:54:41 [INFO] BLE device BCF3AB76-C83A-DB32-F638-4C02DAC252B9 name= company=Apple, Inc. beacon= services=0
+22:56:41 [INFO] BLE device F4FB2EBE-A96C-9E03-1976-48B3FA781F4B name= company=Apple, Inc. beacon= services=0
+22:57:54 [INFO] BLE device A461E6A0-CEE0-E4B9-F5FD-2F515C7712EB name= company= beacon= services=0
+23:00:04 [INFO] BLE device 42838A74-433E-3B55-D426-D035A33FF85E name= company=Apple, Inc. beacon= services=0
+23:00:19 [INFO] BLE device 73BBB6E0-87AC-604E-0663-5C17422C9DA4 name= company=Apple, Inc. beacon= services=0
+23:00:41 [INFO] BLE device 4246E499-B82C-1C0F-8035-FEEB54DCA73A name= company=Apple, Inc. beacon= services=0
+23:00:41 [INFO] BLE device B9DE8C96-085B-10E5-545B-EF04804BE36F name= company=Apple, Inc. beacon= services=0
+23:00:52 [INFO] BLE device 75B6851A-C446-0188-8C73-6FF7A4CD9BFA name= company=Apple, Inc. beacon= services=0
+23:00:54 [INFO] BLE device 6E350B3C-1EB9-5242-D9D3-D928A83642B8 name= company=Apple, Inc. beacon= services=0
+23:01:31 [INFO] BLE device 4DE9CB62-D852-7BFF-019D-259165F580CD name= company=Apple, Inc. beacon= services=1
+23:01:59 [INFO] BLE device 5DC8CCA7-6EA9-C488-32B4-E915432E28CA name= company=Microsoft beacon= services=0
+23:02:17 [INFO] BLE device 9B6E0341-CD23-BF1C-66FA-F8DECDC800EE name= company=Apple, Inc. beacon= services=0
+23:02:26 [INFO] BLE device EFB80B02-54E3-A458-D7D6-88356F92ED45 name= company=Apple, Inc. beacon= services=0
+23:02:29 [INFO] BLE device A49DC78D-FC54-E3BA-3861-AB6A6107C242 name= company=Apple, Inc. beacon= services=0
+23:03:07 [INFO] BLE device 47027D9F-62F8-E711-3354-0364A92EF99C name= company= beacon= services=0
+23:03:38 [INFO] BLE device 11D6A2AC-E568-3DAB-6268-0BC6F3A43267 name= company=Apple, Inc. beacon= services=0
+23:05:18 [INFO] BLE device A05966D2-2D66-5285-F51B-D8AA4F1191B0 name= company= beacon= services=0
+23:07:05 [INFO] BLE device FAFB6EE9-0BCA-F52E-2334-D3E82B286E46 name= company=Apple, Inc. beacon= services=0
+23:07:17 [INFO] BLE device A58DFC0F-A118-B063-DB81-CB7F53A7D9DB name=BLE_Joy_L company= beacon= services=0
+23:07:17 [INFO] BLE device 0D9E431B-4FDE-19BB-4045-4CD09229B42B name=BLE_Joy_R company= beacon= services=0
+23:07:26 [INFO] BLE device 73F38B6B-5D2D-1330-5674-BD935F3CD7E0 name= company=Apple, Inc. beacon= services=0
+23:07:27 [INFO] BLE device 3A0FC4DB-5CF2-512C-7B68-4B87B6F3CA8F name= company=Apple, Inc. beacon= services=0
+23:11:59 [INFO] BLE device 6265FD67-3E56-5D11-71AB-964987F3ED51 name= company=Microsoft beacon= services=0
+23:12:32 [INFO] BLE device EBDD4AE7-2480-EC1C-C64C-155306F8DF64 name= company= beacon= services=0
+23:15:01 [INFO] BLE device 43B4081E-C5CA-5B7B-13AA-89BCB529DC84 name= company=Apple, Inc. beacon= services=0
+23:15:04 [INFO] BLE device 33EEC7EE-F538-2FE5-C549-896499B0D079 name= company=Apple, Inc. beacon= services=0
+23:15:10 [INFO] BLE device 0182268A-2500-2509-9FCC-CE76102A6275 name= company=Apple, Inc. beacon= services=0
+23:15:56 [INFO] BLE device 4B548982-DAF8-51CE-4B3B-080314980A6C name= company=Apple, Inc. beacon= services=0
+23:17:19 [INFO] BLE device FA8DB057-7F2C-6C79-48A4-5F7A33145944 name= company=Apple, Inc. beacon= services=0
+23:18:50 [INFO] BLE device 0826C30D-C27C-095E-D09F-57F86753CECA name= company= beacon= services=0
+23:18:56 [INFO] BLE device 19084BCD-6206-4534-15DA-DF812EE9A13A name= company=Apple, Inc. beacon= services=0
+23:18:56 [INFO] BLE device 67956A74-8CB0-3C6F-A1B2-38D93ED033AC name= company= beacon= services=0
+23:20:23 [INFO] BLE device 0AFB536F-6136-4FBB-D4FB-05BF4E9F5505 name= company=Apple, Inc. beacon= services=0
+23:20:23 [INFO] BLE device D846F9E7-BB91-C8E4-C5FB-A2FBBD62C98B name= company=Apple, Inc. beacon= services=0
+23:20:29 [INFO] BLE device E2CED217-1504-BEB0-AEC2-CB13E21E5CC9 name= company=Apple, Inc. beacon= services=0
+23:20:29 [INFO] BLE device EEE4F6DF-A5D5-635B-E0EB-1FBBE3A91365 name= company=Apple, Inc. beacon= services=0
+23:20:53 [INFO] BLE device 64D93081-2987-15D2-C278-9A8FDF4E4883 name= company=Samsung beacon= services=0
+23:22:00 [INFO] BLE device DFAF8D63-110B-B96A-80A3-87A618D13403 name= company=Microsoft beacon= services=0
+23:23:07 [INFO] BLE device EE381918-591A-9F36-2F4B-73A8165E2A8B name= company=Apple, Inc. beacon= services=0
+23:25:21 [INFO] BLE device 9EDBB703-790C-7D09-31E8-B8190A221462 name= company=Samsung beacon= services=0
+23:25:36 [INFO] BLE device ED9C5141-F5FB-BDE1-FFEF-EF721F6DE22C name= company=Apple, Inc. beacon= services=0
+23:26:05 [INFO] BLE device 8A365ECF-95B2-0C8A-0768-B9A72A1E19BC name= company= beacon= services=0
+23:27:50 [INFO] BLE device B5800EA6-86C5-254D-4091-C6EEF8F647AC name= company=Apple, Inc. beacon= services=0
+23:30:11 [INFO] BLE device 6ED2B88A-F108-F072-505A-B06F4A34F1DC name= company=Apple, Inc. beacon= services=0
+23:30:16 [INFO] BLE device 657E9310-19E8-A639-023F-6FBEC59D4D27 name= company=Apple, Inc. beacon= services=0
+23:30:56 [INFO] BLE device 03330C93-240D-0E6F-BC5F-C4FEA88D20A3 name= company=Apple, Inc. beacon= services=0
+23:30:58 [INFO] BLE device D423C148-4859-5040-0EBF-6360F936A6DA name= company=Apple, Inc. beacon= services=0
+23:31:26 [INFO] BLE device 08B99C49-26F2-E6CF-4349-28B9CF386091 name= company=Apple, Inc. beacon= services=0
+23:31:27 [INFO] BLE device 4175837E-5C7F-EEA4-3ABC-ACC3F078FCE5 name= company=Apple, Inc. beacon= services=0
+23:31:28 [INFO] BLE device 7A423704-0D7C-4AF1-9DE1-C587A12EA643 name= company= beacon= services=0
+23:31:59 [INFO] BLE device 1B68511F-FC5C-132C-ABB2-8A5FBF275458 name= company=Microsoft beacon= services=0
+23:33:43 [INFO] BLE device 0A39BFE6-634D-B429-366A-1B41F28F3D79 name= company= beacon= services=0
+23:35:44 [INFO] BLE device B3C82C1B-FB78-7F09-2F18-B45F96386C42 name=Quest 3S company= beacon= services=1
+23:36:07 [INFO] BLE device D2CC4847-CBBD-BE93-15CB-C8DE15BFA104 name= company=Apple, Inc. beacon= services=0
+23:38:22 [INFO] BLE device FF43B2E1-666C-1A80-0579-C89A3A11DBA8 name= company=Apple, Inc. beacon= services=0
+23:38:23 [INFO] BLE device 491C9F64-25E7-140A-5A40-56A677872061 name= company=Apple, Inc. beacon= services=0
+23:40:21 [INFO] BLE device 00F946BD-DD08-CFBD-F34C-4A15DD2E4251 name= company=Apple, Inc. beacon= services=0
+23:41:44 [INFO] BLE device 8240B491-6664-F300-F049-CA6056A0F2BA name= company= beacon= services=0
+23:42:02 [INFO] BLE device 296C2AFE-1340-C50B-0268-CFA65E8951C2 name= company=Microsoft beacon= services=0
+23:43:55 [INFO] BLE device 362CC95E-6C0C-2B78-C612-5643F7CA9EED name= company=Apple, Inc. beacon= services=0
+23:44:55 [INFO] BLE device 0D741019-00C2-C6A8-5CE8-8195CB48C3FB name= company=Apple, Inc. beacon= services=0
+23:44:57 [INFO] BLE device 8C8990F5-2898-BF7E-796B-9B2C9C3EACB4 name= company=Apple, Inc. beacon= services=0
+23:45:04 [INFO] BLE device F7BE68E7-5DE2-84A1-E04D-F17D677243FB name= company=Apple, Inc. beacon= services=0
+23:45:16 [INFO] BLE device E05C028A-ED9B-2142-E557-25D6FFA92EE7 name= company=Apple, Inc. beacon= services=0
+23:45:23 [INFO] BLE device BD9C6C14-9FC2-76D3-BD7E-A553ACE0B852 name= company=Apple, Inc. beacon= services=0
+23:46:13 [INFO] BLE device 7102E384-B6B3-CA58-9BBF-33A68512DD09 name= company= beacon= services=0
+23:46:24 [INFO] BLE device 38697AFC-2833-DFE9-069E-5BDE96AD9F46 name= company=Apple, Inc. beacon= services=0
+23:47:10 [INFO] BLE device B7A0163A-063A-93F4-5F47-18B6721CA535 name= company= beacon= services=0
+23:50:38 [INFO] BLE device 7A9EFCD8-9E9B-D630-A742-2CE16C1E8E86 name= company=Apple, Inc. beacon= services=0
+23:50:38 [INFO] BLE device 21265119-2028-4A23-D4CA-9905C5009E2C name= company=Apple, Inc. beacon= services=0
+23:51:57 [INFO] BLE device 87F5060A-9413-C883-3F19-6BA0AC9D9BF9 name= company=Apple, Inc. beacon= services=0
+23:52:00 [INFO] BLE device D72902D8-2A10-F11C-3AD5-8A6B4C3D5234 name= company=Microsoft beacon= services=0
+23:53:09 [INFO] BLE device 952629C3-62F0-6BDA-C397-A4334CA5B5BD name= company=Apple, Inc. beacon= services=0
+23:53:39 [INFO] BLE device 7A32685D-FD00-F842-20F4-FE850359CA8A name= company=Apple, Inc. beacon= services=0
+23:54:30 [INFO] BLE device 5127CD44-FDC7-DC68-812E-BA32D0774735 name= company= beacon= services=0
+23:59:27 [INFO] BLE device 1EBD58D1-3004-8F65-B4C6-DCDFAB971DDB name= company= beacon= services=0
+00:00:08 [INFO] BLE device 258C7D29-86D0-6787-0511-73A8E86541DB name= company=Apple, Inc. beacon= services=0
+00:00:31 [INFO] BLE device 89389361-AE6F-581B-92DF-C99D3EA964F4 name= company=Apple, Inc. beacon= services=0
+00:00:34 [INFO] BLE device A3D177C5-780D-E387-FA5B-8CEE18013376 name= company=Apple, Inc. beacon= services=0
+00:00:40 [INFO] BLE device 16F0BE99-F19C-47DF-B41F-D469E603C798 name= company= beacon= services=0
+00:01:20 [INFO] BLE device 74A60C15-B00A-3C7A-2920-B853C476D5B2 name= company=Apple, Inc. beacon= services=0
+00:01:50 [INFO] BLE device 1EE0DD74-1DD3-33ED-E1F8-C4DEC7AAFD2A name= company=Apple, Inc. beacon= services=0
+00:01:50 [INFO] BLE device 9EE2EA7A-9D5E-4A84-34A0-F25CDBE53667 name= company=Apple, Inc. beacon= services=0
+00:02:00 [INFO] BLE device 3B0112B6-BE8F-1061-3F5E-BCF26BD92687 name= company=Microsoft beacon= services=0
+00:04:33 [INFO] BLE device 11093614-9603-E15E-5125-4BCAE1CF436F name= company=Apple, Inc. beacon= services=0
+00:04:37 [INFO] BLE device 86EEAE15-51F9-9A24-1619-5639070BB8A7 name= company= beacon= services=0
+00:05:10 [INFO] BLE device 81727738-55A4-F414-0CCF-B03991FB908A name= company=Apple, Inc. beacon= services=0
+00:05:11 [INFO] BLE device D005765F-BFFC-8945-23C8-00E9056F3D18 name= company=Apple, Inc. beacon= services=0
+00:08:10 [INFO] BLE device 966BAAE4-0D52-517A-3D28-16D53F8186E0 name= company=Apple, Inc. beacon= services=0
+00:08:27 [INFO] BLE device 5385E3FE-658C-C5C4-6FAB-1A866F445ED1 name= company=Apple, Inc. beacon= services=0
+00:12:01 [INFO] BLE device 6670195F-2F84-5EAE-8BAA-C1A8456920EE name= company=Microsoft beacon= services=0
+00:12:40 [INFO] BLE device 9E9B832F-58DA-E5FD-5880-1FDE4071825C name= company= beacon= services=0
+00:15:03 [INFO] BLE device AFD23C56-113E-4406-FEF3-1D1181B0256F name= company=Apple, Inc. beacon= services=0
+00:15:06 [INFO] BLE device B611C507-923E-4EC0-A70D-137FF163F344 name= company=Apple, Inc. beacon= services=0
+00:15:16 [INFO] BLE device E63D5640-F66C-EF3E-24EB-83B175B6E3D8 name= company=Apple, Inc. beacon= services=0
+00:15:16 [INFO] BLE device 9A9F429B-385F-C244-D880-655FD8A13A5B name= company=Apple, Inc. beacon= services=0
+00:15:37 [INFO] BLE device C9D23266-819A-598E-AEC2-ED1B7926E791 name= company=Apple, Inc. beacon= services=0
+00:16:38 [INFO] BLE device F3D63C9C-8635-97C7-BD07-87FBD2BCFA79 name= company=Apple, Inc. beacon= services=0
+00:17:15 [INFO] BLE device 8689827B-040C-CD59-C8E8-A666F794CADE name= company=Apple, Inc. beacon= services=0
+00:18:34 [INFO] BLE device 96E03E06-4ED4-8A50-4B12-8448BDC21E07 name= company= beacon= services=0
+00:19:44 [INFO] BLE device 6AFB6F0C-1138-5331-ACA2-C81AD215B45D name= company=Apple, Inc. beacon= services=0
+00:20:13 [INFO] BLE device 26BB9FAF-5247-EC94-A59A-4C6B40B5205F name= company=Apple, Inc. beacon= services=0
+00:20:13 [INFO] BLE device A8F60271-CA03-DFA0-8CD2-FECEF8AD7548 name= company=Apple, Inc. beacon= services=0
+00:21:59 [INFO] BLE device 7055FC2C-899C-A6E9-5D2C-1448AF6C9D16 name= company=Microsoft beacon= services=0
+00:27:16 [INFO] BLE device 71B67FD8-04DC-3BA1-B49D-4A130014061D name= company=Apple, Inc. beacon= services=0
+00:28:36 [INFO] BLE device EBC5EF07-CE2A-5A91-E120-A32BE388288D name= company=Apple, Inc. beacon= services=0
+00:28:36 [INFO] BLE device 16C6E8AA-D84A-1B97-44F5-9D9C58701B72 name= company=Apple, Inc. beacon= services=0
+00:30:03 [INFO] BLE device B438738B-D0CC-BA5A-9640-44865B27E5A6 name= company=Apple, Inc. beacon= services=0
+00:30:40 [INFO] BLE device A541895F-FA67-A07D-21E8-0C5DE636D80E name= company=Apple, Inc. beacon= services=0
+00:30:44 [INFO] BLE device 2D8BBC09-CD5A-64DC-428D-CA7EA93D55FA name= company=Apple, Inc. beacon= services=0
+00:30:47 [INFO] BLE device AC628776-800B-90EF-A469-AC562604A32E name= company=Apple, Inc. beacon= services=0
+00:31:24 [INFO] BLE device 61A0D7AE-F878-0661-E5ED-374B8C9E103A name= company=Apple, Inc. beacon= services=0
+00:31:33 [INFO] BLE device 37387914-A157-C4A2-F5D7-83A66A1272E9 name= company=Apple, Inc. beacon= services=0
+00:31:33 [INFO] BLE device 7511B2B6-82E3-D237-D72B-4E693A81C635 name= company=Apple, Inc. beacon= services=0
+00:32:00 [INFO] BLE device 6DEF6F2D-9384-286B-1B98-89CA8D09B6B0 name= company=Microsoft beacon= services=0
+00:35:53 [INFO] BLE device E09F59C5-2E05-03D2-6C91-9C282DB924E8 name= company=Apple, Inc. beacon= services=0
+00:39:16 [INFO] BLE device 4D0A2718-C16F-2DFB-7DC5-EB215618363E name= company=Apple, Inc. beacon= services=0
+00:39:17 [INFO] BLE device 823E8122-0CA5-6CC2-06F3-9CDF032C7518 name= company=Apple, Inc. beacon= services=0
+00:39:42 [INFO] BLE device A55BA801-343E-FEAA-3FD3-456D69D2F84F name=Quest 3S company= beacon= services=1
+00:41:06 [INFO] BLE device 07C5FDF0-6DF6-D623-1CAC-9975A5BCA581 name= company=Apple, Inc. beacon= services=0
+00:41:06 [INFO] BLE device FB74208E-C75A-6794-787B-CCDC06F148F9 name= company=Apple, Inc. beacon= services=0
+00:42:00 [INFO] BLE device 31E27E23-DF1C-6EC7-6A8A-07705098BDFF name= company=Apple, Inc. beacon= services=0
+00:42:00 [INFO] BLE device 1A8F123A-5CF5-0A79-90B3-5D7E13F837FC name= company=Microsoft beacon= services=0
+00:44:33 [INFO] BLE device F6D51972-FBAA-B646-5411-541AE07F4C9C name= company= beacon= services=0
+00:45:02 [INFO] BLE device 37D9089F-980D-1C95-C4EB-A71FC3A266D6 name= company=Apple, Inc. beacon= services=0
+00:45:04 [INFO] BLE device 24CCD0E3-B6B7-C784-EC1A-6562442FB301 name= company=Apple, Inc. beacon= services=0
+00:45:11 [INFO] BLE device BE101368-5A11-3A4F-FB01-5378AC4A1E3B name= company=Apple, Inc. beacon= services=0
+00:46:11 [INFO] BLE device 6EB0A3D8-FCB0-27E3-952B-D3F9F0161C1C name= company=Apple, Inc. beacon= services=0
+00:47:43 [INFO] BLE device D7B8AA76-A4D6-5597-CD58-049CEC445B91 name= company=Apple, Inc. beacon= services=0
+00:49:01 [INFO] BLE device 757D1C0D-8A41-0DAF-C464-E8B8E9D609A9 name= company=Apple, Inc. beacon= services=0
+00:50:49 [INFO] BLE device 996EBA2F-07A4-872C-935B-AA4E7A65E44D name= company=Apple, Inc. beacon= services=0
+00:50:51 [INFO] BLE device F395B8EE-C347-8A04-5292-DDCBC51F4CA9 name= company=Apple, Inc. beacon= services=0
+00:51:45 [INFO] BLE device 319D3BB7-F71D-90A4-7195-6F889E048CB4 name= company= beacon= services=0
+00:52:00 [INFO] BLE device 8B610ECC-0EED-4188-B18C-D09DA855E08A name= company=Microsoft beacon= services=0
+00:55:25 [INFO] BLE device 750801CA-F437-8B75-53D1-2E599D4E28DE name= company=Apple, Inc. beacon= services=0
+00:55:25 [INFO] BLE device 318D42D0-87C2-7D6C-0627-88EB38E9F276 name= company=Apple, Inc. beacon= services=0
+00:56:39 [INFO] BLE device 78660FEE-7BD8-233A-65E4-47CDEA34FE09 name= company= beacon= services=0
+00:57:06 [INFO] BLE device 0BFD22D5-647F-76B4-C1F9-E64BFA8BEAA5 name= company=Apple, Inc. beacon= services=0
+01:00:00 [INFO] BLE device 8FC0CA95-45B3-7A26-8D1B-5BB871DFC2F6 name= company=Apple, Inc. beacon= services=0
+01:00:12 [INFO] BLE device ED7007F7-A776-4695-1FD0-E550A95E5F14 name= company=Apple, Inc. beacon= services=0
+01:00:15 [INFO] BLE device 9FE79066-DEF5-3D3B-E926-E8DCE2BEC52F name= company=Apple, Inc. beacon= services=0
+01:01:01 [INFO] BLE device 5C5A0765-7227-F3FC-0A6E-63B013F1DEEE name= company=Apple, Inc. beacon= services=0
+01:02:00 [INFO] BLE device FF5200F9-B691-A023-4E19-0456BB89FF6B name= company=Microsoft beacon= services=0
+01:03:27 [INFO] BLE device E9BBDD91-0E01-AAAB-FC07-D583706AE85F name= company=Apple, Inc. beacon= services=0
+01:08:29 [INFO] BLE device 993CBB84-82C1-8EB6-CE17-B957BD6B698C name= company=Apple, Inc. beacon= services=0
+01:08:29 [INFO] BLE device 9F863D0D-1C16-EF4A-A113-48A9E41AE8AB name= company=Apple, Inc. beacon= services=0
+01:09:35 [INFO] BLE device 8975029E-C447-2708-88FC-F331BEAAC9F9 name= company= beacon= services=0
+01:11:14 [INFO] BLE device E101A8C8-7AB2-6D2D-0F06-0FCAF6B3D0C2 name= company=Apple, Inc. beacon= services=0
+01:11:26 [INFO] BLE device 0524CA44-5AF8-3232-1571-E593B77A782E name= company=Apple, Inc. beacon= services=0
+01:11:26 [INFO] BLE device 3DCACA98-4E42-3F1D-2D55-0AE2578B3639 name= company=Apple, Inc. beacon= services=0
+01:12:01 [INFO] BLE device A2F64873-1582-5AEE-7FEA-C7BB166EF7F8 name= company=Microsoft beacon= services=0
+01:15:06 [INFO] BLE device 37E546AA-8ACF-06D4-9DCE-2BD8BC3F8AF4 name= company=Apple, Inc. beacon= services=0
+01:15:06 [INFO] BLE device 53E06439-E5E7-F446-4F53-924D7C73C2F7 name= company=Apple, Inc. beacon= services=0
+01:15:09 [INFO] BLE device 7819D59F-2620-5F30-CB57-FFD9FF13C2BE name= company=Apple, Inc. beacon= services=0
+01:16:21 [INFO] BLE device C96A380C-FBA8-91F6-E735-EE8E2103C5E5 name= company=Apple, Inc. beacon= services=0
+01:17:15 [INFO] BLE device B173EA6B-85EF-C25C-D3AD-6C0F18417C28 name= company= beacon= services=0
+01:21:48 [INFO] BLE device 17B54BA2-FB09-59D7-E2DF-2A3759C56A9B name= company=Apple, Inc. beacon= services=0
+01:21:48 [INFO] BLE device 2308D20F-63FD-02BA-1E9B-C75921A2CE05 name= company=Apple, Inc. beacon= services=0
+01:22:00 [INFO] BLE device 33B80090-0685-C661-267E-07237072CE09 name= company=Microsoft beacon= services=0
+01:22:39 [INFO] BLE device DE280D79-12E5-E32E-61B5-6DF1BDBE2C13 name= company= beacon= services=0
+01:23:08 [INFO] BLE device 48846E0A-C4DA-240C-3AD8-110B02CD1B94 name= company=Apple, Inc. beacon= services=0
+01:24:01 [INFO] BLE device 94C2F9AB-8428-BD1A-E165-19A184CDBB28 name= company= beacon= services=0
+01:27:49 [INFO] BLE device FFA87569-CAFA-96C8-8618-3B32448A7996 name= company=Apple, Inc. beacon= services=0
+01:28:15 [INFO] BLE device 6CDF3B8F-348E-F933-8694-D58E85398381 name= company=Apple, Inc. beacon= services=0
+01:28:16 [INFO] BLE device 8243A6FE-D5C9-A9EF-C48F-B1A991E12FA6 name= company=Apple, Inc. beacon= services=0
+01:30:01 [INFO] BLE device 3D97A69F-AE91-D95A-C1C6-95EAE6909681 name= company=Apple, Inc. beacon= services=0
+01:30:05 [INFO] BLE device 5D43EE96-9C98-0B2A-4C29-EEEE098B2F0A name= company=Apple, Inc. beacon= services=0
+01:30:18 [INFO] BLE device 830E9BDE-573E-AD52-1445-EB191968B3F0 name= company=Apple, Inc. beacon= services=0
+01:30:20 [INFO] BLE device CC2E7054-AA0F-E194-4F91-847076614189 name= company=Apple, Inc. beacon= services=0
+01:31:09 [INFO] BLE device F63DDE7E-F790-340A-B6D8-46B51E1BC8AB name= company=Apple, Inc. beacon= services=0
+01:31:19 [INFO] BLE device B4F348B2-3E40-2F30-D1B3-6E9DBACF7A53 name= company=Apple, Inc. beacon= services=0
+01:31:33 [INFO] BLE device 5559EED9-7651-E6B5-8F12-05C78A543A13 name= company=Apple, Inc. beacon= services=0
+01:32:01 [INFO] BLE device 724633AA-AFB0-F684-063A-DA08D25B0105 name= company=Microsoft beacon= services=0
+01:32:50 [INFO] BLE device C19653D9-5186-EEB9-7FC3-54E1D5CA0315 name= company= beacon= services=0
+01:36:10 [INFO] BLE device AEAADC26-EDA4-8279-D356-4CF3A470B35D name= company=Apple, Inc. beacon= services=0
+01:37:44 [INFO] BLE device 01E99BB6-544A-279A-4241-DFA573BB1FAA name= company= beacon= services=0
+01:38:36 [INFO] BLE device 52F76F3F-E392-1C0C-E766-A9F37AEBA036 name= company=Apple, Inc. beacon= services=0
+01:38:38 [INFO] BLE device D4957F2D-1E51-9C6D-69AC-B0C209BFE250 name= company=Apple, Inc. beacon= services=0
+01:41:23 [INFO] BLE device D79ADD3F-3004-26E1-2FD4-3E3AB44F8BBE name= company=Apple, Inc. beacon= services=0
+01:41:23 [INFO] BLE device 1D2E1251-3D74-A0EE-6B21-13C0EBFBED10 name= company=Apple, Inc. beacon= services=0
+01:42:00 [INFO] BLE device 75AF3FC2-78E9-1E20-C31D-E499C47B2E99 name= company=Microsoft beacon= services=0
+01:45:08 [INFO] BLE device 9C7B4606-6C0C-7917-5517-1D2DF48BAAD1 name= company=Apple, Inc. beacon= services=0
+01:45:42 [INFO] BLE device 19521E5C-C503-4CCD-10A9-9D99BFB55236 name= company=Apple, Inc. beacon= services=0
+01:46:05 [INFO] BLE device CCE93F76-E92B-98BA-9CBC-6E65C2FC7D99 name= company= beacon= services=0
+01:46:41 [INFO] BLE device E9733256-004C-1600-7A7E-DC9296B7E64B name= company=Apple, Inc. beacon= services=0
+01:46:43 [INFO] BLE device 49B7AA73-A64A-AAAC-7940-A515635E8588 name= company=Apple, Inc. beacon= services=0
+01:46:47 [INFO] BLE device 3F024D8A-10CB-3FE3-FF7E-AEA98BCCFDDC name= company=Apple, Inc. beacon= services=0
+01:47:40 [INFO] BLE device 407A43F8-9E8A-8B2C-13D6-FADDDF4B5BC4 name= company=Apple, Inc. beacon= services=0
+01:51:46 [INFO] BLE device 694CE1DE-21AE-9E89-ABB6-4162344C3467 name= company= beacon= services=0
+01:52:01 [INFO] BLE device 36E3AFA3-9EE2-39D7-AB17-7C687DA164C0 name= company=Microsoft beacon= services=0
+01:52:38 [INFO] BLE device 643230FA-0A12-FA04-7108-4DC9F38BA889 name=Quest 3S company= beacon= services=1
+01:53:18 [INFO] BLE device 3DC3BFBE-40B1-A022-DB86-E679E833CD2E name= company=Apple, Inc. beacon= services=0
+01:56:18 [INFO] BLE device B125E43D-04D7-6651-AD08-3D26D8E2559C name= company=Apple, Inc. beacon= services=0
+01:56:20 [INFO] BLE device 582FC535-0AEA-30AC-522D-D28FA9061D2B name= company=Apple, Inc. beacon= services=0
+01:59:45 [INFO] BLE device 358375AD-830B-D515-AE46-AC82688016A4 name= company=Apple, Inc. beacon= services=0
+01:59:47 [INFO] BLE device C4C659CB-B3F8-EE2F-FA0A-213A6AB66D04 name= company=Apple, Inc. beacon= services=0
+02:00:05 [INFO] BLE device C689F4FD-868A-EAB4-2C42-0B7CCD5D638C name= company=Apple, Inc. beacon= services=0
+02:00:06 [INFO] BLE device F72311E3-1C47-B818-3790-86C9E12F85D5 name= company=Apple, Inc. beacon= services=0
+02:00:07 [INFO] BLE device 28C1E71B-F2DC-0D2B-8AC2-115A54F363F7 name= company=Apple, Inc. beacon= services=0
+02:00:30 [INFO] BLE device 53C290A1-2A8E-C21D-6B96-1CD55C37AF7B name= company=Apple, Inc. beacon= services=0
+02:00:35 [INFO] BLE device 79EAB392-4F7E-F725-0077-1A98A8779835 name= company=Apple, Inc. beacon= services=0
+02:00:47 [INFO] BLE device 16D1E35C-C7E9-459B-A857-DCBED3120B3C name= company= beacon= services=0
+02:01:34 [INFO] BLE device 6848AD4F-DD53-D1E8-5773-BFB0B1027DDF name= company=Apple, Inc. beacon= services=0
+02:02:01 [INFO] BLE device 476AF28D-3E64-6646-8127-0F67DEE43F68 name= company=Microsoft beacon= services=0
+02:04:11 [INFO] BLE device 536F1875-D350-107A-CF23-E5D39079262D name= company= beacon= services=0
+02:04:15 [INFO] BLE device 669EDFC9-D5DD-16A5-5EF5-61922DB82B85 name= company=Apple, Inc. beacon= services=0
+02:09:01 [INFO] BLE device 00F844F3-23DC-6520-A5B7-773FBFA97675 name= company=Apple, Inc. beacon= services=0
+02:09:06 [INFO] BLE device AE820E42-E192-0320-1878-647A5BC9E11D name= company=Apple, Inc. beacon= services=0
+02:11:59 [INFO] BLE device 92F0B9F3-EF8E-CBA2-0C39-4F3D9926B01D name= company=Microsoft beacon= services=0
+02:13:10 [INFO] BLE device C3B56C29-F477-B356-E1A4-8B198B9C8D6B name= company=Apple, Inc. beacon= services=0
+02:13:14 [INFO] BLE device 3E596261-A240-833C-A68B-F9B47777C2CB name= company= beacon= services=0
+02:14:43 [INFO] BLE device F8B0922A-56A1-A3C6-A47F-6672A3F4D82B name= company=Apple, Inc. beacon= services=0
+02:14:43 [INFO] BLE device 3484C5E5-C4A8-8319-2C9D-6ED90DC5A448 name= company=Apple, Inc. beacon= services=0
+02:15:12 [INFO] BLE device 19CFA559-92F7-28C6-ED5C-41A8F5B99EED name= company=Apple, Inc. beacon= services=0
+02:15:16 [INFO] BLE device A6EBA7AD-0E19-8933-640A-562E847F7C8B name= company=Apple, Inc. beacon= services=0
+02:16:03 [INFO] BLE device DFAE25FB-A8F2-60C7-3296-CF2FCFF271D0 name= company=Apple, Inc. beacon= services=0
+02:16:33 [INFO] BLE device 9D43ABF3-0035-FE38-CDDE-94B186EF3D75 name= company=Apple, Inc. beacon= services=0
+02:17:36 [INFO] BLE device FF4E32D3-C3D7-2128-DBC5-AF9EB11EDB25 name= company=Microsoft beacon= services=0
+02:17:39 [INFO] BLE device 0220CA09-AF17-1974-FCCF-04A9D413A35F name= company=Microsoft beacon= services=0
+02:18:13 [INFO] BLE device 8DB170ED-A468-7E40-7D74-DF800BFB5EB7 name= company=Apple, Inc. beacon= services=0
+02:19:48 [INFO] BLE device F4057864-6984-C865-8905-116D0DB8C676 name= company=Apple, Inc. beacon= services=0
+02:21:24 [INFO] BLE device 81359EDC-FF3B-091E-B5E4-105D51F2A26C name= company=Apple, Inc. beacon= services=0
+02:21:24 [INFO] BLE device 00BE9073-118B-384B-690A-BE798D7761BD name= company=Apple, Inc. beacon= services=0
+02:21:48 [INFO] BLE device 0862D8A8-832B-9ED7-450F-5697FCE6CBE3 name= company=Apple, Inc. beacon= services=0
+02:22:11 [INFO] BLE device AB76A531-5277-347F-3260-CF1464A4DA9B name= company=Apple, Inc. beacon= services=0
+02:22:50 [INFO] BLE device C8963143-FA27-7940-CC78-C10F22141653 name= company=Apple, Inc. beacon= services=0
+02:27:37 [INFO] BLE device 84B18F9D-6575-6DBF-257A-DD34CC794E2A name= company=Microsoft beacon= services=0
+02:28:47 [INFO] BLE device 72EDA7C3-F56D-2451-2F00-17482343C329 name= company=Apple, Inc. beacon= services=0
+02:28:47 [INFO] BLE device 462D543E-4F3D-D87D-C4DD-A01D892A187A name= company=Apple, Inc. beacon= services=0
+02:30:01 [INFO] BLE device 311DA3CD-EE96-CCE3-5FD8-C20C2BE2A5C0 name= company=Apple, Inc. beacon= services=0
+02:30:04 [INFO] BLE device CE3B600F-6577-4D74-6DE4-E1962DF011BD name= company=Apple, Inc. beacon= services=0
+02:30:26 [INFO] BLE device 41526451-03BC-3BDC-5CAF-C7C3E1868D91 name= company=Apple, Inc. beacon= services=0
+02:31:26 [INFO] BLE device B5110248-40BD-3EC8-96E2-830965C169D9 name= company=Apple, Inc. beacon= services=0
+02:32:48 [INFO] BLE device 75E65D65-E1E6-2248-5150-B0810B163FAA name= company=Apple, Inc. beacon= services=0
+02:36:26 [INFO] BLE device 8A813AFA-C549-395B-0664-7E21DA47F2E9 name= company=Apple, Inc. beacon= services=0
+02:36:26 [INFO] BLE device C29D62C8-E56D-B528-994E-2F587B72CEFE name= company=Apple, Inc. beacon= services=0
+02:37:37 [INFO] BLE device 22718077-C2C8-9C3D-D551-337B849B3E3D name= company=Microsoft beacon= services=0
+02:38:29 [INFO] BLE device D14C3B77-CD14-2FA4-FF74-2EAFADE10677 name= company= beacon= services=0
+02:39:08 [INFO] BLE device E266D77C-70FE-B8F7-E44C-D8D56DADA2DE name= company=Apple, Inc. beacon= services=0
+02:42:23 [INFO] BLE device 735FD07B-0FF9-375D-022B-3851C69D0EC2 name= company=Apple, Inc. beacon= services=0
+02:42:24 [INFO] BLE device 05A58528-A31A-37D0-B764-C4B6D242B325 name= company=Apple, Inc. beacon= services=0
+02:44:17 [INFO] BLE device BF46CA77-B382-1BD3-03F4-D4961A79A38A name= company=Apple, Inc. beacon= services=0
+02:44:39 [INFO] BLE device 78BF3F95-9786-0A37-D343-1FB41A54D44B name= company= beacon= services=0
+02:45:00 [INFO] BLE device EFE8443B-3C9A-95C9-5F96-95EDDF3EC19F name= company=Apple, Inc. beacon= services=0
+02:45:41 [INFO] BLE device C8245126-971F-FD85-5E05-6A685C53DC4C name= company=Apple, Inc. beacon= services=0
+02:46:31 [INFO] BLE device E4C7F7F9-C5ED-2F91-ADED-18B5F4912824 name= company=Apple, Inc. beacon= services=0
+02:46:57 [INFO] BLE device 03B6025B-BDCD-3CCE-D435-381AD954EF88 name= company=Apple, Inc. beacon= services=0
+02:47:36 [INFO] BLE device FA2D94D9-F40A-6D9F-E91D-4FAFAD3C8806 name= company=Microsoft beacon= services=0
+02:49:16 [INFO] BLE device 97D07080-82A4-E508-DD52-97EC14ABADAB name= company=Apple, Inc. beacon= services=0
+02:49:16 [INFO] BLE device 31228A88-4082-A28B-BE0F-97D5FA2D6AE1 name= company=Apple, Inc. beacon= services=0
+02:49:19 [INFO] BLE device BFBB1DAA-15C7-B2BD-E75C-2C0321EFBF21 name= company=Apple, Inc. beacon= services=0
+02:50:00 [INFO] BLE device D57A5B28-A8CC-BA3A-46E0-F4A10225C311 name= company= beacon= services=0
+02:52:34 [INFO] BLE device 50F507C3-5C47-46FA-04DD-C930286D6AB8 name= company=Apple, Inc. beacon= services=0
+02:54:18 [INFO] BLE device A2838460-C766-DBC8-FAA8-610EE8DEAB5F name= company=Apple, Inc. beacon= services=0
+02:54:18 [INFO] BLE device 0C48BA89-D324-7262-750B-CE4AF443929D name= company=Apple, Inc. beacon= services=0
+02:57:38 [INFO] BLE device 91AB03A8-9957-6384-96BC-A857914D7F4A name= company=Microsoft beacon= services=0
+02:57:55 [INFO] BLE device 4BD9D323-6132-FA84-04C5-CCEE79F98736 name= company= beacon= services=0
+03:00:10 [INFO] BLE device 40BDA6EE-B9A0-4FCD-83FC-3F40A0F74AF4 name= company=Apple, Inc. beacon= services=0
+03:00:10 [INFO] BLE device E5BB6913-AE7C-0D35-A8D0-6D1EF35DAE24 name= company=Apple, Inc. beacon= services=0
+03:01:53 [INFO] BLE device EBEC6E7F-8B68-5B3D-4090-5DA077ACC7BC name= company=Apple, Inc. beacon= services=0
+03:02:02 [INFO] BLE device F9B43420-7D13-C265-F5C8-20B6C5F9BBA0 name= company=Apple, Inc. beacon= services=0
+03:02:56 [INFO] BLE device A6455929-3CC8-D743-1C5B-8EBA9920E832 name= company= beacon= services=0
+03:04:45 [INFO] BLE device 2E62F328-6014-2BC1-7213-A57B8007BB64 name=Quest 3S company= beacon= services=1
+03:06:03 [INFO] BLE device 8A8C3A30-8067-D9C7-0687-7BE1AEA99A32 name= company=Apple, Inc. beacon= services=0
+03:06:04 [INFO] BLE device 2BC5BF29-608A-6CEE-283E-CA56E351AA4F name= company=Apple, Inc. beacon= services=0
+03:06:04 [INFO] BLE device 9C9EE8E4-0A17-E566-11D4-4E296142D310 name= company=Apple, Inc. beacon= services=0
+03:07:36 [INFO] BLE device A960D8B1-198A-FF46-7117-2DC6D96A1F89 name= company=Microsoft beacon= services=0
+03:08:15 [INFO] BLE device B7BD4205-33C4-603B-E19D-FA013D1C3401 name= company=Apple, Inc. beacon= services=0
+03:10:13 [INFO] BLE device F2073903-BA7E-8365-6C2D-96AD2517F98B name= company= beacon= services=0
+03:14:03 [INFO] BLE device F116ECA5-A1BB-8494-FDE8-EAF521BF6E2E name= company=Apple, Inc. beacon= services=0
+03:14:04 [INFO] BLE device AB41F19F-8ECB-9F63-A334-9CC0BC1BBCC3 name= company=Apple, Inc. beacon= services=0
+03:15:05 [INFO] BLE device EBA8B867-6161-F22C-F0AF-6E02DA0057CD name= company=Apple, Inc. beacon= services=0
+03:15:10 [INFO] BLE device 3F65571E-A91C-C5A6-83DE-2A4F381EE423 name= company=Apple, Inc. beacon= services=0
+03:15:16 [INFO] BLE device A4891B89-0A16-DC04-7C7F-19B336F8104B name= company=Apple, Inc. beacon= services=0
+03:15:32 [INFO] BLE device 0CD40079-8391-22A7-F1F4-6CFF034099BF name= company=Microsoft beacon= services=0
+03:15:58 [INFO] BLE device BC50799F-923C-3B48-4817-215D3695EE0B name= company=Apple, Inc. beacon= services=0
+03:17:09 [INFO] BLE device 569D3AD3-09A5-B04F-24F2-84B9EB7AD860 name= company=Apple, Inc. beacon= services=0
+03:17:09 [INFO] BLE device 07C161DC-B1A4-77FA-F625-79D6DD257BCF name= company=Apple, Inc. beacon= services=0
+03:17:49 [INFO] BLE device 5851B0C1-A82B-6C16-99B3-2C3C1026DA29 name= company=Apple, Inc. beacon= services=0
+03:19:17 [INFO] BLE device B037472F-4FC1-5953-8FF6-8BBF1CC58027 name= company=Apple, Inc. beacon= services=0
+03:20:41 [INFO] BLE device BCF6790C-DCBF-CD2C-93B4-B3A096FF9411 name= company=Apple, Inc. beacon= services=0
+03:21:05 [INFO] BLE device 7C834D85-09C1-361B-9E4D-7DA90CDCBE78 name= company= beacon= services=0
+03:22:44 [INFO] BLE device 3605AAAE-8A88-1725-2D03-0B4B3D982843 name= company=Apple, Inc. beacon= services=0
+03:22:47 [INFO] BLE device 63421E6B-FA70-39BD-D785-758CCD7EA818 name= company=Apple, Inc. beacon= services=0
+03:25:34 [INFO] BLE device C61AACE2-E946-74C6-5529-B614B10C1CB3 name= company=Microsoft beacon= services=0
+03:27:13 [INFO] BLE device 33D32BF0-8B19-4340-4719-B4EA437A9063 name= company=Microsoft beacon= services=0
+03:27:20 [INFO] BLE device 2A098349-8FF2-EABE-D2AC-2F6C5D3ED177 name= company=Apple, Inc. beacon= services=0
+03:27:22 [INFO] BLE device 183A78B7-3A01-58F0-2B96-7D2A356DDA36 name= company=Apple, Inc. beacon= services=0
+03:28:04 [INFO] BLE device 641840A9-52E7-0B44-4D96-163D2929CB73 name= company=Microsoft beacon= services=0
+03:28:36 [INFO] BLE device 24F7C68E-81D8-331E-5480-F06C6C2790C5 name= company= beacon= services=0
+03:30:08 [INFO] BLE device 04B8B748-258F-8141-C8EC-FD7EC3123386 name= company=Apple, Inc. beacon= services=0
+03:30:10 [INFO] BLE device CED212DB-2D3A-9871-903D-370024CFD780 name= company=Apple, Inc. beacon= services=0
+03:31:10 [INFO] BLE device FC2E2197-FED5-4682-A2E7-492C8CD60504 name= company=Apple, Inc. beacon= services=0
+03:31:43 [INFO] BLE device C56F09C7-CEC3-6135-21E7-3E0A3D681EAB name= company=Apple, Inc. beacon= services=0
+03:31:43 [INFO] BLE device 2C8921E7-1C6F-E5E2-6069-86766979C01A name= company=Apple, Inc. beacon= services=0
+03:32:14 [INFO] BLE device 83636E53-788C-6343-61FC-016AA6CBA647 name= company= beacon= services=0
+03:32:36 [INFO] BLE device 17B20B7B-189B-8E65-34DF-5ED4A83C3871 name= company=Apple, Inc. beacon= services=0
+03:33:17 [INFO] BLE device 872008E2-E067-89F0-E96D-107E536DD6CF name= company=Apple, Inc. beacon= services=0
+03:33:38 [INFO] BLE device 2B83C627-B1D1-71F2-D8CD-90D639C8E9B6 name= company=Apple, Inc. beacon= services=0
+03:34:02 [INFO] BLE device 445B1485-FC96-65A4-0CD0-88066D4D9138 name= company=Apple, Inc. beacon= services=0
+03:34:23 [INFO] BLE device D9F17FD9-7639-622A-F715-02527796B2AD name= company= beacon= services=0
+03:35:59 [INFO] BLE device 5B0550C7-C608-94CC-A50D-86B724931BFF name= company=Apple, Inc. beacon= services=0
+03:38:03 [INFO] BLE device EEBB64EF-03CB-9765-3C12-DC6880E3080E name= company=Microsoft beacon= services=0
+03:39:41 [INFO] BLE device 6A691B83-16AF-18D0-5AC8-6F1C71B95FD3 name= company=Apple, Inc. beacon= services=0
+03:39:43 [INFO] BLE device 68FEC4ED-3662-592F-ED5E-8D59C40F9297 name= company=Apple, Inc. beacon= services=0
+03:41:10 [INFO] BLE device F832A4AD-D2CE-2290-419E-375E5C74669A name= company= beacon= services=0
+03:43:05 [INFO] BLE device 460A1DE6-F4B3-BEF6-8167-7A7EAED013C5 name= company=Apple, Inc. beacon= services=0
+03:44:23 [INFO] BLE device 958FA800-8864-DE3C-A305-F1A27871BC8F name= company=Apple, Inc. beacon= services=0
+03:44:55 [INFO] BLE device 039663E8-434F-9C6C-370B-08F54D335398 name= company=Apple, Inc. beacon= services=0
+03:44:57 [INFO] BLE device 534DCDEF-D707-224F-7B32-A4BF6BF6C3F7 name= company=Apple, Inc. beacon= services=0
+03:45:08 [INFO] BLE device F1E3DA7B-BF76-7CFD-99FD-F2F87AD23F9F name= company=Apple, Inc. beacon= services=0
+03:45:31 [INFO] BLE device 5273A437-37B2-E29D-0AD3-E81C99E2EF1B name= company=Apple, Inc. beacon= services=0
+03:45:32 [INFO] BLE device 77C78470-4C97-9DF6-70EB-3EA823FBEB06 name= company= beacon= services=0
+03:46:25 [INFO] BLE device F4E1BF3B-18DF-7152-16A2-96600E6BDAD7 name= company=Apple, Inc. beacon= services=0
+03:48:03 [INFO] BLE device 429B3D33-2337-159C-0E25-59E0895EF52A name= company=Microsoft beacon= services=0
+03:50:45 [INFO] BLE device 0F337D40-74C2-44EB-F89F-DDCA3145188E name= company=Apple, Inc. beacon= services=0
+03:52:58 [INFO] BLE device 1D851367-20A2-FC26-D0C2-2F3C150C2FDF name= company= beacon= services=0
+03:53:19 [INFO] BLE device 9A12984D-617E-5127-1046-8C29F37669E3 name= company=Apple, Inc. beacon= services=0
+03:53:20 [INFO] BLE device A1894036-502C-924C-E4F2-B1EA0A7C69CD name= company=Apple, Inc. beacon= services=0
+03:56:31 [INFO] BLE device 5C18E16E-D6DB-8E18-6147-520B6B7ECA81 name= company=Apple, Inc. beacon= services=0
+03:56:33 [INFO] BLE device 7E76B178-B0F3-D956-CEF1-B5A04048118E name= company=Apple, Inc. beacon= services=0
+03:57:53 [INFO] BLE device FF548E48-4FCB-DAB7-B2F8-AF5012DE6144 name= company= beacon= services=0
+03:58:03 [INFO] BLE device 4EA07F3F-6DA9-886D-79B8-1AD55238294A name= company=Microsoft beacon= services=0
+03:58:40 [INFO] BLE device 24274933-7CD3-6AE7-AE1F-60A37FE2CC5B name= company=Apple, Inc. beacon= services=0
+04:00:00 [INFO] BLE device 8AFDD405-260F-9163-D025-F4F10FFFFBB7 name= company=Apple, Inc. beacon= services=0
+04:00:24 [INFO] BLE device 0B57AB9E-BF0D-A36E-FC11-2CAC9AB5A903 name= company=Apple, Inc. beacon= services=0
+04:01:54 [INFO] BLE device BA3127CF-CF26-4B42-AA1F-E67655D8DDD9 name= company=Apple, Inc. beacon= services=0
+04:03:13 [INFO] BLE device 2DF0209B-CD5C-5450-D8ED-CFD217775FF5 name= company=Apple, Inc. beacon= services=0
+04:03:14 [INFO] BLE device 69AEFDA2-F0AE-BFF8-28C7-1D18D46DCF9E name= company=Apple, Inc. beacon= services=0
+04:05:17 [INFO] BLE device 45EB6B59-35DF-EC8B-CE3E-69AE655CB0ED name= company= beacon= services=0
+04:07:06 [INFO] BLE device 3FCEF6F8-3BAD-82C2-E4DA-985F4B28CFE8 name= company=Apple, Inc. beacon= services=0
+04:07:19 [INFO] BLE device 1A923FCE-B2DE-02FE-3852-7D5A72F74C1C name= company=Apple, Inc. beacon= services=0
+04:08:03 [INFO] BLE device 8F5EEC13-7F1B-80C9-EF3B-A2AE2820032A name= company=Microsoft beacon= services=0
+04:09:33 [INFO] BLE device DAE389BE-2C6E-EFE1-39C4-3B7D2A22212B name= company=Apple, Inc. beacon= services=0
+04:09:33 [INFO] BLE device 68ACED14-56DB-7EA2-C2B4-8C847B02791D name= company=Apple, Inc. beacon= services=0
+04:09:56 [INFO] BLE device D93C9658-FE7B-3E91-8B52-3BE0DCEA4C48 name=Quest 3S company= beacon= services=1
+04:11:17 [INFO] BLE device 34D8BA25-1004-B841-9F88-1BD74B441AA1 name= company= beacon= services=0
+04:12:58 [INFO] BLE device C2F9AA50-0E9F-C9F8-1F5D-D6860C60606B name= company=Apple, Inc. beacon= services=0
+04:13:08 [INFO] BLE device 511B7C59-D6F2-FD73-051D-8F149CDAC636 name= company=Apple, Inc. beacon= services=0
+04:15:01 [INFO] BLE device 9BC65CDC-2B5C-EC0F-EB63-BB8933F116A5 name= company=Apple, Inc. beacon= services=0
+04:15:02 [INFO] BLE device 675E6708-73A3-E74A-FAF3-CC7BF35E2D40 name= company=Apple, Inc. beacon= services=0
+04:16:46 [INFO] BLE device 2C945F2A-08FE-F446-1BF5-8C8FF21E2D75 name= company=Apple, Inc. beacon= services=0
+04:17:08 [INFO] BLE device 7BC1FDD9-D853-124F-7A6D-77D20EE7522E name= company=Apple, Inc. beacon= services=0
+04:17:14 [INFO] BLE device AB1F56B2-242B-01E0-F1C1-57A77158AEBC name= company=Apple, Inc. beacon= services=0
+04:18:04 [INFO] BLE device 1BFF36B0-45E4-806C-7666-F62358D0B84D name= company=Microsoft beacon= services=0
+04:18:04 [INFO] BLE device BA68B105-4195-BC27-BB67-9DEAC7052B4F name= company= beacon= services=0
+04:20:19 [INFO] BLE device 5D040C3D-8641-5C61-4E73-F478336A8D60 name= company=Apple, Inc. beacon= services=0
+04:20:35 [INFO] BLE device 9512F124-8F03-1926-7810-996C3DADB337 name= company=Apple, Inc. beacon= services=0
+04:20:35 [INFO] BLE device 1DCAEA2E-5CB0-C5F3-5125-CC13D3BB19B6 name= company=Apple, Inc. beacon= services=0
+04:22:07 [INFO] BLE device 00A11767-18A1-B2D6-17C3-E33C47DF9D42 name= company=Apple, Inc. beacon= services=0
+04:22:07 [INFO] BLE device C0C2DB28-A22D-3FD6-7C3A-B051812B65CE name= company=Apple, Inc. beacon= services=0
+04:24:07 [INFO] BLE device 5D4A8940-BD57-018A-7F88-A57EDB0E570A name= company=Apple, Inc. beacon= services=0
+04:24:46 [INFO] BLE device B06475DF-4270-C67D-BA1B-D632D61ABDCD name= company= beacon= services=0
+04:25:50 [INFO] BLE device A204CCAF-1F81-4B46-1182-20F1FBB620F8 name= company= beacon= services=0
+04:27:00 [INFO] BLE device 249543CA-258F-832D-7CAA-4D8EE21A3BE1 name= company=Microsoft beacon= services=0
+04:27:49 [INFO] BLE device A9A3CE70-8282-89F4-873A-05DC81A6CDEA name= company=Apple, Inc. beacon= services=0
+04:30:02 [INFO] BLE device F0F9C309-FF68-2E2B-86A6-FF6DCB6C5F30 name= company=Apple, Inc. beacon= services=0
+04:30:12 [INFO] BLE device B1E9D76D-120E-8417-4D15-F51668C46F4B name= company=Apple, Inc. beacon= services=0
+04:30:35 [INFO] BLE device 92087D8A-C0BB-0F5A-96E1-5D4CE2DE51C9 name= company=Apple, Inc. beacon= services=0
+04:30:50 [INFO] BLE device 36E28331-7D94-699B-F25C-12DD8542E1F2 name= company=Apple, Inc. beacon= services=0
+04:30:52 [INFO] BLE device 1008C250-9263-60A1-0C44-D5B7134A70A8 name= company=Apple, Inc. beacon= services=0
+04:32:08 [INFO] BLE device 1F76F097-DADF-DB61-2942-FA6F44CE181B name= company=Apple, Inc. beacon= services=0
+04:37:00 [INFO] BLE device D9DF6906-458E-54F3-DABD-2EA4AA9B3B1D name= company=Microsoft beacon= services=0
+04:39:12 [INFO] BLE device 392AC754-7F5A-CFF2-AE77-FC3B7EC17EF1 name= company=Apple, Inc. beacon= services=0
+04:39:13 [INFO] BLE device 35995CE9-CC97-84F4-43D5-C9E7AAF036CB name= company=Apple, Inc. beacon= services=0
+04:40:06 [INFO] BLE device C9AF9B4F-C58B-1B08-1C87-EF1D63C47972 name= company=Apple, Inc. beacon= services=0
+04:41:06 [INFO] BLE device ED214DA0-E11D-7D03-ADF2-21F179193BA0 name= company=Apple, Inc. beacon= services=0
+04:41:07 [INFO] BLE device 98FB9832-9F59-3E05-2B5C-10D1CEB08A57 name= company=Apple, Inc. beacon= services=0
+04:42:36 [INFO] BLE device 316B093D-6C65-616E-3072-A419EF03949E name= company=Apple, Inc. beacon= services=0
+04:45:02 [INFO] BLE device 578A2C9C-3AA7-BB5C-441D-3B770C95E205 name= company=Apple, Inc. beacon= services=0
+04:45:14 [INFO] BLE device 801DB098-A674-AA66-04CC-3BBC35F1DC34 name= company=Apple, Inc. beacon= services=0
+04:45:38 [INFO] BLE device 81EB568B-3590-0702-9CCE-087984800F84 name= company=Apple, Inc. beacon= services=0
+04:47:01 [INFO] BLE device 39E1B719-72FA-117C-32E1-76DD2E3C3DCF name= company=Microsoft beacon= services=0
+04:47:30 [INFO] BLE device 8354153D-5DC3-A5E2-3D2B-BABCA8317C1C name= company=Apple, Inc. beacon= services=0
+04:52:06 [INFO] BLE device D23A1F4C-B3A9-009F-3F38-DACC63C74C35 name= company=Apple, Inc. beacon= services=0
+04:54:05 [INFO] BLE device 07B7DB26-1CB8-BEBC-57FD-6DDFC32B8B7D name= company=Apple, Inc. beacon= services=0
+04:54:08 [INFO] BLE device E5DF3215-7175-F0CA-0FFF-878E1867533E name= company=Apple, Inc. beacon= services=0
+04:54:12 [INFO] BLE device 69AFB7AE-E2B7-8E1F-1CA1-9C9766DF4FE9 name= company=Apple, Inc. beacon= services=0
+04:54:12 [INFO] BLE device 3CD410C8-AE49-4A7D-0A17-FFC6F2D9E657 name= company=Apple, Inc. beacon= services=0
+04:57:00 [INFO] BLE device 455632A6-7C58-1651-6C3F-68CCAB56AD46 name= company=Microsoft beacon= services=0
+04:57:23 [INFO] BLE device A55A107B-4E39-A28E-B7B7-68AD571728E4 name= company=Apple, Inc. beacon= services=0
+05:00:02 [INFO] BLE device 9EDC4E9D-B8BB-18C7-A553-848C69174806 name= company=Apple, Inc. beacon= services=0
+05:00:04 [INFO] BLE device E77366CB-5C60-96C6-1196-9D414771A4B7 name= company=Apple, Inc. beacon= services=0
+05:01:22 [INFO] BLE device 6EBE5840-34E4-7403-820F-E63C0245FC9A name= company=Apple, Inc. beacon= services=0
+05:03:17 [INFO] BLE device AF779F07-7A39-4A9F-36FE-6CB6DE745D11 name= company=Apple, Inc. beacon= services=0
+05:04:16 [INFO] BLE device 6D8D27AB-512B-6855-00B3-0171911F06A5 name= company=Apple, Inc. beacon= services=0
+05:04:19 [INFO] BLE device 8D9DD020-175F-BFF1-EBA2-BF5B7824664F name= company=Apple, Inc. beacon= services=0
+05:04:46 [INFO] BLE device 09FCCF84-C874-E4A9-0E2C-9E24882187DD name= company=Apple, Inc. beacon= services=0
+05:04:46 [INFO] BLE device DA927E2C-41E7-D71E-9C01-C7485860FA18 name= company=Apple, Inc. beacon= services=0
+05:05:10 [INFO] BLE device 675D8091-7EC1-21E1-7AFE-B354E1A07C22 name= company=Apple, Inc. beacon= services=0
+05:06:23 [INFO] BLE device 3C5A5913-E581-B1F7-51DA-6D32D8BC0D43 name= company=Apple, Inc. beacon= services=0
+05:06:24 [INFO] BLE device 07D26DC1-BE02-74AB-415F-6178C597BA9E name= company=Apple, Inc. beacon= services=0
+05:07:01 [INFO] BLE device E4135B6F-156A-3BB9-65C6-5D3CD960E183 name= company=Microsoft beacon= services=0
+05:11:18 [INFO] BLE device 4DE12AC0-AA53-4925-8672-888EAACF0D63 name= company=Apple, Inc. beacon= services=0
+05:12:04 [INFO] BLE device A3252F73-A58A-1475-FF64-70340ECC8CEE name= company=Apple, Inc. beacon= services=0
+05:13:23 [INFO] BLE device 87CB80E2-F6E4-3D24-BCBE-D4785139548F name= company=Apple, Inc. beacon= services=0
+05:14:22 [INFO] BLE device 7EC4485F-9D80-76AC-2394-158EEDC79F0E name= company=Apple, Inc. beacon= services=0
+05:15:02 [INFO] BLE device 4FEE3115-F99D-54E8-7760-A7EEFBA69644 name= company=Apple, Inc. beacon= services=0
+05:15:06 [INFO] BLE device 2AF28FC7-6AF8-4A64-281D-A4BBF93F7F97 name= company=Apple, Inc. beacon= services=0
+05:16:15 [INFO] BLE device 8AD18C67-E541-1FC9-987B-383DD93C7905 name=Quest 3S company= beacon= services=1
+05:16:41 [INFO] BLE device 62AB00E5-D1A4-C3B0-B6A6-CD14B3257BAD name= company=Apple, Inc. beacon= services=0
+05:17:02 [INFO] BLE device CC0C3294-4051-E748-6ACF-5AF1C34B0EA5 name= company=Microsoft beacon= services=0
+05:18:07 [INFO] BLE device 5B30670E-0003-6637-77FE-E43E1983ECD8 name= company=Apple, Inc. beacon= services=0
+05:18:09 [INFO] BLE device 5E04FCDB-8EBA-7043-A6FE-86B014F4FEB0 name= company=Apple, Inc. beacon= services=0
+05:20:31 [INFO] BLE device 2E00174E-1CB3-23EC-5631-E096E0CECEE0 name= company=Apple, Inc. beacon= services=0
+05:21:04 [INFO] BLE device C6095789-4F16-DD0B-6924-5D894A813DED name= company=Apple, Inc. beacon= services=0
+05:21:05 [INFO] BLE device 68C262E8-7543-C3AE-3C1C-1ED000DB617C name= company=Apple, Inc. beacon= services=0
+05:27:00 [INFO] BLE device 01E89D6F-7E89-0560-546D-E9338333B573 name= company=Microsoft beacon= services=0
+05:28:34 [INFO] BLE device DECF2DB5-A689-DEC6-2AB5-246003A1E186 name= company=Apple, Inc. beacon= services=0
+05:28:35 [INFO] BLE device 26F8C381-6B32-A020-B302-16DDAC27E48D name= company=Apple, Inc. beacon= services=0
+05:30:03 [INFO] BLE device 4BFEE948-7BB3-7C8C-3349-AD321C267468 name= company=Apple, Inc. beacon= services=0
+05:30:08 [INFO] BLE device FADAACC7-F64C-7A4F-45C7-8ED30B7EF80F name= company=Apple, Inc. beacon= services=0
+05:30:20 [INFO] BLE device C395D5C2-2C92-E9D1-D4B7-9F5F57B6D2AE name= company=Apple, Inc. beacon= services=0
+05:30:23 [INFO] BLE device 8E47F53B-DAD1-CC5B-9A62-71E7BF2CFBEE name= company=Apple, Inc. beacon= services=0
+05:30:27 [INFO] BLE device E6B646E1-2C15-1854-6CFF-403670B527BD name= company=Apple, Inc. beacon= services=0
+05:36:08 [INFO] BLE device EBD92250-77C4-D080-8AAC-A2FD4839B47F name= company=Apple, Inc. beacon= services=0
+05:37:01 [INFO] BLE device 07B44E1D-1292-88E1-EAFC-667F5926E282 name= company=Microsoft beacon= services=0
+05:38:46 [INFO] BLE device A26E760E-C622-B7DD-4223-E72E4CD0A00E name= company=Apple, Inc. beacon= services=0
+05:38:46 [INFO] BLE device 5322D1E0-5DC1-D24D-D72F-7CEEB7226443 name= company=Apple, Inc. beacon= services=0
+05:41:39 [INFO] BLE device 47177A49-5C2E-3640-60C0-5EF7BB6508D0 name= company=Apple, Inc. beacon= services=0
+05:43:28 [INFO] BLE device B9DA2AEC-B9B4-487A-830F-30AACC01912A name= company=Apple, Inc. beacon= services=0
+05:43:28 [INFO] BLE device B2A08567-916A-55CE-3ABE-828264A395AA name= company=Apple, Inc. beacon= services=0
+05:44:29 [INFO] BLE device DDB8BF01-714E-44EE-7B38-7AA4772F2249 name= company=Apple, Inc. beacon= services=0
+05:45:02 [INFO] BLE device 8B7A9A07-E9DE-23B7-56D7-12AE1085E22D name= company=Apple, Inc. beacon= services=0
+05:45:05 [INFO] BLE device E0A1B559-CD8D-1F28-23BE-A2588DE772F0 name= company=Apple, Inc. beacon= services=0
+05:45:15 [INFO] BLE device 72CFDF43-0307-263C-D268-81EECCEEA5D4 name= company=Apple, Inc. beacon= services=0
+05:46:19 [INFO] BLE device 3C3831DF-79F9-952E-B816-210646098B7B name= company=Apple, Inc. beacon= services=0
+05:47:00 [INFO] BLE device C2FFAA6E-A731-65E2-CD24-1A094842EC4E name= company=Microsoft beacon= services=0
+05:50:27 [INFO] BLE device 660EA7CD-362B-10A3-9CE2-6EE6A5E54E12 name= company=Apple, Inc. beacon= services=0
+05:51:34 [INFO] BLE device CF99CA4E-77DD-1809-8B2B-25D2CEE3D5E5 name= company=Apple, Inc. beacon= services=0
+05:51:35 [INFO] BLE device F7B2989A-3028-FD16-9B37-09688CFF899F name= company=Apple, Inc. beacon= services=0
+05:52:12 [INFO] BLE device 7CE60378-72E9-926F-4269-4B389ACC4525 name= company=Apple, Inc. beacon= services=0
+05:55:59 [INFO] BLE device 57220564-9397-B01D-8187-DA47019A1EB7 name= company=Apple, Inc. beacon= services=0
+05:56:32 [INFO] BLE device 2F45A83C-694F-964D-D56D-02045E1F5FD1 name= company=Apple, Inc. beacon= services=0
+05:57:01 [INFO] BLE device 23239FB1-CCC3-9517-E9B0-239933B9F05F name= company=Microsoft beacon= services=0
+05:57:22 [INFO] BLE device 7CE62CD1-66FA-E02F-1F4A-D375336FD9A7 name= company=Apple, Inc. beacon= services=0
+05:57:22 [INFO] BLE device B59048B5-D3B2-9EAB-6B2B-0C10A22B80C5 name= company=Apple, Inc. beacon= services=0
+05:58:05 [INFO] BLE device 97798806-4510-9E63-514A-FFE15A5DA460 name= company=Apple, Inc. beacon= services=0
+06:00:00 [INFO] BLE device 0162A34D-19AF-22ED-EFDE-943BCD655561 name= company=Apple, Inc. beacon= services=0
+06:00:03 [INFO] BLE device 5E976FAF-80BF-CFC2-5F13-00E8DDA1111A name= company=Apple, Inc. beacon= services=0
+06:00:04 [INFO] BLE device 72018DDF-64FB-C653-028A-F95C75C0D058 name= company=Apple, Inc. beacon= services=0
+06:03:11 [INFO] BLE device 72F38B48-8792-7A1C-E6D3-6727138B6FC9 name= company=Apple, Inc. beacon= services=0
+06:03:21 [INFO] BLE device 345F433D-A989-A0B9-2234-230AEF94BCA7 name= company=Apple, Inc. beacon= services=0
+06:05:04 [INFO] BLE device BF76FE75-FA47-091D-AE50-844575BF053D name= company=Apple, Inc. beacon= services=0
+06:05:55 [INFO] BLE device 26505790-0A93-117D-D86F-A2DE5C35A969 name= company=Apple, Inc. beacon= services=0
+06:06:22 [INFO] BLE device 91F71CA9-4B3B-4124-2A54-6E973986D3AB name= company=Apple, Inc. beacon= services=0
+06:06:22 [INFO] BLE device CB000D9D-2350-6478-55FE-1F6D7A260A3A name= company=Apple, Inc. beacon= services=0
+06:06:52 [INFO] BLE device AA504B09-6A60-8726-50AB-99212B424F9B name= company=Apple, Inc. beacon= services=0
+06:07:00 [INFO] BLE device 7FDE893E-419E-F5CD-98A1-11986694FEEA name= company=Microsoft beacon= services=0
+06:08:51 [INFO] BLE device F34B9BD2-9C90-1665-9D8E-8411307A87C6 name= company=Apple, Inc. beacon= services=0
+06:11:53 [INFO] BLE device 022ED6F8-5F2B-0868-A23C-7D866A458403 name= company= beacon= services=0
+06:14:34 [INFO] BLE device D50B6ABA-BFA7-48F8-7E46-9CE7750C699F name= company=Apple, Inc. beacon= services=0
+06:15:04 [INFO] BLE device F8753189-D28F-D27B-9BC3-D0813E89C9F8 name= company=Apple, Inc. beacon= services=0
+06:15:08 [INFO] BLE device BBA94723-02E9-875E-F8FB-BF25DD71B575 name= company=Apple, Inc. beacon= services=0
+06:15:15 [INFO] BLE device 811AF68C-87C5-6CF5-CEFC-12758EC9879A name= company=Apple, Inc. beacon= services=0
+06:15:44 [INFO] BLE device E78CAD63-8285-FEF2-7C25-9842CA722141 name= company=Apple, Inc. beacon= services=0
+06:15:44 [INFO] BLE device CE0D3A3F-42B4-C125-96EC-417DE0D5520B name= company=Apple, Inc. beacon= services=0
+06:15:56 [INFO] BLE device 3D80C130-AA33-E3F0-36A0-911B84396F87 name= company=Apple, Inc. beacon= services=0
+06:17:00 [INFO] BLE device E5EF41AB-7E6D-7C13-B402-D3749D32B718 name= company=Microsoft beacon= services=0
+06:17:27 [INFO] BLE device 3220B270-A134-5468-2367-8559DE8031FD name=Quest 3S company= beacon= services=1
+06:22:31 [INFO] BLE device FB56DF54-B36C-4694-6BD5-6B82434742F9 name= company=Apple, Inc. beacon= services=0
+06:22:41 [INFO] BLE device 327A436B-F098-1043-A8DE-2FFB1720889F name= company=Apple, Inc. beacon= services=0
+06:23:10 [INFO] BLE device FB76B870-A6F3-E03A-666A-98F9B6F1FA87 name= company=Apple, Inc. beacon= services=0
+06:26:15 [INFO] BLE device E5E335A3-3D2B-EAB0-98DF-EB6D5460365C name= company=Apple, Inc. beacon= services=0
+06:26:15 [INFO] BLE device D236F194-AE04-626A-66A1-0D8DA9B8F003 name= company=Apple, Inc. beacon= services=0
+06:26:22 [INFO] BLE device 3E62C5DC-DA76-0AF9-3AFC-452C80C822AC name= company=Apple, Inc. beacon= services=0
+06:26:45 [INFO] BLE device D171394F-920A-CA95-AC5A-2BB5A380EAC0 name= company=Apple, Inc. beacon= services=0
+06:26:45 [INFO] BLE device 7A78F4EB-19B3-542C-57E7-730F4D2C982E name= company=Apple, Inc. beacon= services=0
+06:27:00 [INFO] BLE device 085E7716-597F-AE4E-A828-9FA454D5C423 name= company=Microsoft beacon= services=0
+06:30:09 [INFO] BLE device 80EBF2B0-BC60-D317-A63C-6B30556FDB18 name= company=Apple, Inc. beacon= services=0
+06:30:24 [INFO] BLE device 2B1FC17E-C423-C80B-5773-347C241B3E08 name= company=Apple, Inc. beacon= services=0
+06:31:16 [INFO] BLE device E0168AE0-BD03-4664-AAC1-AD10D7929F2E name= company=Apple, Inc. beacon= services=0
+06:31:16 [INFO] BLE device 9B81DCC5-BEBA-22F5-90B4-434EDCDA3B49 name= company=Apple, Inc. beacon= services=0
+06:37:00 [INFO] BLE device EBF96FF4-93A9-4F98-539F-098B126EA16D name= company=Microsoft beacon= services=0
+06:37:45 [INFO] BLE device 42700B66-1916-B1B3-5F8D-3E84A6A2CBC1 name= company=Apple, Inc. beacon= services=0
+06:37:45 [INFO] BLE device DF180341-BF27-4974-B4DB-54A2E9BF6442 name= company=Apple, Inc. beacon= services=0
+06:40:02 [INFO] BLE device 38085BB0-4FCE-8FFC-86E1-8AD4E3278A15 name= company=Apple, Inc. beacon= services=0
+06:40:02 [INFO] BLE device 9C226EA9-99A1-BF9A-9569-B628562B795C name= company=Apple, Inc. beacon= services=0
+06:40:39 [INFO] BLE device 13C46A27-8075-236D-2C10-5ED0063CF9E8 name= company=Apple, Inc. beacon= services=0
+06:40:44 [INFO] BLE device CD3EB92B-00A1-B2CF-D642-81B0DB8E9542 name= company=Apple, Inc. beacon= services=0
+06:45:06 [INFO] BLE device 6A417BF3-2364-2A8E-EF17-8A84D3630CD0 name= company=Apple, Inc. beacon= services=0
+06:45:24 [INFO] BLE device 72B2C4D3-15A0-6C33-0255-6C5647B8DCE3 name= company=Apple, Inc. beacon= services=0
+06:45:52 [INFO] BLE device 2E542CAF-C2C6-002F-2E00-24A7614A8582 name= company=Apple, Inc. beacon= services=0
+06:46:39 [INFO] BLE device 56608576-2C32-9D7D-6C93-26525526E48C name= company=Apple, Inc. beacon= services=0
+06:47:01 [INFO] BLE device 92983AC6-1E4A-6A4B-33A9-5F4A5BA0D657 name= company=Microsoft beacon= services=0
+06:48:31 [INFO] BLE device 0B3DFEBB-01CB-18E7-F141-577D63386E19 name= company=Apple, Inc. beacon= services=0
+06:48:45 [INFO] BLE device C31BA0A8-72EC-EF53-5D33-5ACADA489902 name= company=Apple, Inc. beacon= services=0
+06:53:22 [INFO] BLE device A2F2A7A8-F510-87FF-8BA5-05B00F1047F9 name= company=Apple, Inc. beacon= services=0
+06:53:22 [INFO] BLE device BFC9FB4A-2212-AFF9-2DA9-2CE3BEF98673 name= company=Apple, Inc. beacon= services=0
+06:53:58 [INFO] BLE device 75482792-A0EE-9AC7-7C35-11BE15A54EA4 name= company=Apple, Inc. beacon= services=0
+06:57:00 [INFO] BLE device 00D99A62-0FFA-95EC-DB66-0FC498713184 name= company=Microsoft beacon= services=0
+06:57:31 [INFO] BLE device 63EDF808-BA53-939C-DE94-987746C3395B name= company=Apple, Inc. beacon= services=0
+06:57:32 [INFO] BLE device AE5F3378-10CE-19C0-48CD-32F9233A9E68 name= company=Apple, Inc. beacon= services=0
+07:00:01 [INFO] BLE device 0109B917-143A-7464-A0D5-1476E3C41F94 name= company=Apple, Inc. beacon= services=0
+07:00:02 [INFO] BLE device 39451FB7-4908-BA0E-F92A-F6E2714C27C0 name= company=Apple, Inc. beacon= services=0
+07:00:54 [INFO] BLE device 6258EE4D-D1F1-864B-BF47-EAD329B29CFC name= company=Apple, Inc. beacon= services=0
+07:01:16 [INFO] BLE device F4909DE4-33C8-88EA-0AD0-D82D81EA0D57 name= company=Apple, Inc. beacon= services=0
+07:05:09 [INFO] BLE device 6FD82F83-0445-11AF-C870-2A07CBFFEE52 name= company=Apple, Inc. beacon= services=0
+07:06:55 [INFO] BLE device 5A4953EB-1816-B274-814C-362EC6EEB0F1 name= company=Apple, Inc. beacon= services=0
+07:07:00 [INFO] BLE device F11D151B-9967-F33F-5C51-F9C687B08B63 name= company=Apple, Inc. beacon= services=0
+07:07:00 [INFO] BLE device 542A9D8B-5BE8-D970-AC20-F953C9728546 name= company=Microsoft beacon= services=0
+07:10:04 [INFO] BLE device AE90576F-CE49-3358-D931-11CC89ABFC99 name= company=Apple, Inc. beacon= services=0
+07:11:41 [INFO] BLE device B9B97C0D-B1B4-EE71-DA78-3E047979913C name= company=Apple, Inc. beacon= services=0
+07:11:43 [INFO] BLE device A8EC18D0-2C49-9CF6-6E89-39FDD791F11D name= company=Apple, Inc. beacon= services=0
+07:12:13 [INFO] BLE device E24BD86D-5034-EC5D-378F-19E4FF870022 name= company=Apple, Inc. beacon= services=0
+07:14:49 [INFO] BLE device F5C11F50-5206-462C-F923-941C8C75BFF8 name= company=Apple, Inc. beacon= services=0
+07:15:04 [INFO] BLE device 09CA3597-19C2-BC88-B473-5F80024D8138 name= company=Apple, Inc. beacon= services=0
+07:15:04 [INFO] BLE device 2402312E-2164-6E2E-C893-E34D326C2EDF name= company=Apple, Inc. beacon= services=0
+07:16:21 [INFO] BLE device CBCB791F-A78D-3866-21E5-972B1B604C1E name= company=Apple, Inc. beacon= services=0
+07:16:58 [INFO] BLE device C3E28A55-3A77-4636-4723-310799C175F9 name= company=Apple, Inc. beacon= services=0
+07:17:00 [INFO] BLE device 2CED690B-C6AA-41D7-BCAF-DD6408BFC2EF name= company=Microsoft beacon= services=0
+07:19:03 [INFO] BLE device E11D35D9-7712-04A7-E011-0BCA45DEC65D name= company=Apple, Inc. beacon= services=0
+07:19:04 [INFO] BLE device 9B71CC9B-A287-A25B-64ED-ABF138DCFE9C name= company=Apple, Inc. beacon= services=0
+07:20:12 [INFO] BLE device 89C14266-7572-819A-ABCE-297E3BA7CD2D name= company=Apple, Inc. beacon= services=0
+07:23:00 [INFO] BLE device B2100157-5EAA-04C2-9BD5-DDE45A4EFACA name= company=Apple, Inc. beacon= services=0
+07:26:47 [INFO] BLE device 376E3273-F9F3-0BA6-B419-8F6442B7CC8C name= company=Apple, Inc. beacon= services=0
+07:27:01 [INFO] BLE device 2E45C317-AE3D-6BD7-0945-3B28B92FBB9B name= company=Microsoft beacon= services=0
+07:28:50 [INFO] BLE device 2EA27709-929F-7E72-AC7A-262BB82B5935 name= company=Apple, Inc. beacon= services=0
+07:28:50 [INFO] BLE device 505FCD1A-C02F-251F-244D-D317BAA00AF3 name= company=Apple, Inc. beacon= services=0
+07:30:05 [INFO] BLE device 24B600EF-7F8A-A6D0-E370-C838190FBC2C name= company=Apple, Inc. beacon= services=0
+07:30:17 [INFO] BLE device 6D7D800C-AEC2-7BF2-07A5-FE523F7FAF96 name= company=Apple, Inc. beacon= services=0
+07:33:15 [INFO] BLE device 7805F900-B497-1299-B5A5-D7AB38B2CB24 name= company=Apple, Inc. beacon= services=0
+07:34:23 [INFO] BLE device C82B707B-5CCF-CC64-C857-28D88B1FDEAA name= company=Apple, Inc. beacon= services=0
+07:34:23 [INFO] BLE device E0494D89-3306-6691-5D5F-88EF9D185180 name= company=Apple, Inc. beacon= services=0
+07:37:01 [INFO] BLE device 7F37BF7C-92CF-5796-09D8-0FD9E512323D name= company=Microsoft beacon= services=0
+07:37:15 [INFO] BLE device 6C753676-39CC-9B65-FF33-C177D1C33096 name= company=Apple, Inc. beacon= services=0
+07:40:03 [INFO] BLE device 29FCC8EA-F23A-9A91-A9BC-A25D28BBDA21 name= company=Apple, Inc. beacon= services=0
+07:40:39 [INFO] BLE device 88E212F0-30FC-53D8-779A-7CE1255EEDA0 name= company= beacon= services=0
+07:42:14 [INFO] BLE device A95958F2-09B7-CE1C-CA88-2BBCE74577EC name= company=Apple, Inc. beacon= services=0
+07:44:01 [INFO] BLE device EEE8BA7C-D38E-52E4-C257-114BD2006F9D name= company=Apple, Inc. beacon= services=0
+07:44:02 [INFO] BLE device 902F3243-3947-F491-9174-30DF20A7532B name= company=Apple, Inc. beacon= services=0
+07:45:09 [INFO] BLE device 64D5C633-DF58-8F61-4338-F085337BB84A name= company=Apple, Inc. beacon= services=0
+07:45:15 [INFO] BLE device 3DEFC4D6-D2F5-0C5B-C593-022032BA7079 name= company=Apple, Inc. beacon= services=0
+07:46:46 [INFO] BLE device 637DD41F-A8FC-E655-C1AE-5E8572659B3E name= company=Apple, Inc. beacon= services=0
+07:46:46 [INFO] BLE device D94C701D-A2C2-6D0C-C8C7-39E94B923C26 name= company=Apple, Inc. beacon= services=0
+07:47:00 [INFO] BLE device 760D0140-8C90-7359-CFC5-632F66FE1E1B name= company=Microsoft beacon= services=0
+07:49:00 [INFO] BLE device AB55033E-DCBE-EFF9-9E97-093AE8F1A8C2 name= company=Apple, Inc. beacon= services=0
+07:54:29 [INFO] BLE device E694FA63-4B64-7738-099D-E2560BEB6882 name= company=Apple, Inc. beacon= services=0
+07:55:54 [INFO] BLE device DAB1848E-7CAE-0B86-3ED4-79597FDB2F3E name= company=Apple, Inc. beacon= services=0
+07:56:01 [INFO] BLE device 24DA21FD-7330-1CC0-A2D7-8B9F39CA446A name= company=Apple, Inc. beacon= services=0
+07:57:01 [INFO] BLE device C191EF87-44F0-80B8-B00F-1102B150D075 name= company=Microsoft beacon= services=0
+07:57:01 [INFO] BLE device CA0F193C-3239-6626-2730-0FB39DB5C0D3 name= company=Apple, Inc. beacon= services=0
+08:00:01 [INFO] BLE device 846CBFF4-8CC6-B091-1554-AD8FB244452E name= company=Apple, Inc. beacon= services=0
+08:00:09 [INFO] BLE device 67F8A731-A0D8-14A2-9E9E-0F6CCC322136 name= company=Apple, Inc. beacon= services=0
+08:01:55 [INFO] BLE device 04A4F1E1-0567-C6FD-7224-DB9FEA0A2C60 name= company=Apple, Inc. beacon= services=0
+08:01:56 [INFO] BLE device 6CD55AB8-4083-58B0-23F5-B9566CB8A389 name= company=Apple, Inc. beacon= services=0
+08:02:05 [INFO] BLE device 63425867-07C2-0256-7F1A-BAE77544D959 name= company=Apple, Inc. beacon= services=0
+08:02:06 [INFO] BLE device 1052A233-E577-0515-8C84-4AA7525CFF28 name= company=Apple, Inc. beacon= services=0
+08:02:11 [INFO] BLE device 93E61190-23C2-BD39-94FD-C04502728413 name= company=Apple, Inc. beacon= services=0
+08:04:12 [INFO] BLE device 3A5CB65F-0E63-1039-34DC-51F476B6B0AF name= company=Apple, Inc. beacon= services=0
+08:07:01 [INFO] BLE device 904197CD-BA44-2AD0-D169-9C38DACD967B name= company=Microsoft beacon= services=0
+08:09:05 [INFO] BLE device 35D62FC0-A9EA-BE29-1B39-7EE1596D7C86 name= company=Apple, Inc. beacon= services=0
+08:09:34 [INFO] BLE device 648C1564-F49F-F672-B546-58D70D128E02 name= company=Apple, Inc. beacon= services=0
+08:11:14 [INFO] BLE device 01AB9602-D01F-DFFA-E92A-7DD7DF7D5B63 name= company=Apple, Inc. beacon= services=0
+08:13:47 [INFO] BLE device C6F633E6-F7E7-1B96-1C02-25EB80889A1B name= company=Apple, Inc. beacon= services=0

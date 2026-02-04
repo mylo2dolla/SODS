@@ -1,0 +1,143 @@
+{
+  "classification" : "Network inventory snapshot",
+  "clientSummary" : "Inventory summary: 255 hosts scanned, 0 high-confidence items, 69 BLE devices. Pi-Aux evidence present: 0.",
+  "evidence" : [
+    {
+      "label" : "Open Ports",
+      "meaning" : "Open TCP ports observed per host.",
+      "rawField" : "records[].openPorts",
+      "rawValue" : "see raw"
+    },
+    {
+      "label" : "HTTP Fingerprint",
+      "meaning" : "HTTP status, server, auth, and title hints.",
+      "rawField" : "records[].http*",
+      "rawValue" : "see raw"
+    },
+    {
+      "label" : "SSDP Evidence",
+      "meaning" : "UPnP\/SSDP discovery responses.",
+      "rawField" : "records[].ssdp*",
+      "rawValue" : "see raw"
+    },
+    {
+      "label" : "Bonjour Services",
+      "meaning" : "mDNS\/Bonjour services announced.",
+      "rawField" : "records[].bonjourServices",
+      "rawValue" : "see raw"
+    },
+    {
+      "label" : "ONVIF Evidence",
+      "meaning" : "ONVIF discovery and RTSP details.",
+      "rawField" : "records[].onvif*",
+      "rawValue" : "see raw"
+    },
+    {
+      "label" : "BLE Devices",
+      "meaning" : "Nearby BLE inventory snapshot.",
+      "rawField" : "bleEvidence[]",
+      "rawValue" : "see raw"
+    },
+    {
+      "label" : "Pi-Aux Evidence",
+      "meaning" : "Local Pi-Aux sensor evidence.",
+      "rawField" : "piAuxEvidence[]",
+      "rawValue" : "see raw"
+    }
+  ],
+  "identityMapping" : [
+    {
+      "friendly" : "80 HTTP, 443 HTTPS, 554 RTSP, 3702 ONVIF, 1900 SSDP, 5353 mDNS",
+      "label" : "Port Labels",
+      "rawField" : "records[].openPorts",
+      "rawValue" : "ports"
+    },
+    {
+      "friendly" : "Company names from local mapping tables.",
+      "label" : "BLE Company IDs",
+      "rawField" : "bleEvidence[].manufacturerDataHex",
+      "rawValue" : "see raw"
+    },
+    {
+      "friendly" : "Service names from local mapping tables.",
+      "label" : "BLE Service UUIDs",
+      "rawField" : "bleEvidence[].serviceUUIDs",
+      "rawValue" : "see raw"
+    }
+  ],
+  "meta" : {
+    "isoTimestamp" : "2026-02-01T211321Z",
+    "rawRef" : "CamUtil-ScanReportRaw-2026-02-01T211321Z.json"
+  },
+  "summary" : {
+    "bleDevices" : 69,
+    "highConfidence" : 0,
+    "lowConfidence" : 255,
+    "mediumConfidence" : 0,
+    "topHosts" : [
+      "192.168.8.171 (30)",
+      "192.168.8.234 (30)",
+      "192.168.8.1 (15)",
+      "192.168.8.172 (15)",
+      "192.168.8.107 (5)"
+    ],
+    "totalHosts" : 255
+  },
+  "summaryText" : "Scan report for 255 hosts with 0 high-confidence candidates and 69 BLE devices.",
+  "technicalAppendix" : [
+    "Raw reference: CamUtil-ScanReportRaw-2026-02-01T211321Z.json",
+    "Host records (raw): records[]",
+    "BLE evidence (raw): bleEvidence[]",
+    "Pi-Aux evidence count: 0"
+  ],
+  "topConfidence" : [
+    {
+      "ip" : "192.168.8.171",
+      "level" : "Low",
+      "reasons" : [
+        "ONVIF discovery without XAddrs (+10)",
+        "RTSP port 554 open (+10)",
+        "HTTP reachable (404) (+5)",
+        "Vendor\/OUI match (+5)"
+      ],
+      "score" : 30
+    },
+    {
+      "ip" : "192.168.8.234",
+      "level" : "Low",
+      "reasons" : [
+        "ONVIF discovery without XAddrs (+10)",
+        "RTSP port 554 open (+10)",
+        "HTTP reachable (404) (+5)",
+        "Vendor\/OUI match (+5)"
+      ],
+      "score" : 30
+    },
+    {
+      "ip" : "192.168.8.1",
+      "level" : "Low",
+      "reasons" : [
+        "HTTP UI responds (200) (+10)",
+        "Vendor\/OUI match (+5)"
+      ],
+      "score" : 15
+    },
+    {
+      "ip" : "192.168.8.172",
+      "level" : "Low",
+      "reasons" : [
+        "HTTP reachable (404) (+5)",
+        "Port 8000 open (+10)"
+      ],
+      "score" : 15
+    },
+    {
+      "ip" : "192.168.8.107",
+      "level" : "Low",
+      "reasons" : [
+        "Vendor\/OUI match (+5)"
+      ],
+      "score" : 5
+    }
+  ]
+}

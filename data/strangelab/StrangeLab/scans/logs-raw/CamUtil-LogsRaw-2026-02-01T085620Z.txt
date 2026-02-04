@@ -1,0 +1,124 @@
+01:36:28 [INFO] BLE manager init: auth=notDetermined, state=unknown
+01:36:28 [INFO] OUI file watcher started
+01:36:28 [INFO] OUI import loaded 39045 entries
+01:36:30 [INFO] BLE state: poweredOn
+01:36:30 [INFO] CBCentralManager didUpdateState: poweredOn, auth=allowedAlways
+01:36:39 [INFO] BLE toggle on
+01:36:39 [INFO] BLE scan started
+01:36:39 [INFO] BLE first device discovered
+01:36:39 [INFO] BLE device D6F40FC2-76BF-A21D-FE26-82338DDA284B name=Pod company=Apple, Inc. beacon= services=0
+01:36:39 [INFO] BLE device 9ECA25F8-D2B6-7C4B-3DDE-C2B9A15CAAD1 name= company=Apple, Inc. beacon= services=0
+01:36:39 [INFO] BLE device EBE67908-C098-9381-2621-A3BDC5985770 name= company=Microsoft beacon= services=0
+01:36:39 [INFO] BLE device 5ECD646C-5DFE-8E8A-C746-536A01A17C1E name=FukuMEAN company=Apple, Inc. beacon= services=0
+01:36:39 [INFO] BLE device 0F786E01-3C43-6D3E-8424-275F9490A8A0 name=macgr3y company=Apple, Inc. beacon= services=0
+01:36:39 [INFO] BLE device 3CE66F91-F236-7AA4-A0A8-412EC92C35B3 name=PHONE company=Apple, Inc. beacon= services=0
+01:36:39 [INFO] BLE device 9357159A-A202-D954-2D79-A2170E4DE2F8 name= company=Apple, Inc. beacon= services=0
+01:36:39 [INFO] BLE device F977CE1F-BF52-39A3-6F28-A157DF902F23 name= company=Apple, Inc. beacon= services=0
+01:36:40 [INFO] BLE device 403877F2-8066-5A4C-5488-B07C3C5653BD name= company=Apple, Inc. beacon= services=0
+01:36:40 [INFO] BLE device 8E9F8DDB-C33F-FA1E-2894-67AF024C9015 name= company=Apple, Inc. beacon= services=0
+01:36:40 [INFO] BLE device E70ABBF9-A4FC-FF40-FBE0-5EE9FC9C49B8 name=SYLVANIA BR30 C-M942A company= beacon= services=1
+01:36:41 [INFO] BLE device 7E49E2E1-AE17-12D8-8867-DC403365922F name= company=Apple, Inc. beacon= services=0
+01:36:41 [INFO] BLE device A6C9839A-ECA0-3F20-158F-E86A31CFFBA5 name=Base company=Apple, Inc. beacon= services=0
+01:36:42 [INFO] BLE device 9AEEF068-88BA-ED14-A1DD-3351B5E9EBCE name= company= beacon= services=1
+01:36:42 [INFO] BLE device 40F06F95-E7E8-FFE3-4191-799C90F67858 name=Quest 3S company= beacon= services=1
+01:36:45 [INFO] BLE device 053FE8CF-A2F0-5FB0-2212-D4E7A0886B60 name= company=Apple, Inc. beacon= services=0
+01:36:46 [INFO] BLE device A7B44C93-3D91-39DE-B3B7-0603539EE5C5 name= company=Apple, Inc. beacon= services=0
+01:37:00 [INFO] BLE probe connect start id=47ee4b3347
+01:37:00 [INFO] BLE device 0FE734C2-56F0-60CF-072A-DB34101D9228 name= company=Apple, Inc. beacon= services=0
+01:37:00 [INFO] BLE probe connected id=47ee4b3347
+01:37:01 [INFO] BLE probe services discovered id=47ee4b3347 count=2
+01:37:01 [INFO] BLE probe complete id=47ee4b3347
+01:37:03 [INFO] BLE device 3BE2F511-A3FB-8F59-5C04-DDE2929FB6FF name= company=Apple, Inc. beacon= services=0
+01:37:08 [INFO] BLE device 51D510A6-EA5E-71E2-7CB5-D3D3C4C25B0C name= company=Apple, Inc. beacon= services=0
+01:37:17 [INFO] BLE device 1B59E8F7-C28B-CBF4-1626-2C7348975EB9 name=Crusher Evo company= beacon= services=4
+01:37:39 [INFO] BLE probe connect start id=7b035f7216
+01:37:46 [INFO] BLE device 1C1FE455-52F1-BB14-FB3A-DF28D1F4F681 name= company=Apple, Inc. beacon= services=0
+01:38:01 [INFO] BLE Find started id=7b035f7216
+01:38:14 [INFO] Exported file to /Users/letsdev/StrangeLab/scans/ble-raw/CamUtil-BLERaw-7b035f7216-2026-02-01T083814Z.json
+01:38:14 [INFO] Exported file to /Users/letsdev/StrangeLab/scans/ble-readable/CamUtil-BLEReadable-7b035f7216-2026-02-01T083814Z.json
+01:38:30 [INFO] Scan started (ONVIF discovery enabled, service discovery enabled, ARP warmup enabled, safe mode on)
+01:38:30 [INFO] Scan scope: 192.168.8.124/24
+01:38:30 [INFO] Total IPs to scan: 254
+01:38:30 [INFO] ARP warmup started: 254 IPs
+01:38:31 [INFO] ARP warmup finished
+01:38:31 [INFO] ARP parsed entries: 16
+01:38:31 [INFO] ARP hosts with MAC: 12
+01:38:31 [INFO] ARP marked alive: 12
+01:38:31 [INFO] OUI vendor hits: 6, misses: 6
+01:38:31 [INFO] ARP vendor scoring: hosts scored 6, high-confidence 0; devices scored 0, high-confidence 0
+01:38:31 [INFO] SSDP discovery started
+01:38:31 [INFO] Bonjour discovery started
+01:38:31 [INFO] WS-Discovery started (timeout 3.0s)
+01:38:34 [INFO] WS-Discovery found device 192.168.8.108
+01:38:34 [INFO] WS-Discovery found device 192.168.8.171
+01:38:34 [INFO] WS-Discovery finished: found 2 device(s)
+01:38:34 [INFO] SSDP responses: 0
+01:38:34 [INFO] Bonjour services: 5
+01:39:25 [WARN] No completed scan available for audit export
+01:39:28 [WARN] No completed scan available for audit export
+01:39:28 [INFO] Scan finished: alive 13 / 255
+01:39:28 [INFO] Scan complete
+01:39:28 [INFO] Hostname lookups started
+01:39:29 [INFO] Hostname lookups finished
+01:39:29 [INFO] ARP parsed entries: 16
+01:39:29 [INFO] ARP hosts with MAC: 12
+01:39:29 [INFO] ARP marked alive: 0
+01:39:29 [INFO] OUI vendor hits: 6, misses: 6
+01:39:29 [INFO] ARP vendor scoring: hosts scored 6, high-confidence 0; devices scored 3, high-confidence 0
+01:39:29 [INFO] HTTP fingerprinting started (5 requests)
+01:39:29 [INFO] HTTP fingerprinting attempted 5, succeeded 5
+01:39:29 [INFO] HTTP vendor scoring: hosts scored 6, high-confidence 0; devices scored 3, high-confidence 0
+01:39:29 [INFO] Scored hosts: 255 (high: 0, med: 0, low: 255)
+01:39:34 [INFO] BLE probe connected id=7b035f7216
+01:39:35 [WARN] BLE probe disconnected before completion id=7b035f7216 error=The connection has timed out unexpectedly.
+01:39:41 [INFO] Audit log exported to /Users/letsdev/StrangeLab/scans/logs/CamUtil-Audit-2026-02-01T083938Z.json
+01:39:41 [INFO] Exported file to /Users/letsdev/StrangeLab/scans/audit-raw/CamUtil-AuditRaw-2026-02-01T083941Z.json
+01:39:41 [INFO] Exported file to /Users/letsdev/StrangeLab/scans/audit-readable/CamUtil-AuditReadable-2026-02-01T083941Z.json
+01:40:15 [INFO] BLE toggle off
+01:40:15 [INFO] BLE scan stopped
+01:40:15 [INFO] BLE peripherals discovered: 22
+01:40:15 [INFO] Scored BLE: 22 (high: 0, med: 0, low: 22)
+01:40:30 [INFO] Scan started (ONVIF discovery enabled, service discovery enabled, ARP warmup enabled, safe mode off)
+01:40:30 [INFO] Scan scope: 192.168.8.124/24
+01:40:30 [INFO] Total IPs to scan: 254
+01:40:30 [INFO] ARP warmup started: 254 IPs
+01:40:31 [INFO] ARP warmup finished
+01:40:31 [INFO] ARP parsed entries: 16
+01:40:31 [INFO] ARP hosts with MAC: 12
+01:40:31 [INFO] ARP marked alive: 12
+01:40:31 [INFO] OUI vendor hits: 6, misses: 6
+01:40:31 [INFO] ARP vendor scoring: hosts scored 6, high-confidence 0; devices scored 0, high-confidence 0
+01:40:31 [INFO] SSDP discovery started
+01:40:31 [INFO] Bonjour discovery started
+01:40:31 [INFO] WS-Discovery started (timeout 3.0s)
+01:40:34 [INFO] WS-Discovery found device 192.168.8.108
+01:40:34 [INFO] WS-Discovery found device 192.168.8.171
+01:40:34 [INFO] WS-Discovery finished: found 2 device(s)
+01:40:34 [INFO] SSDP responses: 0
+01:40:34 [INFO] Bonjour services: 5
+01:40:59 [INFO] OUI import loaded 0 entries
+01:41:03 [INFO] ARP parsed entries: 16
+01:41:03 [INFO] ARP hosts with MAC: 12
+01:41:03 [INFO] ARP marked alive: 0
+01:41:03 [INFO] OUI vendor hits: 0, misses: 12
+01:41:03 [INFO] ARP vendor scoring: hosts scored 0, high-confidence 0; devices scored 0, high-confidence 0
+01:41:28 [INFO] Scan finished: alive 13 / 255
+01:41:28 [INFO] Scan complete
+01:41:28 [INFO] Hostname lookups started
+01:41:29 [INFO] Hostname lookups finished
+01:41:29 [INFO] ARP parsed entries: 16
+01:41:30 [INFO] ARP hosts with MAC: 12
+01:41:30 [INFO] ARP marked alive: 0
+01:41:30 [INFO] OUI vendor hits: 0, misses: 12
+01:41:30 [INFO] ARP vendor scoring: hosts scored 0, high-confidence 0; devices scored 0, high-confidence 0
+01:41:30 [INFO] HTTP fingerprinting started (5 requests)
+01:41:30 [INFO] HTTP fingerprinting attempted 5, succeeded 5
+01:41:30 [INFO] HTTP vendor scoring: hosts scored 0, high-confidence 0; devices scored 0, high-confidence 0
+01:41:30 [INFO] Scored hosts: 255 (high: 0, med: 0, low: 255)
+01:41:42 [INFO] Exported 255 records to /Users/letsdev/StrangeLab/scans/ble/CamUtil-Export-2026-02-01T084136Z.json
+01:42:08 [INFO] Exported 255 records to /Users/letsdev/StrangeLab/scans/CamUtil-Export-2026-02-01T084155Z.json
+01:45:09 [INFO] Exported file to /Users/letsdev/StrangeLab/scans/evidence-raw/CamUtil-EvidenceRaw-192.168.8.171-2026-02-01T084509Z.json
+01:45:09 [INFO] Exported file to /Users/letsdev/StrangeLab/scans/evidence-readable/CamUtil-EvidenceReadable-192.168.8.171-2026-02-01T084509Z.json
+01:56:16 [INFO] Audit log exported to /Users/letsdev/StrangeLab/scans/logs/CamUtil-Audit-2026-02-01T085614Z.json
+01:56:16 [INFO] Exported file to /Users/letsdev/StrangeLab/scans/audit-raw/CamUtil-AuditRaw-2026-02-01T085616Z.json
+01:56:16 [INFO] Exported file to /Users/letsdev/StrangeLab/scans/audit-readable/CamUtil-AuditReadable-2026-02-01T085616Z.json

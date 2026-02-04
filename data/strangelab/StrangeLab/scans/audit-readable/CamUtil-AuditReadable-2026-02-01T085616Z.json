@@ -1,0 +1,34 @@
+{
+  "meta" : {
+    "appVersion" : "1.0",
+    "buildNumber" : "1",
+    "isoTimestamp" : "2026-02-01T085616Z"
+  },
+  "rawRef" : {
+    "filename" : "CamUtil-AuditRaw-2026-02-01T085616Z.json"
+  },
+  "summary" : {
+    "aliveHosts" : 13,
+    "bleDevices" : 22,
+    "errors" : 0,
+    "evidenceCount" : 255,
+    "highConfidenceHosts" : 0,
+    "interestingHosts" : 4,
+    "topBLE" : [
+      " (127 dBm)",
+      " (127 dBm)",
+      " (-35 dBm)",
+      " (-36 dBm)",
+      " (-37 dBm)"
+    ],
+    "topHosts" : [
+      "192.168.8.171 Low (25)",
+      "192.168.8.172 Low (15)",
+      "192.168.8.1 Low (10)",
+      "192.168.8.108 Low (10)",
+      " Low (0)"
+    ],
+    "totalHosts" : 254,
+    "warnings" : 3
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "bonjourServices" : [
+
+  ],
+  "hostConfidence" : {
+    "level" : "Low",
+    "reasons" : [
+      "ONVIF discovery without XAddrs (+10)",
+      "Vendor\/OUI match (+5)"
+    ],
+    "score" : 15
+  },
+  "ip" : "192.168.8.108",
+  "mac" : "18:ef:3a:3a:2a:f8",
+  "openPorts" : [
+
+  ],
+  "vendor" : "SichuanAILin Sichuan AI-Link Technology Co., Ltd.",
+  "vendorConfidenceReasons" : [
+    "OUI vendor match (+60)"
+  ],
+  "vendorConfidenceScore" : 60
+}

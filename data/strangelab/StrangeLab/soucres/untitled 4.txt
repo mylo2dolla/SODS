@@ -1,0 +1,137 @@
+# Progress Update — Node Agent Firmware & Flashing
+
+## Status: **Major Milestone Reached** ✅
+
+This session closed the loop on a stable, repeatable firmware + flashing workflow for both **ESP32** and **ESP32‑C3** boards, without relying on serial monitors.
+
+---
+
+## What Is Now Working
+
+### Firmware
+
+* ESP32 (esp32dev) firmware builds and boots cleanly
+* ESP32‑C3 firmware builds and boots cleanly
+* First‑boot `Preferences.cpp: nvs_open failed: NOT_FOUND` confirmed **normal**
+* BLE scanning active
+* Ingest logic active
+* Health + metrics endpoints live
+
+### Networking
+
+* Devices successfully join Wi‑Fi
+* IPs observable via router client list
+* ESP32‑C3 identified at **192.168.8.171** (2.4 GHz)
+* Router UI behavior (online/offline duplication) confirmed as expected
+
+### Flashing Workflow (Big Win)
+
+* **ESP Web Tools** fully integrated
+* No serial monitor required
+* Deterministic artifacts
+* One‑click browser flashing
+* Works locally, offline‑friendly after build
+
+---
+
+## Current Flashing Flow (Authoritative)
+
+### Build + Stage
+
+```bash
+./tools/build-stage-esp32dev.sh
+```
+
+(or esp32c3 equivalent)
+
+### Flash
+
+```bash
+./tools/flash-esp32dev.sh
+```
+
+* Launches local static server
+* Opens ESP Web Tools UI
+* Handles correct offsets automatically
+
+---
+
+## Firmware Artifacts Layout
+
+```
+esp-web-tools/
+  ├─ index.html
+  ├─ manifest.json
+  └─ firmware/
+      ├─ bootloader.bin   @ 0x1000
+      ├─ partitions.bin   @ 0x8000
+      └─ firmware.bin     @ 0x10000
+```
+
+404 issues fully eliminated by design.
+
+---
+
+## Runtime Verification (No Serial)
+
+### Health
+
+```
+curl http://<device-ip>/health
+```
+
+### Metrics
+
+```
+curl http://<device-ip>/metrics
+```
+
+### Ingest Confirmation
+
+* Monitor Pi logger or Cockpit CLI
+* Expect events:
+
+  * `node.boot`
+  * `node.heartbeat`
+  * `ble.seen`
+
+---
+
+## Known Non‑Issues (Confirmed)
+
+* `nvs_open failed: NOT_FOUND` on first boot
+* Router showing same MAC/IP under online + offline lists
+* Initial empty ingest results immediately after boot
+
+All expected behaviors.
+
+---
+
+## Architectural Wins
+
+* Serial port fragility removed from the workflow
+* Flashing is browser‑native and repeatable
+* Firmware is environment‑agnostic once built
+* Node Agent is now "plug‑in, flash, deploy"
+
+This unblocks scaling to many nodes.
+
+---
+
+## Next Logical Steps (Not Required Yet)
+
+1. mDNS hostname (`lab‑esp32‑01.local`, `lab‑esp32c3‑01.local`)
+2. Router IP reservations
+3. Cockpit UI button → ESP Web Tools launcher
+4. First‑class node registration event
+
+---
+
+## Summary
+
+This session crossed the hardest boundary: **reliable embedded deployment**.
+
+From here on, work shifts from infrastructure pain to feature development.
+
+**State: Stable. Confidence: High.**
+

@@ -1,0 +1,70 @@
+{
+  "confidence" : {
+    "level" : "Low",
+    "reasons" : [
+      "Known company ID (+20)",
+      "Connectable advertisement (+10)",
+      "TX power present (+5)"
+    ],
+    "score" : 35
+  },
+  "decoded" : {
+    "company" : {
+      "assignmentDate" : "2011-04-20",
+      "id" : "0x004C",
+      "name" : "Apple, Inc."
+    },
+    "services" : [
+
+    ],
+    "unknownServices" : [
+
+    ],
+    "unknownServicesNormalized" : [
+
+    ]
+  },
+  "glossary" : [
+    {
+      "meaning" : "Received Signal Strength Indicator; higher (less negative) means closer.",
+      "term" : "RSSI"
+    },
+    {
+      "meaning" : "A BLE advertising pattern such as iBeacon or Eddystone.",
+      "term" : "Beacon"
+    },
+    {
+      "meaning" : "Bluetooth SIG registered UUIDs and company identifiers used to decode common services.",
+      "term" : "Assigned Numbers"
+    }
+  ],
+  "meta" : {
+    "fingerprintID" : "dff8dc72b7",
+    "isoTimestamp" : "2026-02-03T005718Z",
+    "label" : "Unlabeled"
+  },
+  "proximity" : {
+    "bucket" : "Very Close (> -45 dBm)",
+    "note" : "RSSI is noisy; bucket is an approximate proximity hint.",
+    "rssiRaw" : -40,
+    "rssiSmoothed" : -29.207061160940462
+  },
+  "raw" : {
+    "advertisementBytes" : "4C001006471DD6A6C118",
+    "fingerprintID" : "dff8dc72b7",
+    "manufacturerData" : "4C001006471DD6A6C118",
+    "rssi" : -40,
+    "serviceUUIDs" : [
+
+    ]
+  },
+  "rawRef" : {
+    "filename" : "CamUtil-BLERaw-dff8dc72b7-2026-02-03T005718Z.json"
+  },
+  "recommendations" : [
+    "Label the device for local tracking.",
+    "Observe RSSI changes to understand proximity.",
+    "If authorized, identify the device owner in your environment."
+  ],
+  "summary" : "Likely Apple, Inc. device based on Company ID 0x004C. No standard beacon hint detected. No standard services decoded."
+}

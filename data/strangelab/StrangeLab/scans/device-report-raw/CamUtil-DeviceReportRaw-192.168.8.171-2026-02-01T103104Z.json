@@ -1,0 +1,60 @@
+{
+  "device" : {
+    "discoveredViaOnvif" : false,
+    "hostConfidence" : {
+      "level" : "Low",
+      "reasons" : [
+        "RTSP port 554 open (+10)",
+        "HTTP reachable (404) (+5)",
+        "Vendor\/OUI match (+5)"
+      ],
+      "score" : 20
+    },
+    "httpTitle" : "404 Not Found",
+    "ip" : "192.168.8.171",
+    "macAddress" : "a4:86:db:59:b7:d3",
+    "onvifRequiresAuth" : false,
+    "onvifXAddrs" : [
+
+    ],
+    "openPorts" : [
+      80,
+      554
+    ],
+    "vendor" : "JuanIntellig Guangdong Juan Intelligent Technology Joint Stock Co., Ltd.",
+    "vendorConfidenceReasons" : [
+      "OUI vendor match (+60)"
+    ],
+    "vendorConfidenceScore" : 60
+  },
+  "generatedAt" : "2026-02-01T10:31:04Z",
+  "hostEvidence" : {
+    "bonjourServices" : [
+
+    ],
+    "hostConfidence" : {
+      "level" : "Low",
+      "reasons" : [
+        "RTSP port 554 open (+10)",
+        "HTTP reachable (404) (+5)",
+        "Vendor\/OUI match (+5)"
+      ],
+      "score" : 20
+    },
+    "hostname" : "ipc_3786.lan",
+    "httpServer" : "nginx",
+    "httpStatus" : 404,
+    "httpTitle" : "404 Not Found",
+    "ip" : "192.168.8.171",
+    "mac" : "a4:86:db:59:b7:d3",
+    "openPorts" : [
+      80,
+      554
+    ],
+    "vendor" : "JuanIntellig Guangdong Juan Intelligent Technology Joint Stock Co., Ltd.",
+    "vendorConfidenceReasons" : [
+      "OUI vendor match (+60)"
+    ],
+    "vendorConfidenceScore" : 60
+  }
+}

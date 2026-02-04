@@ -1,0 +1,78 @@
+{
+  "classification" : "Likely camera\/streaming device",
+  "clientSummary" : "Device 192.168.8.108 is assessed as likely camera\/streaming device with confidence 15.",
+  "confidence" : {
+    "level" : "Low",
+    "reasons" : [
+      "ONVIF discovery without XAddrs (+10)",
+      "Vendor\/OUI match (+5)"
+    ],
+    "score" : 15
+  },
+  "evidence" : [
+    {
+      "label" : "Open Ports",
+      "meaning" : "",
+      "rawField" : "hostEvidence.openPorts",
+      "rawValue" : ""
+    },
+    {
+      "label" : "HTTP Status",
+      "meaning" : "No HTTP response observed.",
+      "rawField" : "hostEvidence.httpStatus",
+      "rawValue" : ""
+    },
+    {
+      "label" : "HTTP Server",
+      "meaning" : "No server header observed.",
+      "rawField" : "hostEvidence.httpServer",
+      "rawValue" : ""
+    },
+    {
+      "label" : "HTTP Title",
+      "meaning" : "No title observed.",
+      "rawField" : "hostEvidence.httpTitle",
+      "rawValue" : ""
+    },
+    {
+      "label" : "ONVIF Discovery",
+      "meaning" : "ONVIF discovery response observed.",
+      "rawField" : "device.discoveredViaOnvif",
+      "rawValue" : "true"
+    }
+  ],
+  "identityMapping" : [
+    {
+      "friendly" : "Unknown",
+      "label" : "Hostname",
+      "rawField" : "hostEvidence.hostname",
+      "rawValue" : "Unknown"
+    },
+    {
+      "friendly" : "SichuanAILin Sichuan AI-Link Technology Co., Ltd.",
+      "label" : "Vendor",
+      "rawField" : "hostEvidence.vendor",
+      "rawValue" : "SichuanAILin Sichuan AI-Link Technology Co., Ltd."
+    },
+    {
+      "friendly" : "Unknown",
+      "label" : "Port Labels",
+      "rawField" : "hostEvidence.openPorts",
+      "rawValue" : ""
+    }
+  ],
+  "meta" : {
+    "hostIP" : "192.168.8.108",
+    "isoTimestamp" : "2026-02-01T113025Z",
+    "rawRef" : "CamUtil-DeviceReportRaw-192.168.8.108-2026-02-01T113025Z.json"
+  },
+  "summary" : "Report for 192.168.8.108. Likely camera\/streaming device.",
+  "technicalAppendix" : [
+    "Raw reference: CamUtil-DeviceReportRaw-192.168.8.108-2026-02-01T113025Z.json",
+    "Open ports (raw): ",
+    "Open ports (friendly): ",
+    "SSDP Server (raw): Unknown",
+    "SSDP Location (raw): Unknown",
+    "ONVIF XAddrs (raw): "
+  ]
+}

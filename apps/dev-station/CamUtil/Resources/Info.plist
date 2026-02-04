@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDisplayName</key>
+	<string>Strange Ops Dev Station</string>
+	<key>CFBundleIdentifier</key>
+	<string>com.strangelab.sods</string>
+	<key>CFBundleName</key>
+	<string>Strange Ops Dev Station</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>1.0</string>
+	<key>CFBundleVersion</key>
+	<string>1</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>13.0</string>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>Used to discover nearby Bluetooth devices for inventory and mapping on authorized networks.</string>
+	<key>NSBluetoothPeripheralUsageDescription</key>
+	<string>Used to discover nearby Bluetooth devices for inventory and mapping on authorized networks.</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Strange Ops Dev Station observes the local network for device signals.</string>
+</dict>
+</plist>

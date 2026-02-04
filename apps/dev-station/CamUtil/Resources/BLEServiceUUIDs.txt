@@ -1,0 +1,13 @@
+# BLE Service UUIDs (subset)
+1800 Generic Access
+1801 Generic Attribute
+180A Device Information
+180F Battery Service
+180D Heart Rate
+181A Environmental Sensing
+181C User Data
+182A Firmware Update
+FEAA Eddystone
+FE9F Fitbit
+0000180A00001000800000805F9B34FB Device Information (128-bit)
+0000180F00001000800000805F9B34FB Battery Service (128-bit)

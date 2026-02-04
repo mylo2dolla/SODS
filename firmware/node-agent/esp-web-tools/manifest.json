@@ -1,0 +1,16 @@
+{
+  "name": "StrangeLab Node Agent (ESP32)",
+  "version": "0.1.0",
+  "chipFamily": "ESP32",
+  "new_install_prompt_erase": true,
+  "builds": [
+    {
+      "chipFamily": "ESP32",
+      "parts": [
+        { "path": "firmware/esp32dev/bootloader.bin", "offset": 4096 },
+        { "path": "firmware/esp32dev/partitions.bin", "offset": 32768 },
+        { "path": "firmware/esp32dev/firmware.bin", "offset": 65536 }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,179 @@
+Strange Vault – Progress Update (LOCKED)
+
+Status: Locked / Stable
+Date: 2026-02-03
+Scope: Vault ingest, events, devices, identifiers, CLI-first (no web dashboard)
+
+⸻
+
+1. Architecture (Current, Locked)
+
+Tier 0 – Mac (Cockpit / CLI)
+	•	CLI-driven inspection and control
+	•	Direct queries against Vault API
+	•	No UI coupling, no persistence here
+
+Tier 1 – Raspberry Pi (pi-aux)
+	•	Sensor / scanner node
+	•	Produces NDJSON BLE events
+	•	Writes to /vault/inbox/pi-aux.events.ndjson
+	•	Sends events via HTTP POST to Vault ingest
+
+Tier 2 – Raspberry Pi (pi-logger)
+	•	Authoritative vault
+	•	Runs ingest service (FastAPI + SQLite WAL)
+	•	Append-only semantics
+	•	Local-only, no cloud
+
+⸻
+
+2. Vault Ingest Service
+
+Service: strange-vault-ingest.service
+
+Process:
+
+/opt/strange/vault/venv/bin/uvicorn ingest:app \
+  --app-dir /opt/strange/vault \
+  --host 0.0.0.0 \
+  --port 8088
+
+Health:
+
+GET /health
+→ { "ok": true, "db": "/vault/db/vault.sqlite" }
+
+Status: systemd-managed, stable, auto-restart enabled
+
+⸻
+
+3. Event Ingest (FINAL BEHAVIOR)
+
+Accepted Input Schema (pi-aux NDJSON)
+
+{
+  "event_id": <int>,
+  "ts_ms": <epoch_ms>,
+  "type": "ble.seen",
+  "src": "pi-aux",
+  "data": { ... }
+}
+
+Normalization Rules (LOCKED)
+	•	node_id ← payload.node_id || payload.src || payload.node.id || "unknown"
+	•	kind ← payload.kind || payload.type || "unknown"
+	•	event_ts ← payload.event_ts || payload.ts || ts_ms → ISO8601
+	•	summary ← payload.summary || kind
+	•	data_json ← JSON(payload.data) or NULL
+	•	raw_json ← full payload JSON
+
+Resulting Stored Event
+
+{
+  node_id: "pi-aux",
+  kind: "ble.seen",
+  summary: "ble.seen",
+  event_ts: "2026-02-03T12:05:32.133Z",
+  data_json: { addr, rssi, flags, hci, ... }
+}
+
+Confirmed: No more unknown bleed-through for valid events
+
+⸻
+
+4. Events API
+
+List Events
+
+GET /v1/events?node_id=pi-aux&limit=N
+
+	•	Ordered newest → oldest
+	•	Limit capped at 500
+	•	Used by CLI and analysis scripts
+
+⸻
+
+5. Device Registry (NEW – LOCKED)
+
+Device Model
+	•	Stable device_id (e.g. ble:37:c1:48:a5:3e:5c)
+	•	One device may have multiple identifiers
+	•	Devices updated automatically from events
+
+Tables (Logical)
+	•	devices
+	•	device_id (PK)
+	•	kind (ble)
+	•	label (nullable)
+	•	first_seen_ts
+	•	last_seen_ts
+	•	meta_json
+	•	device_identifiers
+	•	device_id (FK)
+	•	id_type (ble_addr)
+	•	id_value (MAC)
+	•	first_seen_ts
+	•	last_seen_ts
+	•	source_node
+	•	meta_json (addr_type, rssi, flags, hci)
+
+⸻
+
+6. Devices API (LOCKED)
+
+List Devices
+
+GET /v1/devices?limit=5
+GET /v1/devices?kind=ble
+GET /v1/devices?q=37:c1:48:a5:3e:5c
+
+Include Identifiers
+
+GET /v1/devices?include_identifiers=true
+
+Single Device
+
+GET /v1/device/{device_id}
+
+Confirmed Working:
+	•	Discovery
+	•	First/last seen tracking
+	•	Identifier attachment
+	•	Query by substring
+
+⸻
+
+7. Data Integrity Notes
+	•	SQLite in WAL mode
+	•	Readers use RO mode or .timeout
+	•	Ingest is append-only
+	•	Historical events preserved even if device rotates identifiers
+
+⸻
+
+8. What Is Explicitly Deferred
+	•	Web dashboard
+	•	Correlation UI
+	•	ML / heuristics
+	•	External sync
+
+(All intentionally postponed)
+
+⸻
+
+9. Current State Summary (Truth)
+	•	✅ Ingest works
+	•	✅ Events normalized
+	•	✅ Devices tracked
+	•	✅ Identifiers linked
+	•	✅ CLI-first workflow proven
+	•	🔒 Schema + behavior locked
+
+This is a stable foundation. Any further work builds on top, not sideways.
+
+⸻
+
+Next Logical Steps (Not Executed Yet):
+	•	Monthly identifier refresh / enrichment script
+	•	Labeling devices (manual or rules)
+	•	Higher-level correlation (presence, dwell, motion)

@@ -1,0 +1,47 @@
+# StrangeLab Status Update — 2026-02-03
+
+## Network / IP Reservations
+
+### pi-logger
+- eth0 (wired): 192.168.8.160
+- wlan0 (2.4GHz): 192.168.8.169
+- Routing preference: eth0 metric 50, wlan0 metric 300
+
+### pi-aux
+- wifi0 (2.4GHz): 192.168.8.140
+- wifi1 (5GHz): 192.168.8.114
+- Routing preference goal: prefer 5GHz for default route; keep 2.4GHz as fallback.
+
+## Services
+
+### pi-logger
+- Enabled + running:
+  - strange-vault-ingest.service
+- Bluetooth:
+  - present but soft-blocked (expected if unused)
+
+### pi-aux
+- Enabled + running:
+  - strangelab-aux-scanner.service
+
+## BLE Scanner Status (pi-aux)
+
+### What’s working
+- strangelab-aux-scanner.service starts and stays running.
+- Manual scanner runs successfully and writes events.
+
+### What’s NOT working (current problem)
+- Under systemd, btmgmt is repeatedly exiting with rc=1.
+- events.ndjson is not growing (line count stays constant).
+
+### Evidence
+- systemd status shows repeated:
+  - "[ble_scan] btmgmt exited rc=1; restarting in 1s"
+- `wc -l /opt/strange/aux/events.ndjson` does not increase over time.
+
+## Next Actions (to lock in BLE)
+1) Capture btmgmt error output under systemd context.
+2) Ensure bluetooth is Powered: yes and rfkill is unblocked.
+3) If needed: add ExecStartPre to power on bluetooth via bluetoothctl.
+4) Confirm events.ndjson grows continuously while service runs.
+5) Add SSH keys for passwordless admin access.

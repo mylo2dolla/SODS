@@ -1,0 +1,8 @@
+
+Logger ingest:
+	•	http://pi-logger.local:8088/v1/ingest
+
+Logger readback (debug/UI):
+	•	http://pi-logger.local:8088/v1/events?node_id=<id>&limit=<n>
+
+This becomes the contract target for every node that wants persistence.

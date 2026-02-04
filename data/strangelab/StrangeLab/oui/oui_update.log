@@ -1,0 +1,16 @@
+[1/5] Download IEEE oui.txt
+[2/5] Download Wireshark manuf.gz
+[3/5] Normalize IEEE -> AABBCC Vendor
+[4/5] Normalize Wireshark manuf -> AABBCC Vendor
+[5/5] Merge (Wireshark overrides IEEE) -> /Users/letsdev/StrangeLab/oui/oui_combined.txt
+Wrote 39045 OUIs to /Users/letsdev/StrangeLab/oui/oui_combined.txt
+Done.
+Import this file in CamUtil: /Users/letsdev/StrangeLab/oui/oui_combined.txt
+[1/5] Download IEEE oui.txt
+[2/5] Download Wireshark manuf.gz
+[3/5] Normalize IEEE -> AABBCC Vendor
+[4/5] Normalize Wireshark manuf -> AABBCC Vendor
+[5/5] Merge (Wireshark overrides IEEE) -> /Users/letsdev/StrangeLab/oui/oui_combined.txt
+Wrote 39045 OUIs to /Users/letsdev/StrangeLab/oui/oui_combined.txt
+Done.
+Import this file in CamUtil: /Users/letsdev/StrangeLab/oui/oui_combined.txt

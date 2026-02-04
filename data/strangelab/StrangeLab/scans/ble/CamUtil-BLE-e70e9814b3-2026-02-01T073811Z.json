@@ -1,0 +1,28 @@
+{
+  "bleConfidence" : {
+    "level" : "Low",
+    "reasons" : [
+      "Known company ID (+20)",
+      "Connectable advertisement (+10)",
+      "TX power present (+5)"
+    ],
+    "score" : 35
+  },
+  "fingerprint" : {
+    "isConnectable" : true,
+    "localName" : "Pod",
+    "manufacturerCompanyID" : 76,
+    "manufacturerCompanyName" : "Apple, Inc.",
+    "manufacturerDataPrefixHex" : "4C000F059000B084",
+    "serviceUUIDs" : [
+
+    ],
+    "txPower" : 0
+  },
+  "fingerprintID" : "e70e9814b3",
+  "id" : "D6F40FC2-76BF-A21D-FE26-82338DDA284B",
+  "label" : "",
+  "manufacturerDataHex" : "4C000F059000B0846110022A04",
+  "name" : "Pod",
+  "rssi" : -52
+}

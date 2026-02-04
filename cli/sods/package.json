@@ -1,0 +1,21 @@
+{
+  "name": "sods",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "sods": "dist/cli.js"
+  },
+  "scripts": {
+    "dev": "tsx watch src/cli.ts start",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/cli.js start"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3"
+  }
+}

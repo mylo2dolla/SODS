@@ -1,0 +1,22 @@
+{
+  "bleConfidence" : {
+    "level" : "Low",
+    "reasons" : [
+      "Service UUIDs present (+10)",
+      "Connectable advertisement (+10)"
+    ],
+    "score" : 20
+  },
+  "fingerprint" : {
+    "isConnectable" : true,
+    "localName" : "SYLVANIA BR30 C-M942A",
+    "serviceUUIDs" : [
+      "1827"
+    ]
+  },
+  "fingerprintID" : "ce71afc8ab",
+  "id" : "E70ABBF9-A4FC-FF40-FBE0-5EE9FC9C49B8",
+  "label" : "",
+  "name" : "SYLVANIA BR30 C-M942A",
+  "rssi" : -59
+}

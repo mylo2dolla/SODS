@@ -1,0 +1,28 @@
+{
+  "bleConfidence" : {
+    "level" : "Low",
+    "reasons" : [
+      "Service UUIDs present (+10)",
+      "Connectable advertisement (+10)"
+    ],
+    "score" : 20
+  },
+  "fingerprint" : {
+    "isConnectable" : true,
+    "localName" : "Crusher Evo",
+    "manufacturerCompanyID" : 1993,
+    "manufacturerDataPrefixHex" : "C9070002",
+    "serviceUUIDs" : [
+      "180F",
+      "180A",
+      "FEED",
+      "FDB3"
+    ]
+  },
+  "fingerprintID" : "7b035f7216",
+  "id" : "1B59E8F7-C28B-CBF4-1626-2C7348975EB9",
+  "label" : "",
+  "manufacturerDataHex" : "C9070002",
+  "name" : "Crusher Evo",
+  "rssi" : -87
+}

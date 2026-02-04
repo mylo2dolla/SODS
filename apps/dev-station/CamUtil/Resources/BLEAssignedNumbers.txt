@@ -1,0 +1,21 @@
+# Bluetooth SIG Assigned Numbers (sample)
+# Format: <uuid> <type> <name>
+1800 service Generic Access
+1801 service Generic Attribute
+180A service Device Information
+180D service Heart Rate
+180F service Battery Service
+181A service Environmental Sensing
+2A00 characteristic Device Name
+2A01 characteristic Appearance
+2A19 characteristic Battery Level
+2A24 characteristic Model Number String
+2A25 characteristic Serial Number String
+2A26 characteristic Firmware Revision String
+2A27 characteristic Hardware Revision String
+2A28 characteristic Software Revision String
+2A29 characteristic Manufacturer Name String
+2A37 characteristic Heart Rate Measurement
+2902 descriptor Client Characteristic Configuration
+FEAA service Eddystone
+0000180D-0000-1000-8000-00805F9B34FB service Heart Rate

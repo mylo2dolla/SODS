@@ -1,0 +1,64 @@
+import SwiftUI
+
+enum Theme {
+    static let background = Color(red: 0.02, green: 0.02, blue: 0.03)
+    static let panel = Color(red: 0.06, green: 0.06, blue: 0.08)
+    static let panelAlt = Color(red: 0.09, green: 0.09, blue: 0.12)
+    static let border = Color(red: 1.0, green: 0.24, blue: 0.24).opacity(0.25)
+    static let accent = Color(red: 1.0, green: 0.24, blue: 0.24)
+    static let textPrimary = Color.white
+    static let textSecondary = Color.white.opacity(0.65)
+    static let muted = Color.white.opacity(0.4)
+
+    static func statusColor(ok: Bool) -> Color {
+        ok ? accent : muted
+    }
+
+    static func cardStyle() -> some ViewModifier {
+        CardStyle()
+    }
+
+    private struct CardStyle: ViewModifier {
+        func body(content: Content) -> some View {
+            content
+                .padding(12)
+                .background(Theme.panel)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(Theme.border, lineWidth: 1)
+                        .shadow(color: Theme.accent.opacity(0.25), radius: 6)
+                )
+                .cornerRadius(12)
+        }
+    }
+}
+
+struct PrimaryActionButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.system(size: 12, weight: .semibold))
+            .padding(.horizontal, 14)
+            .padding(.vertical, 7)
+            .background(Theme.accent.opacity(configuration.isPressed ? 0.7 : 0.9))
+            .foregroundColor(.white)
+            .clipShape(Capsule())
+            .shadow(color: Theme.accent.opacity(0.5), radius: 8, x: 0, y: 2)
+    }
+}
+
+struct SecondaryActionButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.system(size: 12, weight: .semibold))
+            .padding(.horizontal, 14)
+            .padding(.vertical, 7)
+            .background(Theme.panelAlt.opacity(configuration.isPressed ? 0.8 : 1.0))
+            .foregroundColor(Theme.textPrimary)
+            .clipShape(Capsule())
+            .overlay(
+                Capsule()
+                    .stroke(Theme.border, lineWidth: 1)
+            )
+            .shadow(color: Theme.accent.opacity(0.25), radius: 6, x: 0, y: 2)
+    }
+}

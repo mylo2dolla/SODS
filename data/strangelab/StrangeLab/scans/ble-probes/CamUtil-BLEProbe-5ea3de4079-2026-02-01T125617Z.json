@@ -1,0 +1,12 @@
+{
+  "discoveredServices" : [
+    "180A",
+    "180F"
+  ],
+  "error" : "",
+  "fingerprintID" : "5ea3de4079",
+  "lastUpdated" : "2026-02-01T12:56:08Z",
+  "name" : "Mini7",
+  "peripheralID" : "E193BCC6-2EDC-4BEE-0750-AEEC60F2B7E3",
+  "status" : "success"
+}

@@ -1,0 +1,15 @@
+{
+  "confidence" : {
+    "level" : "Low",
+    "score" : 20
+  },
+  "rawRef" : "CaseReportRaw-2026-02-03T054706Z.json",
+  "references" : [
+    "\/Users\/letsdev\/StrangeLab\/inbox\/ble-raw\/CamUtil-BLEProbe-ce71afc8ab-2026-02-03T005821Z.json"
+  ],
+  "summary" : "Case ce71afc8ab (ble) with 1 referenced artifacts.",
+  "target" : {
+    "id" : "ce71afc8ab",
+    "type" : "ble"
+  }
+}

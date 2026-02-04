@@ -1,0 +1,23 @@
+.DS_Store
+**/.DS_Store
+
+# Node/JS
+**/node_modules
+**/dist
+**/.cache
+
+# PlatformIO
+**/.pio
+
+# Builds
+**/build
+**/out
+
+# IDE
+**/.idea
+**/.vscode
+
+# Xcode
+**/DerivedData
+**/xcuserdata
+**/*.xcuserstate

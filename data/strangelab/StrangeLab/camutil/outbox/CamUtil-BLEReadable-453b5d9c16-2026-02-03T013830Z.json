@@ -1,0 +1,68 @@
+{
+  "confidence" : {
+    "level" : "Low",
+    "reasons" : [
+      "Known company ID (+20)"
+    ],
+    "score" : 20
+  },
+  "decoded" : {
+    "company" : {
+      "assignmentDate" : "2000-01-01",
+      "id" : "0x0006",
+      "name" : "Microsoft"
+    },
+    "services" : [
+
+    ],
+    "unknownServices" : [
+
+    ],
+    "unknownServicesNormalized" : [
+
+    ]
+  },
+  "glossary" : [
+    {
+      "meaning" : "Received Signal Strength Indicator; higher (less negative) means closer.",
+      "term" : "RSSI"
+    },
+    {
+      "meaning" : "A BLE advertising pattern such as iBeacon or Eddystone.",
+      "term" : "Beacon"
+    },
+    {
+      "meaning" : "Bluetooth SIG registered UUIDs and company identifiers used to decode common services.",
+      "term" : "Assigned Numbers"
+    }
+  ],
+  "meta" : {
+    "fingerprintID" : "453b5d9c16",
+    "isoTimestamp" : "2026-02-03T013830Z",
+    "label" : "Unlabeled"
+  },
+  "proximity" : {
+    "bucket" : "Far (< -75 dBm)",
+    "note" : "RSSI is noisy; bucket is an approximate proximity hint.",
+    "rssiRaw" : -76,
+    "rssiSmoothed" : -77.76981601133944
+  },
+  "raw" : {
+    "advertisementBytes" : "060001092022AA72643A63724D17C73D5DC1C635664E1B806137E8B33F",
+    "fingerprintID" : "453b5d9c16",
+    "manufacturerData" : "060001092022AA72643A63724D17C73D5DC1C635664E1B806137E8B33F",
+    "rssi" : -76,
+    "serviceUUIDs" : [
+
+    ]
+  },
+  "rawRef" : {
+    "filename" : "CamUtil-BLERaw-453b5d9c16-2026-02-03T013830Z.json"
+  },
+  "recommendations" : [
+    "Label the device for local tracking.",
+    "Observe RSSI changes to understand proximity.",
+    "If authorized, identify the device owner in your environment."
+  ],
+  "summary" : "Likely Microsoft device based on Company ID 0x0006. No standard beacon hint detected. No standard services decoded."
+}

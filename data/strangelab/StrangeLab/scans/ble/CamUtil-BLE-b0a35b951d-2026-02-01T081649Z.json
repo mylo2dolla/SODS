@@ -1,0 +1,28 @@
+{
+  "bleConfidence" : {
+    "level" : "Low",
+    "reasons" : [
+      "Known company ID (+20)",
+      "Connectable advertisement (+10)",
+      "TX power present (+5)"
+    ],
+    "score" : 35
+  },
+  "fingerprint" : {
+    "isConnectable" : true,
+    "localName" : "PHONE",
+    "manufacturerCompanyID" : 76,
+    "manufacturerCompanyName" : "Apple, Inc.",
+    "manufacturerDataPrefixHex" : "4C0010077C1F3A55",
+    "serviceUUIDs" : [
+
+    ],
+    "txPower" : 12
+  },
+  "fingerprintID" : "b0a35b951d",
+  "id" : "3CE66F91-F236-7AA4-A0A8-412EC92C35B3",
+  "label" : "",
+  "manufacturerDataHex" : "4C0010077C1F3A55A31D78",
+  "name" : "PHONE",
+  "rssi" : -51
+}

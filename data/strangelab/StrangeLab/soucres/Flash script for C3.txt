@@ -1,0 +1,33 @@
+cat > tools/flash-esp32c3.sh <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$REPO_ROOT"
+
+PORT="${PORT:-8000}"
+
+# if port is busy, fail loudly (keeps behavior predictable)
+if lsof -nP -iTCP:"$PORT" -sTCP:LISTEN >/dev/null 2>&1; then
+  echo "Port $PORT is already in use. Set PORT=XXXX to override." >&2
+  exit 1
+fi
+
+python3 -m http.server "$PORT" >/dev/null 2>&1 &
+SERVER_PID=$!
+
+cleanup() { kill "$SERVER_PID" >/dev/null 2>&1 || true; }
+trap cleanup EXIT
+
+open "http://localhost:${PORT}/esp-web-tools/?chip=esp32c3"
+
+wait "$SERVER_PID"
+EOF
+
+chmod +x tools/flash-esp32c3.sh
+
+
+
+useage=
+./tools/build-stage-esp32c3.sh
+./tools/flash-esp32c3.sh

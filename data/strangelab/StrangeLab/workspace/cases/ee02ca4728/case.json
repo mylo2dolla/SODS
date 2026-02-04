@@ -1,0 +1,12 @@
+{
+  "confidenceLevel" : "Low",
+  "confidenceScore" : 0,
+  "createdAt" : "2026-02-03T04:25:25Z",
+  "id" : "ee02ca4728",
+  "references" : [
+
+  ],
+  "targetID" : "ee02ca4728",
+  "targetType" : "ble",
+  "updatedAt" : "2026-02-03T04:25:25Z"
+}

@@ -1,0 +1,189 @@
+StrangeLab Update — BLE → Vault Pipeline (Locked-In State)
+
+Date: 2026-02-03
+Status: Operational / Boot-Persistent / Verified
+
+⸻
+
+1. High-Level Architecture (Current)
+
+[ BLE / RF Environment ]
+          ↓
+[ pi-aux ]  — BLE Scanner Node (untrusted sensor tier)
+    • btmgmt LE discovery
+    • append-only NDJSON
+    • local buffering only
+          ↓ (HTTP POST)
+[ pi-logger ] — Vault / Truth Tier
+    • FastAPI ingest
+    • SQLite append-only vault
+    • queryable event API
+          ↓
+[ Mac (Tier-0 Cockpit) ]
+    • observation / analysis / control (next phase)
+
+Design principles upheld:
+	•	Event-based sensing (no continuous media)
+	•	Append-only logs
+	•	Clear trust boundaries
+	•	No cloud dependencies
+
+⸻
+
+2. Node Inventory & Static IPs
+
+pi-aux (Auxiliary Sensor Node)
+	•	Role: BLE scanner + forwarder
+	•	Interfaces:
+	•	Wi-Fi 2.4 GHz: 192.168.8.140
+	•	Wi-Fi 5 GHz: 192.168.8.114
+	•	Bluetooth:
+	•	Controller: Broadcom BCM43430 (UART)
+	•	HCI: hci0
+
+pi-logger (Vault / Logger Node)
+	•	Role: Event ingestion + durable storage
+	•	Interfaces:
+	•	Ethernet: 192.168.8.160
+	•	Wi-Fi 2.4 GHz: 192.168.8.169
+
+⸻
+
+3. BLE Scanner (pi-aux)
+
+Scanner Implementation
+	•	File: /opt/strange/aux/ble_scan.py
+	•	Backend: btmgmt --index 0 find
+	•	Output: NDJSON (append-only)
+
+Events File
+	•	Path: /opt/strange/aux/events.ndjson
+	•	Format: one JSON object per line
+	•	Example:
+
+{"event_id": 5179, "ts_ms": 1770120182850, "type": "ble.seen", "src": "pi-aux", "data": {"addr": "4A:A9:2E:8A:59:14", "addr_type": "le_random", "rssi": -33, "flags": "0x0000", "hci": "hci0"}}
+
+Scanner Service
+
+strangelab-aux-scanner.service
+	•	Enabled at boot
+	•	Restart-on-failure
+	•	Owns BLE discovery exclusively
+
+Key Exec:
+
+ExecStart=/usr/bin/python3 /opt/strange/aux/ble_scan.py
+
+Status verified:
+	•	systemctl is-enabled: enabled
+	•	systemctl is-active: active
+	•	File growth verified via byte and line count
+
+⸻
+
+4. BLE → Vault Forwarder (pi-aux)
+
+Forwarder Role
+	•	Tails events.ndjson
+	•	Wraps events with node_id
+	•	Ships to vault over HTTP
+
+Forwarder Service
+
+strangelab-aux-forwarder.service
+	•	Enabled at boot
+	•	Independent of scanner lifecycle
+	•	Handles retry / backoff
+
+Ingest Target:
+
+http://192.168.8.160:8088/v1/ingest
+
+Logs confirm:
+	•	Continuous send
+	•	No backlog growth
+	•	No retry storms
+
+⸻
+
+5. Vault / Ingest API (pi-logger)
+
+Service
+
+strange-vault-ingest.service
+	•	User: pi
+	•	Working dir: /opt/strange/vault
+	•	Runtime: FastAPI + Uvicorn
+
+Exec:
+
+uvicorn ingest:app --host 0.0.0.0 --port 8088
+
+Storage
+	•	SQLite DB: /opt/strange/vault/vault.sqlite
+	•	Append-only semantics
+
+⸻
+
+6. Vault API Endpoints
+
+Base URL (local):
+
+http://127.0.0.1:8088
+
+Base URL (LAN):
+
+http://192.168.8.160:8088
+
+Endpoints
+	•	GET /health
+	•	Liveness probe
+	•	POST /v1/ingest
+	•	Event ingestion
+	•	Used by pi-aux forwarder
+	•	GET /v1/events
+	•	Query stored events
+	•	Params:
+	•	node_id (optional)
+	•	limit (default 50)
+
+Verified via:
+	•	openapi.json
+	•	live curl queries returning pi-aux events
+
+⸻
+
+7. Operational Verification Performed
+
+✔ BLE discovery manual test via btmgmt
+✔ Scanner writes NDJSON continuously
+✔ Forwarder POSTs to vault
+✔ Vault stores + returns events
+✔ Services restart cleanly
+✔ Boot persistence confirmed
+✔ No Bluetooth contention (Busy / Invalid Index resolved)
+
+⸻
+
+8. Current State Summary
+
+The BLE → Vault pipeline is:
+	•	Stable
+	•	Observable
+	•	Restart-safe
+	•	Cloud-free
+	•	Ready for analysis layer
+
+No temporary hacks remain in place. All fixes are structural.
+
+⸻
+
+9. Next Phase (Not Yet Implemented)
+	•	Mac Tier-0 cockpit
+	•	Live dashboards / CLI views
+	•	Presence inference & correlation
+	•	Multi-sensor fusion
+
+⸻
+
+End of update.

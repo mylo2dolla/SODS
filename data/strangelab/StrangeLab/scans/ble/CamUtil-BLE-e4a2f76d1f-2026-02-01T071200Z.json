@@ -1,0 +1,26 @@
+{
+  "bleConfidence" : {
+    "level" : "Low",
+    "reasons" : [
+      "Known company ID (+20)",
+      "Connectable advertisement (+10)",
+      "TX power present (+5)"
+    ],
+    "score" : 35
+  },
+  "fingerprint" : {
+    "isConnectable" : true,
+    "manufacturerCompanyID" : 76,
+    "manufacturerCompanyName" : "Apple, Inc.",
+    "manufacturerDataPrefixHex" : "4C001005511C354F",
+    "serviceUUIDs" : [
+
+    ],
+    "txPower" : 17
+  },
+  "fingerprintID" : "e4a2f76d1f",
+  "id" : "97815E90-3295-6670-B796-0AFB9D8ACBA9",
+  "label" : "",
+  "manufacturerDataHex" : "4C001005511C354F38",
+  "rssi" : -83
+}

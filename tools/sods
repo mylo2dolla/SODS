@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+CLI="$ROOT/cli/sods/dist/cli.js"
+
+if [[ ! -f "$CLI" ]]; then
+  echo "sods CLI not built. Run:";
+  echo "  cd $ROOT/cli/sods && npm install && npm run build";
+  exit 1
+fi
+
+node "$CLI" "$@"

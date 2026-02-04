@@ -1,0 +1,35 @@
+{
+  "advertisementBytes" : "060001092022AA72643A63724D17C73D5DC1C635664E1B806137E8B33F",
+  "bleConfidence" : {
+    "level" : "Low",
+    "reasons" : [
+      "Known company ID (+20)"
+    ],
+    "score" : 20
+  },
+  "fingerprint" : {
+    "isConnectable" : false,
+    "manufacturerAssignmentDate" : "2000-01-01",
+    "manufacturerCompanyID" : 6,
+    "manufacturerCompanyName" : "Microsoft",
+    "manufacturerDataPrefixHex" : "060001092022AA72",
+    "serviceUUIDs" : [
+
+    ],
+    "servicesDecoded" : [
+
+    ],
+    "unknownServices" : [
+
+    ]
+  },
+  "fingerprintID" : "453b5d9c16",
+  "label" : "Unlabeled",
+  "lastSeen" : 791774519.5694,
+  "manufacturerDataHex" : "060001092022AA72643A63724D17C73D5DC1C635664E1B806137E8B33F",
+  "rssi" : -76,
+  "serviceUUIDs" : [
+
+  ],
+  "smoothedRSSI" : -77.76981601133944
+}

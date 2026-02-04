@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Strange Ops Dev Station • Spectrum</title>
+    <link rel="stylesheet" href="spectrum.css" />
+  </head>
+  <body>
+    <div id="app">
+      <div class="panel">
+        <div class="title">
+          <div>
+            <div class="label">Strange Ops Dev Station</div>
+            <div class="sub">inferred signal field • ws /ws/frames</div>
+          </div>
+          <div id="status" class="status">connecting…</div>
+        </div>
+        <div class="controls">
+          <button id="pauseBtn" class="capsule">Pause</button>
+          <div class="capsule-group" id="windowGroup">
+            <button class="capsule" data-window="5000">5s</button>
+            <button class="capsule active" data-window="15000">15s</button>
+            <button class="capsule" data-window="60000">60s</button>
+          </div>
+          <label class="capsule">
+            Node Filter
+            <input id="nodeFilter" placeholder="node_id (optional)" />
+          </label>
+          <label class="capsule">
+            Device Cap
+            <input id="capRange" type="range" min="50" max="600" value="240" />
+            <span id="capValue">240</span>
+          </label>
+          <label class="capsule toggle">
+            <input id="demoToggle" type="checkbox" />
+            Demo Replay
+          </label>
+          <button id="godBtn" class="capsule god">God Button</button>
+        </div>
+      </div>
+      <div class="canvas-wrap">
+        <canvas id="field"></canvas>
+      </div>
+      <div id="toolsMenu" class="overlay hidden">
+        <div class="overlay-card">
+          <div class="overlay-header">
+            <div>
+              <div class="overlay-title">Tools</div>
+              <div class="overlay-sub">observational & correlational only</div>
+            </div>
+            <button id="closeTools" class="capsule">Close</button>
+          </div>
+          <div id="toolsList" class="tools-list"></div>
+          <pre id="toolsOutput" class="tools-output"></pre>
+        </div>
+      </div>
+    </div>
+    <script src="spectrum.js"></script>
+  </body>
+</html>

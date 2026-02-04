@@ -1,0 +1,192 @@
+Strange Vault Ingest – Architecture & Progress Update
+
+Date: 2026-02-03
+Status: LOCKED IN / WORKING
+
+⸻
+
+Executive Summary (ADHD-safe)
+
+• Pi-aux is emitting BLE scan events (single + batched).
+• Pi-logger is ingesting them via FastAPI + SQLite.
+• Events now resolve kind, summary, and data_json correctly.
+• systemd + uvicorn are pinned to the correct app directory.
+• Historical unknown rows are pre-fix artifacts.
+
+⸻
+
+Current Architecture
+
+Tier Layout
+
+Tier 0 – Mac (Cockpit / Brain)
+• CLI-only cockpit (Node.js)
+• Reads from Vault API
+• No web dashboard (by design)
+
+Tier 1 – pi-aux (Sensor Node)
+• Produces BLE scan events
+• Writes NDJSON batches to inbox
+• Schema includes envelope + events[]
+
+Tier 1 – pi-logger (Vault / Authority)
+• FastAPI ingest service
+• SQLite append-only event store
+• Normalizes incoming schemas
+
+⸻
+
+Network & Identity
+
+Static IPs
+
+pi-logger
+• Ethernet: 192.168.8.160
+• Wi-Fi 2.4GHz: 192.168.8.169
+
+pi-aux
+• Wi-Fi 2.4GHz: 192.168.8.140
+• Wi-Fi 5GHz: 192.168.8.114
+
+Service Binding
+
+• Ingest listens on: 0.0.0.0:8088
+• Hostname access: pi-logger.local:8088
+
+⸻
+
+Vault API
+
+Health
+
+GET /health
+
+{"ok": true, "db": "/vault/db/vault.sqlite"}
+
+Ingest
+
+POST /v1/ingest
+
+Accepts:
+
+Single Event
+
+{
+  "type": "ble.seen",
+  "src": "pi-aux",
+  "ts_ms": 1770120332133,
+  "data": { "addr": "AA:BB...", "rssi": -42 }
+}
+
+Batch Envelope
+
+{
+  "node_id": "pi-aux",
+  "ts_ms": 1770126745639,
+  "events": [ { "type": "ble.seen", "data": {...} } ]
+}
+
+Query
+
+GET /v1/events?node_id=pi-aux&limit=200
+
+Returns normalized rows:
+• kind
+• summary
+• event_ts
+• data_json
+
+⸻
+
+Database Schema (SQLite)
+
+events(
+  id INTEGER PRIMARY KEY,
+  recv_ts INTEGER,
+  node_id TEXT,
+  event_ts TEXT,
+  kind TEXT,
+  severity TEXT,
+  summary TEXT,
+  data_json TEXT,
+  raw_json TEXT
+)
+
+• WAL enabled
+• Append-only semantics
+• raw_json always preserved
+
+⸻
+
+Root Cause (Resolved)
+
+Problem
+
+Batched NDJSON events from pi-aux wrapped real events inside:
+
+{ node_id, ts_ms, events:[ {...} ] }
+
+Ingest was reading top-level fields only, so:
+• type not found
+• data not found
+• kind fell back to unknown
+
+Fix
+
+Ingest now:
+• Detects events[]
+• Extracts inner event
+• Maps fields from correct level
+
+Result: correct ble.seen rows stored.
+
+⸻
+
+systemd Service (Locked)
+
+Key guarantees:
+
+• Correct working directory
+• Correct module import
+• Vault DB path enforced
+
+[Service]
+WorkingDirectory=/opt/strange/vault
+Environment=VAULT_DB=/vault/db/vault.sqlite
+ExecStart=/opt/strange/vault/venv/bin/uvicorn ingest:app --app-dir /opt/strange/vault --host 0.0.0.0 --port 8088
+
+
+⸻
+
+Verification Checklist
+
+✔ systemctl is-active strange-vault-ingest → active
+✔ curl /health → ok
+✔ Single-event ingest → correct kind
+✔ Batch ingest → correct kind
+✔ Cockpit shows live BLE events
+
+⸻
+
+Known Artifacts
+
+• Rows with kind=unknown are pre-fix historical data
+• No backfill performed (by design)
+
+⸻
+
+Next Logical Steps (Not Required Yet)
+
+• Batch fan-out (1 row per inner event)
+• Severity mapping by event type
+• Summary enrichment (addr/rssi)
+• Time-range filtering
+• CLI analytics helpers
+
+⸻
+
+Final State
+
+Ingest pipeline is correct, stable, and production-safe.
+
+No web UI. CLI-first. Vault is the source of truth.

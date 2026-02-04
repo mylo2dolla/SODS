@@ -1,0 +1,56 @@
+{
+  "confidence" : {
+    "level" : "Low",
+    "reasons" : [
+      "Service UUIDs present (+10)",
+      "Connectable advertisement (+10)"
+    ],
+    "score" : 20
+  },
+  "glossary" : [
+    {
+      "meaning" : "Received Signal Strength Indicator (approximate).",
+      "term" : "RSSI"
+    },
+    {
+      "meaning" : "Broadcast identity hint such as iBeacon or Eddystone.",
+      "term" : "Beacon"
+    },
+    {
+      "meaning" : "Device allows a BLE connection attempt.",
+      "term" : "Connectable"
+    }
+  ],
+  "identityHints" : {
+    "beaconHint" : "None",
+    "company" : "Unknown",
+    "companyID" : "0x07C9",
+    "connectable" : "Yes",
+    "serviceUUIDs" : [
+      "180F Battery",
+      "180A Device Information",
+      "FEED (unknown UUID)",
+      "FDB3 (unknown UUID)"
+    ]
+  },
+  "meta" : {
+    "fingerprintID" : "7b035f7216",
+    "isoTimestamp" : "2026-02-01T083814Z",
+    "label" : ""
+  },
+  "proximity" : {
+    "bucket" : "Far (< -75 dBm)",
+    "note" : "RSSI is noisy; treat proximity as approximate.",
+    "rssiRaw" : -85,
+    "rssiSmoothed" : -85
+  },
+  "rawRef" : {
+    "filename" : "CamUtil-BLERaw-7b035f7216-2026-02-01T083814Z.json"
+  },
+  "recommendations" : [
+    "Add a label for easier identification.",
+    "Observe RSSI changes to infer proximity.",
+    "Check your local asset inventory for matching vendor.",
+    "Avoid connecting unless authorized."
+  ]
+}
