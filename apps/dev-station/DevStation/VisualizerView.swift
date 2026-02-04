@@ -174,6 +174,7 @@ struct VisualizerView: View {
                 ForEach(store.nodes) { node in
                     NodeRow(
                         node: node,
+                        alias: aliases[node.id] ?? aliases["node:\(node.id)"],
                         color: SignalColor.deviceColor(id: node.id),
                         selected: selectedNodeIDs.contains(node.id),
                         onToggle: {
@@ -301,6 +302,7 @@ struct VisualizerView: View {
 
 struct NodeRow: View {
     let node: SignalNode
+    let alias: String?
     let color: NSColor
     let selected: Bool
     let onToggle: () -> Void
@@ -318,6 +320,11 @@ struct NodeRow: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(node.id)
                         .font(.system(size: 11, weight: .semibold))
+                    if let alias, !alias.isEmpty, alias != node.id {
+                        Text(alias)
+                            .font(.system(size: 10))
+                            .foregroundColor(.secondary)
+                    }
                     Text(node.hostname ?? node.ip ?? "Unknown host")
                         .font(.system(size: 10))
                         .foregroundColor(.secondary)
@@ -486,6 +493,7 @@ struct SignalFieldView: View {
             if !pinnedNodeIDs.isEmpty {
                 PinnedNodesView(
                     pinned: pinnedNodeIDs.sorted(),
+                    aliases: aliases,
                     onClear: { pinnedNodeIDs.removeAll(); persistState() },
                     onFocus: { id in focusedNodeID = id; persistState() }
                 )
@@ -605,6 +613,7 @@ struct QuickOverlayView: View {
 
 struct PinnedNodesView: View {
     let pinned: [String]
+    let aliases: [String: String]
     let onClear: () -> Void
     let onFocus: (String) -> Void
 
@@ -619,7 +628,7 @@ struct PinnedNodesView: View {
             }
             ForEach(pinned, id: \.self) { id in
                 HStack(spacing: 6) {
-                    Text(id)
+                    Text(aliases[id] ?? id)
                         .font(.system(size: 10, design: .monospaced))
                         .foregroundColor(.secondary)
                     Spacer()

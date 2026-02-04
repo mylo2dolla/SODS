@@ -32,6 +32,7 @@ Date: 2026-02-04
 - Alias Manager now supports JSON import/export.
 - Added CLI alias commands and alias map in scan/device reports.
 - Alias autocomplete added in inspector; wifi-scan now seeds SSID aliases for BSSID.
+- Alias labels now shown in node list and pinned list for consistent display.
 - Ops Portal visualizer now renders rings, pulses, and legend text for parity.
 - Ops Portal: touch toggles focus mode + replay bar scrub (basic parity).
 - Ops Portal status now shows focused source label and replay state.
