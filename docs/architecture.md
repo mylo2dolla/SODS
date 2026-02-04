@@ -20,6 +20,14 @@
     - **Portrait = Watch Mode** (full-screen visualizer, no buttons).
     - Tap anywhere in Watch Mode to show a temporary quick-stats overlay.
 
+## Visual Model (Shared)
+
+- **Hue** = device identity (stable hash)
+- **Brightness** = recency
+- **Saturation** = confidence
+- **Glow** = correlation
+- Smooth decay over time
+
 ## Spine Responsibilities
 
 - Polls pi-logger `/v1/events`.

@@ -77,6 +77,10 @@ Examples:
 ./tools/sods spectrum
 ```
 
+## Tool Registry
+
+Passive-only tools are defined in `docs/tool-registry.json`. The CLI exposes them via `/tools`, and the Dev Station “God Button” shows them in-app.
+
 ## Demo/Replays
 ```bash
 ./tools/sods stream --frames --out ./cli/sods/public/demo.ndjson

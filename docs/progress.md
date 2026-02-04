@@ -69,3 +69,5 @@ npm run build
 - `/v1/events` only supports `node_id` + `limit`, so CLI filters client-side for `wifi.status` and `node.announce`.
 - Ops Portal Watch Mode: tap anywhere to show a 2–3 stat overlay that auto-hides.
 - CLI flags split: `--logger` for pi-logger, `--station` for spine endpoints.
+- Tool Registry is now shared between CLI and Dev Station (`docs/tool-registry.json`), and only passive tools are exposed.
+- Visual model unified: hue=identity, brightness=recency, saturation=confidence, glow=correlation with smooth decay.
