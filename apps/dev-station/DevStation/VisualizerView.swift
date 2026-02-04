@@ -269,6 +269,19 @@ struct VisualizerView: View {
             out[node.id] = alias
             out["node:\(node.id)"] = alias
         }
+        for event in store.events {
+            let data = event.data
+            let ssid = data["ssid"]?.stringValue ?? ""
+            let hostname = data["hostname"]?.stringValue ?? ""
+            let ip = data["ip"]?.stringValue ?? data["ip_addr"]?.stringValue ?? ""
+            let bssid = data["bssid"]?.stringValue ?? data["mac"]?.stringValue ?? ""
+            let alias = hostname.isEmpty ? (ssid.isEmpty ? (ip.isEmpty ? "" : ip) : ssid) : hostname
+            if let deviceID = event.deviceID, !alias.isEmpty {
+                out[deviceID] = alias
+            } else if !bssid.isEmpty, !alias.isEmpty {
+                out[bssid] = alias
+            }
+        }
         return out
     }
 

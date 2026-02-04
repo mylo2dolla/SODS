@@ -440,6 +440,23 @@ export class SODSServer {
       lastSeenByNode[n.node_id] = n.last_seen;
     }
 
+    const aliases: Record<string, string> = {};
+    const recent = this.eventBuffer.slice(-300);
+    for (const ev of recent) {
+      const data = ev.data ?? {};
+      const deviceId = String((data as any).device_id ?? (data as any).deviceId ?? (data as any).device ?? (data as any).addr ?? (data as any).address ?? (data as any).mac ?? (data as any).mac_address ?? (data as any).bssid ?? ev.node_id ?? "");
+      const ssid = String((data as any).ssid ?? "");
+      const hostname = String((data as any).hostname ?? (data as any).host ?? "");
+      const ip = String((data as any).ip ?? (data as any).ip_addr ?? (data as any).ip_address ?? "");
+      const alias = hostname || ssid || ip || "";
+      if (deviceId && alias && !aliases[deviceId]) {
+        aliases[deviceId] = alias;
+      }
+      if (ev.node_id && alias && !aliases[`node:${ev.node_id}`]) {
+        aliases[`node:${ev.node_id}`] = alias;
+      }
+    }
+
     const payload = {
       station: {
         ok: true,
@@ -469,6 +486,7 @@ export class SODSServer {
         count: listTools().length,
         items: listTools(),
       },
+      aliases,
       flash: this.buildFlashInfo(req),
       frames: this.lastFrames,
     };

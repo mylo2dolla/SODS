@@ -449,16 +449,15 @@ static void parsePortalState(const String &json) {
     }
   }
 
-  JsonObject nodes = root["nodes"];
-  JsonArray topNodes = nodes["top_nodes"].as<JsonArray>();
-  if (!topNodes.isNull()) {
+  JsonObject aliasObj = root["aliases"].as<JsonObject>();
+  if (!aliasObj.isNull()) {
     aliasMap.clear();
-    for (JsonVariant v : topNodes) {
-      String nodeId = String((const char*)(v["node_id"] | ""));
-      String hostname = String((const char*)(v["hostname"] | ""));
-      String ip = String((const char*)(v["ip"] | ""));
-      String alias = hostname.length() ? hostname : (ip.length() ? ip : nodeId);
-      if (nodeId.length()) aliasMap.push_back({nodeId, alias});
+    for (JsonPair kv : aliasObj) {
+      String id = String(kv.key().c_str());
+      String alias = String((const char*)kv.value().as<const char*>());
+      if (id.length() && alias.length()) {
+        aliasMap.push_back({id, alias});
+      }
     }
   }
 }
