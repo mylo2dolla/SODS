@@ -3,6 +3,7 @@ set -euo pipefail
 
 pattern="${1:-}"
 AIRPORT=""
+WDUTIL=""
 
 known_paths=(
   "/System/Library/PrivateFrameworks/Apple80211.framework/Versions/Current/Resources/airport"
@@ -27,22 +28,40 @@ if [[ -z "$AIRPORT" ]]; then
 fi
 
 if [[ -z "$AIRPORT" ]]; then
-  echo "wifi-scan: airport binary not found on this macOS build" >&2
-  echo "wifi-scan: install Wi-Fi tools or verify Apple80211.framework" >&2
-  exit 2
+  if command -v wdutil >/dev/null 2>&1; then
+    WDUTIL="$(command -v wdutil)"
+  else
+    echo "wifi-scan: airport binary not found on this macOS build" >&2
+    echo "wifi-scan: install Wi-Fi tools or verify Apple80211.framework" >&2
+    exit 2
+  fi
 fi
 
-output="$("$AIRPORT" -s 2>&1)" || {
-  if echo "$output" | grep -qi "permission"; then
-    output="$(sudo "$AIRPORT" -s 2>&1)" || {
+if [[ -n "$AIRPORT" ]]; then
+  output="$("$AIRPORT" -s 2>&1)" || {
+    if echo "$output" | grep -qi "permission"; then
+      output="$(sudo "$AIRPORT" -s 2>&1)" || {
+        echo "$output" >&2
+        exit 1
+      }
+    else
       echo "$output" >&2
       exit 1
-    }
-  else
-    echo "$output" >&2
-    exit 1
-  fi
-}
+    fi
+  }
+else
+  output="$("$WDUTIL" scan 2>&1)" || {
+    if echo "$output" | grep -qi "permission"; then
+      output="$(sudo "$WDUTIL" scan 2>&1)" || {
+        echo "$output" >&2
+        exit 1
+      }
+    else
+      echo "$output" >&2
+      exit 1
+    fi
+  }
+fi
 
 if [[ -n "$pattern" ]]; then
   echo "$output" | grep -E "$pattern" || true

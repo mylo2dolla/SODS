@@ -75,7 +75,7 @@ Examples:
 
 ## Wi-Fi Scan (macOS)
 
-Scan nearby SSIDs (airport helper):
+Scan nearby SSIDs (uses `airport` when present, falls back to `wdutil`):
 ```bash
 /Users/letsdev/sods/SODS/tools/sods wifi-scan
 /Users/letsdev/sods/SODS/tools/sods wifi-scan --pattern 'esp|espgo|c3|sods|portal|ops'
