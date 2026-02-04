@@ -50,6 +50,15 @@ Defaults:
 }
 
 function repoRoot(): string {
+  let dir = resolve(fileURLToPath(new URL(".", import.meta.url)));
+  for (let i = 0; i < 6; i += 1) {
+    const toolsPath = resolve(dir, "tools", "_sods_cli.sh");
+    const cliPath = resolve(dir, "cli", "sods");
+    if (existsSync(toolsPath) && existsSync(cliPath)) return dir;
+    const parent = resolve(dir, "..");
+    if (parent === dir) break;
+    dir = parent;
+  }
   return resolve(fileURLToPath(new URL("../../../..", import.meta.url)));
 }
 

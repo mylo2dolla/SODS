@@ -17,7 +17,20 @@ export type ToolDef = {
 
 type RunResult = { ok: boolean; output: string; duration_ms: number; data?: Record<string, unknown> };
 
-const repoRoot = resolve(fileURLToPath(new URL("../../../..", import.meta.url)));
+function findRepoRoot() {
+  let dir = resolve(fileURLToPath(new URL(".", import.meta.url)));
+  for (let i = 0; i < 6; i += 1) {
+    const toolsPath = join(dir, "tools", "_sods_cli.sh");
+    const cliPath = join(dir, "cli", "sods");
+    if (existsSync(toolsPath) && existsSync(cliPath)) return dir;
+    const parent = resolve(dir, "..");
+    if (parent === dir) break;
+    dir = parent;
+  }
+  return resolve(fileURLToPath(new URL("../../../..", import.meta.url)));
+}
+
+const repoRoot = findRepoRoot();
 
 function repoPath(...parts: string[]) {
   return join(repoRoot, ...parts);
