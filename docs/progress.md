@@ -220,3 +220,4 @@ RegisterWithLaunchServices /Users/letsdev/sods/SODS/dist/DerivedData/Build/Produ
 
 Built: /Users/letsdev/sods/SODS/dist/DevStation.app
 ```
+- Dev Station app bundling: fixed Info.plist validation to prevent “executable is missing” after install, added bundle validation in build/install/smoke, and forced CFBundleExecutable/CFBundleName to match the binary.

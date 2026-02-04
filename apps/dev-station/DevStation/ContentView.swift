@@ -955,8 +955,8 @@ struct ContentView: View {
         for record in snapshot.records {
             if let alias = overrides[record.ip] {
                 out[record.ip] = alias
-            } else if let hostname = record.hostname, !hostname.isEmpty {
-                out[record.ip] = hostname
+            } else if !record.hostname.isEmpty {
+                out[record.ip] = record.hostname
             }
         }
         for (key, value) in overrides where out[key] == nil {
@@ -2835,6 +2835,21 @@ struct HostDetailView: View {
         }
         .padding(16)
     }
+
+    private func resolvedAlias(for host: HostEntry) -> String? {
+        let overrides = SODSStore.shared.aliasOverrides
+        if let alias = overrides[host.ip] {
+            return alias
+        }
+        if let mac = host.macAddress, let alias = overrides[mac] {
+            return alias
+        }
+        if let hostname = host.hostname, let alias = overrides[hostname] {
+            return alias
+        }
+        return nil
+    }
+
 }
 
 struct BLEListView: View {
@@ -3001,24 +3016,10 @@ struct BLEListView: View {
                                     selectedID = peripheral.id
                                     if lockFindTarget {
                                         findFingerprintID = peripheral.fingerprintID
-            }
-        }
-    }
-
-    private func resolvedAlias(for host: HostEntry) -> String? {
-        let overrides = SODSStore.shared.aliasOverrides
-        if let alias = overrides[host.ip] {
-            return alias
-        }
-        if let mac = host.macAddress, let alias = overrides[mac] {
-            return alias
-        }
-        if let hostname = host.hostname, let alias = overrides[hostname] {
-            return alias
-        }
-        return nil
-    }
-}
+                                    }
+                                }
+                            }
+                        }
                         .padding(.horizontal, 2)
                     }
                 }
@@ -3026,21 +3027,21 @@ struct BLEListView: View {
 
                 Divider()
 
-        BLEDetailView(
-            peripheral: selectedPeripheral,
-            prober: prober,
-            findFingerprintID: $findFingerprintID,
-            aliasForPeripheral: { peripheral in
-                SODSStore.shared.aliasOverrides[peripheral.fingerprintID]
-            },
-            onGenerateScanReport: onGenerateScanReport,
-            onRevealLatestReport: onRevealLatestReport,
+                BLEDetailView(
+                    peripheral: selectedPeripheral,
+                    prober: prober,
+                    findFingerprintID: $findFingerprintID,
+                    aliasForPeripheral: { peripheral in
+                        SODSStore.shared.aliasOverrides[peripheral.fingerprintID]
+                    },
+                    onGenerateScanReport: onGenerateScanReport,
+                    onRevealLatestReport: onRevealLatestReport,
                     onExportAudit: onExportAudit,
                     onExportRuntimeLog: onExportRuntimeLog,
                     onRevealExports: onRevealExports,
                     onShipNow: onShipNow
                 )
-                    .frame(minWidth: 320, maxWidth: 380)
+                .frame(minWidth: 320, maxWidth: 380)
             }
         }
     }

@@ -11,6 +11,10 @@ mkdir -p "$LOG_DIR"
 
 echo "Building Dev Station..."
 "$REPO_ROOT/tools/devstation-build.sh"
+source "$REPO_ROOT/tools/_app_bundle.sh"
+
+echo "Validating Dev Station app bundle..."
+validate_app_bundle "$REPO_ROOT/dist/DevStation.app"
 
 if ! curl -fsS "http://localhost:${PORT}/api/status" >/dev/null 2>&1; then
   echo "Starting station on http://localhost:${PORT}"
