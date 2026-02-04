@@ -15,12 +15,14 @@ final class SODSStore: ObservableObject {
     @Published private(set) var stationStatus: StationStatus?
     @Published private(set) var loggerStatus: LoggerStatus?
     @Published var baseURL: String
+    @Published private(set) var aliasOverrides: [String: String] = [:]
 
     private let baseURLKey = "SODSBaseURL"
     private var wsTask: URLSessionWebSocketTask?
     private var wsFramesTask: URLSessionWebSocketTask?
     private var pollTimer: Timer?
     private var maxEvents = 1200
+    private let aliasOverridesKey = "SODSAliasOverrides"
 
     private init() {
         let defaults = UserDefaults.standard
@@ -31,6 +33,9 @@ final class SODSStore: ObservableObject {
             defaults.set(baseURL, forKey: baseURLKey)
         }
         StationProcessManager.shared.ensureRunning(baseURL: baseURL)
+        if let saved = defaults.dictionary(forKey: aliasOverridesKey) as? [String: String] {
+            aliasOverrides = saved
+        }
         connect()
     }
 
@@ -204,6 +209,19 @@ final class SODSStore: ObservableObject {
         guard let ip = node.ip, !ip.isEmpty else { return }
         guard let url = URL(string: "http://\(ip)\(path)") else { return }
         NotificationCenter.default.post(name: .sodsOpenURLInApp, object: url)
+    }
+
+    func setAlias(id: String, alias: String) {
+        guard let url = makeURL(path: "/api/aliases/user/set") else { return }
+        let payload = ["id": id, "alias": alias]
+        guard let body = try? JSONSerialization.data(withJSONObject: payload, options: []) else { return }
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.httpBody = body
+        URLSession.shared.dataTask(with: req).resume()
+        aliasOverrides[id] = alias
+        UserDefaults.standard.set(aliasOverrides, forKey: aliasOverridesKey)
     }
 
     private func makeURL(path: String) -> URL? {

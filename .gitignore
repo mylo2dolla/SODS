@@ -26,6 +26,7 @@
 docs/tool-registry.user.json
 docs/presets.user.json
 tools/user/
+docs/aliases.user.json
 
 # Local data logs
 data/logs/*.ndjson

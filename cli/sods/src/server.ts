@@ -145,6 +145,9 @@ export class SODSServer {
     if (url.pathname.startsWith("/api/presets/user/")) {
       return this.handleUserPresetEdit(req, res, url.pathname);
     }
+    if (url.pathname.startsWith("/api/aliases/user/")) {
+      return this.handleUserAliasEdit(req, res, url.pathname);
+    }
     if (url.pathname === "/health") {
       const counters = this.ingestor.getCounters();
       const payload = {
@@ -440,7 +443,7 @@ export class SODSServer {
       lastSeenByNode[n.node_id] = n.last_seen;
     }
 
-    const aliases: Record<string, string> = {};
+    const aliases: Record<string, string> = { ...this.readAliases() };
     const recent = this.eventBuffer.slice(-300);
     for (const ev of recent) {
       const data = ev.data ?? {};
@@ -729,6 +732,80 @@ export class SODSServer {
         res.end(err?.message ?? "scratch error");
       }
     });
+  }
+
+  private handleUserAliasEdit(req: http.IncomingMessage, res: http.ServerResponse, path: string) {
+    if (!this.isLocalRequest(req)) {
+      res.writeHead(403);
+      res.end("alias edits allowed only on localhost station");
+      return;
+    }
+    let body = "";
+    req.on("data", (chunk) => body += chunk);
+    req.on("end", () => {
+      try {
+        const payload = body ? JSON.parse(body) : {};
+        const id = payload.id as string | undefined;
+        const alias = payload.alias as string | undefined;
+        if (!id) {
+          res.writeHead(400);
+          res.end("missing id");
+          return;
+        }
+        const action = path.split("/").pop() ?? "";
+        const userPath = this.aliasRegistryPath();
+        const current = this.readAliases(userPath);
+        if (action === "delete") {
+          delete current[id];
+        } else {
+          if (!alias) {
+            res.writeHead(400);
+            res.end("missing alias");
+            return;
+          }
+          current[id] = alias;
+        }
+        this.writeAliases(userPath, current);
+        res.end("ok");
+      } catch (err: any) {
+        res.writeHead(400);
+        res.end(err?.message ?? "alias error");
+      }
+    });
+  }
+
+  private aliasRegistryPath() {
+    const repoRoot = resolve(new URL("../../..", import.meta.url).pathname);
+    return join(repoRoot, "docs", "aliases.user.json");
+  }
+
+  private readAliases(userPath?: string): Record<string, string> {
+    const repoRoot = resolve(new URL("../../..", import.meta.url).pathname);
+    const official = join(repoRoot, "docs", "aliases.json");
+    const user = userPath ?? this.aliasRegistryPath();
+    const out: Record<string, string> = {};
+    const load = (path: string) => {
+      if (!existsSync(path)) return;
+      try {
+        const raw = JSON.parse(readFileSync(path, "utf8"));
+        const aliases = raw.aliases ?? raw;
+        if (aliases && typeof aliases === "object") {
+          for (const [key, value] of Object.entries(aliases)) {
+            if (typeof value === "string" && value.length) out[key] = value;
+          }
+        }
+      } catch {
+        // ignore invalid alias files
+      }
+    };
+    load(official);
+    load(user);
+    return out;
+  }
+
+  private writeAliases(path: string, aliases: Record<string, string>) {
+    const payload = { aliases };
+    writeFileSync(path, JSON.stringify(payload, null, 2));
   }
 
   private handleUserToolEdit(req: http.IncomingMessage, res: http.ServerResponse, path: string) {

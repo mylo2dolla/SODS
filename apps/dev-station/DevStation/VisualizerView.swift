@@ -269,6 +269,9 @@ struct VisualizerView: View {
             out[node.id] = alias
             out["node:\(node.id)"] = alias
         }
+        for (id, alias) in store.aliasOverrides {
+            out[id] = alias
+        }
         for event in store.events {
             let data = event.data
             let ssid = data["ssid"]?.stringValue ?? ""
@@ -464,6 +467,9 @@ struct SignalFieldView: View {
                             pinnedNodeIDs.insert(node.id)
                         }
                         persistState()
+                    },
+                    onSaveAlias: { alias in
+                        SODSStore.shared.setAlias(id: node.id, alias: alias)
                     },
                     onClose: {
                         selectedNode = nil
@@ -677,7 +683,10 @@ struct NodeInspectorView: View {
     let pinned: Bool
     let onFocus: () -> Void
     let onPin: () -> Void
+    let onSaveAlias: (String) -> Void
     let onClose: () -> Void
+
+    @State private var aliasText: String = ""
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -695,10 +704,15 @@ struct NodeInspectorView: View {
                 Text(node.id)
                     .font(.system(size: 11, weight: .semibold))
             }
-            if let alias, alias != node.id {
-                Text(alias)
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Alias")
                     .font(.system(size: 10))
                     .foregroundColor(.secondary)
+                TextField("set alias", text: $aliasText)
+                    .textFieldStyle(.roundedBorder)
+                    .onAppear { aliasText = alias ?? "" }
+                Button("Save Alias") { onSaveAlias(aliasText) }
+                    .buttonStyle(SecondaryActionButtonStyle())
             }
             Text("Depth: \(String(format: "%.2f", node.depth))")
                 .font(.system(size: 10, design: .monospaced))
