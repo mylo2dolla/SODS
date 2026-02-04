@@ -60,6 +60,12 @@ else
       exit 1
     }
   fi
+  if echo "$output" | grep -qi "operation not permitted\\|not permitted\\|not authorized"; then
+    output="$(system_profiler SPAirPortDataType 2>&1)" || {
+      echo "$output" >&2
+      exit 1
+    }
+  fi
 fi
 
 if [[ -n "$pattern" ]]; then
