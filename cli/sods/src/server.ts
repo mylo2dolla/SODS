@@ -7,8 +7,9 @@ import { FrameEngine } from "./frame-engine.js";
 import { CanonicalEvent, SignalFrame } from "./schema.js";
 import { nowMs } from "./util.js";
 import { listTools, runTool } from "./tools.js";
-import { loadToolRegistry } from "./tool-registry.js";
+import { loadToolRegistry, ToolEntry } from "./tool-registry.js";
 import { loadPresets } from "./presets.js";
+import { runScriptTool, RunResult as ToolRunResult } from "./tool-runner.js";
 
 type ServerOptions = {
   port: number;
@@ -173,14 +174,8 @@ export class SODSServer {
             res.end("missing tool name");
             return;
           }
-          const result = await runTool(name, input, this.eventBuffer);
-          this.respondJson(res, {
-            ok: result.ok,
-            stdout: result.output,
-            stderr: "",
-            json: result.data ?? {},
-            exitCode: result.ok ? 0 : 1,
-          });
+          const result = await this.runToolByName(name, input);
+          this.respondJson(res, result);
         } catch (err: any) {
           res.writeHead(400);
           res.end(err?.message ?? "tool error");
@@ -230,8 +225,8 @@ export class SODSServer {
             res.end("missing cmd");
             return;
           }
-          const result = await runTool(cmd, args, this.eventBuffer);
-          this.respondJson(res, { ok: result.ok, output: result.output, data: result.data ?? {} });
+          const result = await this.runToolByName(cmd, args);
+          this.respondJson(res, result);
         } catch (err: any) {
           res.writeHead(400);
           res.end(err?.message ?? "cmd error");
@@ -252,7 +247,7 @@ export class SODSServer {
             res.end("missing tool name");
             return;
           }
-          const result = await runTool(name, input, this.eventBuffer);
+          const result = await this.runToolByName(name, input);
           this.respondJson(res, result);
         } catch (err: any) {
           res.writeHead(400);
@@ -510,11 +505,49 @@ export class SODSServer {
   }
 
   private buildToolRegistry() {
-    return loadToolRegistry();
+    const registry = loadToolRegistry();
+    const presets = loadPresets();
+    return {
+      ...registry,
+      presets: {
+        count: presets.presets.length,
+        items: presets.presets,
+      },
+    };
   }
 
   private buildPresets() {
     return loadPresets();
+  }
+
+  private async runToolByName(name: string, input: Record<string, unknown>): Promise<ToolRunResult> {
+    const registry = loadToolRegistry();
+    const tool = registry.tools.find((t) => t.name === name);
+    if (!tool) {
+      return {
+        ok: false,
+        name,
+        exit_code: 1,
+        duration_ms: 0,
+        stdout: "",
+        stderr: `unknown tool: ${name}`,
+      };
+    }
+    if (tool.runner === "builtin") {
+      const result = await runTool(name, input as Record<string, string | undefined>, this.eventBuffer);
+      const urls = result.output ? result.output.match(/https?:\/\/[^\s"'<>]+/g) ?? [] : [];
+      return {
+        ok: result.ok,
+        name,
+        exit_code: result.ok ? 0 : 1,
+        duration_ms: Math.round(result.duration_ms),
+        stdout: result.output,
+        stderr: "",
+        result_json: result.data ?? undefined,
+        urls: urls.length ? urls : undefined,
+      };
+    }
+    return await runScriptTool(tool as ToolEntry, input);
   }
 
   private buildFlashInfo(req: http.IncomingMessage) {
