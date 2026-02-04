@@ -52,6 +52,9 @@ Defaults:
 if (hasFlag("--help") || cmd === "--help") {
   usage(0);
 }
+if (cmd === "help") {
+  usage(0);
+}
 
 function repoRoot(): string {
   let dir = resolve(fileURLToPath(new URL(".", import.meta.url)));
