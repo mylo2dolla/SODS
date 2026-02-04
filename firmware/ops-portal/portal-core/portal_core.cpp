@@ -192,6 +192,13 @@ void PortalCore::drawButtonsRight() {
 void PortalCore::drawVisualizer(int x, int y, int w, int h) {
   if (!tft) return;
   tft->drawRect(x - 2, y - 2, w + 4, h + 4, tft->color565(120, 40, 40));
+  if (stateValue.bins.empty()) {
+    tft->setTextColor(TFT_WHITE, TFT_BLACK);
+    tft->setTextSize(1);
+    tft->setCursor(x + 10, y + 10);
+    tft->print("Waiting for frames...");
+    return;
+  }
   for (size_t i = 0; i < stateValue.bins.size() && i < 16; i++) {
     VizBin &bin = stateValue.bins[i];
     int px = x + (int)(bin.x * (w - 6)) + 3;

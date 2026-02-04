@@ -553,7 +553,7 @@ export class SODSServer {
     if (tool.runner === "builtin") {
       const result = await runTool(name, input as Record<string, string | undefined>, this.eventBuffer);
       const urls = result.output ? result.output.match(/https?:\/\/[^\s"'<>]+/g) ?? [] : [];
-      return {
+      const payload: ToolRunResult = {
         ok: result.ok,
         name,
         exit_code: result.ok ? 0 : 1,
@@ -563,8 +563,92 @@ export class SODSServer {
         result_json: result.data ?? undefined,
         urls: urls.length ? urls : undefined,
       };
+      this.emitToolEvents(name, payload);
+      return payload;
     }
-    return await runScriptTool(tool as ToolEntry, input);
+    const result = await runScriptTool(tool as ToolEntry, input);
+    this.emitToolEvents(name, result);
+    return result;
+  }
+
+  private emitToolEvents(name: string, result: ToolRunResult) {
+    const now = nowMs();
+    const base = {
+      recv_ts: now,
+      event_ts: new Date(now).toISOString(),
+      node_id: "station",
+      severity: result.ok ? "info" : "warn",
+      summary: `tool:${name} ${result.ok ? "ok" : "err"}`,
+    };
+
+    const emit = (kind: string, data: Record<string, unknown>) => {
+      const ev: CanonicalEvent = { id: `tool-${name}-${now}-${Math.random()}`, kind, data, ...base };
+      this.frameEngine.ingest(ev);
+      this.eventBuffer.push(ev);
+      if (this.eventBuffer.length > 2000) this.eventBuffer.splice(0, this.eventBuffer.length - 2000);
+      const payload = JSON.stringify(ev);
+      for (const ws of this.eventsClients) {
+        ws.send(payload);
+      }
+      if (this.localLogStream) {
+        this.localLogStream.write(payload + "\n");
+      }
+    };
+
+    emit("tool.run", {
+      tool: name,
+      ok: result.ok,
+      exit_code: result.exit_code,
+      duration_ms: result.duration_ms,
+    });
+
+    if (name === "net.wifi_scan") {
+      const lines = (result.result_json as any)?.lines ?? result.stdout?.split("\n") ?? [];
+      for (const line of lines) {
+        const macMatch = String(line).match(/([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}/);
+        if (!macMatch) continue;
+        const channelMatch = String(line).match(/\bch(?:annel)?\s*:?(\d{1,3})\b/i) ?? String(line).match(/\s(\d{1,3})\s*$/);
+        const rssiMatch = String(line).match(/-?\d{2,3}\b/);
+        emit("wifi.scan", {
+          bssid: macMatch[0],
+          channel: channelMatch ? Number(channelMatch[1]) : undefined,
+          rssi: rssiMatch ? Number(rssiMatch[0]) : undefined,
+          line,
+          device_id: macMatch[0],
+        });
+      }
+    }
+
+    if (name === "net.arp") {
+      const lines = (result.result_json as any)?.lines ?? result.stdout?.split("\n") ?? [];
+      for (const line of lines) {
+        const macMatch = String(line).match(/([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}/);
+        if (!macMatch) continue;
+        const ipMatch = String(line).match(/(\d{1,3}\.){3}\d{1,3}/);
+        emit("net.arp", {
+          mac: macMatch[0],
+          ip: ipMatch ? ipMatch[0] : undefined,
+          device_id: macMatch[0],
+          line,
+        });
+      }
+    }
+
+    if (name === "camera.viewer") {
+      const url = (result.result_json as any)?.url ?? result.urls?.[0] ?? result.stdout;
+      if (url) {
+        try {
+          const u = new URL(url);
+          emit("camera.viewer", {
+            url,
+            host: u.hostname,
+            device_id: u.hostname,
+          });
+        } catch {
+          emit("camera.viewer", { url });
+        }
+      }
+    }
   }
 
   private async handlePresetRun(req: http.IncomingMessage, res: http.ServerResponse) {

@@ -315,6 +315,9 @@ struct SignalFieldView: View {
     @StateObject private var engine = SignalFieldEngine()
     @State private var mousePoint: CGPoint = .zero
     @State private var lastMouseMove: Date = .distantPast
+    @State private var selectedNode: SignalFieldEngine.ProjectedNode?
+    @State private var quickOverlayVisible: Bool = false
+    @State private var quickOverlayHideAt: Date = .distantPast
 
     var body: some View {
         ZStack {
@@ -340,6 +343,44 @@ struct SignalFieldView: View {
                 mousePoint = location
                 lastMouseMove = Date()
             })
+            .contentShape(Rectangle())
+            .gesture(DragGesture(minimumDistance: 0).onEnded { value in
+                if let hit = engine.nearestNode(to: value.location) {
+                    selectedNode = hit
+                    quickOverlayVisible = false
+                } else {
+                    selectedNode = nil
+                    quickOverlayVisible = true
+                    quickOverlayHideAt = Date().addingTimeInterval(2.5)
+                }
+            })
+
+            if quickOverlayVisible {
+                QuickOverlayView(
+                    activeCount: max(frames.count, events.count),
+                    hottestSource: frames.first?.source ?? "idle",
+                    status: frames.isEmpty ? "Idle" : "Live"
+                )
+                .transition(.opacity)
+                .onAppear {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+                        if Date() >= quickOverlayHideAt {
+                            quickOverlayVisible = false
+                        }
+                    }
+                }
+            }
+
+            if let node = selectedNode {
+                NodeInspectorView(node: node) {
+                    selectedNode = nil
+                }
+                .transition(.opacity)
+            }
+
+            if frames.isEmpty && events.isEmpty {
+                IdleOverlayView()
+            }
         }
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .overlay(
@@ -349,11 +390,107 @@ struct SignalFieldView: View {
     }
 }
 
+struct QuickOverlayView: View {
+    let activeCount: Int
+    let hottestSource: String
+    let status: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Signal Field")
+                .font(.system(size: 12, weight: .semibold))
+            Text("Status: \(status)")
+                .font(.system(size: 11))
+            Text("Active sources: \(activeCount)")
+                .font(.system(size: 11))
+            Text("Hottest: \(hottestSource)")
+                .font(.system(size: 11))
+        }
+        .padding(12)
+        .background(Theme.panelAlt)
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(Theme.border, lineWidth: 1)
+        )
+        .cornerRadius(10)
+        .padding(20)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+}
+
+struct NodeInspectorView: View {
+    let node: SignalFieldEngine.ProjectedNode
+    let onClose: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text("Node Inspector")
+                    .font(.system(size: 12, weight: .semibold))
+                Spacer()
+                Button("Close") { onClose() }
+                    .buttonStyle(SecondaryActionButtonStyle())
+            }
+            HStack(spacing: 8) {
+                Circle()
+                    .fill(Color(node.color))
+                    .frame(width: 10, height: 10)
+                Text(node.id)
+                    .font(.system(size: 11, weight: .semibold))
+            }
+            Text("Depth: \(String(format: "%.2f", node.depth))")
+                .font(.system(size: 10, design: .monospaced))
+                .foregroundColor(.secondary)
+        }
+        .padding(12)
+        .background(Theme.panelAlt)
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(Theme.border, lineWidth: 1)
+        )
+        .cornerRadius(10)
+        .padding(20)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+    }
+}
+
+struct IdleOverlayView: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Field idle")
+                .font(.system(size: 14, weight: .semibold))
+            Text("Start a scan or run a tool to seed the field.")
+                .font(.system(size: 11))
+                .foregroundColor(.secondary)
+            Text("Flash is the only action that opens a browser.")
+                .font(.system(size: 10))
+                .foregroundColor(.secondary)
+        }
+        .padding(14)
+        .background(Theme.panel)
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(Theme.border, lineWidth: 1)
+        )
+        .cornerRadius(12)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+    }
+}
+
+// Spectrum Visualizer Core: consumes frames/events and produces a living field state.
 final class SignalFieldEngine: ObservableObject {
     private var sources: [String: SignalSource] = [:]
     private var particles: [SignalParticle] = []
     private var processedIDs: Set<String> = []
     private var lastUpdate: Date?
+    private var lastProjected: [ProjectedNode] = []
+
+    struct ProjectedNode: Hashable {
+        let id: String
+        let point: CGPoint
+        let color: NSColor
+        let depth: CGFloat
+    }
 
     func render(
         context: inout GraphicsContext,
@@ -381,7 +518,7 @@ final class SignalFieldEngine: ObservableObject {
             lastUpdate = now
         }
 
-        drawSources(context: &context, size: size, parallax: parallax)
+        lastProjected = drawSources(context: &context, size: size, parallax: parallax)
         drawParticles(context: &context, size: size, now: now, parallax: parallax)
 
         if particles.count > maxParticles {
@@ -394,6 +531,7 @@ final class SignalFieldEngine: ObservableObject {
             guard processedIDs.insert(event.id).inserted else { continue }
             let key = event.deviceID ?? event.nodeID
             let source = sources[key] ?? SignalSource(id: key)
+            source.update(from: event)
             sources[key] = source
             particles.append(contentsOf: SignalEmitter.emit(from: source, event: event, intensity: intensity, now: now))
         }
@@ -403,10 +541,10 @@ final class SignalFieldEngine: ObservableObject {
     }
 
     private func ingest(frames: [SignalFrame], now: Date) {
-        particles.removeAll(keepingCapacity: true)
         for frame in frames {
             let key = frame.deviceID
             let source = sources[key] ?? SignalSource(id: key)
+            source.update(from: frame)
             sources[key] = source
             let style = SignalFrameStyle.from(frame: frame)
             particles.append(
@@ -438,6 +576,10 @@ final class SignalFieldEngine: ObservableObject {
         }
         lastUpdate = now
         let decay = max(0.2, min(2.2, decayRate))
+        applyRepulsion()
+        for source in sources.values {
+            source.step(dt: dt)
+        }
         particles = particles.compactMap { particle in
             var particle = particle
             particle.update(dt: dt, decay: decay)
@@ -445,6 +587,25 @@ final class SignalFieldEngine: ObservableObject {
                 return nil
             }
             return particle
+        }
+    }
+
+    private func applyRepulsion() {
+        let nodes = Array(sources.values)
+        guard nodes.count > 1 else { return }
+        for i in 0..<(nodes.count - 1) {
+            for j in (i + 1)..<nodes.count {
+                let a = nodes[i]
+                let b = nodes[j]
+                let delta = a.position - b.position
+                let dist2 = max(0.0001, delta.x * delta.x + delta.y * delta.y)
+                if dist2 < 0.18 {
+                    let strength = (0.18 - dist2) * 0.6
+                    let dir = delta / sqrt(dist2)
+                    a.velocity += dir * strength
+                    b.velocity -= dir * strength
+                }
+            }
         }
     }
 
@@ -457,6 +618,13 @@ final class SignalFieldEngine: ObservableObject {
         ])
         context.fill(Path(rect), with: .linearGradient(gradient, startPoint: .zero, endPoint: CGPoint(x: size.width, y: size.height)))
 
+        let center = CGPoint(x: size.width * 0.5, y: size.height * 0.5)
+        for ring in 1...4 {
+            let radius = min(size.width, size.height) * 0.12 * CGFloat(ring)
+            let ringRect = CGRect(x: center.x - radius, y: center.y - radius, width: radius * 2, height: radius * 2)
+            context.stroke(Path(ellipseIn: ringRect), with: .color(Color.white.opacity(0.04)), lineWidth: 1)
+        }
+
         let starCount = 60
         for i in 0..<starCount {
             let seed = Double(i) * 0.31
@@ -468,7 +636,8 @@ final class SignalFieldEngine: ObservableObject {
         }
     }
 
-    private func drawSources(context: inout GraphicsContext, size: CGSize, parallax: CGPoint) {
+    private func drawSources(context: inout GraphicsContext, size: CGSize, parallax: CGPoint) -> [ProjectedNode] {
+        var projected: [ProjectedNode] = []
         for source in sources.values {
             let point = source.project(in: size, parallax: parallax)
             let depth = source.depth
@@ -481,7 +650,9 @@ final class SignalFieldEngine: ObservableObject {
 
             let coreRect = CGRect(x: point.x - core.width / 2, y: point.y - core.height / 2, width: core.width, height: core.height)
             context.fill(Path(ellipseIn: coreRect), with: .color(color.opacity(0.9)))
+            projected.append(ProjectedNode(id: source.id, point: point, color: source.color, depth: depth))
         }
+        return projected
     }
 
     private func drawParticles(context: inout GraphicsContext, size: CGSize, now: Date, parallax: CGPoint) {
@@ -489,33 +660,90 @@ final class SignalFieldEngine: ObservableObject {
             particle.draw(context: &context, size: size, now: now, parallax: parallax)
         }
     }
+
+    func nearestNode(to point: CGPoint) -> ProjectedNode? {
+        guard !lastProjected.isEmpty else { return nil }
+        var best: ProjectedNode?
+        var bestDist = CGFloat.greatestFiniteMagnitude
+        for node in lastProjected {
+            let dx = node.point.x - point.x
+            let dy = node.point.y - point.y
+            let dist = dx * dx + dy * dy
+            if dist < bestDist {
+                bestDist = dist
+                best = node
+            }
+        }
+        return bestDist < 2400 ? best : nil
+    }
 }
 
-struct SignalSource: Hashable {
+final class SignalSource: Hashable {
     let id: String
-    let position: SIMD3<Double>
+    var position: SIMD3<Double>
+    var velocity: SIMD3<Double> = .zero
+    var target: SIMD3<Double>
     let color: NSColor
 
     init(id: String) {
         self.id = id
-        var rng = SeededRandom(seed: UInt64(abs(id.hashValue)))
+        let seed = UInt64(id.utf8.reduce(0) { ($0 &* 131) &+ UInt64($1) })
+        var rng = SeededRandom(seed: seed)
         let angle = rng.next() * Double.pi * 2
         let radius = 0.25 + 0.55 * sqrt(rng.next())
         let x = cos(angle) * radius
         let y = sin(angle) * radius
-        let z = 0.2 + rng.next() * 0.7
+        let z = 0.25 + rng.next() * 0.6
         position = SIMD3<Double>(x, y, z)
+        target = position
         color = SignalColor.deviceColor(id: id)
     }
 
+    func update(from frame: SignalFrame) {
+        let nx = frame.x ?? 0.5
+        let ny = frame.y ?? 0.5
+        let nz = frame.z ?? 0.6
+        target = SIMD3<Double>((nx - 0.5) * 2.0 * 0.6, (ny - 0.5) * 2.0 * 0.6, nz)
+    }
+
+    func update(from event: NormalizedEvent) {
+        let baseHue = Double(SignalColor.stableHue(for: event.deviceID ?? event.nodeID))
+        let kindOffset = event.kind.contains("wifi") ? 0.08 : event.kind.contains("ble") ? -0.06 : 0.0
+        let channel = Double(event.signal.channel ?? "") ?? baseHue * 180
+        let angle = (channel.truncatingRemainder(dividingBy: 180) / 180.0) * Double.pi * 2 + kindOffset
+        let radius = event.kind.contains("ble") ? 0.32 : event.kind.contains("wifi") ? 0.52 : 0.7
+        let x = cos(angle) * radius
+        let y = sin(angle) * radius
+        let z = max(0.2, min(1.0, 0.45 + (event.signal.strength ?? -60) / -120))
+        target = SIMD3<Double>(x, y, z)
+    }
+
+    func step(dt: Double) {
+        let spring = SIMD3<Double>(repeating: 1.6)
+        let damping: Double = 0.82
+        let delta = target - position
+        velocity += delta * spring * dt
+        velocity *= SIMD3<Double>(repeating: damping)
+        position += velocity * dt
+        position.z = max(0.1, min(1.0, position.z))
+    }
+
     var depth: CGFloat {
-        CGFloat(0.6 + position.z * 0.7)
+        CGFloat(0.5 + position.z * 0.9)
     }
 
     func project(in size: CGSize, parallax: CGPoint) -> CGPoint {
         let px = CGFloat(position.x) * size.width * 0.45 + size.width * 0.5
         let py = CGFloat(position.y) * size.height * 0.45 + size.height * 0.5
         return CGPoint(x: px + parallax.x * depth, y: py + parallax.y * depth)
+    }
+
+    static func == (lhs: SignalSource, rhs: SignalSource) -> Bool {
+        lhs.id == rhs.id
+    }
+
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
     }
 }
 
@@ -690,6 +918,8 @@ enum SignalEmitter {
             particles.append(makeRing(source: source, color: baseColor, now: now, pulse: false, glow: style.glow))
         } else if kind.contains("node") {
             particles.append(makeRing(source: source, color: baseColor, now: now, pulse: true, glow: style.glow))
+        } else if kind.contains("tool") {
+            particles.append(makeBurst(source: source, color: baseColor, now: now, energy: energy, glow: min(1.0, style.glow + 0.25)))
         } else if kind.contains("error") || event.signal.tags.contains("error") {
             for _ in 0..<(max(2, count / 2)) {
                 particles.append(makeBurst(source: source, color: baseColor, now: now, energy: energy, glow: min(1.0, style.glow + 0.2)))
@@ -855,7 +1085,11 @@ enum SignalColor {
     }
 
     static func stableHue(for string: String) -> CGFloat {
-        let hash = abs(string.hashValue)
+        var hash: UInt32 = 2166136261
+        for byte in string.utf8 {
+            hash ^= UInt32(byte)
+            hash = hash &* 16777619
+        }
         return CGFloat(hash % 360) / 360.0
     }
 }

@@ -12,6 +12,9 @@ Date: 2026-02-04
 - ESP Web Tools staging/flash scripts preserved and wired for repo-root invocation.
 - Legacy aliases (`tools/camutil`, `tools/cockpit`) retained as shims.
 - Reference PDFs moved to `docs/reference`, archive zip to `docs/archive`, and data logs to `data/strangelab`.
+- Spectrum Frame Spec documented and wired across Station + Dev Station + Ops Portal.
+- Frame engine now emits field positions (x/y/z) and tool runs inject local tool events into the visualizer stream.
+- Dev Station spectrum field now supports tap overlay, node inspector, idle state, and improved depth/repulsion.
 
 ## Current Architecture (Locked)
 

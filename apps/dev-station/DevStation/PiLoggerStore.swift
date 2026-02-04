@@ -343,6 +343,9 @@ struct SignalFrame: Decodable, Hashable {
     let channel: Int
     let frequency: Int
     let rssi: Double
+    let x: Double?
+    let y: Double?
+    let z: Double?
     let color: FrameColor
     let glow: Double?
     let persistence: Double
@@ -350,7 +353,7 @@ struct SignalFrame: Decodable, Hashable {
     let confidence: Double
 
     enum CodingKeys: String, CodingKey {
-        case t, source, channel, frequency, rssi, color, glow, persistence, velocity, confidence
+        case t, source, channel, frequency, rssi, x, y, z, color, glow, persistence, velocity, confidence
         case nodeID = "node_id"
         case deviceID = "device_id"
     }
