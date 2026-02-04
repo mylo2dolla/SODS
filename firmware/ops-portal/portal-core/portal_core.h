@@ -79,6 +79,8 @@ public:
   float replayProgress() const;
   bool replayEnabled() const;
 
+  void setFocusLabel(const String &label);
+
   void showPopup(int buttonIdx, unsigned long nowMs);
   int popupHit(int x, int y) const;
   bool popupActive() const;

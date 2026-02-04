@@ -70,6 +70,10 @@ bool PortalCore::replayEnabled() const {
   return replayOn;
 }
 
+void PortalCore::setFocusLabel(const String &label) {
+  stateValue.modeName = label;
+}
+
 void PortalCore::showPopup(int buttonIdx, unsigned long nowMs) {
   popup.active = true;
   popup.buttonIdx = buttonIdx;
@@ -195,6 +199,9 @@ void PortalCore::drawStatusLeft() {
   tft->print("legend: BLE/WiFi/Node");
   tft->setCursor(10, 122);
   tft->print("tap: focus / replay");
+  tft->setCursor(10, 136);
+  tft->print("replay: ");
+  tft->print(replayOn ? "on" : "off");
 }
 
 void PortalCore::drawButtonsRight() {

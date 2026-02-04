@@ -58,6 +58,7 @@ static bool stationReachable = false;
 static bool focusMode = false;
 static String focusId = "";
 static unsigned long lastReplayStepMs = 0;
+static unsigned long replayStartMs = 0;
 
 static WebSocketsClient wsClient;
 static bool wsConnected = false;
@@ -290,6 +291,7 @@ static void handleTouch() {
 
   if (x < tft.width() / 3 && y > 40 && y < 80) {
     core.toggleReplay(millis());
+    replayStartMs = millis();
     return;
   }
 
@@ -354,6 +356,15 @@ static void applyFrames(JsonArray frames) {
       bin.level *= 0.92f;
       bin.glow *= 0.85f;
     }
+  }
+  if (focusMode) {
+    if (focusId.length()) {
+      core.setFocusLabel("focus:" + focusId);
+    } else {
+      core.setFocusLabel("focus");
+    }
+  } else {
+    core.setFocusLabel(core.replayEnabled() ? "replay" : "utility");
   }
 }
 
