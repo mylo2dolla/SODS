@@ -24,6 +24,8 @@ echo "Checking /api/tools"
 curl -fsS "http://localhost:${PORT}/api/tools" | head -n 5
 echo "Checking /api/flash"
 curl -fsS "http://localhost:${PORT}/api/flash"
+echo "Checking /api/presets"
+curl -fsS "http://localhost:${PORT}/api/presets" | head -n 5
 
 echo "Audit: internal URLs should not use NSWorkspace.open (flash is allowed)"
 HTTP_OPENS="$(rg -n "NSWorkspace\\.shared\\.open\\(.*http" "$REPO_ROOT/apps/dev-station/DevStation" || true)"
