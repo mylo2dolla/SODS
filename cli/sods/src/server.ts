@@ -148,6 +148,9 @@ export class SODSServer {
     if (url.pathname.startsWith("/api/aliases/user/")) {
       return this.handleUserAliasEdit(req, res, url.pathname);
     }
+    if (url.pathname === "/api/aliases") {
+      return this.respondJson(res, { aliases: this.readAliases() });
+    }
     if (url.pathname === "/health") {
       const counters = this.ingestor.getCounters();
       const payload = {

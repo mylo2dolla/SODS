@@ -413,6 +413,84 @@ async function cmdScratch() {
   console.log(JSON.stringify(json, null, 2));
 }
 
+async function cmdAliasList() {
+  const station = stationURL();
+  if (!station) {
+    console.error("Use --station for alias operations.");
+    process.exit(1);
+  }
+  const res = await fetch(`${station}/api/portal/state`, { method: "GET" });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const json = await res.json();
+  const aliases = json.aliases ?? {};
+  console.log(JSON.stringify({ aliases }, null, 2));
+}
+
+async function cmdAliasEdit(action: "set" | "delete") {
+  const station = stationURL();
+  if (!station) {
+    console.error("Use --station for alias operations.");
+    process.exit(1);
+  }
+  const id = positional(2);
+  if (!id) {
+    console.error("alias id required");
+    process.exit(1);
+  }
+  const alias = action === "set" ? positional(3) : undefined;
+  if (action === "set" && !alias) {
+    console.error("alias value required");
+    process.exit(1);
+  }
+  const payload: Record<string, unknown> = { id };
+  if (alias) payload.alias = alias;
+  const path = action === "set" ? "/api/aliases/user/set" : "/api/aliases/user/delete";
+  const res = await fetch(`${station}${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  console.log("ok");
+}
+
+async function cmdAliasExport() {
+  await cmdAliasList();
+}
+
+async function cmdAliasImport() {
+  const station = stationURL();
+  if (!station) {
+    console.error("Use --station for alias operations.");
+    process.exit(1);
+  }
+  const raw = await readStdin();
+  if (!raw) {
+    console.error("Provide alias JSON on stdin.");
+    process.exit(1);
+  }
+  const parsed = JSON.parse(raw);
+  const aliases = parsed.aliases ?? parsed;
+  for (const [id, alias] of Object.entries(aliases)) {
+    const payload = { id, alias };
+    await fetch(`${station}/api/aliases/user/set`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+  }
+  console.log("ok");
+}
+
+async function readStdin(): Promise<string> {
+  return await new Promise((resolve) => {
+    let data = "";
+    process.stdin.setEncoding("utf8");
+    process.stdin.on("data", (chunk) => data += chunk);
+    process.stdin.on("end", () => resolve(data.trim()));
+  });
+}
+
 async function readStdin(): Promise<string> {
   const chunks: Buffer[] = [];
   for await (const chunk of process.stdin) {
@@ -557,6 +635,19 @@ if (cmd === "start") {
   }
 } else if (cmd === "scratch") {
   await cmdScratch();
+} else if (cmd === "aliases" || cmd === "alias") {
+  const sub = positional(1);
+  if (sub === "add" || sub === "set") {
+    await cmdAliasEdit("set");
+  } else if (sub === "rm" || sub === "delete") {
+    await cmdAliasEdit("delete");
+  } else if (sub === "import") {
+    await cmdAliasImport();
+  } else if (sub === "export") {
+    await cmdAliasExport();
+  } else {
+    await cmdAliasList();
+  }
 } else {
   usage(cmd === "help" ? 0 : 1);
 }

@@ -1451,7 +1451,8 @@ struct ContentView: View {
                 .init(label: "Bonjour Services", rawField: "records[].bonjourServices", rawValue: "see raw", meaning: "mDNS/Bonjour services announced."),
                 .init(label: "ONVIF Evidence", rawField: "records[].onvif*", rawValue: "see raw", meaning: "ONVIF discovery and RTSP details."),
                 .init(label: "BLE Devices", rawField: "bleEvidence[]", rawValue: "see raw", meaning: "Nearby BLE inventory snapshot."),
-                .init(label: "Pi-Aux Evidence", rawField: "piAuxEvidence[]", rawValue: "see raw", meaning: "Local Pi-Aux sensor evidence.")
+                .init(label: "Pi-Aux Evidence", rawField: "piAuxEvidence[]", rawValue: "see raw", meaning: "Local Pi-Aux sensor evidence."),
+                .init(label: "Aliases", rawField: "aliases", rawValue: "see raw", meaning: "User-friendly identity map for devices.")
             ]
             let topConfidence = snapshot.records
                 .sorted { $0.hostConfidence.score > $1.hostConfidence.score }
