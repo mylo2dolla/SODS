@@ -50,17 +50,16 @@ if [[ -n "$AIRPORT" ]]; then
     fi
   }
 else
-  output="$("$WDUTIL" scan 2>&1)" || {
-    if echo "$output" | grep -qi "permission"; then
-      output="$(sudo "$WDUTIL" scan 2>&1)" || {
-        echo "$output" >&2
-        exit 1
-      }
-    else
+  output="$("$WDUTIL" scan 2>&1)" || true
+  if echo "$output" | grep -qi "^usage: sudo wdutil"; then
+    output="$(sudo "$WDUTIL" scan 2>&1)" || true
+  fi
+  if echo "$output" | grep -qi "^usage: sudo wdutil"; then
+    output="$(system_profiler SPAirPortDataType 2>&1)" || {
       echo "$output" >&2
       exit 1
-    fi
-  }
+    }
+  fi
 fi
 
 if [[ -n "$pattern" ]]; then
