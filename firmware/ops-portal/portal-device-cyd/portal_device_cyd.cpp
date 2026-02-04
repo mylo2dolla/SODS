@@ -46,6 +46,8 @@ static String wifiPass;
 
 static unsigned long lastPollMs = 0;
 static unsigned long pollIntervalMs = 1200;
+static unsigned long lastPresetPollMs = 0;
+static unsigned long presetPollIntervalMs = 5000;
 static unsigned long lastRenderMs = 0;
 static bool wifiOk = false;
 static unsigned long lastWifiOkMs = 0;
@@ -223,15 +225,21 @@ static void updateOrientation() {
 static void sendCommand(const ButtonAction &action) {
   if (sodsBaseUrl.length() == 0) return;
   HTTPClient http;
-  String url = sodsBaseUrl + "/api/tool/run";
+  bool isPreset = action.cmd.startsWith("preset:");
+  String url = sodsBaseUrl + (isPreset ? "/api/preset/run" : "/api/tool/run");
   http.begin(url);
   http.addHeader("Content-Type", "application/json");
   String payload = "{";
-  payload += "\"name\":\"" + action.cmd + "\"";
-  if (action.argsJson.length() > 0) {
-    payload += ",\"input\":" + action.argsJson;
+  if (isPreset) {
+    String id = action.cmd.substring(7);
+    payload += "\"id\":\"" + id + "\"";
   } else {
-    payload += ",\"input\":{}";
+    payload += "\"name\":\"" + action.cmd + "\"";
+    if (action.argsJson.length() > 0) {
+      payload += ",\"input\":" + action.argsJson;
+    } else {
+      payload += ",\"input\":{}";
+    }
   }
   payload += "}";
   http.POST(payload);
@@ -381,6 +389,37 @@ static void parsePortalState(const String &json) {
   }
 }
 
+static void parsePresets(const String &json) {
+  DynamicJsonDocument doc(8192);
+  DeserializationError err = deserializeJson(doc, json);
+  if (err) return;
+  JsonObject root = doc.as<JsonObject>();
+  JsonArray presets = root["presets"].as<JsonArray>();
+  if (presets.isNull()) return;
+  PortalState &state = core.state();
+  state.buttons.clear();
+  for (JsonVariant v : presets) {
+    JsonObject ui = v["ui"];
+    bool capsule = ui["capsule"] | false;
+    if (!capsule) continue;
+    ButtonState b;
+    String id = String((const char*)(v["id"] | ""));
+    String title = String((const char*)(v["title"] | id.c_str()));
+    b.id = id;
+    b.label = title;
+    b.kind = "preset";
+    b.enabled = true;
+    b.glow = 0.4f;
+    ButtonAction a;
+    a.id = id;
+    a.label = title;
+    a.cmd = "preset:" + id;
+    b.actions.push_back(a);
+    state.buttons.push_back(b);
+    if (state.buttons.size() >= 6) break;
+  }
+}
+
 static void pollPortalState() {
   if (sodsBaseUrl.length() == 0) {
     parsePortalState(String(mockStatusJson));
@@ -398,6 +437,19 @@ static void pollPortalState() {
     lastStationOkMs = millis();
   } else {
     stationOk = false;
+  }
+  http.end();
+}
+
+static void pollPresets() {
+  if (sodsBaseUrl.length() == 0) return;
+  HTTPClient http;
+  String url = sodsBaseUrl + "/api/presets";
+  http.begin(url);
+  int code = http.GET();
+  if (code >= 200 && code < 300) {
+    String body = http.getString();
+    parsePresets(body);
   }
   http.end();
 }
@@ -514,6 +566,12 @@ void PortalDeviceCYD::loop() {
       core.state().connErr = lastWifiErr;
     }
     core.updateTrails();
+  }
+  if (now - lastPresetPollMs > presetPollIntervalMs) {
+    lastPresetPollMs = now;
+    if (WiFi.isConnected()) {
+      pollPresets();
+    }
   }
   stationReachable = stationOk;
   if (!stationReachable) {
