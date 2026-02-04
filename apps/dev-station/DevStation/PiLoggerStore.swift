@@ -224,6 +224,19 @@ final class SODSStore: ObservableObject {
         UserDefaults.standard.set(aliasOverrides, forKey: aliasOverridesKey)
     }
 
+    func deleteAlias(id: String) {
+        guard let url = makeURL(path: "/api/aliases/user/delete") else { return }
+        let payload = ["id": id]
+        guard let body = try? JSONSerialization.data(withJSONObject: payload, options: []) else { return }
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.httpBody = body
+        URLSession.shared.dataTask(with: req).resume()
+        aliasOverrides.removeValue(forKey: id)
+        UserDefaults.standard.set(aliasOverrides, forKey: aliasOverridesKey)
+    }
+
     private func makeURL(path: String) -> URL? {
         guard var components = URLComponents(string: baseURL) else { return nil }
         let existingPath = components.path

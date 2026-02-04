@@ -3,6 +3,7 @@ import SwiftUI
 struct AliasManagerView: View {
     let aliases: [String: String]
     let onSave: (String, String) -> Void
+    let onDelete: (String) -> Void
     let onClose: () -> Void
 
     @State private var searchText = ""
@@ -23,7 +24,8 @@ struct AliasManagerView: View {
                         AliasRow(
                             id: id,
                             alias: aliasValue(for: id),
-                            onSave: { value in onSave(id, value) }
+                            onSave: { value in onSave(id, value) },
+                            onDelete: { onDelete(id) }
                         )
                     }
                 }
@@ -50,6 +52,7 @@ struct AliasRow: View {
     let id: String
     let alias: String
     let onSave: (String) -> Void
+    let onDelete: () -> Void
 
     @State private var text: String = ""
 
@@ -62,6 +65,8 @@ struct AliasRow: View {
                     .textFieldStyle(.roundedBorder)
                     .onAppear { text = alias }
                 Button("Save") { onSave(text) }
+                    .buttonStyle(SecondaryActionButtonStyle())
+                Button("Delete") { onDelete() }
                     .buttonStyle(SecondaryActionButtonStyle())
             }
             Divider().opacity(0.2)

@@ -186,6 +186,7 @@ struct ContentView: View {
                     AliasManagerView(
                         aliases: aliasStore.aliasOverrides,
                         onSave: { id, alias in aliasStore.setAlias(id: id, alias: alias) },
+                        onDelete: { id in aliasStore.deleteAlias(id: id) },
                         onClose: { activeSheet = nil }
                     )
                 case .viewer(let url):
