@@ -12,6 +12,7 @@ struct VisualizerView: View {
     @State private var intensityMode: SignalIntensity = .calm
     @State private var replayEnabled: Bool = false
     @State private var replayOffset: Double = 0
+    @State private var replayAutoPlay: Bool = false
     @State private var selectedNodeIDs: Set<String> = []
     @State private var selectedKinds: Set<String> = []
     @State private var selectedDeviceIDs: Set<String> = []
@@ -27,7 +28,9 @@ struct VisualizerView: View {
                 decayRate: decayRate,
                 timeScale: timeScale,
                 maxParticles: Int(maxParticles),
-                intensity: intensityMode
+                intensity: intensityMode,
+                replayEnabled: replayEnabled,
+                replayOffset: replayOffset
             )
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
@@ -35,6 +38,11 @@ struct VisualizerView: View {
         .background(Theme.background)
         .onAppear {
             baseURLText = store.baseURL
+        }
+        .onReceive(Timer.publish(every: 0.5, on: .main, in: .common).autoconnect()) { _ in
+            guard replayEnabled, replayAutoPlay else { return }
+            replayOffset += 1
+            if replayOffset > 60 { replayOffset = 0 }
         }
     }
 
@@ -104,6 +112,8 @@ struct VisualizerView: View {
                 Toggle("Replay last 60s", isOn: $replayEnabled)
                     .font(.system(size: 11))
                 if replayEnabled {
+                    Toggle("Auto Play", isOn: $replayAutoPlay)
+                        .font(.system(size: 11))
                     sliderRow(title: "Offset", value: $replayOffset, range: 0...60, format: "%.0fs")
                 }
             }
@@ -326,6 +336,8 @@ struct SignalFieldView: View {
     let timeScale: Double
     let maxParticles: Int
     let intensity: SignalIntensity
+    let replayEnabled: Bool
+    let replayOffset: Double
 
     @StateObject private var engine = SignalFieldEngine()
     @State private var mousePoint: CGPoint = .zero
@@ -420,11 +432,15 @@ struct SignalFieldView: View {
             if !pinnedNodeIDs.isEmpty {
                 PinnedNodesView(
                     pinned: pinnedNodeIDs.sorted(),
-                    onClear: { pinnedNodeIDs.removeAll() }
+                    onClear: { pinnedNodeIDs.removeAll() },
+                    onFocus: { id in focusedNodeID = id }
                 )
             }
 
             LegendOverlayView()
+            if replayEnabled {
+                ReplayBarView(progress: replayOffset / 60.0, label: "\(Int(replayOffset))s")
+            }
         }
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .overlay(
@@ -509,6 +525,7 @@ struct QuickOverlayView: View {
 struct PinnedNodesView: View {
     let pinned: [String]
     let onClear: () -> Void
+    let onFocus: (String) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -520,9 +537,14 @@ struct PinnedNodesView: View {
                     .buttonStyle(SecondaryActionButtonStyle())
             }
             ForEach(pinned, id: \.self) { id in
-                Text(id)
-                    .font(.system(size: 10, design: .monospaced))
-                    .foregroundColor(.secondary)
+                HStack(spacing: 6) {
+                    Text(id)
+                        .font(.system(size: 10, design: .monospaced))
+                        .foregroundColor(.secondary)
+                    Spacer()
+                    Button("Focus") { onFocus(id) }
+                        .buttonStyle(SecondaryActionButtonStyle())
+                }
             }
         }
         .padding(10)
@@ -534,6 +556,37 @@ struct PinnedNodesView: View {
         .cornerRadius(10)
         .padding(16)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+    }
+}
+
+struct ReplayBarView: View {
+    let progress: Double
+    let label: String
+
+    var body: some View {
+        VStack(spacing: 6) {
+            Text("Replay \(label)")
+                .font(.system(size: 10))
+                .foregroundColor(.secondary)
+            GeometryReader { geo in
+                let width = geo.size.width
+                let filled = max(0, min(1, progress)) * width
+                ZStack(alignment: .leading) {
+                    Capsule().fill(Theme.panelAlt)
+                    Capsule().fill(Color.red.opacity(0.7)).frame(width: filled)
+                }
+            }
+            .frame(height: 6)
+        }
+        .padding(10)
+        .background(Theme.panelAlt)
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(Theme.border, lineWidth: 1)
+        )
+        .cornerRadius(10)
+        .padding(16)
+        .frame(maxWidth: 240, maxHeight: .infinity, alignment: .bottomLeading)
     }
 }
 

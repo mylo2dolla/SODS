@@ -20,6 +20,7 @@ Date: 2026-02-04
 - Added gentle attraction for related sources plus orbital drift to make the field feel alive.
 - Quick overlay now surfaces hottest source + current focus for at-a-glance context.
 - Added replay scrub (last 60s window), connection lines, and legend overlay for signal families.
+- Added replay autoplay + replay progress bar; pinned list now supports focus shortcuts.
 
 ## Current Architecture (Locked)
 
