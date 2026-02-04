@@ -195,7 +195,9 @@ async function cmdStart() {
     console.error("Invalid --pi-logger URL");
     process.exit(1);
   }
-  const localLogPath = process.env.SODS_LOCAL_LOG_PATH;
+  const repoRoot = new URL("../../..", import.meta.url).pathname;
+  const defaultLocalLog = `${repoRoot}/data/logs/local-events.ndjson`;
+  const localLogPath = process.env.SODS_LOCAL_LOG_PATH ?? defaultLocalLog;
   const server = new SODSServer({
     port,
     piLoggerBase: piLogger,
