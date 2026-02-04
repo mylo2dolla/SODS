@@ -661,6 +661,7 @@ final class SignalFieldEngine: ObservableObject {
         }
         lastUpdate = now
         let decay = max(0.2, min(2.2, decayRate))
+        applyAttraction()
         applyRepulsion()
         for source in sources.values {
             source.step(dt: dt)
@@ -674,6 +675,26 @@ final class SignalFieldEngine: ObservableObject {
             return particle
         }
         pulses = pulses.filter { now.timeIntervalSince($0.birth) <= $0.lifespan }
+    }
+
+    private func applyAttraction() {
+        let nodes = Array(sources.values)
+        guard nodes.count > 1 else { return }
+        for i in 0..<(nodes.count - 1) {
+            for j in (i + 1)..<nodes.count {
+                let a = nodes[i]
+                let b = nodes[j]
+                if a.group != b.group { continue }
+                let delta = b.position - a.position
+                let dist2 = max(0.0001, delta.x * delta.x + delta.y * delta.y)
+                if dist2 > 0.08 && dist2 < 0.6 {
+                    let strength = (dist2 - 0.08) * 0.06
+                    let dir = delta / sqrt(dist2)
+                    a.velocity += dir * strength
+                    b.velocity -= dir * strength
+                }
+            }
+        }
     }
 
     private func applyRepulsion() {
@@ -839,6 +860,7 @@ final class SignalFieldEngine: ObservableObject {
 
 final class SignalSource: Hashable {
     let id: String
+    let group: String
     var position: SIMD3<Double>
     var velocity: SIMD3<Double> = .zero
     var target: SIMD3<Double>
@@ -846,6 +868,7 @@ final class SignalSource: Hashable {
 
     init(id: String) {
         self.id = id
+        self.group = String(id.split(separator: ":").first ?? Substring(id))
         let seed = UInt64(id.utf8.reduce(0) { ($0 &* 131) &+ UInt64($1) })
         var rng = SeededRandom(seed: seed)
         let angle = rng.next() * Double.pi * 2
@@ -878,10 +901,11 @@ final class SignalSource: Hashable {
     }
 
     func step(dt: Double) {
+        let swirl = SIMD3<Double>(-position.y, position.x, 0) * 0.12
         let spring = SIMD3<Double>(repeating: 1.6)
         let damping: Double = 0.82
         let delta = target - position
-        velocity += delta * spring * dt
+        velocity += (delta * spring + swirl) * dt
         velocity *= SIMD3<Double>(repeating: damping)
         position += velocity * dt
         position.z = max(0.1, min(1.0, position.z))
