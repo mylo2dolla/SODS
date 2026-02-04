@@ -50,6 +50,9 @@ struct ContentView: View {
         case apiInspector(endpoint: APIEndpoint)
         case toolRunner(tool: ToolDefinition)
         case presetRunner(preset: PresetDefinition)
+        case toolBuilder
+        case presetBuilder
+        case scratchpad
         case viewer(url: URL)
 
         var id: String {
@@ -58,6 +61,9 @@ struct ContentView: View {
             case .apiInspector(let endpoint): return "apiInspector:\(endpoint.rawValue)"
             case .toolRunner(let tool): return "toolRunner:\(tool.name)"
             case .presetRunner(let preset): return "presetRunner:\(preset.id)"
+            case .toolBuilder: return "toolBuilder"
+            case .presetBuilder: return "presetBuilder"
+            case .scratchpad: return "scratchpad"
             case .viewer(let url): return "viewer:\(url.absoluteString)"
             }
         }
@@ -130,6 +136,9 @@ struct ContentView: View {
                         onFlash: { showFlashPopover = true },
                         onInspect: { endpoint in activeSheet = .apiInspector(endpoint: endpoint) },
                         onRunTool: { tool in activeSheet = .toolRunner(tool: tool) },
+                        onBuildTool: { activeSheet = .toolBuilder },
+                        onBuildPreset: { activeSheet = .presetBuilder },
+                        onScratchpad: { activeSheet = .scratchpad },
                         onClose: { activeSheet = nil }
                     )
                 case .apiInspector(let endpoint):
@@ -152,6 +161,22 @@ struct ContentView: View {
                         preset: preset,
                         baseURL: sodsStore.baseURL,
                         onOpenViewer: { url in activeSheet = .viewer(url: url) },
+                        onClose: { activeSheet = nil }
+                    )
+                case .toolBuilder:
+                    ToolBuilderView(
+                        baseURL: sodsStore.baseURL,
+                        onClose: { activeSheet = nil }
+                    )
+                case .presetBuilder:
+                    PresetBuilderView(
+                        baseURL: sodsStore.baseURL,
+                        onClose: { activeSheet = nil }
+                    )
+                case .scratchpad:
+                    ScratchpadView(
+                        baseURL: sodsStore.baseURL,
+                        onSaveAsTool: { _, _ in activeSheet = .toolBuilder },
                         onClose: { activeSheet = nil }
                     )
                 case .viewer(let url):

@@ -19,6 +19,9 @@
 		A1A1A1A1A1A1A1A1A1A1A1F0 /* PresetRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1F0 /* PresetRegistry.swift */; };
 		A1A1A1A1A1A1A1A1A1A1A1F1 /* PresetButtonsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1F1 /* PresetButtonsView.swift */; };
 		A1A1A1A1A1A1A1A1A1A1A1F2 /* PresetRunnerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1F2 /* PresetRunnerView.swift */; };
+		A1A1A1A1A1A1A1A1A1A1A1F3 /* ToolBuilderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1F3 /* ToolBuilderView.swift */; };
+		A1A1A1A1A1A1A1A1A1A1A1F4 /* PresetBuilderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1F4 /* PresetBuilderView.swift */; };
+		A1A1A1A1A1A1A1A1A1A1A1F5 /* ScratchpadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1F5 /* ScratchpadView.swift */; };
 		A1A1A1A1A1A1A1A1A1A1A1A3 /* NetworkScanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1B3 /* NetworkScanner.swift */; };
 		A1A1A1A1A1A1A1A1A1A1A1A4 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1B4 /* Models.swift */; };
 		A1A1A1A1A1A1A1A1A1A1A1A5 /* AsyncSemaphore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1B6 /* AsyncSemaphore.swift */; };
@@ -72,6 +75,9 @@
 		B1B1B1B1B1B1B1B1B1B1B1F0 /* PresetRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PresetRegistry.swift; sourceTree = "<group>"; };
 		B1B1B1B1B1B1B1B1B1B1B1F1 /* PresetButtonsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PresetButtonsView.swift; sourceTree = "<group>"; };
 		B1B1B1B1B1B1B1B1B1B1B1F2 /* PresetRunnerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PresetRunnerView.swift; sourceTree = "<group>"; };
+		B1B1B1B1B1B1B1B1B1B1B1F3 /* ToolBuilderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolBuilderView.swift; sourceTree = "<group>"; };
+		B1B1B1B1B1B1B1B1B1B1B1F4 /* PresetBuilderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PresetBuilderView.swift; sourceTree = "<group>"; };
+		B1B1B1B1B1B1B1B1B1B1B1F5 /* ScratchpadView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScratchpadView.swift; sourceTree = "<group>"; };
 		B1B1B1B1B1B1B1B1B1B1B1B3 /* NetworkScanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkScanner.swift; sourceTree = "<group>"; };
 		B1B1B1B1B1B1B1B1B1B1B1B4 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
 		B1B1B1B1B1B1B1B1B1B1B1B5 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -146,6 +152,9 @@
 				B1B1B1B1B1B1B1B1B1B1B1F0 /* PresetRegistry.swift */,
 				B1B1B1B1B1B1B1B1B1B1B1F1 /* PresetButtonsView.swift */,
 				B1B1B1B1B1B1B1B1B1B1B1F2 /* PresetRunnerView.swift */,
+				B1B1B1B1B1B1B1B1B1B1B1F3 /* ToolBuilderView.swift */,
+				B1B1B1B1B1B1B1B1B1B1B1F4 /* PresetBuilderView.swift */,
+				B1B1B1B1B1B1B1B1B1B1B1F5 /* ScratchpadView.swift */,
 				B1B1B1B1B1B1B1B1B1B1B1B3 /* NetworkScanner.swift */,
 				B1B1B1B1B1B1B1B1B1B1B1B4 /* Models.swift */,
 				B1B1B1B1B1B1B1B1B1B1B1B6 /* AsyncSemaphore.swift */,
@@ -276,6 +285,9 @@
 				A1A1A1A1A1A1A1A1A1A1A1F0 /* PresetRegistry.swift in Sources */,
 				A1A1A1A1A1A1A1A1A1A1A1F1 /* PresetButtonsView.swift in Sources */,
 				A1A1A1A1A1A1A1A1A1A1A1F2 /* PresetRunnerView.swift in Sources */,
+				A1A1A1A1A1A1A1A1A1A1A1F3 /* ToolBuilderView.swift in Sources */,
+				A1A1A1A1A1A1A1A1A1A1A1F4 /* PresetBuilderView.swift in Sources */,
+				A1A1A1A1A1A1A1A1A1A1A1F5 /* ScratchpadView.swift in Sources */,
 				A1A1A1A1A1A1A1A1A1A1A1A3 /* NetworkScanner.swift in Sources */,
 				A1A1A1A1A1A1A1A1A1A1A1A4 /* Models.swift in Sources */,
 				A1A1A1A1A1A1A1A1A1A1A1A5 /* AsyncSemaphore.swift in Sources */,

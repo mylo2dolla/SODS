@@ -6,6 +6,9 @@ struct ToolRegistryView: View {
     let onFlash: () -> Void
     let onInspect: (ContentView.APIEndpoint) -> Void
     let onRunTool: (ToolDefinition) -> Void
+    let onBuildTool: () -> Void
+    let onBuildPreset: () -> Void
+    let onScratchpad: () -> Void
     let onClose: () -> Void
     @State private var searchText = ""
 
@@ -24,6 +27,12 @@ struct ToolRegistryView: View {
                     onFlash()
                 }
                 .buttonStyle(PrimaryActionButtonStyle())
+                Button("Build Tool") { onBuildTool() }
+                    .buttonStyle(SecondaryActionButtonStyle())
+                Button("Build Preset") { onBuildPreset() }
+                    .buttonStyle(SecondaryActionButtonStyle())
+                Button("Scratchpad") { onScratchpad() }
+                    .buttonStyle(SecondaryActionButtonStyle())
             }
 
             if let note = registry.policyNote {
