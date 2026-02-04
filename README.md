@@ -75,6 +75,11 @@ Launch local ESP Web Tools:
 ./tools/flash-esp32c3.sh
 ```
 
+Stage Ops Portal CYD for station flashing:
+```bash
+/Users/letsdev/sods/SODS/tools/portal-cyd-stage.sh
+```
+
 ## CLI (Unified)
 
 Defaults:
@@ -98,6 +103,7 @@ Examples:
 - Flash buttons open:
   - `http://localhost:9123/flash/esp32`
   - `http://localhost:9123/flash/esp32c3`
+  - `http://localhost:9123/flash/portal-cyd`
 - Internal station views (tools/status) open inside the app; only Flash opens a browser window.
 
 ## Station LaunchAgent (optional)
