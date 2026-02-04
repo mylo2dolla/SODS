@@ -28,6 +28,8 @@ targets=(
   "$TOOLS_DIR/smoke.sh"
   "$TOOLS_DIR/portal-cyd-build.sh"
   "$TOOLS_DIR/portal-cyd-stage.sh"
+  "$TOOLS_DIR/portal-build.sh"
+  "$TOOLS_DIR/portal-flash-help.sh"
   "$TOOLS_DIR/verify.sh"
 )
 
