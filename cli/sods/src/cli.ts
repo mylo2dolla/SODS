@@ -1,8 +1,10 @@
 #!/usr/bin/env node
 import { SODSServer } from "./server.js";
 import { WebSocket } from "ws";
-import { createWriteStream } from "node:fs";
+import { createWriteStream, existsSync } from "node:fs";
 import { spawn } from "node:child_process";
+import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const args = process.argv.slice(2);
 const cmd = args[0] ?? "help";
@@ -34,6 +36,7 @@ Commands:
   spectrum [--station <url>]
   tail <node_id> [--logger <url>] [--limit <n>] [--interval <ms>]
   stream --frames [--station <url>] [--out <path>]
+  wifi-scan [--pattern <regex>]
   tools [--station <url>]
   tool <name> [--station <url>] [--input <json>]
 
@@ -44,6 +47,10 @@ Defaults:
   --logger http://pi-logger.local:8088
 `);
   process.exit(exitCode);
+}
+
+function repoRoot(): string {
+  return resolve(fileURLToPath(new URL("../../../..", import.meta.url)));
 }
 
 function stationURL() {
@@ -301,6 +308,17 @@ async function cmdStream() {
   });
 }
 
+async function cmdWifiScan() {
+  const pattern = getArg("--pattern", "") ?? "";
+  const script = resolve(repoRoot(), "tools/wifi-scan.sh");
+  if (!existsSync(script)) {
+    console.error(`wifi-scan helper not found at ${script}`);
+    process.exit(2);
+  }
+  const child = spawn(script, pattern ? [pattern] : [], { stdio: "inherit" });
+  child.on("exit", (code) => process.exit(code ?? 1));
+}
+
 if (cmd === "start") {
   await cmdStart();
 } else if (cmd === "whereis") {
@@ -313,6 +331,8 @@ if (cmd === "start") {
   await cmdTail();
 } else if (cmd === "stream") {
   await cmdStream();
+} else if (cmd === "wifi-scan") {
+  await cmdWifiScan();
 } else if (cmd === "tools") {
   await cmdTools();
 } else if (cmd === "tool") {

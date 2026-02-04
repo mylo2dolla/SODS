@@ -1,6 +1,8 @@
 import { spawn } from "node:child_process";
 import { performance } from "node:perf_hooks";
 import { readFileSync, existsSync } from "node:fs";
+import { join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { CanonicalEvent } from "./schema.js";
 
 export type ToolDef = {
@@ -14,6 +16,12 @@ export type ToolDef = {
 };
 
 type RunResult = { ok: boolean; output: string; duration_ms: number; data?: Record<string, unknown> };
+
+const repoRoot = resolve(fileURLToPath(new URL("../../../..", import.meta.url)));
+
+function repoPath(...parts: string[]) {
+  return join(repoRoot, ...parts);
+}
 
 export function listTools(): ToolDef[] {
   const registryPath = new URL("../../../docs/tool-registry.json", import.meta.url).pathname;
@@ -61,6 +69,14 @@ export async function runTool(
     const addrs = await resolve4(hostname);
     const ms = performance.now() - t0;
     return { ok: true, output: `ms=${ms.toFixed(1)} addrs=${addrs.join(",")}`, data: { ms: Number(ms.toFixed(1)), addrs }, duration_ms: performance.now() - start };
+  }
+  if (name === "net.wifi_scan") {
+    const pattern = input.pattern;
+    const script = repoPath("tools", "wifi-scan.sh");
+    if (!existsSync(script)) throw new Error(`wifi-scan helper not found at ${script}`);
+    const args = pattern ? [pattern] : [];
+    const result = await runCmd(script, args, start);
+    return { ...result, data: { lines: result.output.split("\n").filter(Boolean) } };
   }
   if (name === "ble.rssi_trend") {
     const device = input.device_id;

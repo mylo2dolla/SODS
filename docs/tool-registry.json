@@ -42,6 +42,15 @@
       "output_schema": {"ms": "number", "addrs": "string[]"}
     },
     {
+      "name": "net.wifi_scan",
+      "scope": "network",
+      "kind": "passive",
+      "description": "Scan nearby Wi-Fi SSIDs (macOS airport helper).",
+      "input": "pattern (optional regex)",
+      "output": "scan output",
+      "output_schema": {"lines": "string[]"}
+    },
+    {
       "name": "ble.rssi_trend",
       "scope": "ble",
       "kind": "passive",

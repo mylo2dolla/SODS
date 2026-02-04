@@ -73,6 +73,14 @@ Examples:
 ./tools/sods spectrum
 ```
 
+## Wi-Fi Scan (macOS)
+
+Scan nearby SSIDs (airport helper):
+```bash
+/Users/letsdev/sods/SODS/tools/sods wifi-scan
+/Users/letsdev/sods/SODS/tools/sods wifi-scan --pattern 'esp|espgo|c3|sods|portal|ops'
+```
+
 ## Tool Registry
 
 Passive-only tools are defined in `docs/tool-registry.json`. The CLI exposes them via `/tools`, and the Dev Station “God Button” shows them in-app.
