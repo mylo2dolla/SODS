@@ -1,5 +1,5 @@
 import http from "node:http";
-import { readFileSync, existsSync, statSync, createReadStream, mkdirSync, createWriteStream } from "node:fs";
+import { readFileSync, existsSync, statSync, createReadStream, mkdirSync, createWriteStream, writeFileSync, chmodSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { WebSocketServer, WebSocket } from "ws";
 import { Ingestor } from "./ingest.js";
@@ -8,8 +8,10 @@ import { CanonicalEvent, SignalFrame } from "./schema.js";
 import { nowMs } from "./util.js";
 import { listTools, runTool } from "./tools.js";
 import { loadToolRegistry, ToolEntry } from "./tool-registry.js";
-import { loadPresets } from "./presets.js";
-import { runScriptTool, RunResult as ToolRunResult } from "./tool-runner.js";
+import { loadPresets, presetRegistryPaths } from "./presets.js";
+import { runScriptTool, runScratch, RunResult as ToolRunResult } from "./tool-runner.js";
+import { runPreset } from "./preset-runner.js";
+import { toolRegistryPaths } from "./tool-registry.js";
 
 type ServerOptions = {
   port: number;
@@ -127,6 +129,21 @@ export class SODSServer {
     }
     if (url.pathname === "/api/tools") {
       return this.respondJson(res, this.buildToolRegistry());
+    }
+    if (url.pathname === "/api/presets") {
+      return this.respondJson(res, this.buildPresets());
+    }
+    if (url.pathname === "/api/preset/run" && req.method === "POST") {
+      return this.handlePresetRun(req, res);
+    }
+    if (url.pathname === "/api/scratch/run" && req.method === "POST") {
+      return this.handleScratchRun(req, res);
+    }
+    if (url.pathname.startsWith("/api/tools/user/")) {
+      return this.handleUserToolEdit(req, res, url.pathname);
+    }
+    if (url.pathname.startsWith("/api/presets/user/")) {
+      return this.handleUserPresetEdit(req, res, url.pathname);
     }
     if (url.pathname === "/health") {
       const counters = this.ingestor.getCounters();
@@ -550,6 +567,186 @@ export class SODSServer {
     return await runScriptTool(tool as ToolEntry, input);
   }
 
+  private async handlePresetRun(req: http.IncomingMessage, res: http.ServerResponse) {
+    let body = "";
+    req.on("data", (chunk) => body += chunk);
+    req.on("end", async () => {
+      try {
+        const payload = body ? JSON.parse(body) : {};
+        const id = payload.id;
+        if (!id) {
+          res.writeHead(400);
+          res.end("missing preset id");
+          return;
+        }
+        const presets = loadPresets().presets;
+        const preset = presets.find((p) => p.id === id);
+        if (!preset) {
+          res.writeHead(404);
+          res.end("preset not found");
+          return;
+        }
+        const result = await runPreset(preset, (name, input) => this.runToolByName(name, input));
+        this.respondJson(res, { ok: result.ok, id, results: result.results });
+      } catch (err: any) {
+        res.writeHead(400);
+        res.end(err?.message ?? "preset error");
+      }
+    });
+  }
+
+  private async handleScratchRun(req: http.IncomingMessage, res: http.ServerResponse) {
+    if (!this.isLocalRequest(req)) {
+      res.writeHead(403);
+      res.end("scratch runs allowed only on localhost station");
+      return;
+    }
+    let body = "";
+    req.on("data", (chunk) => body += chunk);
+    req.on("end", async () => {
+      try {
+        const payload = body ? JSON.parse(body) : {};
+        const runner = payload.runner;
+        const script = payload.script;
+        const input = payload.input ?? {};
+        if (!runner || !script) {
+          res.writeHead(400);
+          res.end("runner and script required");
+          return;
+        }
+        const result = await runScratch(runner, script, input);
+        this.respondJson(res, result);
+      } catch (err: any) {
+        res.writeHead(400);
+        res.end(err?.message ?? "scratch error");
+      }
+    });
+  }
+
+  private handleUserToolEdit(req: http.IncomingMessage, res: http.ServerResponse, path: string) {
+    if (!this.isLocalRequest(req)) {
+      res.writeHead(403);
+      res.end("user tool edits allowed only on localhost station");
+      return;
+    }
+    let body = "";
+    req.on("data", (chunk) => body += chunk);
+    req.on("end", () => {
+      try {
+        const payload = body ? JSON.parse(body) : {};
+        const entry = payload.entry as ToolEntry;
+        const script = payload.script as string | undefined;
+        const action = path.split("/").pop() ?? "";
+        if (!entry?.name) {
+          res.writeHead(400);
+          res.end("missing tool entry");
+          return;
+        }
+        const { userPath, userToolsDir, repoRoot } = toolRegistryPaths();
+        mkdirSync(userToolsDir, { recursive: true });
+        const ext = entry.runner === "python" ? "py" : entry.runner === "node" ? "mjs" : "sh";
+        const safeName = entry.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+        const scriptRel = `tools/user/${safeName}.${ext}`;
+        const scriptAbs = resolve(join(repoRoot, scriptRel));
+
+        if (action === "delete") {
+          const registry = this.readUserRegistry(userPath);
+          const next = registry.tools.filter((t: ToolEntry) => t.name !== entry.name);
+          this.writeUserRegistry(userPath, next);
+          res.end("ok");
+          return;
+        }
+
+        if (!script && action === "add") {
+          res.writeHead(400);
+          res.end("script required for add");
+          return;
+        }
+        if (script) {
+          writeFileSync(scriptAbs, script, "utf8");
+          if (entry.runner === "shell") chmodSync(scriptAbs, 0o755);
+        }
+        entry.entry = scriptRel;
+        const registry = this.readUserRegistry(userPath);
+        const next = registry.tools.filter((t: ToolEntry) => t.name !== entry.name);
+        next.push(entry);
+        this.writeUserRegistry(userPath, next);
+        res.end("ok");
+      } catch (err: any) {
+        res.writeHead(400);
+        res.end(err?.message ?? "user tool error");
+      }
+    });
+  }
+
+  private handleUserPresetEdit(req: http.IncomingMessage, res: http.ServerResponse, path: string) {
+    if (!this.isLocalRequest(req)) {
+      res.writeHead(403);
+      res.end("user preset edits allowed only on localhost station");
+      return;
+    }
+    let body = "";
+    req.on("data", (chunk) => body += chunk);
+    req.on("end", () => {
+      try {
+        const payload = body ? JSON.parse(body) : {};
+        const preset = payload.preset;
+        const action = path.split("/").pop() ?? "";
+        if (!preset?.id) {
+          res.writeHead(400);
+          res.end("missing preset");
+          return;
+        }
+        const { userPath } = presetRegistryPaths();
+        const registry = this.readUserPresets(userPath);
+        if (action === "delete") {
+          const next = registry.presets.filter((p: any) => p.id !== preset.id);
+          this.writeUserPresets(userPath, next);
+          res.end("ok");
+          return;
+        }
+        const next = registry.presets.filter((p: any) => p.id !== preset.id);
+        next.push(preset);
+        this.writeUserPresets(userPath, next);
+        res.end("ok");
+      } catch (err: any) {
+        res.writeHead(400);
+        res.end(err?.message ?? "user preset error");
+      }
+    });
+  }
+
+  private readUserRegistry(path: string) {
+    if (!existsSync(path)) return { tools: [] as ToolEntry[] };
+    try {
+      return JSON.parse(readFileSync(path, "utf8"));
+    } catch {
+      return { tools: [] as ToolEntry[] };
+    }
+  }
+
+  private writeUserRegistry(path: string, tools: ToolEntry[]) {
+    writeFileSync(path, JSON.stringify({ version: "1.0", tools }, null, 2));
+  }
+
+  private readUserPresets(path: string) {
+    if (!existsSync(path)) return { presets: [] as any[] };
+    try {
+      return JSON.parse(readFileSync(path, "utf8"));
+    } catch {
+      return { presets: [] as any[] };
+    }
+  }
+
+  private writeUserPresets(path: string, presets: any[]) {
+    writeFileSync(path, JSON.stringify({ version: "1.0", presets }, null, 2));
+  }
+
+  private isLocalRequest(req: http.IncomingMessage) {
+    const addr = req.socket.remoteAddress ?? "";
+    return addr === "127.0.0.1" || addr === "::1" || addr === "::ffff:127.0.0.1";
+  }
+
   private buildFlashInfo(req: http.IncomingMessage) {
     const host = req.headers.host ?? "localhost:9123";
     const base = `http://${host}`;
@@ -607,6 +804,3 @@ export class SODSServer {
     res.end(html);
   }
 }
-    if (url.pathname === "/api/presets") {
-      return this.respondJson(res, this.buildPresets());
-    }
