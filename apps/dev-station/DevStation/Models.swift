@@ -30,7 +30,7 @@ enum NodePresenceState: String, Codable {
     case error
 }
 
-enum ScanMode: String, CaseIterable, Identifiable {
+enum ScanMode: String, CaseIterable, Identifiable, Codable {
     case oneShot
     case continuous
 
