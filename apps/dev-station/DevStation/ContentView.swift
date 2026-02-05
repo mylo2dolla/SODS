@@ -5632,17 +5632,25 @@ final class FlashServerManager: ObservableObject {
     }
 
     private func buildProcess(for target: FlashTarget, port: Int) -> (commandLine: String?, config: ProcessConfig?) {
-        let root = nodeAgentRoot()
-        let toolsDir = "\(root)/tools"
+        let root: String
+        let toolsDir: String
         let scriptPath: String
         switch target {
         case .esp32dev:
+            root = nodeAgentRoot()
+            toolsDir = "\(root)/tools"
             scriptPath = "\(toolsDir)/flash-esp32dev.sh"
         case .esp32c3:
+            root = nodeAgentRoot()
+            toolsDir = "\(root)/tools"
             scriptPath = "\(toolsDir)/flash-esp32c3.sh"
+        case .esp32p4:
+            root = p4RootPath()
+            toolsDir = "\(root)/tools"
+            scriptPath = ""
         }
 
-        if FileManager.default.fileExists(atPath: scriptPath) {
+        if !scriptPath.isEmpty && FileManager.default.fileExists(atPath: scriptPath) {
             let commandLine = "cd \(root) && \(scriptPath) --port \(port)"
             let config = ProcessConfig(
                 executableURL: URL(fileURLWithPath: "/bin/zsh"),
