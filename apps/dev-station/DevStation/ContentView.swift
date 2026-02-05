@@ -3,6 +3,7 @@ import UniformTypeIdentifiers
 import Foundation
 import CoreBluetooth
 import Network
+import WebKit
 import AppKit
 
 struct ContentView: View {
@@ -598,6 +599,15 @@ struct ContentView: View {
                         .buttonStyle(SecondaryActionButtonStyle())
                         .popover(isPresented: $showGodMenu, arrowEdge: .bottom) {
                             VStack(alignment: .leading, spacing: 8) {
+                                HStack(spacing: 8) {
+                                    Button("Back") { showGodMenu = false }
+                                        .buttonStyle(SecondaryActionButtonStyle())
+                                    Button("Close") { showGodMenu = false }
+                                        .buttonStyle(SecondaryActionButtonStyle())
+                                    Button("OK") { showGodMenu = false }
+                                        .buttonStyle(SecondaryActionButtonStyle())
+                                    Spacer()
+                                }
                                 if let context = godMenuContextLabel {
                                     Text("Context: \(context)")
                                         .font(.system(size: 11, weight: .semibold))
@@ -607,7 +617,7 @@ struct ContentView: View {
                             }
                             .frame(minWidth: 320)
                             .padding(10)
-                            .background(Theme.background)
+                            .background(.ultraThinMaterial)
                         }
                     Button("Flash") { showFlashPopover = true }
                         .buttonStyle(SecondaryActionButtonStyle())
@@ -4336,6 +4346,7 @@ struct NodesView: View {
     @State private var isManualConnecting = false
     @State private var cliFlashStatus: String?
     @State private var cliFlashError: String?
+    @State private var showResetNodesConfirm = false
 
     var body: some View {
         ViewThatFits(in: .horizontal) {
@@ -4354,8 +4365,13 @@ struct NodesView: View {
 
     private var nodesColumn: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Nodes")
-                .font(.system(size: 16, weight: .semibold))
+            HStack {
+                Text("Nodes")
+                    .font(.system(size: 16, weight: .semibold))
+                Spacer()
+                Button("Reset Nodes") { showResetNodesConfirm = true }
+                    .buttonStyle(SecondaryActionButtonStyle())
+            }
 
             ScrollView {
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 260), spacing: 12)], alignment: .leading, spacing: 12) {
@@ -4401,6 +4417,18 @@ struct NodesView: View {
                     }
                 }
             }
+        }
+        .confirmationDialog(
+            "Remove all node cards?",
+            isPresented: $showResetNodesConfirm,
+            titleVisibility: .visible
+        ) {
+            Button("Remove All Nodes", role: .destructive) {
+                NodeRegistry.shared.removeAll()
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This clears the node registry. Nodes will reappear if discovered again.")
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -4702,6 +4730,10 @@ struct NodesView: View {
                         flashManager.openLocalFlasher()
                     }
                     .buttonStyle(SecondaryActionButtonStyle())
+                    Button("Clear Flasher Cache") {
+                        clearFlasherCache()
+                    }
+                    .buttonStyle(SecondaryActionButtonStyle())
 
                     if flashManager.canOpenFlasher {
                         Button("Open Flasher") {
@@ -4882,6 +4914,25 @@ struct NodesView: View {
         NotificationCenter.default.post(name: .sodsOpenURLInApp, object: url)
     }
 
+    private func clearFlasherCache() {
+        guard let host = URL(string: sodsStore.baseURL)?.host, !host.isEmpty else {
+            showBaseURLToast("Invalid station URL for cache clear.")
+            return
+        }
+        let store = WKWebsiteDataStore.default()
+        let types = WKWebsiteDataStore.allWebsiteDataTypes()
+        store.fetchDataRecords(ofTypes: types) { records in
+            let targets = records.filter { $0.displayName.contains(host) }
+            guard !targets.isEmpty else {
+                showBaseURLToast("No cached flasher data for \(host).")
+                return
+            }
+            store.removeData(ofTypes: types, for: targets) {
+                showBaseURLToast("Cleared in-app flasher cache for \(host). Clear browser site data separately if needed.")
+            }
+        }
+    }
+
     private func canCLIFlash(_ target: FlashTarget) -> Bool {
         let script = cliFlashScript(for: target)
         return FileManager.default.fileExists(atPath: script)
@@ -5018,6 +5069,7 @@ struct NodeCardView: View {
     let isConnecting: Bool
     let onRefresh: () -> Void
     @State private var showActions = false
+    @State private var showRemoveConfirm = false
 
     var body: some View {
         TimelineView(.animation(minimumInterval: 1.0 / 6.0)) { timeline in
@@ -5093,6 +5145,8 @@ struct NodeCardView: View {
                             NotificationCenter.default.post(name: .openGodMenuCommandWithContext, object: node.id)
                         }
                         .buttonStyle(SecondaryActionButtonStyle())
+                        Button("Remove") { showRemoveConfirm = true }
+                            .buttonStyle(SecondaryActionButtonStyle())
                     } else {
                         Button("Actions") { showActions.toggle() }
                             .font(.system(size: 12, weight: .semibold))
@@ -5119,6 +5173,8 @@ struct NodeCardView: View {
                                         NotificationCenter.default.post(name: .openGodMenuCommand, object: nil)
                                     }
                                     .buttonStyle(SecondaryActionButtonStyle())
+                                    Button("Remove Node") { showRemoveConfirm = true }
+                                        .buttonStyle(SecondaryActionButtonStyle())
                                 }
                                 .padding(12)
                                 .frame(minWidth: 240)
@@ -5143,6 +5199,18 @@ struct NodeCardView: View {
                 } else {
                     showActions = true
                 }
+            }
+            .confirmationDialog(
+                "Remove node \(node.label)?",
+                isPresented: $showRemoveConfirm,
+                titleVisibility: .visible
+            ) {
+                Button("Remove Node", role: .destructive) {
+                    NodeRegistry.shared.remove(nodeID: node.id)
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("This removes the node card from the registry. It will reappear if discovered again.")
             }
         }
     }

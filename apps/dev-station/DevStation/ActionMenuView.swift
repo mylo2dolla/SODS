@@ -48,7 +48,7 @@ struct ActionMenuView: View {
             .padding(10)
         }
         .frame(maxHeight: 480)
-        .background(Theme.panelAlt)
+        .background(.ultraThinMaterial)
         .overlay(RoundedRectangle(cornerRadius: 6).stroke(Theme.border, lineWidth: 1))
         .cornerRadius(6)
     }

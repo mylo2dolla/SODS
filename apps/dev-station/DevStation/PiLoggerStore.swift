@@ -840,6 +840,12 @@ struct SignalMeta: Hashable {
     }
 
     static func deviceID(from data: [String: JSONValue], kind: String, nodeID: String) -> String? {
+        let lowerKind = kind.lowercased()
+        if lowerKind.contains("tool") || lowerKind.contains("action") || lowerKind.contains("command") || lowerKind.contains("runbook") || lowerKind.contains("cmd") {
+            if nodeID != "unknown" {
+                return "node:\(nodeID)"
+            }
+        }
         let keys = ["device_id", "deviceId", "device", "addr", "address", "mac", "mac_address", "bssid", "ble_addr"]
         for key in keys {
             if let value = data[key]?.stringValue, !value.isEmpty {
@@ -856,11 +862,16 @@ struct SignalMeta: Hashable {
     }
 
     static func tags(from kind: String) -> [String] {
+        let lowerKind = kind.lowercased()
         var tags: [String] = []
-        if kind.contains("ble") { tags.append("ble") }
-        if kind.contains("wifi") { tags.append("wifi") }
-        if kind.contains("node") { tags.append("node") }
-        if kind.contains("error") { tags.append("error") }
+        if lowerKind.contains("ble") { tags.append("ble") }
+        if lowerKind.contains("wifi") { tags.append("wifi") }
+        if lowerKind.contains("node") { tags.append("node") }
+        if lowerKind.contains("rf") || lowerKind.contains("sdr") { tags.append("rf") }
+        if lowerKind.contains("error") { tags.append("error") }
+        if lowerKind.contains("tool") || lowerKind.contains("action") || lowerKind.contains("command") || lowerKind.contains("runbook") || lowerKind.contains("cmd") {
+            tags.append("tool")
+        }
         return tags
     }
 }

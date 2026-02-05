@@ -145,6 +145,24 @@ final class NodeRegistry: ObservableObject {
         setConnecting(nodeID: trimmedID, connecting: false)
     }
 
+    func remove(nodeID: String) {
+        let trimmedID = nodeID.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedID.isEmpty else { return }
+        if nodesByID.removeValue(forKey: trimmedID) != nil {
+            refreshNodes()
+            persist()
+        }
+        setConnecting(nodeID: trimmedID, connecting: false)
+    }
+
+    func removeAll() {
+        guard !nodesByID.isEmpty else { return }
+        nodesByID.removeAll()
+        connectingNodeIDs.removeAll()
+        refreshNodes()
+        persist()
+    }
+
     func setConnecting(nodeID: String, connecting: Bool) {
         let trimmedID = nodeID.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedID.isEmpty else { return }

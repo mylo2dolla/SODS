@@ -349,6 +349,7 @@ struct VisualizerView: View {
                 VStack(alignment: .leading, spacing: 6) {
                     legendRow(color: SignalColor.kindAccent(kind: "ble.seen"), label: "BLE • dot + tight ring")
                     legendRow(color: SignalColor.kindAccent(kind: "wifi.status"), label: "Wi‑Fi • wave ring")
+                    legendRow(color: SignalColor.kindAccent(kind: "rf"), label: "RF • waveform arc")
                     legendRow(color: SignalColor.kindAccent(kind: "node.heartbeat"), label: "Node • diamond halo")
                     legendRow(color: SignalColor.kindAccent(kind: "error"), label: "Error • starburst")
                     Text("Brightness = recency + RSSI strength.")
@@ -861,12 +862,21 @@ struct SignalFieldView: View {
     @State private var pinnedNodeIDs: Set<String> = []
     @State private var quickOverlayVisible: Bool = false
     @State private var quickOverlayHideAt: Date = .distantPast
+    @State private var zoomScale: CGFloat = 1.0
+    @State private var zoomAnchorScale: CGFloat?
+    @State private var panOffset: CGSize = .zero
+    @State private var panAnchor: CGSize = .zero
+    @State private var isPanning = false
 
     var body: some View {
         ZStack {
             TimelineView(.animation(minimumInterval: 1.0 / 60.0)) { timeline in
                 Canvas { context, size in
-                    let parallax = Parallax.offset(mousePoint: mousePoint, size: size, now: timeline.date, lastMove: lastMouseMove)
+                    let adjustedMouse = CGPoint(
+                        x: (mousePoint.x - panOffset.width) / max(0.2, zoomScale),
+                        y: (mousePoint.y - panOffset.height) / max(0.2, zoomScale)
+                    )
+                    let parallax = Parallax.offset(mousePoint: adjustedMouse, size: size, now: timeline.date, lastMove: lastMouseMove)
                     let isActive = fieldIsActive(now: timeline.date)
                     engine.render(
                         context: &context,
@@ -889,6 +899,8 @@ struct SignalFieldView: View {
                     )
                 }
             }
+            .scaleEffect(zoomScale)
+            .offset(panOffset)
             .overlay(MouseTracker { location in
                 mousePoint = location
                 lastMouseMove = Date()
@@ -898,16 +910,53 @@ struct SignalFieldView: View {
                 focusedNodeID = trimmed.isEmpty ? nil : trimmed
             }
             .contentShape(Rectangle())
-            .gesture(DragGesture(minimumDistance: 0).onEnded { value in
-                if let hit = engine.nearestNode(to: value.location) {
-                    selectedNode = hit
-                    quickOverlayVisible = false
-                } else {
-                    selectedNode = nil
-                    quickOverlayVisible = true
-                    quickOverlayHideAt = Date().addingTimeInterval(2.5)
-                }
-            })
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { value in
+                        let distance = hypot(value.translation.width, value.translation.height)
+                        if distance > 6 {
+                            if !isPanning {
+                                isPanning = true
+                                panAnchor = panOffset
+                            }
+                            panOffset = CGSize(
+                                width: panAnchor.width + value.translation.width,
+                                height: panAnchor.height + value.translation.height
+                            )
+                        }
+                    }
+                    .onEnded { value in
+                        if isPanning {
+                            isPanning = false
+                            return
+                        }
+                        let adjusted = CGPoint(
+                            x: (value.location.x - panOffset.width) / max(0.2, zoomScale),
+                            y: (value.location.y - panOffset.height) / max(0.2, zoomScale)
+                        )
+                        if let hit = engine.nearestNode(to: adjusted) {
+                            selectedNode = hit
+                            quickOverlayVisible = false
+                        } else {
+                            selectedNode = nil
+                            quickOverlayVisible = true
+                            quickOverlayHideAt = Date().addingTimeInterval(2.5)
+                        }
+                    }
+            )
+            .simultaneousGesture(
+                MagnificationGesture()
+                    .onChanged { value in
+                        if zoomAnchorScale == nil {
+                            zoomAnchorScale = zoomScale
+                        }
+                        let base = zoomAnchorScale ?? zoomScale
+                        zoomScale = min(2.6, max(0.6, base * value))
+                    }
+                    .onEnded { _ in
+                        zoomAnchorScale = nil
+                    }
+            )
 
             if quickOverlayVisible {
                 let now = Date()
@@ -1210,6 +1259,7 @@ struct LegendOverlayView: View {
                 VStack(alignment: .leading, spacing: 6) {
                     legendRow(color: SignalColor.kindAccent(kind: "ble.seen"), label: "BLE • dot + tight ring")
                     legendRow(color: SignalColor.kindAccent(kind: "wifi.status"), label: "Wi‑Fi • wave ring")
+                    legendRow(color: SignalColor.kindAccent(kind: "rf"), label: "RF • waveform arc")
                     legendRow(color: SignalColor.kindAccent(kind: "node.heartbeat"), label: "Node • diamond halo")
                     legendRow(color: SignalColor.kindAccent(kind: "error"), label: "Error • starburst")
                     Text("Brightness = recency + strength. Trails fade with time.")
@@ -1619,16 +1669,16 @@ final class SignalFieldEngine: ObservableObject {
 
         let activityFade: CGFloat = isActive ? 1.0 : 0.25
         drawBins(context: &context, size: size, frames: frames, now: now, focusID: focusID, activityFade: activityFade)
-        lastProjected = drawSources(context: &context, size: size, now: now, parallax: parallax, selectedID: selectedID, focusID: focusID, nodePresentations: nodePresentations, activityFade: activityFade)
+        lastProjected = drawSources(context: &context, size: size, now: now, parallax: parallax, selectedID: selectedID, focusID: focusID, nodePresentations: nodePresentations, activityFade: activityFade, isActive: isActive)
         if ghostTrails {
             if isActive {
                 updateGhosts(now: now, nodePresentations: nodePresentations)
             }
-            drawGhosts(context: &context, size: size, parallax: parallax, focusID: focusID, activityFade: activityFade)
+            drawGhosts(context: &context, size: size, now: now, parallax: parallax, focusID: focusID, activityFade: activityFade, isActive: isActive)
         }
         drawConnections(context: &context, focusID: focusID, activityFade: activityFade)
-        drawPulses(context: &context, size: size, now: now, parallax: parallax, focusID: focusID, activityFade: activityFade)
-        drawParticles(context: &context, size: size, now: now, parallax: parallax, focusID: focusID, activityFade: activityFade)
+        drawPulses(context: &context, size: size, now: now, parallax: parallax, focusID: focusID, activityFade: activityFade, isActive: isActive)
+        drawParticles(context: &context, size: size, now: now, parallax: parallax, focusID: focusID, activityFade: activityFade, isActive: isActive)
 
         if particles.count > maxParticles {
             particles.removeFirst(particles.count - maxParticles)
@@ -1692,6 +1742,7 @@ final class SignalFieldEngine: ObservableObject {
         if isActive {
             applyAttraction()
             applyRepulsion()
+            applyRadialFlow()
         }
         for source in sources.values {
             source.step(dt: dt, isActive: isActive)
@@ -1746,6 +1797,18 @@ final class SignalFieldEngine: ObservableObject {
         }
     }
 
+    private func applyRadialFlow() {
+        for source in sources.values {
+            guard let strength = source.lastStrength else { continue }
+            let strengthNorm = clamp(((-strength) - 30.0) / 70.0)
+            let dir = SIMD3<Double>(source.position.x, source.position.y, 0)
+            let mag = max(0.0001, sqrt(dir.x * dir.x + dir.y * dir.y))
+            let norm = dir / mag
+            let push = (strengthNorm - 0.5) * 0.06
+            source.velocity += norm * push
+        }
+    }
+
     private func drawBackground(context: inout GraphicsContext, size: CGSize, now: Date, isActive: Bool) {
         let rect = CGRect(origin: .zero, size: size)
         let idleTone: Double = isActive ? 0.0 : 0.12
@@ -1767,6 +1830,37 @@ final class SignalFieldEngine: ObservableObject {
             let radius = min(size.width, size.height) * 0.12 * CGFloat(ring)
             let ringRect = CGRect(x: center.x - radius, y: center.y - radius, width: radius * 2, height: radius * 2)
             context.stroke(Path(ellipseIn: ringRect), with: .color(Color.white.opacity(0.04)), lineWidth: 1)
+        }
+
+        let orbitPhase = now.timeIntervalSinceReferenceDate * 0.08
+        let orbitAlpha = isActive ? 0.12 : 0.06
+        for band in 0..<3 {
+            let tilt = CGFloat(0.08 + Double(band) * 0.06)
+            let wobble = CGFloat(sin(orbitPhase + Double(band)) * 6)
+            let radius = min(size.width, size.height) * (0.32 + CGFloat(band) * 0.08)
+            let orbitRect = CGRect(
+                x: center.x - radius,
+                y: center.y - radius * (1.0 - tilt) + wobble,
+                width: radius * 2,
+                height: radius * 2 * (1.0 - tilt)
+            )
+            context.stroke(Path(ellipseIn: orbitRect), with: .color(Color.white.opacity(orbitAlpha)), lineWidth: 1)
+        }
+
+        if isActive {
+            let hazeLevels: [(CGFloat, Double)] = [
+                (0.52, 0.10),
+                (0.68, 0.06)
+            ]
+            for (scale, alpha) in hazeLevels {
+                let rect = CGRect(
+                    x: center.x - size.width * scale * 0.5,
+                    y: center.y - size.height * scale * 0.5,
+                    width: size.width * scale,
+                    height: size.height * scale
+                )
+                context.fill(Path(ellipseIn: rect), with: .color(Color.white.opacity(alpha)))
+            }
         }
 
         let starCount = 60
@@ -1834,14 +1928,20 @@ final class SignalFieldEngine: ObservableObject {
         selectedID: String?,
         focusID: String?,
         nodePresentations: [String: NodePresentation],
-        activityFade: CGFloat
+        activityFade: CGFloat,
+        isActive: Bool
     ) -> [ProjectedNode] {
         var projected: [ProjectedNode] = []
         for source in sources.values {
             let depth = depthScalar(id: source.id, z: source.position.z, now: now)
-            let basePoint = source.project(in: size, parallax: .zero)
-            let point = CGPoint(x: basePoint.x + parallax.x * depth, y: basePoint.y + parallax.y * depth)
+            let lastSeen = source.lastSeen ?? now
+            let age = max(0.0, now.timeIntervalSince(lastSeen))
+            let recency = exp(-age / 6.0)
+            let depthScale = (0.65 + depth * 0.35) * (0.7 + 0.3 * CGFloat(recency))
+            let parallaxFactor = 0.4 + 0.6 * CGFloat(recency)
+            let point = projectPoint(source.position, size: size, parallax: parallax, depth: depth, now: now, isActive: isActive, depthScale: depthScale, parallaxFactor: parallaxFactor)
             let depthFade = depthFade(for: depth)
+            let hemisphere = hemisphereFade(z: source.position.z, recency: recency)
             let glow = CGSize(width: 26 * depth, height: 26 * depth)
             let core = CGSize(width: 10 * depth, height: 10 * depth)
             let dimmed = focusID != nil && focusID != source.id
@@ -1854,15 +1954,13 @@ final class SignalFieldEngine: ObservableObject {
                 return displayColor
             }()
             let color = Color(displayColor).opacity(dimmed ? 0.25 : 1.0)
-            let lastSeen = source.lastSeen ?? now
-            let age = max(0.0, now.timeIntervalSince(lastSeen))
             let recency = exp(-age / 6.0)
             let strength = source.lastStrength ?? -65
             let strengthNorm = clamp(((-strength) - 30.0) / 70.0)
             let vitality = max(0.12, min(1.0, 0.2 + recency * 0.6 + strengthNorm * 0.35))
             let vitalityScale = CGFloat(vitality)
             let focusScale: CGFloat = dimmed ? 0.45 : 1.0
-            let alphaScale = activityFade * depthFade * focusScale * vitalityScale
+            let alphaScale = activityFade * depthFade * focusScale * vitalityScale * hemisphere
             let glowAlpha = presentation?.shouldGlow == false ? 0.0 : (dimmed ? 0.08 : 0.2) * alphaScale
             let coreAlpha = presentation?.isOffline == true ? 0.35 * alphaScale : (dimmed ? 0.4 : 0.9) * alphaScale
             let activity = presentation?.activityScore ?? 0.0
@@ -1898,6 +1996,18 @@ final class SignalFieldEngine: ObservableObject {
                 let ringAlpha = min(0.22, 0.08 + activity * 0.18) * (dimmed ? 0.5 : 1.0) * Double(alphaScale)
                 context.stroke(Path(ellipseIn: ringRect), with: .color(color.opacity(ringAlpha)), lineWidth: 1.2)
             }
+            if recency < 0.35, source.position.z < 0.4 {
+                let hazeSize = CGSize(width: glow.width * 1.6, height: glow.height * 1.6)
+                let hazeRect = CGRect(x: point.x - hazeSize.width / 2, y: point.y - hazeSize.height / 2, width: hazeSize.width, height: hazeSize.height)
+                let hazeAlpha = (0.08 + (0.35 - recency) * 0.18) * Double(activityFade)
+                context.fill(Path(ellipseIn: hazeRect), with: .color(color.opacity(hazeAlpha)))
+            }
+            if recency > 0.75, source.position.z > 0.6 {
+                let frontSize = CGSize(width: glow.width * 1.35, height: glow.height * 1.35)
+                let frontRect = CGRect(x: point.x - frontSize.width / 2, y: point.y - frontSize.height / 2, width: frontSize.width, height: frontSize.height)
+                let frontAlpha = (0.12 + recency * 0.08) * Double(activityFade)
+                context.stroke(Path(ellipseIn: frontRect), with: .color(color.opacity(frontAlpha)), lineWidth: 1.0)
+            }
             if isNodeSource {
                 let ringRect = coreRect.insetBy(dx: -4 * depth, dy: -4 * depth)
                 let ringAlpha = (presentation?.isOffline == true ? 0.15 : 0.35) * alphaScale
@@ -1911,10 +2021,10 @@ final class SignalFieldEngine: ObservableObject {
         return projected
     }
 
-    private func drawParticles(context: inout GraphicsContext, size: CGSize, now: Date, parallax: CGPoint, focusID: String?, activityFade: CGFloat) {
+    private func drawParticles(context: inout GraphicsContext, size: CGSize, now: Date, parallax: CGPoint, focusID: String?, activityFade: CGFloat, isActive: Bool) {
         for particle in particles {
             let dimmed = focusID != nil && focusID != particle.sourceID
-            particle.draw(context: &context, size: size, now: now, parallax: parallax, dimmed: dimmed, activityFade: activityFade)
+            particle.draw(context: &context, size: size, now: now, parallax: parallax, dimmed: dimmed, activityFade: activityFade, isActive: isActive)
         }
     }
 
@@ -1956,36 +2066,36 @@ final class SignalFieldEngine: ObservableObject {
         }
     }
 
-    private func drawGhosts(context: inout GraphicsContext, size: CGSize, parallax: CGPoint, focusID: String?, activityFade: CGFloat) {
+    private func drawGhosts(context: inout GraphicsContext, size: CGSize, now: Date, parallax: CGPoint, focusID: String?, activityFade: CGFloat, isActive: Bool) {
         guard !ghostAccumulator.isEmpty else { return }
-        let now = Date()
         for ghost in ghostAccumulator {
             if let focusID, focusID != ghost.sourceID { continue }
             let ageSeconds = max(0.0, now.timeIntervalSince(ghost.ts))
             let alpha = max(0.02, 0.18 * exp(-ageSeconds / 4.5))
             let depth = depthScalar(id: ghost.sourceID, z: ghost.position.z, now: now)
             let depthScale = depthFade(for: depth)
-            let basePoint = CGPoint(
-                x: CGFloat(ghost.position.x) * size.width * 0.45 + size.width * 0.5 + parallax.x * depth,
-                y: CGFloat(ghost.position.y) * size.height * 0.45 + size.height * 0.5 + parallax.y * depth
-            )
+            let hemisphere = hemisphereFade(z: ghost.position.z, recency: recency)
+            let recency = exp(-ageSeconds / 4.5)
+            let temporalScale = (0.65 + depth * 0.35) * (0.7 + 0.3 * CGFloat(recency))
+            let parallaxFactor = 0.4 + 0.6 * CGFloat(recency)
+            let basePoint = projectPoint(ghost.position, size: size, parallax: parallax, depth: depth, now: now, isActive: isActive, depthScale: temporalScale, parallaxFactor: parallaxFactor)
             let radius = CGFloat(1.0 + alpha * 10.0) * depth
             context.fill(Path(ellipseIn: CGRect(x: basePoint.x - radius, y: basePoint.y - radius, width: radius * 2, height: radius * 2)),
-                         with: .color(Color(ghost.color).opacity(alpha * Double(activityFade) * Double(depthScale))))
+                         with: .color(Color(ghost.color).opacity(alpha * Double(activityFade) * Double(depthScale) * Double(hemisphere))))
         }
     }
 
-    private func drawPulses(context: inout GraphicsContext, size: CGSize, now: Date, parallax: CGPoint, focusID: String?, activityFade: CGFloat) {
+    private func drawPulses(context: inout GraphicsContext, size: CGSize, now: Date, parallax: CGPoint, focusID: String?, activityFade: CGFloat, isActive: Bool) {
         for pulse in pulses {
             let focusScale: CGFloat = (focusID == nil || focusID == pulse.sourceID) ? 1.0 : 0.2
             let age = now.timeIntervalSince(pulse.birth)
             let progress = min(1.0, age / max(0.01, pulse.lifespan))
             let alpha = (1.0 - progress) * pulse.strength
             let depth = depthScalar(id: pulse.sourceID, z: pulse.position.z, now: now)
-            let center = CGPoint(
-                x: CGFloat(pulse.position.x) * size.width * 0.45 + size.width * 0.5 + parallax.x * depth,
-                y: CGFloat(pulse.position.y) * size.height * 0.45 + size.height * 0.5 + parallax.y * depth
-            )
+            let recency = max(0.0, 1.0 - progress)
+            let temporalScale = (0.65 + depth * 0.35) * (0.7 + 0.3 * CGFloat(recency))
+            let parallaxFactor = 0.4 + 0.6 * CGFloat(recency)
+            let center = projectPoint(pulse.position, size: size, parallax: parallax, depth: depth, now: now, isActive: isActive, depthScale: temporalScale, parallaxFactor: parallaxFactor)
             let radius = CGFloat(18 + progress * 140) * depth
             let rect = CGRect(x: center.x - radius, y: center.y - radius, width: radius * 2, height: radius * 2)
             let accentColor: NSColor = {
@@ -1998,7 +2108,8 @@ final class SignalFieldEngine: ObservableObject {
                     return pulse.color
                 }
             }()
-            let strokeAlpha = alpha * Double(activityFade) * Double(focusScale) * Double(depthFade(for: depth))
+            let hemisphere = hemisphereFade(z: pulse.position.z, recency: recency)
+            let strokeAlpha = alpha * Double(activityFade) * Double(focusScale) * Double(depthFade(for: depth)) * Double(hemisphere)
             let color = Color(accentColor).opacity(strokeAlpha)
             let lineWidth = CGFloat(1.2 + pulse.strength * 2) * depth
 
@@ -2020,6 +2131,9 @@ final class SignalFieldEngine: ObservableObject {
                 }
             case .wifi:
                 context.stroke(Path(ellipseIn: rect), with: .color(color.opacity(0.85)), lineWidth: lineWidth)
+            case .rf:
+                let path = waveRingPath(center: center, radius: radius, amplitude: radius * 0.08, waves: 9, phase: now.timeIntervalSinceReferenceDate)
+                context.stroke(path, with: .color(color.opacity(0.85)), lineWidth: lineWidth)
             case .node:
                 context.stroke(diamondPath(in: rect), with: .color(color.opacity(0.85)), lineWidth: lineWidth)
             case .error:
@@ -2041,11 +2155,13 @@ final class SignalFieldEngine: ObservableObject {
         }
     }
 
+
     private var ghostAccumulator: [GhostPoint] = []
     private var ghostLastFlush: Date = .distantPast
 
     private func seedPulse(id: String, source: SignalSource, event: NormalizedEvent, now: Date) {
-        let color = SignalColor.deviceColor(id: id)
+        let style = SignalVisualStyle.from(event: event, now: now)
+        let color = SignalColor.applyStyle(SignalColor.kindAccent(kind: event.kind), saturation: style.saturation, brightness: style.brightness)
         let renderKind = SignalRenderKind.from(event: event)
         seedPulse(id: id, color: color, strength: event.signal.strength == nil ? 0.5 : 0.8, source: source, now: now, renderKind: renderKind)
     }
@@ -2082,7 +2198,7 @@ final class SignalSource: Hashable {
     var position: SIMD3<Double>
     var velocity: SIMD3<Double> = .zero
     var target: SIMD3<Double>
-    let color: NSColor
+    var color: NSColor
     var lastSeen: Date?
     var lastStrength: Double?
     var lastKind: String?
@@ -2105,6 +2221,7 @@ final class SignalSource: Hashable {
     }
 
     func update(from frame: SignalFrame) {
+        color = SignalColor.kindAccent(kind: frame.source)
         let nx = frame.x ?? 0.5
         let ny = frame.y ?? 0.5
         let strength = frame.rssi ?? -65
@@ -2120,6 +2237,8 @@ final class SignalSource: Hashable {
     }
 
     func update(from event: NormalizedEvent) {
+        let style = SignalVisualStyle.from(event: event, now: Date())
+        color = SignalColor.applyStyle(SignalColor.kindAccent(kind: event.kind), saturation: style.saturation, brightness: style.brightness)
         let baseHue = Double(SignalColor.stableHue(for: event.deviceID ?? event.nodeID))
         let kindOffset = event.kind.contains("wifi") ? 0.08 : event.kind.contains("ble") ? -0.06 : 0.0
         let channel = Double(event.signal.channel ?? "") ?? baseHue * 180
@@ -2158,10 +2277,8 @@ final class SignalSource: Hashable {
         CGFloat(0.5 + position.z * 0.9)
     }
 
-    func project(in size: CGSize, parallax: CGPoint) -> CGPoint {
-        let px = CGFloat(position.x) * size.width * 0.45 + size.width * 0.5
-        let py = CGFloat(position.y) * size.height * 0.45 + size.height * 0.5
-        return CGPoint(x: px + parallax.x * depth, y: py + parallax.y * depth)
+    func project(in size: CGSize, parallax: CGPoint, now: Date, isActive: Bool) -> CGPoint {
+        return projectPoint(position, size: size, parallax: parallax, depth: depth, now: now, isActive: isActive)
     }
 
     private func applyTarget(_ next: SIMD3<Double>) {
@@ -2219,15 +2336,15 @@ struct SignalParticle: Hashable {
         now.timeIntervalSince(birth) > lifespan
     }
 
-    func draw(context: inout GraphicsContext, size: CGSize, now: Date, parallax: CGPoint, dimmed: Bool, activityFade: CGFloat) {
+    func draw(context: inout GraphicsContext, size: CGSize, now: Date, parallax: CGPoint, dimmed: Bool, activityFade: CGFloat, isActive: Bool) {
         let age = now.timeIntervalSince(birth)
         let progress = min(1.0, age / max(0.01, lifespan))
         let alpha = 1.0 - progress
         let depth = depthScalar(id: sourceID, z: position.z, now: now)
-        let basePoint = CGPoint(
-            x: CGFloat(position.x) * size.width * 0.45 + size.width * 0.5 + parallax.x * depth,
-            y: CGFloat(position.y) * size.height * 0.45 + size.height * 0.5 + parallax.y * depth
-        )
+        let recency = max(0.0, 1.0 - progress)
+        let temporalScale = (0.65 + depth * 0.35) * (0.7 + 0.3 * CGFloat(recency))
+        let parallaxFactor = 0.4 + 0.6 * CGFloat(recency)
+        let basePoint = projectPoint(position, size: size, parallax: parallax, depth: depth, now: now, isActive: isActive, depthScale: temporalScale, parallaxFactor: parallaxFactor)
         let glowStrength = max(0.0, min(1.0, glow))
         let accentColor: NSColor = {
             switch renderKind {
@@ -2240,7 +2357,8 @@ struct SignalParticle: Hashable {
             }
         }()
         let depthFadeValue = depthFade(for: depth)
-        let alphaScale = CGFloat(alpha) * (dimmed ? 0.25 : 0.9) * activityFade * depthFadeValue
+        let hemisphere = hemisphereFade(z: position.z, recency: 1.0 - progress)
+        let alphaScale = CGFloat(alpha) * (dimmed ? 0.25 : 0.9) * activityFade * depthFadeValue * hemisphere
         let drawColor = Color(accentColor).opacity(Double(alphaScale))
 
         switch kind {
@@ -2257,7 +2375,7 @@ struct SignalParticle: Hashable {
             } else {
                 context.fill(Path(ellipseIn: rect), with: .color(drawColor))
             }
-            drawTrail(context: &context, size: size, parallax: parallax, alpha: alpha, dimmed: dimmed, activityFade: activityFade)
+            drawTrail(context: &context, size: size, now: now, parallax: parallax, alpha: alpha, dimmed: dimmed, activityFade: activityFade, isActive: isActive)
         case .ring:
             let radius = CGFloat(ringRadius) * depth
             let rect = CGRect(x: basePoint.x - radius, y: basePoint.y - radius, width: radius * 2, height: radius * 2)
@@ -2280,6 +2398,9 @@ struct SignalParticle: Hashable {
                 }
             case .wifi:
                 context.stroke(Path(ellipseIn: rect), with: .color(drawColor.opacity(0.7 + CGFloat(glowStrength) * 0.2)), lineWidth: lineWidth)
+            case .rf:
+                let path = waveRingPath(center: basePoint, radius: radius, amplitude: radius * 0.08, waves: 9, phase: now.timeIntervalSinceReferenceDate)
+                context.stroke(path, with: .color(drawColor.opacity(0.75 + CGFloat(glowStrength) * 0.2)), lineWidth: lineWidth)
             default:
                 context.stroke(Path(ellipseIn: rect), with: .color(drawColor.opacity(0.6 + CGFloat(glowStrength) * 0.2)), lineWidth: lineWidth)
             }
@@ -2289,6 +2410,9 @@ struct SignalParticle: Hashable {
             let strokeColor = drawColor.opacity(0.8 + CGFloat(glowStrength) * 0.15)
             if renderKind == .node {
                 context.stroke(diamondPath(in: rect), with: .color(strokeColor), lineWidth: CGFloat(ringWidth) * depth)
+            } else if renderKind == .rf {
+                let path = waveRingPath(center: basePoint, radius: radius, amplitude: radius * 0.09, waves: 10, phase: now.timeIntervalSinceReferenceDate)
+                context.stroke(path, with: .color(strokeColor), lineWidth: CGFloat(ringWidth) * depth)
             } else {
                 context.stroke(Path(ellipseIn: rect), with: .color(strokeColor), lineWidth: CGFloat(ringWidth) * depth)
             }
@@ -2311,17 +2435,21 @@ struct SignalParticle: Hashable {
             } else {
                 context.stroke(Path(ellipseIn: rect), with: .color(drawColor.opacity(0.8 + CGFloat(glowStrength) * 0.2)), lineWidth: CGFloat(ringWidth) * depth)
             }
-            drawTrail(context: &context, size: size, parallax: parallax, alpha: alpha, dimmed: dimmed, activityFade: activityFade)
+            drawTrail(context: &context, size: size, now: now, parallax: parallax, alpha: alpha, dimmed: dimmed, activityFade: activityFade, isActive: isActive)
         }
     }
 
-    private func drawTrail(context: inout GraphicsContext, size: CGSize, parallax: CGPoint, alpha: Double, dimmed: Bool, activityFade: CGFloat) {
+    private func drawTrail(context: inout GraphicsContext, size: CGSize, now: Date, parallax: CGPoint, alpha: Double, dimmed: Bool, activityFade: CGFloat, isActive: Bool) {
         guard trail.count > 1 else { return }
-        let depth = depthScalar(id: sourceID, z: position.z, now: Date())
+        let depth = depthScalar(id: sourceID, z: position.z, now: now)
+        let recency = max(0.0, min(1.0, alpha))
+        let temporalScale = (0.65 + depth * 0.35) * (0.7 + 0.3 * CGFloat(recency))
+        let parallaxFactor = 0.4 + 0.6 * CGFloat(recency)
         var path = Path()
         for (index, point) in trail.enumerated() {
-            let px = CGFloat(point.x) * size.width * 0.45 + size.width * 0.5 + parallax.x * depth
-            let py = CGFloat(point.y) * size.height * 0.45 + size.height * 0.5 + parallax.y * depth
+            let projected = projectPoint(point, size: size, parallax: parallax, depth: depth, now: now, isActive: isActive, depthScale: temporalScale, parallaxFactor: parallaxFactor)
+            let px = projected.x
+            let py = projected.y
             let p = CGPoint(x: px, y: py)
             if index == 0 {
                 path.move(to: p)
@@ -2332,7 +2460,8 @@ struct SignalParticle: Hashable {
         let baseAlpha = dimmed ? 0.18 : 0.45
         let lineWidth = max(0.6, 1.2 * depth * CGFloat(alpha))
         let depthScale = depthFade(for: depth)
-        context.stroke(path, with: .color(Color(color).opacity(alpha * baseAlpha * Double(activityFade) * Double(depthScale))), lineWidth: lineWidth)
+        let hemisphere = hemisphereFade(z: position.z, recency: alpha)
+        context.stroke(path, with: .color(Color(color).opacity(alpha * baseAlpha * Double(activityFade) * Double(depthScale) * Double(hemisphere))), lineWidth: lineWidth)
     }
 }
 
@@ -2346,6 +2475,7 @@ enum ParticleKind {
 enum SignalRenderKind: String {
     case ble
     case wifi
+    case rf
     case node
     case error
     case generic
@@ -2354,6 +2484,7 @@ enum SignalRenderKind: String {
         let kind = event.kind.lowercased()
         if kind.contains("ble") { return .ble }
         if kind.contains("wifi") || kind.contains("net") || kind.contains("host") { return .wifi }
+        if kind.contains("rf") || kind.contains("sdr") || event.signal.tags.contains("rf") { return .rf }
         if kind.contains("node") { return .node }
         if kind.contains("error") || event.signal.tags.contains("error") { return .error }
         return .generic
@@ -2363,6 +2494,7 @@ enum SignalRenderKind: String {
         let source = source.lowercased()
         if source.contains("ble") { return .ble }
         if source.contains("wifi") || source.contains("net") || source.contains("host") { return .wifi }
+        if source.contains("rf") || source.contains("sdr") { return .rf }
         if source.contains("node") { return .node }
         if source.contains("error") { return .error }
         return .generic
@@ -2372,6 +2504,7 @@ enum SignalRenderKind: String {
         switch self {
         case .ble: return "BLE"
         case .wifi: return "Wi-Fi"
+        case .rf: return "RF"
         case .node: return "Node"
         case .error: return "Error"
         case .generic: return "Signal"
@@ -2403,6 +2536,7 @@ enum SignalIntensity: String, CaseIterable, Identifiable {
 enum SignalKindLegend: CaseIterable, Identifiable {
     case ble
     case wifi
+    case rf
     case node
     case error
 
@@ -2412,6 +2546,7 @@ enum SignalKindLegend: CaseIterable, Identifiable {
         switch self {
         case .ble: return "BLE seen"
         case .wifi: return "Wi-Fi status"
+        case .rf: return "RF activity"
         case .node: return "Node heartbeat"
         case .error: return "Errors"
         }
@@ -2421,6 +2556,7 @@ enum SignalKindLegend: CaseIterable, Identifiable {
         switch self {
         case .ble: return SignalColor.kindAccent(kind: "ble.seen")
         case .wifi: return SignalColor.kindAccent(kind: "wifi.status")
+        case .rf: return SignalColor.kindAccent(kind: "rf")
         case .node: return SignalColor.kindAccent(kind: "node.heartbeat")
         case .error: return SignalColor.kindAccent(kind: "error")
         }
@@ -2434,10 +2570,11 @@ enum SignalEmitter {
         let energy = max(0.2, min(1.8, (abs(strength) / 90.0)))
         let style = SignalVisualStyle.from(event: event, now: now)
         let deviceID = event.deviceID ?? event.nodeID
-        let baseColor = SignalColor.deviceColor(id: deviceID, saturation: style.saturation, brightness: style.brightness)
+        let renderKind = SignalRenderKind.from(event: event)
+        let baseHueColor = SignalColor.kindAccent(kind: event.kind)
+        let baseColor = SignalColor.applyStyle(baseHueColor, saturation: style.saturation, brightness: style.brightness)
         let count = Int(ceil(6 * intensity.multiplier * energy))
         var particles: [SignalParticle] = []
-        let renderKind = SignalRenderKind.from(event: event)
 
         let isWifi = kind.contains("wifi") || kind.contains("net") || kind.contains("host")
         if kind.contains("ble") {
@@ -2448,6 +2585,9 @@ enum SignalEmitter {
         } else if isWifi {
             particles.append(makeRing(source: source, color: baseColor, now: now, pulse: false, glow: style.glow, renderKind: renderKind))
             particles.append(makeSpark(source: source, color: baseColor, now: now, energy: max(0.3, energy * 0.6), glow: style.glow, renderKind: renderKind))
+        } else if kind.contains("rf") || kind.contains("sdr") {
+            particles.append(makeRing(source: source, color: baseColor, now: now, pulse: true, glow: min(1.0, style.glow + 0.25), renderKind: renderKind, lifespan: 2.2))
+            particles.append(makeBurst(source: source, color: baseColor, now: now, energy: max(0.35, energy * 0.7), glow: min(1.0, style.glow + 0.35), renderKind: renderKind))
         } else if kind.contains("node") {
             particles.append(makeRing(source: source, color: baseColor, now: now, pulse: true, glow: style.glow, renderKind: renderKind, lifespan: 2.6))
             particles.append(makeSpark(source: source, color: baseColor, now: now, energy: max(0.25, energy * 0.5), glow: style.glow, renderKind: renderKind))
@@ -2544,8 +2684,14 @@ struct SignalVisualStyle: Hashable {
     let confidence: Double
 
     static func from(event: NormalizedEvent, now: Date) -> SignalVisualStyle {
-        let deviceID = event.deviceID ?? event.nodeID
-        let hue = SignalColor.stableHue(for: deviceID)
+        let baseColor = SignalColor.kindAccent(kind: event.kind)
+        let base = baseColor.usingColorSpace(.deviceRGB) ?? baseColor
+        var hueValue: CGFloat = 0
+        var satValue: CGFloat = 0
+        var brightValue: CGFloat = 0
+        var alphaValue: CGFloat = 1
+        base.getHue(&hueValue, saturation: &satValue, brightness: &brightValue, alpha: &alphaValue)
+        let hue = Double(hueValue)
 
         let timestamp = event.eventTs ?? event.recvTs ?? now
         let age = max(0.0, now.timeIntervalSince(timestamp))
@@ -2602,8 +2748,11 @@ enum SignalColor {
         if kind.contains("ble") {
             return NSColor(calibratedHue: 0.52, saturation: 0.7, brightness: 0.95, alpha: 1.0)
         }
-        if kind.contains("wifi") {
+        if kind.contains("wifi") || kind.contains("net") || kind.contains("host") {
             return NSColor(calibratedHue: 0.33, saturation: 0.7, brightness: 0.9, alpha: 1.0)
+        }
+        if kind.contains("rf") || kind.contains("sdr") {
+            return NSColor(calibratedHue: 0.88, saturation: 0.65, brightness: 0.95, alpha: 1.0)
         }
         if kind.contains("node") {
             return NSColor(calibratedHue: 0.62, saturation: 0.6, brightness: 0.92, alpha: 1.0)
@@ -2612,6 +2761,18 @@ enum SignalColor {
             return NSColor(calibratedHue: 0.02, saturation: 0.85, brightness: 0.95, alpha: 1.0)
         }
         return NSColor(calibratedHue: 0.08, saturation: 0.6, brightness: 0.9, alpha: 1.0)
+    }
+
+    static func applyStyle(_ color: NSColor, saturation: Double, brightness: Double) -> NSColor {
+        let color = color.usingColorSpace(.deviceRGB) ?? color
+        var h: CGFloat = 0
+        var s: CGFloat = 0
+        var b: CGFloat = 0
+        var a: CGFloat = 1
+        color.getHue(&h, saturation: &s, brightness: &b, alpha: &a)
+        let nextS = max(0.2, min(1.0, saturation))
+        let nextB = max(0.2, min(1.0, brightness))
+        return NSColor(calibratedHue: h, saturation: CGFloat(nextS), brightness: CGFloat(nextB), alpha: 1.0)
     }
 
     static func mix(_ base: NSColor, _ accent: NSColor, ratio: Double) -> NSColor {
@@ -2654,6 +2815,58 @@ private func diamondPath(in rect: CGRect) -> Path {
     return path
 }
 
+private func waveRingPath(center: CGPoint, radius: CGFloat, amplitude: CGFloat, waves: Int, phase: Double) -> Path {
+    var path = Path()
+    let steps = max(48, waves * 8)
+    for i in 0...steps {
+        let t = Double(i) / Double(steps)
+        let angle = t * Double.pi * 2
+        let ripple = sin(angle * Double(waves) + phase * 1.2) * Double(amplitude)
+        let r = Double(radius) + ripple
+        let x = center.x + CGFloat(cos(angle) * r)
+        let y = center.y + CGFloat(sin(angle) * r)
+        if i == 0 {
+            path.move(to: CGPoint(x: x, y: y))
+        } else {
+            path.addLine(to: CGPoint(x: x, y: y))
+        }
+    }
+    path.closeSubpath()
+    return path
+}
+
+private func rotatePosition(_ position: SIMD3<Double>, yaw: Double, pitch: Double) -> SIMD3<Double> {
+    let cy = cos(yaw)
+    let sy = sin(yaw)
+    let cp = cos(pitch)
+    let sp = sin(pitch)
+    let x1 = position.x * cy + position.z * sy
+    let z1 = -position.x * sy + position.z * cy
+    let y2 = position.y * cp - z1 * sp
+    let z2 = position.y * sp + z1 * cp
+    return SIMD3<Double>(x1, y2, z2)
+}
+
+private func projectPoint(
+    _ position: SIMD3<Double>,
+    size: CGSize,
+    parallax: CGPoint,
+    depth: CGFloat,
+    now: Date,
+    isActive: Bool,
+    depthScale: CGFloat? = nil,
+    parallaxFactor: CGFloat = 1.0
+) -> CGPoint {
+    let spin = isActive ? sin(now.timeIntervalSinceReferenceDate * 0.08) * 0.22 : sin(now.timeIntervalSinceReferenceDate * 0.04) * 0.12
+    let tilt = isActive ? cos(now.timeIntervalSinceReferenceDate * 0.06) * 0.18 : cos(now.timeIntervalSinceReferenceDate * 0.03) * 0.1
+    let rotated = rotatePosition(position, yaw: spin, pitch: tilt)
+    let resolvedDepthScale = depthScale ?? (0.65 + depth * 0.35)
+    let depthScale = max(0.3, resolvedDepthScale)
+    let px = CGFloat(rotated.x) * size.width * 0.45 * depthScale + size.width * 0.5
+    let py = CGFloat(rotated.y) * size.height * 0.45 * depthScale + size.height * 0.5
+    return CGPoint(x: px + parallax.x * depth * parallaxFactor, y: py + parallax.y * depth * parallaxFactor)
+}
+
 private func depthScalar(id: String, z: Double, now: Date) -> CGFloat {
     let base = 0.52 + z * 0.85 + stableDepthOffset(for: id)
     let seed = Double(SignalColor.stableHue(for: id)) * Double.pi * 2
@@ -2665,6 +2878,13 @@ private func depthScalar(id: String, z: Double, now: Date) -> CGFloat {
 private func depthFade(for depth: CGFloat) -> CGFloat {
     let value = 0.45 + depth * 0.45
     return max(0.3, min(1.1, value))
+}
+
+private func hemisphereFade(z: Double, recency: Double) -> CGFloat {
+    let zClamped = max(0.05, min(1.0, z))
+    let base = 0.35 + CGFloat(zClamped) * 0.65
+    let timeBoost = 0.65 + 0.35 * CGFloat(max(0.0, min(1.0, recency)))
+    return max(0.22, min(1.0, base * timeBoost))
 }
 
 struct SeededRandom {
