@@ -33,6 +33,9 @@ targets=(
   "$TOOLS_DIR/portal-cyd-stage.sh"
   "$TOOLS_DIR/portal-build.sh"
   "$TOOLS_DIR/portal-flash-help.sh"
+  "$TOOLS_DIR/p4-build.sh"
+  "$TOOLS_DIR/p4-flash.sh"
+  "$TOOLS_DIR/p4-monitor.sh"
   "$TOOLS_DIR/verify.sh"
 )
 

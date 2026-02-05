@@ -1,0 +1,35 @@
+menu "SODS P4 God Button"
+
+config ESP_WIFI_SSID
+    string "Wi-Fi SSID"
+    default "espgo"
+
+config ESP_WIFI_PASSWORD
+    string "Wi-Fi Password"
+    default "12345678"
+
+config SODS_NODE_ID_PREFIX
+    string "Node ID prefix"
+    default "p4"
+
+config SODS_ROLE
+    string "Node role"
+    default "field-tool"
+
+config SODS_HTTP_PORT
+    int "HTTP server port"
+    default 8080
+
+config SODS_WIFI_SCAN_ACTIVE
+    bool "Use active Wi-Fi scans"
+    default y
+
+config SODS_WIFI_SCAN_TIME_MS
+    int "Wi-Fi scan time (ms)"
+    default 3000
+
+config SODS_RING_CAPACITY
+    int "Ring buffer capacity"
+    default 256
+
+endmenu
