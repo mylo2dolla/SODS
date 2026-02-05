@@ -8,6 +8,7 @@ PI_LOGGER="${PI_LOGGER:-http://pi-logger.local:8088}"
 APP_PATH="$REPO_ROOT/dist/DevStation.app"
 LOG_DIR="$HOME/Library/Logs/SODS"
 LOG_FILE="$LOG_DIR/station.log"
+BUILD="${DEVSTATION_BUILD:-1}"
 
 mkdir -p "$LOG_DIR"
 
@@ -17,7 +18,7 @@ if ! curl -fsS "http://localhost:${PORT}/api/status" >/dev/null 2>&1; then
   sleep 1
 fi
 
-if [[ ! -d "$APP_PATH" ]]; then
+if [[ "${BUILD}" != "0" ]] || [[ ! -d "$APP_PATH" ]]; then
   "$REPO_ROOT/tools/devstation-build.sh"
 fi
 

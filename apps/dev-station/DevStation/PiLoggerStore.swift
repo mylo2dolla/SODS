@@ -77,9 +77,7 @@ final class SODSStore: ObservableObject {
     }
 
     private func connectWebSocket() {
-        guard let url = makeURL(path: "/ws/events") else { return }
-        let wsURL = url.absoluteString.replacingOccurrences(of: "http", with: "ws")
-        guard let finalURL = URL(string: wsURL) else { return }
+        guard let finalURL = makeWebSocketURL(path: "/ws/events") else { return }
         let task = URLSession.shared.webSocketTask(with: finalURL)
         wsTask = task
         task.resume()
@@ -87,9 +85,7 @@ final class SODSStore: ObservableObject {
     }
 
     private func connectFramesWebSocket() {
-        guard let url = makeURL(path: "/ws/frames") else { return }
-        let wsURL = url.absoluteString.replacingOccurrences(of: "http", with: "ws")
-        guard let finalURL = URL(string: wsURL) else { return }
+        guard let finalURL = makeWebSocketURL(path: "/ws/frames") else { return }
         let task = URLSession.shared.webSocketTask(with: finalURL)
         wsFramesTask = task
         task.resume()
@@ -457,6 +453,32 @@ final class SODSStore: ObservableObject {
             components.path = existingPath + path
         }
         return components.url
+    }
+
+    private func makeWebSocketURL(path: String) -> URL? {
+        guard let httpURL = makeURL(path: path),
+              var components = URLComponents(url: httpURL, resolvingAgainstBaseURL: false) else {
+            return nil
+        }
+        let scheme = components.scheme?.lowercased()
+        switch scheme {
+        case "http":
+            components.scheme = "ws"
+        case "https":
+            components.scheme = "wss"
+        case "ws", "wss":
+            break
+        default:
+            lastError = "Invalid station URL scheme for WebSocket: \(httpURL.absoluteString)"
+            health = .offline
+            return nil
+        }
+        guard let finalURL = components.url else {
+            lastError = "Invalid WebSocket URL: \(httpURL.absoluteString)"
+            health = .offline
+            return nil
+        }
+        return finalURL
     }
 }
 
