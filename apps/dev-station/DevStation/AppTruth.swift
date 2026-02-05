@@ -19,6 +19,9 @@ final class AppTruth {
     }
 
     func resolveHost(ip: String, scanner: NetworkScanner) -> HostEntry? {
+        if let host = EntityStore.shared.hosts.first(where: { $0.ip == ip }) {
+            return host
+        }
         if let host = scanner.allHosts.first(where: { $0.ip == ip }) {
             return host
         }
@@ -49,6 +52,9 @@ final class AppTruth {
     }
 
     func resolveDevice(ip: String, scanner: NetworkScanner) -> Device? {
+        if let device = EntityStore.shared.devices.first(where: { $0.ip == ip }) {
+            return device
+        }
         if let device = scanner.devices.first(where: { $0.ip == ip }) {
             return device
         }

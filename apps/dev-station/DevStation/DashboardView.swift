@@ -4,6 +4,7 @@ struct DashboardView: View {
     @ObservedObject var scanner: NetworkScanner
     @ObservedObject var bleScanner: BLEScanner
     @ObservedObject var piAuxStore: PiAuxStore
+    @ObservedObject var entityStore: EntityStore
     @ObservedObject var vaultTransport: VaultTransport
     let inboxStatus: InboxStatus
     let retentionDays: Int
@@ -44,10 +45,10 @@ struct DashboardView: View {
                     Text("Scanning: \(scanner.isScanning ? "Yes" : "No")")
                         .font(.system(size: 11))
                         .foregroundColor(Theme.textSecondary)
-                    Text("Hosts found: \(scanner.allHosts.count)")
+                    Text("Hosts found: \(entityStore.hosts.count)")
                         .font(.system(size: 11))
                         .foregroundColor(Theme.textSecondary)
-                    Text("BLE devices: \(bleScanner.peripherals.count)")
+                    Text("BLE devices: \(entityStore.blePeripherals.count)")
                         .font(.system(size: 11))
                         .foregroundColor(Theme.textSecondary)
                 }
@@ -60,7 +61,7 @@ struct DashboardView: View {
                     Text("Recent events (10m): \(piAuxStore.recentEventCount(window: 600))")
                         .font(.system(size: 11))
                         .foregroundColor(Theme.textSecondary)
-                    Text("Active nodes: \(piAuxStore.activeNodes.count)")
+                    Text("Active nodes: \(entityStore.nodes.count)")
                         .font(.system(size: 11))
                         .foregroundColor(Theme.textSecondary)
                     if let lastError = piAuxStore.lastError, !lastError.isEmpty {

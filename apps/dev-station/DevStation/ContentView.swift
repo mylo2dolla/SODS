@@ -48,39 +48,14 @@ struct ContentView: View {
         }
     }
 
-    enum ActiveSheet: Identifiable {
-        case toolRegistry
-        case apiInspector(endpoint: APIEndpoint)
-        case toolRunner(tool: ToolDefinition)
-        case presetRunner(preset: PresetDefinition)
-        case runbookRunner(runbook: RunbookDefinition)
-        case toolBuilder
-        case presetBuilder
-        case scratchpad
-        case aliasManager
-        case viewer(url: URL)
-
-        var id: String {
-            switch self {
-            case .toolRegistry: return "toolRegistry"
-            case .apiInspector(let endpoint): return "apiInspector:\(endpoint.rawValue)"
-            case .toolRunner(let tool): return "toolRunner:\(tool.name)"
-            case .presetRunner(let preset): return "presetRunner:\(preset.id)"
-            case .runbookRunner(let runbook): return "runbookRunner:\(runbook.id)"
-            case .toolBuilder: return "toolBuilder"
-            case .presetBuilder: return "presetBuilder"
-            case .scratchpad: return "scratchpad"
-            case .aliasManager: return "aliasManager"
-            case .viewer(let url): return "viewer:\(url.absoluteString)"
-            }
-        }
-    }
 
     @StateObject private var scanner = NetworkScanner()
     @StateObject private var logStore = LogStore.shared
+    @StateObject private var modalCoordinator = ModalCoordinator()
     @StateObject private var bleScanner = BLEScanner.shared
     @StateObject private var bleProber = BLEProber.shared
     @StateObject private var piAuxStore = PiAuxStore.shared
+    @StateObject private var entityStore = EntityStore.shared
     @StateObject private var caseManager = CaseManager.shared
     @StateObject private var sodsStore = SODSStore.shared
     @StateObject private var sessionManager = CaseSessionManager.shared
@@ -135,92 +110,124 @@ struct ContentView: View {
     @State private var bleTableWarning: String?
     @State private var sodsURLText = ""
     @State private var showFlashPopover = false
-    @State private var activeSheet: ActiveSheet?
+    @State private var showGodMenu = false
 
     var body: some View {
         mainContent
             .toolbar { toolbarContent }
-            .sheet(item: $activeSheet) { sheet in
+            .sheet(item: $modalCoordinator.activeSheet) { sheet in
                 switch sheet {
                 case .toolRegistry:
                     ToolRegistryView(
                         registry: toolRegistry,
                         baseURL: sodsStore.baseURL,
                         onFlash: { showFlashPopover = true },
-                        onInspect: { endpoint in activeSheet = .apiInspector(endpoint: endpoint) },
-                        onRunTool: { tool in activeSheet = .toolRunner(tool: tool) },
+                        onInspect: { endpoint in modalCoordinator.present(.apiInspector(endpoint: endpoint)) },
+                        onRunTool: { tool in modalCoordinator.present(.toolRunner(tool: tool)) },
                         onRunRunbook: { name in
                             let id = name.replacingOccurrences(of: "runbook.", with: "")
                             if let runbook = runbookRegistry.runbooks.first(where: { $0.id == id }) {
-                                activeSheet = .runbookRunner(runbook: runbook)
+                                modalCoordinator.present(.runbookRunner(runbook: runbook))
                             } else {
-                                activeSheet = .apiInspector(endpoint: .runbooks)
+                                modalCoordinator.present(.apiInspector(endpoint: .runbooks))
                             }
                         },
-                        onBuildTool: { activeSheet = .toolBuilder },
-                        onBuildPreset: { activeSheet = .presetBuilder },
-                        onScratchpad: { activeSheet = .scratchpad },
-                        onClose: { activeSheet = nil }
+                        onBuildTool: { modalCoordinator.present(.toolBuilder) },
+                        onBuildPreset: { modalCoordinator.present(.presetBuilder) },
+                        onScratchpad: { modalCoordinator.present(.scratchpad) },
+                        onClose: { modalCoordinator.dismiss() }
                     )
                 case .apiInspector(let endpoint):
                     APIInspectorView(
                         baseURL: sodsStore.baseURL,
                         endpoint: endpoint,
-                        onClose: { activeSheet = nil },
-                        onBack: { activeSheet = .toolRegistry }
+                        onClose: { modalCoordinator.dismiss() },
+                        onBack: { modalCoordinator.present(.toolRegistry) }
                     )
                 case .toolRunner(let tool):
                     ToolRunnerView(
                         baseURL: sodsStore.baseURL,
                         tool: tool,
-                        onOpenViewer: { url in activeSheet = .viewer(url: url) },
-                        onClose: { activeSheet = nil },
-                        onBack: { activeSheet = .toolRegistry }
+                        onOpenViewer: { url in modalCoordinator.present(.viewer(url: url)) },
+                        onClose: { modalCoordinator.dismiss() },
+                        onBack: { modalCoordinator.present(.toolRegistry) }
                     )
                 case .presetRunner(let preset):
                     PresetRunnerView(
                         preset: preset,
                         baseURL: sodsStore.baseURL,
-                        onOpenViewer: { url in activeSheet = .viewer(url: url) },
-                        onClose: { activeSheet = nil }
+                        onOpenViewer: { url in modalCoordinator.present(.viewer(url: url)) },
+                        onClose: { modalCoordinator.dismiss() }
                     )
                 case .runbookRunner(let runbook):
                     RunbookRunnerView(
                         runbook: runbook,
                         baseURL: sodsStore.baseURL,
-                        onOpenViewer: { url in activeSheet = .viewer(url: url) },
-                        onClose: { activeSheet = nil }
+                        onOpenViewer: { url in modalCoordinator.present(.viewer(url: url)) },
+                        onClose: { modalCoordinator.dismiss() }
                     )
                 case .toolBuilder:
                     ToolBuilderView(
                         baseURL: sodsStore.baseURL,
-                        onClose: { activeSheet = nil }
+                        onClose: { modalCoordinator.dismiss() }
                     )
                 case .presetBuilder:
                     PresetBuilderView(
                         baseURL: sodsStore.baseURL,
-                        onClose: { activeSheet = nil }
+                        onClose: { modalCoordinator.dismiss() }
                     )
                 case .scratchpad:
                     ScratchpadView(
                         baseURL: sodsStore.baseURL,
-                        onSaveAsTool: { _, _ in activeSheet = .toolBuilder },
-                        onClose: { activeSheet = nil }
+                        onSaveAsTool: { _, _ in modalCoordinator.present(.toolBuilder) },
+                        onClose: { modalCoordinator.dismiss() }
                     )
                 case .aliasManager:
                     AliasManagerView(
                         aliases: aliasStore.aliasOverrides,
                         onSave: { id, alias in aliasStore.setAlias(id: id, alias: alias) },
                         onDelete: { id in aliasStore.deleteAlias(id: id) },
-                        onClose: { activeSheet = nil }
+                        onClose: { modalCoordinator.dismiss() }
                     )
+                case .consent:
+                    ConsentView {
+                        consentAcknowledged = true
+                        modalCoordinator.dismiss()
+                    }
+                case .rtspCredentials:
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("RTSP Credentials (optional)")
+                            .font(.system(size: 16, weight: .semibold))
+                        Text("Provide credentials to include in RTSP path probes for this session only.")
+                            .font(.system(size: 12))
+                            .foregroundColor(.secondary)
+                        TextField("Username", text: $rtspPromptUsername)
+                        SecureField("Password", text: $rtspPromptPassword)
+                        HStack {
+                            Button("Try Without Credentials") {
+                                runRtspTry(with: nil)
+                                showRtspCredentialsPrompt = false
+                                modalCoordinator.dismiss()
+                            }
+                            Button("Use Credentials") {
+                                runRtspTry(with: (rtspPromptUsername, rtspPromptPassword))
+                                showRtspCredentialsPrompt = false
+                                modalCoordinator.dismiss()
+                            }
+                            Button("Cancel") {
+                                showRtspCredentialsPrompt = false
+                                modalCoordinator.dismiss()
+                            }
+                        }
+                    }
+                    .padding(20)
                 case .viewer(let url):
-                    ViewerSheet(url: url, onClose: { activeSheet = nil })
+                    ViewerSheet(url: url, onClose: { modalCoordinator.dismiss() })
                 }
             }
             .onReceive(NotificationCenter.default.publisher(for: .sodsOpenURLInApp)) { note in
                 if let url = note.object as? URL {
-                    activeSheet = .viewer(url: url)
+                    modalCoordinator.present(.viewer(url: url))
                 }
             }
     }
@@ -245,6 +252,7 @@ struct ContentView: View {
         .preferredColorScheme(.dark)
         .frame(minWidth: 1200, minHeight: 760)
         .onAppear {
+            if !consentAcknowledged { modalCoordinator.present(.consent) }
             if scopeCIDR.isEmpty, let subnet = IPv4Subnet.active() {
                 scopeCIDR = "\(subnet.addressString)/\(subnet.prefixLength)"
             }
@@ -257,10 +265,10 @@ struct ContentView: View {
             inboxStatus = InboxRetention.shared.currentStatus()
             piAuxStore.refreshLocalNodeHeartbeat()
             IdentityResolver.shared.updateOverrides(sodsStore.aliasOverrides)
-            IdentityResolver.shared.updateFromHosts(scanner.allHosts)
-            IdentityResolver.shared.updateFromDevices(scanner.devices)
-            IdentityResolver.shared.updateFromBLE(bleScanner.peripherals)
-            IdentityResolver.shared.updateFromNodes(piAuxStore.activeNodes)
+            entityStore.ingestHosts(scanner.allHosts)
+            entityStore.ingestDevices(scanner.devices)
+            entityStore.ingestBLE(bleScanner.peripherals)
+            entityStore.ingestNodes(piAuxStore.activeNodes)
             IdentityResolver.shared.updateFromSignals(sodsStore.nodes)
             Task.detached {
                 await ArtifactStore.shared.runCleanup(log: logStore)
@@ -310,26 +318,30 @@ struct ContentView: View {
             piAuxStore.refreshLocalNodeHeartbeat()
         }
         .onChange(of: selectedIP) { newValue in
-            guard let ip = newValue else { return }
-            loadCredentials(for: ip)
-            applyCredentialsToDevice(ip: ip)
-            if rtspOverrideValueByIP[ip] == nil {
-                rtspOverrideValueByIP[ip] = AppTruth.shared.bestRTSPURI(ip: ip, scanner: scanner) ?? ""
+            if let ip = newValue {
+                entityStore.select(id: ip, kind: .host)
+                loadCredentials(for: ip)
+                applyCredentialsToDevice(ip: ip)
+                if rtspOverrideValueByIP[ip] == nil {
+                    rtspOverrideValueByIP[ip] = AppTruth.shared.bestRTSPURI(ip: ip, scanner: scanner) ?? ""
+                }
+            } else {
+                entityStore.select(id: nil, kind: nil)
             }
         }
         .onChange(of: scanner.devices) { _ in
-            IdentityResolver.shared.updateFromDevices(scanner.devices)
+            entityStore.ingestDevices(scanner.devices)
             refreshAutofillForSelectedIP()
         }
         .onChange(of: scanner.allHosts) { _ in
-            IdentityResolver.shared.updateFromHosts(scanner.allHosts)
+            entityStore.ingestHosts(scanner.allHosts)
             refreshAutofillForSelectedIP()
         }
         .onChange(of: bleScanner.peripherals) { _ in
-            IdentityResolver.shared.updateFromBLE(bleScanner.peripherals)
+            entityStore.ingestBLE(bleScanner.peripherals)
         }
         .onChange(of: piAuxStore.activeNodes) { _ in
-            IdentityResolver.shared.updateFromNodes(piAuxStore.activeNodes)
+            entityStore.ingestNodes(piAuxStore.activeNodes)
         }
         .onChange(of: sodsStore.nodes) { _ in
             IdentityResolver.shared.updateFromSignals(sodsStore.nodes)
@@ -339,31 +351,16 @@ struct ContentView: View {
                 piAuxStore.setNodeScanning(nodeID: piAuxStore.localNodeIdentifier, enabled: bleDiscoveryEnabled)
             }
         }
-        .sheet(isPresented: Binding(get: { !consentAcknowledged }, set: { _ in })) {
-            ConsentView {
-                consentAcknowledged = true
+        .onChange(of: selectedBleID) { newValue in
+            guard let id = newValue else { return }
+            if let peripheral = entityStore.blePeripherals.first(where: { $0.id == id }) {
+                entityStore.select(id: peripheral.fingerprintID, kind: .ble)
             }
         }
-        .sheet(isPresented: $showRtspCredentialsPrompt) {
-            VStack(alignment: .leading, spacing: 12) {
-                Text("RTSP Credentials (optional)")
-                    .font(.system(size: 16, weight: .semibold))
-                Text("Provide credentials to include in RTSP path probes for this session only.")
-                    .font(.system(size: 12))
-                    .foregroundColor(.secondary)
-                TextField("Username", text: $rtspPromptUsername)
-                SecureField("Password", text: $rtspPromptPassword)
-                HStack {
-                    Button("Try Without Credentials") {
-                        runRtspTry(with: nil)
-                    }
-                    Button("Use Credentials") {
-                        runRtspTry(with: (rtspPromptUsername, rtspPromptPassword))
-                    }
-                    Button("Cancel") {
-                        showRtspCredentialsPrompt = false
-                    }
-                }
+        
+        .onChange(of: showRtspCredentialsPrompt) { show in
+            if show { modalCoordinator.present(.rtspCredentials) }
+        }
             }
             .padding(16)
             .frame(width: 360)
@@ -391,15 +388,21 @@ struct ContentView: View {
                     }
                     .buttonStyle(SecondaryActionButtonStyle())
                     Button("Inspect API") {
-                        activeSheet = .apiInspector(endpoint: .status)
+                        modalCoordinator.present(.apiInspector(endpoint: .status))
                     }
                     .buttonStyle(SecondaryActionButtonStyle())
                 }
                 HStack(spacing: 10) {
                     Button("Open Spectrum") { viewMode = .spectral }
                         .buttonStyle(PrimaryActionButtonStyle())
-                    Button("God Button") { openSODSTools() }
+                    Button("God Button") { showGodMenu = true }
                         .buttonStyle(SecondaryActionButtonStyle())
+                        .popover(isPresented: $showGodMenu, arrowEdge: .bottom) {
+                            ActionMenuView(sections: godButtonSections())
+                                .frame(minWidth: 320)
+                                .padding(10)
+                                .background(Theme.background)
+                        }
                     Button("Flash") { showFlashPopover = true }
                         .buttonStyle(SecondaryActionButtonStyle())
                         .popover(isPresented: $showFlashPopover, arrowEdge: .bottom) {
@@ -455,6 +458,7 @@ struct ContentView: View {
                 scanner: scanner,
                 bleScanner: bleScanner,
                 piAuxStore: piAuxStore,
+                entityStore: entityStore,
                 vaultTransport: vaultTransport,
                 inboxStatus: inboxStatus,
                 retentionDays: inboxRetentionDays,
@@ -476,10 +480,11 @@ struct ContentView: View {
         } else if viewMode == .ble {
             bleSection
         } else if viewMode == .spectral {
-            VisualizerView(store: sodsStore, onOpenTools: { openSODSTools() })
+            VisualizerView(store: sodsStore, entityStore: entityStore, onOpenTools: { openSODSTools() })
         } else if viewMode == .nodes {
             NodesView(
                 store: piAuxStore,
+                nodes: entityStore.nodes,
                 scanner: scanner,
                 flashManager: flashManager,
                 onvifDiscoveryEnabled: $onvifDiscoveryEnabled,
@@ -521,14 +526,14 @@ struct ContentView: View {
         } else if viewMode == .buttons {
             PresetButtonsView(
                 registry: presetRegistry,
-                onRunPreset: { preset in activeSheet = .presetRunner(preset: preset) },
-                onOpenBuilder: { activeSheet = .presetBuilder }
+                onRunPreset: { preset in modalCoordinator.present(.presetRunner(preset: preset)) },
+                onOpenBuilder: { modalCoordinator.present(.presetBuilder) }
             )
         } else if viewMode == .runbooks {
             RunbookListView(
                 registry: runbookRegistry,
-                onRunbook: { runbook in activeSheet = .runbookRunner(runbook: runbook) },
-                onInspect: { activeSheet = .apiInspector(endpoint: .runbooks) }
+                onRunbook: { runbook in modalCoordinator.present(.runbookRunner(runbook: runbook)) },
+                onInspect: { modalCoordinator.present(.apiInspector(endpoint: .runbooks)) }
             )
         } else if viewMode == .cases {
             CasesView(
@@ -855,7 +860,7 @@ struct ContentView: View {
         BLEListView(
             scanner: bleScanner,
             prober: bleProber,
-            peripherals: bleScanner.peripherals,
+            peripherals: entityStore.blePeripherals,
             aliasForPeripheral: { peripheral in
                 IdentityResolver.shared.resolveLabel(keys: [peripheral.fingerprintID, peripheral.id.uuidString])
             },
@@ -893,7 +898,7 @@ struct ContentView: View {
                     viewMode = .allHosts
                 },
                 onSelectBLEFingerprint: { fingerprintID in
-                    if let peripheral = bleScanner.peripherals.first(where: { $0.fingerprintID == fingerprintID }) {
+                    if let peripheral = entityStore.blePeripherals.first(where: { $0.fingerprintID == fingerprintID }) {
                         selectedBleID = peripheral.id
                         viewMode = .ble
                     } else {
@@ -914,7 +919,7 @@ struct ContentView: View {
         ToolbarItemGroup(placement: .automatic) {
             Button("Tools") { openSODSTools() }
                 .buttonStyle(SecondaryActionButtonStyle())
-            Button("Aliases") { activeSheet = .aliasManager }
+            Button("Aliases") { modalCoordinator.present(.aliasManager) }
                 .buttonStyle(SecondaryActionButtonStyle())
             Picker("View", selection: $viewMode) {
                 ForEach(ViewMode.allCases) { mode in
@@ -936,7 +941,7 @@ struct ContentView: View {
             Text("Scanning: \(scanner.isScanning ? "Yes" : "No")")
                 .font(.system(size: 11))
                 .foregroundColor(.secondary)
-            Text("Hosts: \(scanner.allHosts.count)")
+            Text("Hosts: \(entityStore.hosts.count)")
                 .font(.system(size: 11))
                 .foregroundColor(.secondary)
             Text("BLE: \(bleScanner.stateDescription)")
@@ -956,7 +961,7 @@ struct ContentView: View {
     }
 
     private func hostForDevice(_ device: Device) -> HostEntry? {
-        scanner.allHosts.first(where: { $0.ip == device.ip })
+        entityStore.hosts.first(where: { $0.ip == device.ip })
     }
 
     private func credentialsKey(_ ip: String, field: String) -> String {
@@ -1052,7 +1057,7 @@ struct ContentView: View {
 
     private func openSODSTools() {
         toolRegistry.reload()
-        activeSheet = .toolRegistry
+        modalCoordinator.present(.toolRegistry)
     }
 
     private func openFlashPath(_ path: String) {
@@ -1159,7 +1164,7 @@ struct ContentView: View {
     }
 
     private var filteredHosts: [HostEntry] {
-        var hosts = scanner.allHosts
+        var hosts = entityStore.hosts
         let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         if !query.isEmpty {
             hosts = hosts.filter { host in
@@ -1179,7 +1184,7 @@ struct ContentView: View {
     }
 
     private var sortedDevices: [Device] {
-        scanner.devices.sorted {
+        entityStore.devices.sorted {
             if $0.hostConfidence.score == $1.hostConfidence.score {
                 return $0.ip < $1.ip
             }
@@ -1219,7 +1224,7 @@ struct ContentView: View {
     }
 
     private func openInAppURL(_ url: URL) {
-        activeSheet = .viewer(url: url)
+        modalCoordinator.present(.viewer(url: url))
     }
 
     private func generateDeviceReport(for ip: String) {
@@ -3384,6 +3389,118 @@ struct BLEDetailView: View {
         }
     }
 
+    private func godButtonSections() -> [ActionMenuSection] {
+        let isBleTab = viewMode == .ble
+        let isNodesTab = viewMode == .nodes
+        let hasHostSelection = selectedIP != nil
+        let nowItems: [ActionMenuItem] = {
+            var items: [ActionMenuItem] = []
+            if isBleTab {
+                items.append(ActionMenuItem(
+                    title: bleDiscoveryEnabled ? "Stop BLE Scan" : "Start BLE Scan",
+                    systemImage: "antenna.radiowaves.left.and.right",
+                    enabled: bleScanner.isAvailableForScan,
+                    reason: bleScanner.isAvailableForScan ? nil : "Bluetooth unavailable",
+                    action: {
+                        bleDiscoveryEnabled.toggle()
+                    }
+                ))
+                items.append(ActionMenuItem(
+                    title: "One-shot BLE Scan",
+                    systemImage: "scope",
+                    enabled: bleScanner.isAvailableForScan,
+                    reason: bleScanner.isAvailableForScan ? nil : "Bluetooth unavailable",
+                    action: {
+                        bleScanMode = .oneShot
+                        bleDiscoveryEnabled = true
+                    }
+                ))
+            }
+            if isNodesTab {
+                items.append(ActionMenuItem(
+                    title: "Connect Node",
+                    systemImage: "link",
+                    enabled: !connectNodeID.isEmpty,
+                    reason: connectNodeID.isEmpty ? "No node selected" : nil,
+                    action: {
+                        let target = connectNodeID
+                        if !target.isEmpty {
+                            piAuxStore.connectNode(target)
+                            piAuxStore.refreshLocalNodeHeartbeat()
+                            if !bleDiscoveryEnabled { bleDiscoveryEnabled = true }
+                        }
+                    }
+                ))
+                items.append(ActionMenuItem(
+                    title: scanner.isScanning ? "Stop Network Scan" : "Start Network Scan",
+                    systemImage: "dot.radiowaves.left.and.right",
+                    enabled: true,
+                    reason: nil,
+                    action: {
+                        if scanner.isScanning {
+                            scanner.stopScan()
+                        } else {
+                            let scope = makeScope()
+                            scanner.startScan(enableOnvifDiscovery: onvifDiscoveryEnabled, enableServiceDiscovery: serviceDiscoveryEnabled, enableArpWarmup: arpWarmupEnabled, scope: scope, mode: networkScanMode)
+                            piAuxStore.setNodeScanning(nodeID: piAuxStore.localNodeIdentifier, enabled: true)
+                        }
+                    }
+                ))
+            }
+            for runbook in runbookRegistry.runbooks where (runbook.ui?.capsule ?? false) {
+                items.append(ActionMenuItem(
+                    title: runbook.name,
+                    systemImage: "bolt",
+                    enabled: true,
+                    reason: nil,
+                    action: { modalCoordinator.present(.runbookRunner(runbook: runbook)) }
+                ))
+            }
+            return items
+        }()
+
+        let inspectItems: [ActionMenuItem] = [
+            ActionMenuItem(title: "Open Tools", systemImage: "wrench", enabled: true, reason: nil, action: { modalCoordinator.present(.toolRegistry) }),
+            ActionMenuItem(title: "Inspect Station", systemImage: "info.circle", enabled: true, reason: nil, action: { modalCoordinator.present(.apiInspector(endpoint: .status)) }),
+            ActionMenuItem(title: "Inspect Tools JSON", systemImage: "doc.text", enabled: true, reason: nil, action: { modalCoordinator.present(.apiInspector(endpoint: .tools)) }),
+            ActionMenuItem(title: "Open Web UI", systemImage: "globe", enabled: hasHostSelection && bestHTTPURL(for: selectedIP ?? "") != nil, reason: hasHostSelection ? nil : "No host selected", action: { if let ip = selectedIP { openWebUI(for: ip) } })
+        ]
+
+        let connectItems: [ActionMenuItem] = [
+            ActionMenuItem(title: "Connect Node", systemImage: "link", enabled: !connectNodeID.isEmpty, reason: connectNodeID.isEmpty ? "No node selected" : nil, action: {
+                let target = connectNodeID
+                if !target.isEmpty {
+                    piAuxStore.connectNode(target)
+                    piAuxStore.refreshLocalNodeHeartbeat()
+                }
+            })
+        ]
+
+        let exportItems: [ActionMenuItem] = [
+            ActionMenuItem(title: "Generate Scan Report", systemImage: "doc.badge.plus", enabled: true, reason: nil, action: onGenerateScanReport),
+            ActionMenuItem(title: "Reveal Latest Report", systemImage: "folder", enabled: true, reason: nil, action: onRevealLatestReport),
+            ActionMenuItem(title: "Export Audit", systemImage: "tray.and.arrow.down", enabled: true, reason: nil, action: onExportAudit),
+            ActionMenuItem(title: "Export Runtime Log", systemImage: "doc.plaintext", enabled: true, reason: nil, action: onExportRuntimeLog),
+            ActionMenuItem(title: "Reveal Exports", systemImage: "folder.fill", enabled: true, reason: nil, action: onRevealExports),
+            ActionMenuItem(title: "Ship Now", systemImage: "paperplane", enabled: true, reason: nil, action: onShipNow)
+        ]
+
+        var sections: [ActionMenuSection] = []
+        if !nowItems.isEmpty { sections.append(ActionMenuSection(title: "Now", items: nowItems)) }
+        sections.append(ActionMenuSection(title: "Inspect", items: inspectItems))
+        sections.append(ActionMenuSection(title: "Connect / Control", items: connectItems))
+        sections.append(ActionMenuSection(title: "Export / Ship", items: exportItems))
+#if DEBUG
+        let devItems: [ActionMenuItem] = [
+            ActionMenuItem(title: "Tool Builder", systemImage: "hammer", enabled: true, reason: nil, action: { modalCoordinator.present(.toolBuilder) }),
+            ActionMenuItem(title: "Preset Builder", systemImage: "slider.horizontal.3", enabled: true, reason: nil, action: { modalCoordinator.present(.presetBuilder) }),
+            ActionMenuItem(title: "Scratchpad", systemImage: "terminal", enabled: true, reason: nil, action: { modalCoordinator.present(.scratchpad) })
+        ]
+        sections.append(ActionMenuSection(title: "Dev", items: devItems))
+#endif
+        return sections
+    }
+
     private func actionSections() -> [ActionMenuSection] {
         let hostActions = ActionMenuSection(
             title: "Host Actions",
@@ -3567,6 +3684,7 @@ struct BLEFindPanel: View {
 
 struct NodesView: View {
     @ObservedObject var store: PiAuxStore
+    let nodes: [NodeRecord]
     @ObservedObject var scanner: NetworkScanner
     @ObservedObject var flashManager: FlashServerManager
     @Binding var onvifDiscoveryEnabled: Bool
@@ -3601,7 +3719,7 @@ struct NodesView: View {
             scanControlSection
 
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 260), spacing: 12)], alignment: .leading, spacing: 12) {
-                ForEach(store.activeNodes) { node in
+                ForEach(nodes) { node in
                     NodeCardView(
                         node: node,
                         eventCount: store.recentEventCount(nodeID: node.id, window: 600),
@@ -4183,12 +4301,12 @@ struct CasesView: View {
                         }
                         TextField("Nodes (comma-separated IDs)", text: $sessionNodesText)
                             .textFieldStyle(.roundedBorder)
-                        if !piAuxStore.activeNodes.isEmpty {
+                        if !entityStore.nodes.isEmpty {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text("Active Nodes")
                                     .font(.system(size: 11, weight: .semibold))
                                 let aliasOverrides = IdentityResolver.shared.aliasMap()
-                                ForEach(piAuxStore.activeNodes) { node in
+                                ForEach(entityStore.nodes) { node in
                                     let alias = aliasOverrides[node.id]
                                     HStack {
                                         if let alias, !alias.isEmpty {
@@ -4728,7 +4846,7 @@ private func buildReadableLog(rawFilename: String, scanner: NetworkScanner, bleS
     lines.append("")
 
     let aliasOverrides = IdentityResolver.shared.aliasMap()
-    let highConfidence = scanner.allHosts
+    let highConfidence = entityStore.hosts
         .filter { $0.hostConfidence.level == .high }
         .sorted { $0.hostConfidence.score > $1.hostConfidence.score }
         .prefix(10)
@@ -4747,7 +4865,7 @@ private func buildReadableLog(rawFilename: String, scanner: NetworkScanner, bleS
     lines.append("")
 
     lines.append("BLE SUMMARY")
-    let bleDevices = bleScanner.peripherals
+    let bleDevices = entityStore.blePeripherals
     lines.append("Devices: \(bleDevices.count)")
     let beacons = bleDevices.filter { $0.fingerprint.beaconHint != nil }
     if !beacons.isEmpty {

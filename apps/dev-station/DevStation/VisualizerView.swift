@@ -7,6 +7,7 @@ extension Notification.Name {
 
 struct VisualizerView: View {
     @ObservedObject var store: SODSStore
+    @ObservedObject var entityStore: EntityStore
     let onOpenTools: () -> Void
     @State private var baseURLText: String = ""
     @State private var paused: Bool = false
@@ -47,6 +48,10 @@ struct VisualizerView: View {
         .onAppear {
             baseURLText = store.baseURL
         }
+        .onChange(of: entityStore.selectedEntityID) { newValue in
+            let trimmed = newValue?.trimmingCharacters(in: .whitespacesAndNewlines)
+            focusedNodeID = (trimmed?.isEmpty == false) ? trimmed : nil
+        }
         .onReceive(Timer.publish(every: 0.5, on: .main, in: .common).autoconnect()) { _ in
             guard replayEnabled, replayAutoPlay else { return }
             replayOffset += replaySpeed
@@ -73,6 +78,7 @@ struct VisualizerView: View {
     }
 
     private var header: some View {
+        let dataSource = dataSourceStatus
         VStack(alignment: .leading, spacing: 6) {
             Text("SODS Spectrum")
                 .font(.system(size: 16, weight: .semibold))
@@ -87,7 +93,25 @@ struct VisualizerView: View {
                     .font(.system(size: 11))
                 Spacer()
             }
+            HStack(spacing: 8) {
+                Circle()
+                    .fill(dataSource.color)
+                    .frame(width: 8, height: 8)
+                Text("Frames: \(dataSource.label)")
+                    .font(.system(size: 11))
+                Spacer()
+            }
         }
+    }
+
+    private var dataSourceStatus: (label: String, color: Color) {
+        if store.realFramesActive {
+            return ("Live", Color.green)
+        }
+        if store.simulateFrames {
+            return ("Simulated", Color.orange)
+        }
+        return ("Idle", Color.gray)
     }
 
     private var controls: some View {
