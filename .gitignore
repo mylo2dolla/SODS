@@ -31,3 +31,4 @@ docs/aliases.user.json
 
 # Local data logs
 data/logs/*.ndjson
+/data/reports
