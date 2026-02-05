@@ -98,6 +98,16 @@ struct VisualizerView: View {
                     .font(.system(size: 11))
                 Spacer()
             }
+            if let last = store.lastFramesAt {
+                Text("Last frames: \(last.formatted(date: .abbreviated, time: .standard))")
+                    .font(.system(size: 10))
+                    .foregroundColor(.secondary)
+            }
+            if let source = store.frames.first?.source {
+                Text("Source: \(source)")
+                    .font(.system(size: 10))
+                    .foregroundColor(.secondary)
+            }
         }
     }
 

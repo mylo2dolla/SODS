@@ -44,6 +44,17 @@ enum ScanMode: String, CaseIterable, Identifiable {
     }
 }
 
+struct Provenance: Hashable, Codable {
+    let source: String
+    let mode: ScanMode
+    let timestamp: Date
+
+    var label: String {
+        let stamp = timestamp.formatted(date: .abbreviated, time: .shortened)
+        return "\(source) • \(mode.label) • \(stamp)"
+    }
+}
+
 struct PlannedNode: Identifiable, Codable, Hashable {
     let id: String
     var label: String
@@ -141,6 +152,7 @@ struct HostEntry: Identifiable, Hashable {
     var httpServer: String?
     var httpAuth: String?
     var httpTitle: String?
+    var provenance: Provenance? = nil
 
     var evidence: String {
         let tags = evidenceTags
@@ -196,6 +208,7 @@ struct BLEPeripheral: Identifiable, Hashable {
     var fingerprintID: String
     var bleConfidence: BLEConfidence
     var lastSeen: Date
+    var provenance: Provenance? = nil
 }
 
 struct BLERSSISample: Hashable, Codable {

@@ -137,6 +137,7 @@ final class NetworkScanner: ObservableObject {
             progress = ScanProgress(scannedHosts: 0, totalHosts: hostIPs.count)
         }
         let localIP = activeSubnet.addressString
+        let provenance = Provenance(source: "net.scan", mode: scanMode, timestamp: Date())
         allHosts = hostIPs.map { ip in
             HostEntry(
                 id: ip,
@@ -157,7 +158,8 @@ final class NetworkScanner: ObservableObject {
                 httpStatus: nil,
                 httpServer: nil,
                 httpAuth: nil,
-                httpTitle: nil
+                httpTitle: nil,
+                provenance: provenance
             )
         }
         if !allHosts.contains(where: { $0.ip == localIP }) {
@@ -181,7 +183,8 @@ final class NetworkScanner: ObservableObject {
                     httpStatus: nil,
                     httpServer: nil,
                     httpAuth: nil,
-                    httpTitle: nil
+                    httpTitle: nil,
+                    provenance: provenance
                 )
             )
         }

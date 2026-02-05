@@ -148,7 +148,8 @@ final class BLEScanner: NSObject, ObservableObject, @preconcurrency CBCentralMan
                 fingerprint: fingerprint,
                 fingerprintID: fingerprintID,
                 bleConfidence: bleConfidence,
-                lastSeen: Date()
+                lastSeen: Date(),
+                provenance: Provenance(source: "ble.scan", mode: scanMode, timestamp: Date())
             )
             peripherals.append(item)
             logNewPeripheral(item)
