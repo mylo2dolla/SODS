@@ -21,15 +21,18 @@ fi
 mkdir -p "$OUT_DIR"
 mkdir -p "$BUILD_DIR"
 
+if [[ -n "${DEVSTATION_CLEAN:-}" ]]; then
+  echo "Cleaning Dev Station..."
+  /usr/bin/xcodebuild \
+    -project "$PROJECT" \
+    -scheme "$SCHEME" \
+    -configuration Release \
+    -derivedDataPath "$DERIVED" \
+    CODE_SIGNING_ALLOWED=NO \
+    clean
+fi
+
 echo "Building Dev Station..."
-/usr/bin/xcodebuild \
-  -project "$PROJECT" \
-  -scheme "$SCHEME" \
-  -configuration Release \
-  -derivedDataPath "$DERIVED" \
-  CONFIGURATION_BUILD_DIR="$BUILD_DIR" \
-  CODE_SIGNING_ALLOWED=NO \
-  ${DEVSTATION_CLEAN:+clean}
 /usr/bin/xcodebuild \
   -project "$PROJECT" \
   -scheme "$SCHEME" \
