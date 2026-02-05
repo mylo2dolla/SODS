@@ -34,7 +34,7 @@ final class SODSStore: ObservableObject {
     private init() {
         let defaults = UserDefaults.standard
         if let saved = defaults.string(forKey: baseURLKey), !saved.isEmpty {
-            let validated = normalizeBaseURL(saved)
+            let validated = Self.normalizeBaseURL(saved)
             if let url = validated.url {
                 baseURL = url
                 baseURLError = nil
@@ -57,7 +57,7 @@ final class SODSStore: ObservableObject {
 
     @discardableResult
     func updateBaseURL(_ value: String) -> Bool {
-        let validated = normalizeBaseURL(value)
+        let validated = Self.normalizeBaseURL(value)
         guard let url = validated.url else {
             baseURLError = validated.error ?? "Invalid base URL."
             return false
@@ -470,7 +470,7 @@ final class SODSStore: ObservableObject {
         return components.url
     }
 
-    private func normalizeBaseURL(_ value: String) -> (url: String?, error: String?) {
+    private static func normalizeBaseURL(_ value: String) -> (url: String?, error: String?) {
         let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
             return (nil, "Base URL is required.")

@@ -10,6 +10,9 @@ struct VisualizerView: View {
     @ObservedObject var entityStore: EntityStore
     let onOpenTools: () -> Void
     @State private var baseURLText: String = ""
+    @State private var baseURLValidationMessage: String?
+    @State private var showBaseURLToast = false
+    @State private var baseURLToastMessage = ""
     @State private var paused: Bool = false
     @State private var decayRate: Double = 1.0
     @State private var timeScale: Double = 1.0
@@ -75,8 +78,18 @@ struct VisualizerView: View {
         }
         .padding(12)
         .background(Theme.background)
+        .overlay(alignment: .top) {
+            if showBaseURLToast {
+                baseURLToastView
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
+        }
         .onAppear {
             baseURLText = store.baseURL
+        }
+        .onChange(of: store.baseURL) { newValue in
+            baseURLText = newValue
+            baseURLValidationMessage = nil
         }
         .onReceive(Timer.publish(every: 0.5, on: .main, in: .common).autoconnect()) { _ in
             guard replayEnabled, replayAutoPlay else { return }
@@ -177,9 +190,21 @@ struct VisualizerView: View {
                     TextField("", text: $baseURLText)
                         .textFieldStyle(.roundedBorder)
                     Button("Apply") {
-                        store.updateBaseURL(baseURLText)
+                        if store.updateBaseURL(baseURLText) {
+                            baseURLValidationMessage = nil
+                            baseURLText = store.baseURL
+                        } else {
+                            let message = store.baseURLError ?? "Base URL must start with http:// or https://"
+                            baseURLValidationMessage = message
+                            showBaseURLToast(message)
+                        }
                     }
                     .buttonStyle(SecondaryActionButtonStyle())
+                }
+                if let message = baseURLValidationMessage {
+                    Text(message)
+                        .font(.system(size: 10))
+                        .foregroundColor(.red)
                 }
                 HStack(spacing: 8) {
                     Button(paused ? "Play" : "Pause") {
@@ -276,21 +301,65 @@ struct VisualizerView: View {
         }
     }
 
+    private var baseURLToastView: some View {
+        Text(baseURLToastMessage)
+            .font(.system(size: 11, weight: .semibold))
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+            .background(
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(.ultraThinMaterial)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 10)
+                    .stroke(Theme.border, lineWidth: 1)
+            )
+            .padding(.top, 12)
+    }
+
+    private func showBaseURLToast(_ message: String) {
+        baseURLToastMessage = message
+        withAnimation(.easeInOut(duration: 0.2)) {
+            showBaseURLToast = true
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.8) {
+            withAnimation(.easeInOut(duration: 0.2)) {
+                showBaseURLToast = false
+            }
+        }
+    }
+
     private var legend: some View {
-        GroupBox("Legend") {
-            VStack(alignment: .leading, spacing: 6) {
-                ForEach(SignalKindLegend.allCases) { entry in
-                    HStack(spacing: 8) {
-                        Circle()
-                            .fill(Color(entry.color))
-                            .frame(width: 8, height: 8)
-                        Text(entry.label)
-                            .font(.system(size: 11))
-                        Spacer()
-                    }
+        GroupBox("What you're seeing") {
+            DisclosureGroup {
+                VStack(alignment: .leading, spacing: 6) {
+                    legendRow(color: SignalColor.kindAccent(kind: "ble.seen"), label: "BLE • dot + tight ring")
+                    legendRow(color: SignalColor.kindAccent(kind: "wifi.status"), label: "Wi‑Fi • wave ring")
+                    legendRow(color: SignalColor.kindAccent(kind: "node.heartbeat"), label: "Node • diamond halo")
+                    legendRow(color: SignalColor.kindAccent(kind: "error"), label: "Error • starburst")
+                    Text("Brightness = recency + RSSI strength.")
+                        .font(.system(size: 10))
+                        .foregroundColor(.secondary)
+                    Text("Trails fade with time; depth uses size/blur/alpha.")
+                        .font(.system(size: 10))
+                        .foregroundColor(.secondary)
                 }
+            } label: {
+                Text("Legend + interpretation")
+                    .font(.system(size: 11, weight: .semibold))
             }
             .padding(6)
+        }
+    }
+
+    private func legendRow(color: NSColor, label: String) -> some View {
+        HStack(spacing: 8) {
+            Circle()
+                .fill(Color(color))
+                .frame(width: 8, height: 8)
+            Text(label)
+                .font(.system(size: 11))
+            Spacer()
         }
     }
 
@@ -582,7 +651,10 @@ struct VisualizerView: View {
         let radius = kind.contains("ble") ? 0.32 : kind.contains("wifi") ? 0.52 : 0.7
         let x = cos(angle) * radius
         let y = sin(angle) * radius
-        let z = max(0.2, min(1.0, 0.45 + (event.signal.strength ?? -60) / -120))
+        let strength = event.signal.strength ?? -60
+        let strengthNorm = clamp(((-strength) - 30.0) / 70.0)
+        let idOffset = stableDepthOffset(for: event.deviceID ?? event.nodeID)
+        let z = clamp(0.25 + strengthNorm * 0.55 + idOffset, min: 0.1, max: 1.0)
         let nx = clamp(0.5 + (x / 1.2))
         let ny = clamp(0.5 + (y / 1.2))
         return (nx, ny, z)
@@ -1112,21 +1184,37 @@ struct SignalFieldView: View {
 }
 
 struct LegendOverlayView: View {
+    @State private var expanded = false
+
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("Legend")
-                .font(.system(size: 11, weight: .semibold))
-            legendRow(color: SignalColor.kindAccent(kind: "ble.seen"), label: "BLE")
-            legendRow(color: SignalColor.kindAccent(kind: "wifi.status"), label: "Wi-Fi")
-            legendRow(color: SignalColor.kindAccent(kind: "node.heartbeat"), label: "Node")
+            DisclosureGroup(isExpanded: $expanded) {
+                VStack(alignment: .leading, spacing: 6) {
+                    legendRow(color: SignalColor.kindAccent(kind: "ble.seen"), label: "BLE • dot + tight ring")
+                    legendRow(color: SignalColor.kindAccent(kind: "wifi.status"), label: "Wi‑Fi • wave ring")
+                    legendRow(color: SignalColor.kindAccent(kind: "node.heartbeat"), label: "Node • diamond halo")
+                    legendRow(color: SignalColor.kindAccent(kind: "error"), label: "Error • starburst")
+                    Text("Brightness = recency + strength. Trails fade with time.")
+                        .font(.system(size: 9))
+                        .foregroundColor(.secondary)
+                    Text("Depth = size/blur/alpha/parallax cues.")
+                        .font(.system(size: 9))
+                        .foregroundColor(.secondary)
+                }
+            } label: {
+                Text("What you're seeing")
+                    .font(.system(size: 11, weight: .semibold))
+            }
         }
         .padding(10)
-        .background(Theme.panelAlt)
-        .overlay(
+        .background(
             RoundedRectangle(cornerRadius: 10)
-                .stroke(Theme.border, lineWidth: 1)
+                .fill(.ultraThinMaterial)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10)
+                        .stroke(Theme.border, lineWidth: 1)
+                )
         )
-        .cornerRadius(10)
         .padding(16)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
     }
@@ -1401,12 +1489,14 @@ struct NodeInspectorView: View {
             }
         }
         .padding(12)
-        .background(Theme.panelAlt)
-        .overlay(
-            RoundedRectangle(cornerRadius: 10)
-                .stroke(Theme.border, lineWidth: 1)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(.ultraThinMaterial)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(Theme.border, lineWidth: 1)
+                )
         )
-        .cornerRadius(10)
         .padding(20)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
     }
@@ -1425,12 +1515,14 @@ struct IdleOverlayView: View {
                 .foregroundColor(.secondary)
         }
         .padding(14)
-        .background(Theme.panel)
-        .overlay(
+        .background(
             RoundedRectangle(cornerRadius: 12)
-                .stroke(Theme.border, lineWidth: 1)
+                .fill(.ultraThinMaterial)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(Theme.border, lineWidth: 1)
+                )
         )
-        .cornerRadius(12)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
     }
 }
@@ -1671,7 +1763,16 @@ final class SignalFieldEngine: ObservableObject {
         }
 
         if !isActive {
-            context.fill(Path(rect), with: .color(Color.black.opacity(0.25)))
+            let pulse = 0.5 + 0.5 * sin(now.timeIntervalSinceReferenceDate * 0.6)
+            let idleGradient = Gradient(colors: [
+                Color(red: 0.2, green: 0.2, blue: 0.25, opacity: 0.08 + 0.06 * pulse),
+                Color(red: 0.05, green: 0.05, blue: 0.08, opacity: 0.0)
+            ])
+            context.fill(
+                Path(ellipseIn: CGRect(x: center.x - size.width * 0.35, y: center.y - size.height * 0.35, width: size.width * 0.7, height: size.height * 0.7)),
+                with: .radialGradient(idleGradient, center: center, startRadius: 0, endRadius: min(size.width, size.height) * 0.5)
+            )
+            context.fill(Path(rect), with: .color(Color.black.opacity(0.28)))
         }
     }
 
@@ -1728,6 +1829,12 @@ final class SignalFieldEngine: ObservableObject {
             let dimmed = focusID != nil && focusID != source.id
             let presentation = nodePresentations[source.id] ?? nodePresentations["node:\(source.id)"]
             let displayColor = presentation?.displayColor ?? source.color
+            let isNodeSource = nodePresentations[source.id] != nil || nodePresentations["node:\(source.id)"] != nil || source.id.hasPrefix("node:")
+            let coreTint: NSColor = {
+                if presentation?.isOffline == true { return displayColor }
+                if isNodeSource { return SignalColor.mix(displayColor, NSColor.systemRed, ratio: 0.55) }
+                return displayColor
+            }()
             let color = Color(displayColor).opacity(dimmed ? 0.25 : 1.0)
             let lastSeen = source.lastSeen ?? now
             let age = max(0.0, now.timeIntervalSince(lastSeen))
@@ -1741,7 +1848,6 @@ final class SignalFieldEngine: ObservableObject {
             let glowAlpha = presentation?.shouldGlow == false ? 0.0 : (dimmed ? 0.08 : 0.2) * alphaScale
             let coreAlpha = presentation?.isOffline == true ? 0.35 * alphaScale : (dimmed ? 0.4 : 0.9) * alphaScale
             let activity = presentation?.activityScore ?? 0.0
-            let isNodeSource = nodePresentations[source.id] != nil || nodePresentations["node:\(source.id)"] != nil || source.id.hasPrefix("node:")
             let accentColor = SignalColor.mix(displayColor, NSColor.systemRed, ratio: 0.55)
             let blurStrength = max(0.0, (0.95 - depth) * 0.7)
 
@@ -1755,7 +1861,12 @@ final class SignalFieldEngine: ObservableObject {
                 let blurRect = coreRect.insetBy(dx: -core.width * 0.6, dy: -core.height * 0.6)
                 context.fill(Path(ellipseIn: blurRect), with: .color(color.opacity(blurStrength * 0.12)))
             }
-            context.fill(Path(ellipseIn: coreRect), with: .color(color.opacity(coreAlpha)))
+            let coreDrawColor = Color(coreTint).opacity(coreAlpha)
+            if isNodeSource {
+                context.fill(diamondPath(in: coreRect), with: .color(coreDrawColor))
+            } else {
+                context.fill(Path(ellipseIn: coreRect), with: .color(coreDrawColor))
+            }
             if activity > 0.01, presentation?.isOffline == false {
                 let pulse = NodePresentation.pulse(now: now, seed: source.id)
                 let ringScale = CGFloat((1.4 + activity * 2.2) * pulse) * depth
@@ -1890,14 +2001,9 @@ final class SignalFieldEngine: ObservableObject {
                     context.fill(Path(ellipseIn: dotRect), with: .color(color.opacity(0.8)))
                 }
             case .wifi:
-                let segments = 4
-                for i in 0..<segments {
-                    let start = Angle(radians: (Double(i) / Double(segments)) * Double.pi * 2)
-                    let end = Angle(radians: start.radians + 0.6)
-                    var path = Path()
-                    path.addArc(center: center, radius: radius, startAngle: start, endAngle: end, clockwise: false)
-                    context.stroke(path, with: .color(color), lineWidth: lineWidth)
-                }
+                context.stroke(Path(ellipseIn: rect), with: .color(color.opacity(0.85)), lineWidth: lineWidth)
+            case .node:
+                context.stroke(diamondPath(in: rect), with: .color(color.opacity(0.85)), lineWidth: lineWidth)
             case .error:
                 var path = Path()
                 let points = 10
@@ -1963,7 +2069,7 @@ final class SignalSource: Hashable {
     var lastStrength: Double?
     var lastKind: String?
     var lastChannel: String?
-    private let targetSmoothing: Double = 0.35
+    private let targetSmoothing: Double = 0.25
 
     init(id: String) {
         self.id = id
@@ -1983,8 +2089,12 @@ final class SignalSource: Hashable {
     func update(from frame: SignalFrame) {
         let nx = frame.x ?? 0.5
         let ny = frame.y ?? 0.5
-        let nz = frame.z ?? 0.6
-        applyTarget(SIMD3<Double>((nx - 0.5) * 2.0 * 0.6, (ny - 0.5) * 2.0 * 0.6, nz))
+        let strength = frame.rssi ?? -65
+        let strengthNorm = clamp(((-strength) - 30.0) / 70.0)
+        let idOffset = stableDepthOffset(for: id)
+        let baseZ = frame.z ?? 0.6
+        let z = clamp(0.25 + strengthNorm * 0.55 + idOffset + (baseZ - 0.5) * 0.3, min: 0.1, max: 1.0)
+        applyTarget(SIMD3<Double>((nx - 0.5) * 2.0 * 0.6, (ny - 0.5) * 2.0 * 0.6, z))
         lastSeen = Date()
         lastStrength = frame.rssi
         lastKind = frame.source
@@ -1999,7 +2109,10 @@ final class SignalSource: Hashable {
         let radius = event.kind.contains("ble") ? 0.32 : event.kind.contains("wifi") ? 0.52 : 0.7
         let x = cos(angle) * radius
         let y = sin(angle) * radius
-        let z = max(0.2, min(1.0, 0.45 + (event.signal.strength ?? -60) / -120))
+        let strength = event.signal.strength ?? -60
+        let strengthNorm = clamp(((-strength) - 30.0) / 70.0)
+        let idOffset = stableDepthOffset(for: id)
+        let z = clamp(0.25 + strengthNorm * 0.55 + idOffset, min: 0.1, max: 1.0)
         applyTarget(SIMD3<Double>(x, y, z))
         lastSeen = event.eventTs ?? event.recvTs ?? Date()
         lastStrength = event.signal.strength
@@ -2121,7 +2234,11 @@ struct SignalParticle: Hashable {
                 let glowRect = CGRect(x: basePoint.x - glowRadius / 2, y: basePoint.y - glowRadius / 2, width: glowRadius, height: glowRadius)
                 context.fill(Path(ellipseIn: glowRect), with: .color(drawColor.opacity((dimmed ? 0.06 : 0.18) + CGFloat(glowStrength) * 0.35)))
             }
-            context.fill(Path(ellipseIn: rect), with: .color(drawColor))
+            if renderKind == .node {
+                context.fill(diamondPath(in: rect), with: .color(drawColor))
+            } else {
+                context.fill(Path(ellipseIn: rect), with: .color(drawColor))
+            }
             drawTrail(context: &context, size: size, parallax: parallax, alpha: alpha, dimmed: dimmed, activityFade: activityFade)
         case .ring:
             let radius = CGFloat(ringRadius) * depth
@@ -2144,21 +2261,19 @@ struct SignalParticle: Hashable {
                     context.fill(Path(ellipseIn: dotRect), with: .color(drawColor.opacity(0.8)))
                 }
             case .wifi:
-                let segments = 5
-                for i in 0..<segments {
-                    let start = Angle(radians: (Double(i) / Double(segments)) * Double.pi * 2)
-                    let end = Angle(radians: start.radians + 0.5)
-                    var path = Path()
-                    path.addArc(center: basePoint, radius: radius, startAngle: start, endAngle: end, clockwise: false)
-                    context.stroke(path, with: .color(drawColor.opacity(0.6 + CGFloat(glowStrength) * 0.2)), lineWidth: lineWidth)
-                }
+                context.stroke(Path(ellipseIn: rect), with: .color(drawColor.opacity(0.7 + CGFloat(glowStrength) * 0.2)), lineWidth: lineWidth)
             default:
                 context.stroke(Path(ellipseIn: rect), with: .color(drawColor.opacity(0.6 + CGFloat(glowStrength) * 0.2)), lineWidth: lineWidth)
             }
         case .pulse:
             let radius = CGFloat(ringRadius) * depth
             let rect = CGRect(x: basePoint.x - radius, y: basePoint.y - radius, width: radius * 2, height: radius * 2)
-            context.stroke(Path(ellipseIn: rect), with: .color(drawColor.opacity(0.8 + CGFloat(glowStrength) * 0.15)), lineWidth: CGFloat(ringWidth) * depth)
+            let strokeColor = drawColor.opacity(0.8 + CGFloat(glowStrength) * 0.15)
+            if renderKind == .node {
+                context.stroke(diamondPath(in: rect), with: .color(strokeColor), lineWidth: CGFloat(ringWidth) * depth)
+            } else {
+                context.stroke(Path(ellipseIn: rect), with: .color(strokeColor), lineWidth: CGFloat(ringWidth) * depth)
+            }
         case .burst:
             let radius = CGFloat(ringRadius) * depth
             let rect = CGRect(x: basePoint.x - radius, y: basePoint.y - radius, width: radius * 2, height: radius * 2)
@@ -2220,7 +2335,7 @@ enum SignalRenderKind: String {
     static func from(event: NormalizedEvent) -> SignalRenderKind {
         let kind = event.kind.lowercased()
         if kind.contains("ble") { return .ble }
-        if kind.contains("wifi") { return .wifi }
+        if kind.contains("wifi") || kind.contains("net") || kind.contains("host") { return .wifi }
         if kind.contains("node") { return .node }
         if kind.contains("error") || event.signal.tags.contains("error") { return .error }
         return .generic
@@ -2229,7 +2344,7 @@ enum SignalRenderKind: String {
     static func from(source: String) -> SignalRenderKind {
         let source = source.lowercased()
         if source.contains("ble") { return .ble }
-        if source.contains("wifi") { return .wifi }
+        if source.contains("wifi") || source.contains("net") || source.contains("host") { return .wifi }
         if source.contains("node") { return .node }
         if source.contains("error") { return .error }
         return .generic
@@ -2306,15 +2421,18 @@ enum SignalEmitter {
         var particles: [SignalParticle] = []
         let renderKind = SignalRenderKind.from(event: event)
 
+        let isWifi = kind.contains("wifi") || kind.contains("net") || kind.contains("host")
         if kind.contains("ble") {
             particles.append(makeRing(source: source, color: baseColor, now: now, pulse: false, glow: style.glow, renderKind: renderKind))
             for _ in 0..<max(2, count / 2) {
                 particles.append(makeSpark(source: source, color: baseColor, now: now, energy: energy, glow: style.glow, renderKind: renderKind))
             }
-        } else if kind.contains("wifi") {
+        } else if isWifi {
             particles.append(makeRing(source: source, color: baseColor, now: now, pulse: false, glow: style.glow, renderKind: renderKind))
+            particles.append(makeSpark(source: source, color: baseColor, now: now, energy: max(0.3, energy * 0.6), glow: style.glow, renderKind: renderKind))
         } else if kind.contains("node") {
-            particles.append(makeRing(source: source, color: baseColor, now: now, pulse: true, glow: style.glow, renderKind: renderKind))
+            particles.append(makeRing(source: source, color: baseColor, now: now, pulse: true, glow: style.glow, renderKind: renderKind, lifespan: 2.6))
+            particles.append(makeSpark(source: source, color: baseColor, now: now, energy: max(0.25, energy * 0.5), glow: style.glow, renderKind: renderKind))
         } else if kind.contains("tool") {
             particles.append(makeBurst(source: source, color: baseColor, now: now, energy: energy, glow: min(1.0, style.glow + 0.25), renderKind: renderKind))
         } else if kind.contains("error") || event.signal.tags.contains("error") {
@@ -2350,15 +2468,16 @@ enum SignalEmitter {
         )
     }
 
-    private static func makeRing(source: SignalSource, color: NSColor, now: Date, pulse: Bool, glow: Double, renderKind: SignalRenderKind) -> SignalParticle {
-        SignalParticle(
+    private static func makeRing(source: SignalSource, color: NSColor, now: Date, pulse: Bool, glow: Double, renderKind: SignalRenderKind, lifespan: TimeInterval? = nil) -> SignalParticle {
+        let life = lifespan ?? (pulse ? 1.8 : 2.6)
+        return SignalParticle(
             id: UUID(),
             kind: pulse ? .pulse : .ring,
             sourceID: source.id,
             position: source.position,
             velocity: SIMD3<Double>(0, 0, 0),
             birth: now,
-            lifespan: pulse ? 1.8 : 2.6,
+            lifespan: life,
             baseSize: 10,
             color: color,
             strength: 1.0,
@@ -2501,8 +2620,24 @@ private func clamp(_ value: Double, min: Double = 0.0, max: Double = 1.0) -> Dou
     Swift.max(min, Swift.min(max, value))
 }
 
+private func stableDepthOffset(for id: String) -> Double {
+    let seed = Double(SignalColor.stableHue(for: id))
+    return (seed - 0.5) * 0.24
+}
+
+private func diamondPath(in rect: CGRect) -> Path {
+    var path = Path()
+    let center = CGPoint(x: rect.midX, y: rect.midY)
+    path.move(to: CGPoint(x: center.x, y: rect.minY))
+    path.addLine(to: CGPoint(x: rect.maxX, y: center.y))
+    path.addLine(to: CGPoint(x: center.x, y: rect.maxY))
+    path.addLine(to: CGPoint(x: rect.minX, y: center.y))
+    path.closeSubpath()
+    return path
+}
+
 private func depthScalar(id: String, z: Double, now: Date) -> CGFloat {
-    let base = 0.5 + z * 0.9
+    let base = 0.52 + z * 0.85 + stableDepthOffset(for: id)
     let seed = Double(SignalColor.stableHue(for: id)) * Double.pi * 2
     let jitter = sin(now.timeIntervalSinceReferenceDate * 0.7 + seed) * 0.05
     let value = max(0.35, min(1.35, base + jitter))

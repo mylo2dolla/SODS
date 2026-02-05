@@ -82,7 +82,7 @@ final class NodeRegistry: ObservableObject {
             let nextLabel = existing.label.isEmpty == false ? existing.label : (item.hostname ?? item.ip ?? nodeID)
             var merged = existing
 
-            if let nextLabel, !nextLabel.isEmpty, nextLabel != merged.label {
+            if !nextLabel.isEmpty, nextLabel != merged.label {
                 merged.label = nextLabel
             }
             if let host = item.hostname, !host.isEmpty { merged.hostname = host }

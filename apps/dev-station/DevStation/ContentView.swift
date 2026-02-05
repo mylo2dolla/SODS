@@ -300,8 +300,13 @@ struct ContentView: View {
             }
     }
 
-    @ViewBuilder
     private var mainContent: some View {
+        let base = mainContentBase
+        let lifecycle = applyMainContentLifecycle(to: base)
+        return applyMainContentUpdates(to: lifecycle)
+    }
+
+    private var mainContentBase: some View {
         Group {
             if usesIndependentScrollLayout {
                 independentScrollContent
@@ -315,159 +320,166 @@ struct ContentView: View {
         .foregroundColor(Theme.textPrimary)
         .tint(Theme.accent)
         .preferredColorScheme(.dark)
-        .onAppear {
-            if !consentAcknowledged { modalCoordinator.present(.consent) }
-            if scopeCIDR.isEmpty, let subnet = IPv4Subnet.active() {
-                scopeCIDR = "\(subnet.addressString)/\(subnet.prefixLength)"
+    }
+
+    private func applyMainContentLifecycle<V: View>(to view: V) -> some View {
+        view
+            .onAppear {
+                if !consentAcknowledged { modalCoordinator.present(.consent) }
+                if scopeCIDR.isEmpty, let subnet = IPv4Subnet.active() {
+                    scopeCIDR = "\(subnet.addressString)/\(subnet.prefixLength)"
+                }
+                sodsURLText = sodsStore.baseURL
+                BLEMetadataStore.shared.reload(log: logStore)
+                bleTableWarning = BLEMetadataStore.shared.tableWarning()
+                if let warning = bleTableWarning {
+                    logStore.log(.warn, warning)
+                }
+                inboxStatus = InboxRetention.shared.currentStatus()
+                piAuxStore.refreshLocalNodeHeartbeat()
+                IdentityResolver.shared.updateOverrides(sodsStore.aliasOverrides)
+                entityStore.ingestHosts(scanner.allHosts)
+                entityStore.ingestDevices(scanner.devices)
+                entityStore.ingestBLE(bleScanner.peripherals)
+                for node in piAuxStore.activeNodes {
+                    nodeRegistry.observe(node)
+                }
+                nodeRegistry.updateFromPresence(sodsStore.nodePresence)
+                entityStore.ingestNodes(nodeRegistry.nodes)
+                IdentityResolver.shared.updateFromNodes(nodeRegistry.nodes)
+                IdentityResolver.shared.updateFromSignals(sodsStore.nodes)
+                refreshConnectSelection()
+                if flashManager.prepStatus.isReady, flashLifecycleStage == nil {
+                    flashLifecycleStage = .staged
+                }
+                Task.detached {
+                    await ArtifactStore.shared.runCleanup(log: logStore)
+                }
             }
-            sodsURLText = sodsStore.baseURL
-            BLEMetadataStore.shared.reload(log: logStore)
-            bleTableWarning = BLEMetadataStore.shared.tableWarning()
-            if let warning = bleTableWarning {
-                logStore.log(.warn, warning)
+            .onReceive(NotificationCenter.default.publisher(for: .bleMetadataUpdated)) { _ in
+                bleTableWarning = BLEMetadataStore.shared.tableWarning()
             }
-            inboxStatus = InboxRetention.shared.currentStatus()
-            piAuxStore.refreshLocalNodeHeartbeat()
-            IdentityResolver.shared.updateOverrides(sodsStore.aliasOverrides)
-            entityStore.ingestHosts(scanner.allHosts)
-            entityStore.ingestDevices(scanner.devices)
-            entityStore.ingestBLE(bleScanner.peripherals)
-            for node in piAuxStore.activeNodes {
-                nodeRegistry.observe(node)
-            }
-            nodeRegistry.updateFromPresence(sodsStore.nodePresence)
-            entityStore.ingestNodes(nodeRegistry.nodes)
-            IdentityResolver.shared.updateFromNodes(nodeRegistry.nodes)
-            IdentityResolver.shared.updateFromSignals(sodsStore.nodes)
-            refreshConnectSelection()
-            if flashManager.prepStatus.isReady, flashLifecycleStage == nil {
-                flashLifecycleStage = .staged
-            }
-            Task.detached {
-                await ArtifactStore.shared.runCleanup(log: logStore)
-            }
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .bleMetadataUpdated)) { _ in
-            bleTableWarning = BLEMetadataStore.shared.tableWarning()
-        }
-        .onChange(of: bleDiscoveryEnabled) { enabled in
-            if enabled {
-                bleScanner.startScan(mode: bleScanMode)
-                updateLocalScanningState()
-                if bleScanMode == .oneShot {
-                    Task { @MainActor in
-                        try? await Task.sleep(nanoseconds: 8_000_000_000)
-                        if bleScanMode == .oneShot {
-                            bleDiscoveryEnabled = false
-                            updateLocalScanningState()
+            .onChange(of: bleDiscoveryEnabled) { enabled in
+                if enabled {
+                    bleScanner.startScan(mode: bleScanMode)
+                    updateLocalScanningState()
+                    if bleScanMode == .oneShot {
+                        Task { @MainActor in
+                            try? await Task.sleep(nanoseconds: 8_000_000_000)
+                            if bleScanMode == .oneShot {
+                                bleDiscoveryEnabled = false
+                                updateLocalScanningState()
+                            }
                         }
                     }
+                } else {
+                    bleScanner.stopScan()
+                    updateLocalScanningState()
                 }
-            } else {
-                bleScanner.stopScan()
+            }
+            .onChange(of: viewMode) { mode in
+                if (mode == .ble || mode == .spectral) && bleDiscoveryEnabled && !bleScanner.isScanning {
+                    bleScanner.startScan(mode: bleScanMode)
+                }
+                if mode == .vault {
+                    inboxStatus = InboxRetention.shared.currentStatus()
+                }
+                if mode == .cases {
+                    caseManager.refreshCases()
+                }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .flashNodeCommand)) { _ in
+                viewMode = .nodes
+                showFlashConfirm = true
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .connectNodeCommand)) { _ in
+                viewMode = .nodes
+                guard !connectNodeID.isEmpty else { return }
+                NodeRegistry.shared.setConnecting(nodeID: connectNodeID, connecting: true)
+                sodsStore.connectNode(connectNodeID)
+                sodsStore.identifyNode(connectNodeID)
+                sodsStore.refreshStatus()
+                piAuxStore.connectNode(connectNodeID)
+            }
+    }
+
+    private func applyMainContentUpdates<V: View>(to view: V) -> some View {
+        view
+            .onChange(of: selectedIP) { newValue in
+                if let ip = newValue {
+                    entityStore.select(id: ip, kind: .host)
+                    loadCredentials(for: ip)
+                    applyCredentialsToDevice(ip: ip)
+                    if rtspOverrideValueByIP[ip] == nil {
+                        rtspOverrideValueByIP[ip] = AppTruth.shared.bestRTSPURI(ip: ip, scanner: scanner) ?? ""
+                    }
+                } else {
+                    entityStore.select(id: nil, kind: nil)
+                }
+            }
+            .onChange(of: scanner.devices) { _ in
+                entityStore.ingestDevices(scanner.devices)
+                refreshAutofillForSelectedIP()
+            }
+            .onChange(of: scanner.allHosts) { _ in
+                entityStore.ingestHosts(scanner.allHosts)
+                refreshAutofillForSelectedIP()
+            }
+            .onChange(of: bleScanner.peripherals) { _ in
+                entityStore.ingestBLE(bleScanner.peripherals)
+            }
+            .onChange(of: piAuxStore.activeNodes) { _ in
+                for node in piAuxStore.activeNodes {
+                    nodeRegistry.observe(node)
+                }
+                entityStore.ingestNodes(nodeRegistry.nodes)
+                refreshConnectSelection()
+            }
+            .onChange(of: sodsStore.nodes) { _ in
+                IdentityResolver.shared.updateFromSignals(sodsStore.nodes)
+                refreshConnectSelection()
+            }
+            .onChange(of: sodsStore.baseURL) { newValue in
+                sodsURLText = newValue
+                baseURLValidationMessage = nil
+            }
+            .onChange(of: sodsStore.nodePresence) { _ in
+                nodeRegistry.updateFromPresence(sodsStore.nodePresence)
+                entityStore.ingestNodes(nodeRegistry.nodes)
+                refreshConnectSelection()
+                updateFlashLifecycleFromPresence()
+            }
+            .onChange(of: nodeRegistry.nodes) { _ in
+                entityStore.ingestNodes(nodeRegistry.nodes)
+                IdentityResolver.shared.updateFromNodes(nodeRegistry.nodes)
+                refreshConnectSelection()
+                if let nodeID = flashLifecycleNodeID,
+                   nodeRegistry.nodes.contains(where: { $0.id == nodeID }) {
+                    if flashLifecycleStage == .discovered || flashLifecycleStage == .flashed {
+                        flashLifecycleStage = .claimed
+                    }
+                }
+            }
+            .onChange(of: scanner.isScanning) { _ in
                 updateLocalScanningState()
             }
-        }
-        .onChange(of: viewMode) { mode in
-            if (mode == .ble || mode == .spectral) && bleDiscoveryEnabled && !bleScanner.isScanning {
-                bleScanner.startScan(mode: bleScanMode)
+            .onChange(of: bleScanner.isScanning) { _ in
+                updateLocalScanningState()
             }
-            if mode == .vault {
-                inboxStatus = InboxRetention.shared.currentStatus()
-            }
-            if mode == .cases {
-                caseManager.refreshCases()
-            }
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .flashNodeCommand)) { _ in
-            viewMode = .nodes
-            showFlashConfirm = true
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .connectNodeCommand)) { _ in
-            viewMode = .nodes
-            guard !connectNodeID.isEmpty else { return }
-            NodeRegistry.shared.setConnecting(nodeID: connectNodeID, connecting: true)
-            sodsStore.connectNode(connectNodeID)
-            sodsStore.identifyNode(connectNodeID)
-            sodsStore.refreshStatus()
-            piAuxStore.connectNode(connectNodeID)
-        }
-        .onChange(of: selectedIP) { newValue in
-            if let ip = newValue {
-                entityStore.select(id: ip, kind: .host)
-                loadCredentials(for: ip)
-                applyCredentialsToDevice(ip: ip)
-                if rtspOverrideValueByIP[ip] == nil {
-                    rtspOverrideValueByIP[ip] = AppTruth.shared.bestRTSPURI(ip: ip, scanner: scanner) ?? ""
-                }
-            } else {
-                entityStore.select(id: nil, kind: nil)
-            }
-        }
-        .onChange(of: scanner.devices) { _ in
-            entityStore.ingestDevices(scanner.devices)
-            refreshAutofillForSelectedIP()
-        }
-        .onChange(of: scanner.allHosts) { _ in
-            entityStore.ingestHosts(scanner.allHosts)
-            refreshAutofillForSelectedIP()
-        }
-        .onChange(of: bleScanner.peripherals) { _ in
-            entityStore.ingestBLE(bleScanner.peripherals)
-        }
-        .onChange(of: piAuxStore.activeNodes) { _ in
-            for node in piAuxStore.activeNodes {
-                nodeRegistry.observe(node)
-            }
-            entityStore.ingestNodes(nodeRegistry.nodes)
-            refreshConnectSelection()
-        }
-        .onChange(of: sodsStore.nodes) { _ in
-            IdentityResolver.shared.updateFromSignals(sodsStore.nodes)
-            refreshConnectSelection()
-        }
-        .onChange(of: sodsStore.baseURL) { newValue in
-            sodsURLText = newValue
-            baseURLValidationMessage = nil
-        }
-        .onChange(of: sodsStore.nodePresence) { _ in
-            nodeRegistry.updateFromPresence(sodsStore.nodePresence)
-            entityStore.ingestNodes(nodeRegistry.nodes)
-            refreshConnectSelection()
-            updateFlashLifecycleFromPresence()
-        }
-        .onChange(of: nodeRegistry.nodes) { _ in
-            entityStore.ingestNodes(nodeRegistry.nodes)
-            IdentityResolver.shared.updateFromNodes(nodeRegistry.nodes)
-            refreshConnectSelection()
-            if let nodeID = flashLifecycleNodeID,
-               nodeRegistry.nodes.contains(where: { $0.id == nodeID }) {
-                if flashLifecycleStage == .discovered || flashLifecycleStage == .flashed {
-                    flashLifecycleStage = .claimed
+            .onChange(of: flashManager.prepStatus) { status in
+                if status.isReady, flashLifecycleStage == nil {
+                    flashLifecycleStage = .staged
                 }
             }
-        }
-        .onChange(of: scanner.isScanning) { _ in
-            updateLocalScanningState()
-        }
-        .onChange(of: bleScanner.isScanning) { _ in
-            updateLocalScanningState()
-        }
-        .onChange(of: flashManager.prepStatus) { status in
-            if status.isReady, flashLifecycleStage == nil {
-                flashLifecycleStage = .staged
+            .onChange(of: selectedBleID) { newValue in
+                guard let id = newValue else { return }
+                if let peripheral = entityStore.blePeripherals.first(where: { $0.id == id }) {
+                    entityStore.select(id: peripheral.fingerprintID, kind: .ble)
+                }
             }
-        }
-        .onChange(of: selectedBleID) { newValue in
-            guard let id = newValue else { return }
-            if let peripheral = entityStore.blePeripherals.first(where: { $0.id == id }) {
-                entityStore.select(id: peripheral.fingerprintID, kind: .ble)
+            .onChange(of: showRtspCredentialsPrompt) { show in
+                if show { modalCoordinator.present(.rtspCredentials) }
             }
-        }
-        
-        .onChange(of: showRtspCredentialsPrompt) { show in
-            if show { modalCoordinator.present(.rtspCredentials) }
-        }
     }
 
     private var independentScrollContent: some View {
@@ -662,6 +674,9 @@ struct ContentView: View {
                 flashManager: flashManager,
                 connectCandidates: connectCandidates,
                 discoveredNodes: discoveredNodes,
+                flashLifecycleStage: flashLifecycleStage,
+                flashLifecycleTarget: flashLifecycleTarget,
+                flashLifecycleNodeID: flashLifecycleNodeID,
                 bleIsScanning: bleScanner.isScanning,
                 onvifDiscoveryEnabled: $onvifDiscoveryEnabled,
                 serviceDiscoveryEnabled: $serviceDiscoveryEnabled,
@@ -1587,6 +1602,7 @@ struct ContentView: View {
         guard !trimmed.isEmpty else { return }
         flashLifecycleNodeID = trimmed
         flashLifecycleStage = .claimed
+        updateFlashLifecycleFromPresence()
     }
 
     private func updateFlashLifecycleFromPresence() {
@@ -1599,7 +1615,8 @@ struct ContentView: View {
         guard let nodeID = flashLifecycleNodeID,
               let presence = sodsStore.nodePresence[nodeID] else { return }
         let state = presence.state.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        if ["online", "idle", "scanning", "connected"].contains(state) {
+        if ["online", "idle", "scanning", "connected"].contains(state),
+           stage == .claimed || stage == .online {
             flashLifecycleStage = .online
         } else if stage == .claimed || stage == .online {
             flashLifecycleStage = .offline
@@ -4189,7 +4206,10 @@ struct ConnectCandidate: Identifiable, Hashable {
 
     var displayLabel: String {
         let status = isClaimed ? "claimed" : "discovered"
-        return "\(label) • \(status)"
+        if label == id {
+            return "\(id) • \(status)"
+        }
+        return "\(label) (\(id)) • \(status)"
     }
 }
 
@@ -4201,7 +4221,11 @@ struct NodesView: View {
     let connectingNodeIDs: Set<String>
     @ObservedObject var scanner: NetworkScanner
     @ObservedObject var flashManager: FlashServerManager
-    let connectableNodeIDs: [String]
+    let connectCandidates: [ConnectCandidate]
+    let discoveredNodes: [DiscoveredNodeItem]
+    let flashLifecycleStage: ContentView.DeviceLifecycleStage?
+    let flashLifecycleTarget: FlashTarget?
+    let flashLifecycleNodeID: String?
     let bleIsScanning: Bool
     @Binding var onvifDiscoveryEnabled: Bool
     @Binding var serviceDiscoveryEnabled: Bool
@@ -4222,8 +4246,12 @@ struct NodesView: View {
     let onGenerateScanReport: () -> Void
     let onRevealLatestReport: () -> Void
     let onFindDevice: () -> Void
+    let onFlashStarted: (FlashTarget) -> Void
+    let onFlashAwaitingHello: () -> Void
+    let onFlashClaimed: (String) -> Void
     @State private var portText: String = ""
     @State private var manualConnectHost: String = ""
+    @State private var manualConnectLabel: String = ""
     @State private var manualConnectError: String?
     @State private var isManualConnecting = false
 
@@ -4440,17 +4468,18 @@ struct NodesView: View {
                 HStack(spacing: 10) {
                     Text("Connect")
                         .font(.system(size: 11))
-                    if !connectableNodeIDs.isEmpty {
+                    if connectCandidates.isEmpty {
+                        Text("No discovered or claimed nodes yet.")
+                            .font(.system(size: 11))
+                            .foregroundColor(Theme.textSecondary)
+                    } else {
                         Picker("Node", selection: $connectNodeID) {
-                            ForEach(connectableNodeIDs, id: \.self) { id in
-                                Text(id).tag(id)
+                            ForEach(connectCandidates) { candidate in
+                                Text(candidate.displayLabel).tag(candidate.id)
                             }
                         }
-                        .frame(width: 220)
+                        .frame(width: 320)
                     }
-                    TextField("Node ID (optional)", text: $connectNodeID)
-                        .textFieldStyle(.roundedBorder)
-                        .frame(width: 180)
                     Spacer()
                 }
                 HStack(spacing: 10) {
@@ -4459,6 +4488,9 @@ struct NodesView: View {
                     TextField("192.168.1.22", text: $manualConnectHost)
                         .textFieldStyle(.roundedBorder)
                         .frame(width: 200)
+                    TextField("Label (optional)", text: $manualConnectLabel)
+                        .textFieldStyle(.roundedBorder)
+                        .frame(width: 180)
                     Button(isManualConnecting ? "Connecting..." : "Connect Node") {
                         connectSelectedNode()
                     }
@@ -4474,6 +4506,72 @@ struct NodesView: View {
                 if let lastError = sodsStore.lastError, !lastError.isEmpty {
                     Text("Connect error: \(lastError)")
                         .font(.system(size: 11))
+                        .foregroundColor(Theme.textSecondary)
+                }
+                if let stage = flashLifecycleStage {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Lifecycle: \(stage.label)")
+                            .font(.system(size: 11, weight: .semibold))
+                        Text(stage.detail)
+                            .font(.system(size: 10))
+                            .foregroundColor(Theme.textSecondary)
+                        if let target = flashLifecycleTarget {
+                            Text("Target: \(target.label)")
+                                .font(.system(size: 10))
+                                .foregroundColor(Theme.textSecondary)
+                        }
+                        if let nodeID = flashLifecycleNodeID, !nodeID.isEmpty {
+                            Text("Node: \(nodeID)")
+                                .font(.system(size: 10))
+                                .foregroundColor(Theme.textSecondary)
+                        }
+                        if stage == .discovered {
+                            Text("Discovered device ready to claim.")
+                                .font(.system(size: 10, weight: .semibold))
+                                .foregroundColor(Theme.accent)
+                        }
+                    }
+                }
+
+                if !discoveredNodes.isEmpty {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Discovered")
+                            .font(.system(size: 12, weight: .semibold))
+                        ForEach(discoveredNodes) { item in
+                            HStack {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(item.label)
+                                        .font(.system(size: 11, weight: .semibold))
+                                    if let lastSeen = item.lastSeen {
+                                        Text("Last seen: \(lastSeen.formatted(date: .abbreviated, time: .shortened))")
+                                            .font(.system(size: 10))
+                                            .foregroundColor(Theme.textSecondary)
+                                    }
+                                    if let ip = item.presence.ip, !ip.isEmpty {
+                                        Text("IP: \(ip)")
+                                            .font(.system(size: 10))
+                                            .foregroundColor(Theme.textSecondary)
+                                    }
+                                    if let mac = item.presence.mac, !mac.isEmpty {
+                                        Text("MAC: \(mac)")
+                                            .font(.system(size: 10))
+                                            .foregroundColor(Theme.textSecondary)
+                                    }
+                                }
+                                Spacer()
+                                Button("Claim") {
+                                    claimDiscovered(item)
+                                }
+                                .buttonStyle(SecondaryActionButtonStyle())
+                            }
+                            .padding(8)
+                            .background(Theme.panelAlt)
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                        }
+                    }
+                } else {
+                    Text("Discovered: none (yet).")
+                        .font(.system(size: 10))
                         .foregroundColor(Theme.textSecondary)
                 }
 
@@ -4502,7 +4600,9 @@ struct NodesView: View {
                         titleVisibility: .visible
                     ) {
                         Button("Flash \(flashManager.selectedTarget.label)", role: .destructive) {
+                            onFlashStarted(flashManager.selectedTarget)
                             flashManager.startSelectedTarget()
+                            onFlashAwaitingHello()
                             onFindDevice()
                         }
                         Button("Cancel", role: .cancel) {}
@@ -4528,7 +4628,10 @@ struct NodesView: View {
                         }
                         .buttonStyle(SecondaryActionButtonStyle())
                     }
-                    Button("Find Newly Flashed Device") { onFindDevice() }
+                    Button("Find Newly Flashed Device") {
+                        onFlashAwaitingHello()
+                        onFindDevice()
+                    }
                     .buttonStyle(SecondaryActionButtonStyle())
                     Spacer()
                 }
@@ -4649,16 +4752,18 @@ struct NodesView: View {
     private func connectSelectedNode() {
         let manualHost = manualConnectHost.trimmingCharacters(in: .whitespacesAndNewlines)
         let target = connectNodeID.trimmingCharacters(in: .whitespacesAndNewlines)
+        let preferredLabel = manualConnectLabel.trimmingCharacters(in: .whitespacesAndNewlines)
         manualConnectError = nil
         if !manualHost.isEmpty {
             isManualConnecting = true
             Task {
-                let result = await NodeRegistry.shared.registerFromHost(manualHost, preferredLabel: target.isEmpty ? nil : target)
+                let result = await NodeRegistry.shared.registerFromHost(manualHost, preferredLabel: preferredLabel.isEmpty ? nil : preferredLabel)
                 await MainActor.run {
                     isManualConnecting = false
                     if let nodeID = result.nodeID, !nodeID.isEmpty {
                         connectNodeID = nodeID
                         manualConnectHost = ""
+                        manualConnectLabel = ""
                         connectRegisteredNode(nodeID)
                     } else {
                         manualConnectError = result.error ?? "Unable to verify device identity."
@@ -4667,9 +4772,9 @@ struct NodesView: View {
             }
             return
         }
-        let resolved = !target.isEmpty ? target : (connectableNodeIDs.first ?? "")
+        let resolved = !target.isEmpty ? target : (connectCandidates.first?.id ?? "")
         guard !resolved.isEmpty else {
-            manualConnectError = "No registered node selected."
+            manualConnectError = "No discovered or claimed node selected."
             return
         }
         connectRegisteredNode(resolved)
@@ -4688,6 +4793,15 @@ struct NodesView: View {
         }
         if networkScanMode == .continuous && !scanner.isScanning {
             onStartScan()
+        }
+    }
+
+    private func claimDiscovered(_ item: DiscoveredNodeItem) {
+        if let record = NodeRegistry.shared.claimFromPresence(item.presence, preferredLabel: nil) {
+            connectNodeID = record.id
+            onFlashClaimed(record.id)
+            sodsStore.identifyNode(record.id)
+            sodsStore.refreshStatus()
         }
     }
 }
