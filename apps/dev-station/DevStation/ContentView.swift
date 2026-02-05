@@ -495,6 +495,7 @@ struct ContentView: View {
                 nodePresence: sodsStore.nodePresence,
                 scanner: scanner,
                 flashManager: flashManager,
+                connectableNodeIDs: connectableNodeIDs(),
                 onvifDiscoveryEnabled: $onvifDiscoveryEnabled,
                 serviceDiscoveryEnabled: $serviceDiscoveryEnabled,
                 arpWarmupEnabled: $arpWarmupEnabled,
@@ -529,7 +530,8 @@ struct ContentView: View {
                     } else {
                         logStore.log(.warn, "No readable scan report found in ~/SODS/reports/scan-readable/")
                     }
-                }
+                },
+                onFindDevice: { modalCoordinator.present(.findDevice) }
             )
         } else if viewMode == .buttons {
             PresetButtonsView(
@@ -1070,6 +1072,18 @@ struct ContentView: View {
         modalCoordinator.present(.toolRegistry)
     }
 
+    private func connectableNodeIDs() -> [String] {
+        var ids: Set<String> = []
+        for node in piAuxStore.plannedNodes {
+            ids.insert(node.id)
+        }
+        for node in piAuxStore.activeNodes {
+            ids.insert(node.id)
+        }
+        if ids.isEmpty { return ["pi-aux"] }
+        return ids.sorted()
+    }
+
     private func godButtonSections() -> [ActionMenuSection] {
         let isBleTab = viewMode == .ble
         let isNodesTab = viewMode == .nodes
@@ -1102,7 +1116,7 @@ struct ContentView: View {
                     enabled: true,
                     reason: nil,
                     action: {
-                        let target = connectNodeID.isEmpty ? (connectableNodeIDs.first ?? "") : connectNodeID
+                        let target = connectNodeID.isEmpty ? (self.connectableNodeIDs().first ?? "") : connectNodeID
                         if !target.isEmpty {
                             sodsStore.connectNode(target)
                             piAuxStore.connectNode(target)
@@ -1148,7 +1162,7 @@ struct ContentView: View {
 
         let connectItems: [ActionMenuItem] = [
             ActionMenuItem(title: "Connect Node", systemImage: "link", enabled: true, reason: nil, action: {
-                let target = connectNodeID.isEmpty ? (connectableNodeIDs.first ?? "") : connectNodeID
+                let target = connectNodeID.isEmpty ? (self.connectableNodeIDs().first ?? "") : connectNodeID
                 if !target.isEmpty {
                     sodsStore.connectNode(target)
                     piAuxStore.connectNode(target)
@@ -3744,6 +3758,7 @@ struct NodesView: View {
     let nodePresence: [String: NodePresence]
     @ObservedObject var scanner: NetworkScanner
     @ObservedObject var flashManager: FlashServerManager
+    let connectableNodeIDs: [String]
     @Binding var onvifDiscoveryEnabled: Bool
     @Binding var serviceDiscoveryEnabled: Bool
     @Binding var arpWarmupEnabled: Bool
@@ -3762,6 +3777,7 @@ struct NodesView: View {
     let onStopScan: () -> Void
     let onGenerateScanReport: () -> Void
     let onRevealLatestReport: () -> Void
+    let onFindDevice: () -> Void
     @State private var portText: String = ""
     @State private var plannedID: String = ""
     @State private var plannedLabel: String = ""
@@ -4086,9 +4102,7 @@ struct NodesView: View {
                         }
                         .buttonStyle(SecondaryActionButtonStyle())
                     }
-                    Button("Find Newly Flashed Device") {
-                        modalCoordinator.present(.findDevice)
-                    }
+                    Button("Find Newly Flashed Device") { onFindDevice() }
                     .buttonStyle(SecondaryActionButtonStyle())
                     Spacer()
                 }
@@ -4162,18 +4176,6 @@ struct NodesView: View {
                 }
             }
         }
-    }
-
-    private var connectableNodeIDs: [String] {
-        var ids: Set<String> = []
-        for node in store.plannedNodes {
-            ids.insert(node.id)
-        }
-        for node in store.activeNodes {
-            ids.insert(node.id)
-        }
-        if ids.isEmpty { return ["pi-aux"] }
-        return ids.sorted()
     }
 
     private func actions(for node: NodeRecord) -> [NodeAction] {
