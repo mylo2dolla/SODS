@@ -33,6 +33,7 @@
 		A1A1A1A1A1A1A1A1A1A1A1F5 /* ScratchpadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1F5 /* ScratchpadView.swift */; };
 		A1A1A1A1A1A1A1A1A1A1A1A3 /* NetworkScanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1B3 /* NetworkScanner.swift */; };
 		A1A1A1A1A1A1A1A1A1A1A1A4 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1B4 /* Models.swift */; };
+		A1A1A1A1A1A1A1A1A1A1A1FD /* NodeRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1FD /* NodeRegistry.swift */; };
 		A1A1A1A1A1A1A1A1A1A1A1A5 /* AsyncSemaphore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1B6 /* AsyncSemaphore.swift */; };
 		A1A1A1A1A1A1A1A1A1A1A1A6 /* NetworkHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1B7 /* NetworkHelpers.swift */; };
 		A1A1A1A1A1A1A1A1A1A1A1A7 /* ONVIFDiscovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1B8 /* ONVIFDiscovery.swift */; };
@@ -98,6 +99,7 @@
 		B1B1B1B1B1B1B1B1B1B1B1F5 /* ScratchpadView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScratchpadView.swift; sourceTree = "<group>"; };
 		B1B1B1B1B1B1B1B1B1B1B1B3 /* NetworkScanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkScanner.swift; sourceTree = "<group>"; };
 		B1B1B1B1B1B1B1B1B1B1B1B4 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
+		B1B1B1B1B1B1B1B1B1B1B1FD /* NodeRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NodeRegistry.swift; sourceTree = "<group>"; };
 		B1B1B1B1B1B1B1B1B1B1B1B5 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		B1B1B1B1B1B1B1B1B1B1B1B6 /* AsyncSemaphore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AsyncSemaphore.swift; sourceTree = "<group>"; };
 		B1B1B1B1B1B1B1B1B1B1B1B7 /* NetworkHelpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkHelpers.swift; sourceTree = "<group>"; };
@@ -181,6 +183,7 @@
 				B1B1B1B1B1B1B1B1B1B1B1F6 /* AliasManagerView.swift */,
 				B1B1B1B1B1B1B1B1B1B1B1B3 /* NetworkScanner.swift */,
 				B1B1B1B1B1B1B1B1B1B1B1B4 /* Models.swift */,
+				B1B1B1B1B1B1B1B1B1B1B1FD /* NodeRegistry.swift */,
 				B1B1B1B1B1B1B1B1B1B1B1B6 /* AsyncSemaphore.swift */,
 				B1B1B1B1B1B1B1B1B1B1B1B7 /* NetworkHelpers.swift */,
 				B1B1B1B1B1B1B1B1B1B1B1B8 /* ONVIFDiscovery.swift */,
@@ -323,6 +326,7 @@
 				A1A1A1A1A1A1A1A1A1A1A1F6 /* AliasManagerView.swift in Sources */,
 				A1A1A1A1A1A1A1A1A1A1A1A3 /* NetworkScanner.swift in Sources */,
 				A1A1A1A1A1A1A1A1A1A1A1A4 /* Models.swift in Sources */,
+				A1A1A1A1A1A1A1A1A1A1A1FD /* NodeRegistry.swift in Sources */,
 				A1A1A1A1A1A1A1A1A1A1A1A5 /* AsyncSemaphore.swift in Sources */,
 				A1A1A1A1A1A1A1A1A1A1A1A6 /* NetworkHelpers.swift in Sources */,
 				A1A1A1A1A1A1A1A1A1A1A1A7 /* ONVIFDiscovery.swift in Sources */,

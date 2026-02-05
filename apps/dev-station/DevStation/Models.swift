@@ -66,6 +66,9 @@ struct NodeRecord: Identifiable, Codable, Hashable {
     var connectionState: NodeConnectionState
     var isScanning: Bool
     var lastError: String?
+    var ip: String?
+    var hostname: String?
+    var mac: String?
 
     var presenceState: NodePresenceState {
         if connectionState == .error { return .error }
@@ -118,6 +121,9 @@ struct NodePresentation: Hashable {
             node.id,
             "node:\(node.id)",
             node.label,
+            node.hostname,
+            node.ip,
+            node.mac,
             presence?.hostname,
             presence?.ip,
             presence?.mac
@@ -163,6 +169,51 @@ struct NodePresentation: Hashable {
         default:
             return false
         }
+    }
+}
+
+struct WhoamiPayload: Decodable {
+    let ok: Bool?
+    let nodeID: String?
+    let nodeId: String?
+    let id: String?
+    let hostname: String?
+    let ip: String?
+    let mac: String?
+    let label: String?
+    let chip: String?
+
+    enum CodingKeys: String, CodingKey {
+        case ok
+        case nodeID = "node_id"
+        case nodeId = "nodeId"
+        case id
+        case hostname
+        case ip
+        case mac
+        case label
+        case chip
+    }
+
+    var resolvedNodeID: String? {
+        if let nodeID, !nodeID.isEmpty { return nodeID }
+        if let nodeId, !nodeId.isEmpty { return nodeId }
+        if let id, !id.isEmpty { return id }
+        return nil
+    }
+
+    var resolvedLabel: String? {
+        if let label, !label.isEmpty { return label }
+        if let hostname, !hostname.isEmpty { return hostname }
+        if let resolvedNodeID { return resolvedNodeID }
+        return nil
+    }
+}
+
+enum WhoamiParser {
+    static func parse(_ text: String?) -> WhoamiPayload? {
+        guard let text, !text.isEmpty, let data = text.data(using: .utf8) else { return nil }
+        return try? JSONDecoder().decode(WhoamiPayload.self, from: data)
     }
 }
 

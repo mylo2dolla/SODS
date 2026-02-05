@@ -65,6 +65,7 @@ struct ContentView: View {
     @StateObject private var presetRegistry = PresetRegistry.shared
     @StateObject private var runbookRegistry = RunbookRegistry.shared
     @StateObject private var aliasStore = SODSStore.shared
+    @StateObject private var nodeRegistry = NodeRegistry.shared
     @AppStorage("consentAcknowledged") private var consentAcknowledged = false
     @AppStorage("bleFindFingerprintID") private var bleFindFingerprintID = ""
 
@@ -195,6 +196,19 @@ struct ContentView: View {
                     FindDeviceView(
                         baseURL: sodsStore.baseURL,
                         onBindAlias: { id, alias in aliasStore.setAlias(id: id, alias: alias) },
+                        onRegisterNode: { payload, candidate, alias in
+                            if let nodeID = nodeRegistry.registerFromWhoami(
+                                host: candidate.ip,
+                                payload: payload,
+                                preferredLabel: alias
+                            ) {
+                                if let alias, !alias.isEmpty {
+                                    aliasStore.setAlias(id: nodeID, alias: alias)
+                                }
+                                sodsStore.identifyNode(nodeID)
+                                sodsStore.refreshStatus()
+                            }
+                        },
                         onClose: { modalCoordinator.dismiss() }
                     )
                 case .consent:
@@ -284,7 +298,12 @@ struct ContentView: View {
             entityStore.ingestHosts(scanner.allHosts)
             entityStore.ingestDevices(scanner.devices)
             entityStore.ingestBLE(bleScanner.peripherals)
-            entityStore.ingestNodes(piAuxStore.activeNodes)
+            for node in piAuxStore.activeNodes {
+                nodeRegistry.observe(node)
+            }
+            nodeRegistry.updateFromPresence(sodsStore.nodePresence)
+            entityStore.ingestNodes(nodeRegistry.nodes)
+            IdentityResolver.shared.updateFromNodes(nodeRegistry.nodes)
             IdentityResolver.shared.updateFromSignals(sodsStore.nodes)
             refreshConnectSelection()
             Task.detached {
@@ -330,6 +349,7 @@ struct ContentView: View {
         .onReceive(NotificationCenter.default.publisher(for: .connectNodeCommand)) { _ in
             viewMode = .nodes
             guard !connectNodeID.isEmpty else { return }
+            NodeRegistry.shared.setConnecting(nodeID: connectNodeID, connecting: true)
             sodsStore.connectNode(connectNodeID)
             sodsStore.identifyNode(connectNodeID)
             sodsStore.refreshStatus()
@@ -359,7 +379,10 @@ struct ContentView: View {
             entityStore.ingestBLE(bleScanner.peripherals)
         }
         .onChange(of: piAuxStore.activeNodes) { _ in
-            entityStore.ingestNodes(piAuxStore.activeNodes)
+            for node in piAuxStore.activeNodes {
+                nodeRegistry.observe(node)
+            }
+            entityStore.ingestNodes(nodeRegistry.nodes)
             refreshConnectSelection()
         }
         .onChange(of: sodsStore.nodes) { _ in
@@ -367,6 +390,13 @@ struct ContentView: View {
             refreshConnectSelection()
         }
         .onChange(of: sodsStore.nodePresence) { _ in
+            nodeRegistry.updateFromPresence(sodsStore.nodePresence)
+            entityStore.ingestNodes(nodeRegistry.nodes)
+            refreshConnectSelection()
+        }
+        .onChange(of: nodeRegistry.nodes) { _ in
+            entityStore.ingestNodes(nodeRegistry.nodes)
+            IdentityResolver.shared.updateFromNodes(nodeRegistry.nodes)
             refreshConnectSelection()
         }
         .onChange(of: scanner.isScanning) { _ in
@@ -441,11 +471,11 @@ struct ContentView: View {
                         .popover(isPresented: $showFlashPopover, arrowEdge: .bottom) {
                             FlashPopoverView(
                                 status: sodsStore.health,
-                                onFlashEsp32: { openFlashPath("/flash/esp32") },
-                                onFlashEsp32c3: { openFlashPath("/flash/esp32c3") },
-                                onFlashPortalCyd: { openFlashPath("/flash/portal-cyd") },
-                                onFlashP4: { openFlashPath("/flash/p4") },
-                                onOpenWebTools: { openFlashPath("/flash/") }
+                        onFlashEsp32: { openFlashPath("/flash/esp32", showFinder: true) },
+                        onFlashEsp32c3: { openFlashPath("/flash/esp32c3", showFinder: true) },
+                        onFlashPortalCyd: { openFlashPath("/flash/portal-cyd", showFinder: true) },
+                        onFlashP4: { openFlashPath("/flash/p4", showFinder: true) },
+                        onOpenWebTools: { openFlashPath("/flash/") }
                             )
                         }
                     Text(sodsStore.health.label)
@@ -495,6 +525,7 @@ struct ContentView: View {
                 entityStore: entityStore,
                 sodsStore: sodsStore,
                 vaultTransport: vaultTransport,
+                connectingNodeIDs: nodeRegistry.connectingNodeIDs,
                 inboxStatus: inboxStatus,
                 retentionDays: inboxRetentionDays,
                 retentionMaxGB: inboxMaxGB,
@@ -539,6 +570,7 @@ struct ContentView: View {
                 sodsStore: sodsStore,
                 nodes: entityStore.nodes,
                 nodePresence: sodsStore.nodePresence,
+                connectingNodeIDs: nodeRegistry.connectingNodeIDs,
                 scanner: scanner,
                 flashManager: flashManager,
                 connectableNodeIDs: connectableNodeIDs(),
@@ -1008,10 +1040,10 @@ struct ContentView: View {
                 .popover(isPresented: $showFlashPopover, arrowEdge: .bottom) {
                     FlashPopoverView(
                         status: sodsStore.health,
-                        onFlashEsp32: { openFlashPath("/flash/esp32") },
-                        onFlashEsp32c3: { openFlashPath("/flash/esp32c3") },
-                        onFlashPortalCyd: { openFlashPath("/flash/portal-cyd") },
-                        onFlashP4: { openFlashPath("/flash/p4") },
+                        onFlashEsp32: { openFlashPath("/flash/esp32", showFinder: true) },
+                        onFlashEsp32c3: { openFlashPath("/flash/esp32c3", showFinder: true) },
+                        onFlashPortalCyd: { openFlashPath("/flash/portal-cyd", showFinder: true) },
+                        onFlashP4: { openFlashPath("/flash/p4", showFinder: true) },
                         onOpenWebTools: { openFlashPath("/flash/") }
                     )
                 }
@@ -1155,20 +1187,7 @@ struct ContentView: View {
     }
 
     private func connectableNodeIDs() -> [String] {
-        var ids: Set<String> = []
-        for node in sodsStore.nodes {
-            ids.insert(node.id)
-        }
-        for id in sodsStore.nodePresence.keys {
-            ids.insert(id)
-        }
-        for node in entityStore.nodes {
-            ids.insert(node.id)
-        }
-        for node in piAuxStore.activeNodes {
-            ids.insert(node.id)
-        }
-        return ids.sorted()
+        nodeRegistry.nodes.map { $0.id }.sorted()
     }
 
     private func refreshConnectSelection() {
@@ -1212,15 +1231,16 @@ struct ContentView: View {
                     systemImage: "link",
                     enabled: true,
                     reason: nil,
-                    action: {
-                        let target = !connectNodeID.isEmpty ? connectNodeID : (self.connectableNodeIDs().first ?? "")
-                        guard !target.isEmpty else { return }
-                        connectNodeID = target
-                        sodsStore.connectNode(target)
-                        sodsStore.identifyNode(target)
-                        sodsStore.refreshStatus()
-                        piAuxStore.connectNode(target)
-                        if !bleDiscoveryEnabled { bleDiscoveryEnabled = true }
+                        action: {
+                            let target = !connectNodeID.isEmpty ? connectNodeID : (self.connectableNodeIDs().first ?? "")
+                            guard !target.isEmpty else { return }
+                            connectNodeID = target
+                            NodeRegistry.shared.setConnecting(nodeID: target, connecting: true)
+                            sodsStore.connectNode(target)
+                            sodsStore.identifyNode(target)
+                            sodsStore.refreshStatus()
+                            piAuxStore.connectNode(target)
+                            if !bleDiscoveryEnabled { bleDiscoveryEnabled = true }
                     }
                 ))
                 items.append(ActionMenuItem(
@@ -1258,6 +1278,7 @@ struct ContentView: View {
                 let target = !connectNodeID.isEmpty ? connectNodeID : (self.connectableNodeIDs().first ?? "")
                 guard !target.isEmpty else { return }
                 connectNodeID = target
+                NodeRegistry.shared.setConnecting(nodeID: target, connecting: true)
                 sodsStore.connectNode(target)
                 sodsStore.identifyNode(target)
                 sodsStore.refreshStatus()
@@ -1411,7 +1432,7 @@ struct ContentView: View {
         }
     }
 
-    private func openFlashPath(_ path: String) {
+    private func openFlashPath(_ path: String, showFinder: Bool = false) {
         let base = sodsStore.baseURL.trimmingCharacters(in: .whitespacesAndNewlines)
         StationProcessManager.shared.ensureRunning(baseURL: base)
         Task {
@@ -1421,6 +1442,11 @@ struct ContentView: View {
                 }
             } else if let url = URL(string: base + path) {
                 NSWorkspace.shared.open(url)
+            }
+            if showFinder {
+                await MainActor.run {
+                    modalCoordinator.present(.findDevice)
+                }
             }
         }
     }
@@ -3944,6 +3970,7 @@ struct NodesView: View {
     @ObservedObject var sodsStore: SODSStore
     let nodes: [NodeRecord]
     let nodePresence: [String: NodePresence]
+    let connectingNodeIDs: Set<String>
     @ObservedObject var scanner: NetworkScanner
     @ObservedObject var flashManager: FlashServerManager
     let connectableNodeIDs: [String]
@@ -3968,6 +3995,9 @@ struct NodesView: View {
     let onRevealLatestReport: () -> Void
     let onFindDevice: () -> Void
     @State private var portText: String = ""
+    @State private var manualConnectHost: String = ""
+    @State private var manualConnectError: String?
+    @State private var isManualConnecting = false
 
     var body: some View {
         ViewThatFits(in: .horizontal) {
@@ -3997,7 +4027,9 @@ struct NodesView: View {
                             presence: nodePresence[node.id],
                             eventCount: store.recentEventCount(nodeID: node.id, window: 600),
                             actions: actions(for: node),
+                            isConnecting: connectingNodeIDs.contains(node.id),
                             onRefresh: {
+                                NodeRegistry.shared.setConnecting(nodeID: node.id, connecting: true)
                                 sodsStore.connectNode(node.id)
                                 sodsStore.identifyNode(node.id)
                                 sodsStore.refreshStatus()
@@ -4188,27 +4220,28 @@ struct NodesView: View {
                         }
                         .frame(width: 220)
                     }
-                    TextField("Node ID", text: $connectNodeID)
+                    TextField("Node ID (optional)", text: $connectNodeID)
                         .textFieldStyle(.roundedBorder)
                         .frame(width: 180)
-                    Button("Connect Node") {
-                        let target = !connectNodeID.isEmpty ? connectNodeID : (connectableNodeIDs.first ?? "")
-                        if !target.isEmpty {
-                            connectNodeID = target
-                            sodsStore.connectNode(target)
-                            sodsStore.identifyNode(target)
-                            sodsStore.refreshStatus()
-                            store.connectNode(target)
-                            if !bleDiscoveryEnabled {
-                                bleDiscoveryEnabled = true
-                            }
-                            if networkScanMode == .continuous && !scanner.isScanning {
-                                onStartScan()
-                            }
-                        }
+                    Spacer()
+                }
+                HStack(spacing: 10) {
+                    Text("Host/IP")
+                        .font(.system(size: 11))
+                    TextField("192.168.1.22", text: $manualConnectHost)
+                        .textFieldStyle(.roundedBorder)
+                        .frame(width: 200)
+                    Button(isManualConnecting ? "Connecting..." : "Connect Node") {
+                        connectSelectedNode()
                     }
                     .buttonStyle(PrimaryActionButtonStyle())
+                    .disabled(isManualConnecting)
                     Spacer()
+                }
+                if let manualConnectError {
+                    Text(manualConnectError)
+                        .font(.system(size: 11))
+                        .foregroundColor(Theme.textSecondary)
                 }
                 if let lastError = sodsStore.lastError, !lastError.isEmpty {
                     Text("Connect error: \(lastError)")
@@ -4242,6 +4275,7 @@ struct NodesView: View {
                     ) {
                         Button("Flash \(flashManager.selectedTarget.label)", role: .destructive) {
                             flashManager.startSelectedTarget()
+                            onFindDevice()
                         }
                         Button("Cancel", role: .cancel) {}
                     } message: {
@@ -4383,6 +4417,51 @@ struct NodesView: View {
         let host = endpointHost.lowercased()
         return host == "127.0.0.1" || host == "localhost"
     }
+
+    private func connectSelectedNode() {
+        let manualHost = manualConnectHost.trimmingCharacters(in: .whitespacesAndNewlines)
+        let target = connectNodeID.trimmingCharacters(in: .whitespacesAndNewlines)
+        manualConnectError = nil
+        if !manualHost.isEmpty {
+            isManualConnecting = true
+            Task {
+                let result = await NodeRegistry.shared.registerFromHost(manualHost, preferredLabel: target.isEmpty ? nil : target)
+                await MainActor.run {
+                    isManualConnecting = false
+                    if let nodeID = result.nodeID, !nodeID.isEmpty {
+                        connectNodeID = nodeID
+                        manualConnectHost = ""
+                        connectRegisteredNode(nodeID)
+                    } else {
+                        manualConnectError = result.error ?? "Unable to verify device identity."
+                    }
+                }
+            }
+            return
+        }
+        let resolved = !target.isEmpty ? target : (connectableNodeIDs.first ?? "")
+        guard !resolved.isEmpty else {
+            manualConnectError = "No registered node selected."
+            return
+        }
+        connectRegisteredNode(resolved)
+    }
+
+    private func connectRegisteredNode(_ nodeID: String) {
+        connectNodeID = nodeID
+        NodeRegistry.shared.setConnecting(nodeID: nodeID, connecting: true)
+        NodeRegistry.shared.clearLastError(nodeID: nodeID)
+        sodsStore.connectNode(nodeID)
+        sodsStore.identifyNode(nodeID)
+        sodsStore.refreshStatus()
+        store.connectNode(nodeID)
+        if !bleDiscoveryEnabled {
+            bleDiscoveryEnabled = true
+        }
+        if networkScanMode == .continuous && !scanner.isScanning {
+            onStartScan()
+        }
+    }
 }
 
 struct NodeAction: Identifiable {
@@ -4396,6 +4475,7 @@ struct NodeCardView: View {
     let presence: NodePresence?
     let eventCount: Int
     let actions: [NodeAction]
+    let isConnecting: Bool
     let onRefresh: () -> Void
     @State private var showActions = false
 
@@ -4404,9 +4484,16 @@ struct NodeCardView: View {
             let status = nodeStatus()
             let activity = min(1.0, Double(eventCount) / 40.0)
             let presentation = NodePresentation.forNode(node, presence: presence, activityScore: activity)
-            let isRefreshing = {
-                let state = presence?.state.lowercased() ?? ""
-                return state == "connecting" || state == "scanning"
+            let state = presence?.state.lowercased() ?? ""
+            let isRefreshing = isConnecting || state == "connecting" || state == "scanning"
+            let refreshLabel: String = {
+                if isConnecting || state == "connecting" {
+                    return "Connecting..."
+                }
+                if state == "scanning" {
+                    return "Refreshing..."
+                }
+                return "Refresh/Reconnect"
             }()
             let secondaryColor = presentation.isOffline ? Theme.muted : Theme.textSecondary
             let pulse = NodePresentation.pulse(now: timeline.date, seed: node.id)
@@ -4458,7 +4545,7 @@ struct NodeCardView: View {
                 }
 
                 HStack(spacing: 8) {
-                    Button(isRefreshing ? "Refreshing…" : "Refresh/Reconnect") { onRefresh() }
+                    Button(refreshLabel) { onRefresh() }
                         .buttonStyle(SecondaryActionButtonStyle())
                         .disabled(isRefreshing)
                     Button("Actions") { showActions.toggle() }
@@ -4505,6 +4592,9 @@ struct NodeCardView: View {
         let lastSeenText = lastSeen > 0
         ? Date(timeIntervalSince1970: TimeInterval(lastSeen) / 1000).formatted(date: .abbreviated, time: .shortened)
         : "Not seen yet"
+        if isConnecting {
+            return ("Connecting", false, lastSeenText)
+        }
         if let state = presence?.state.lowercased() {
             switch state {
             case "online":
@@ -4549,9 +4639,9 @@ struct NodeCardView: View {
     }
 
     private func hostSummary() -> String? {
-        let host = presence?.hostname?.trimmingCharacters(in: .whitespacesAndNewlines)
-        let ip = presence?.ip?.trimmingCharacters(in: .whitespacesAndNewlines)
-        let mac = presence?.mac?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let host = (presence?.hostname ?? node.hostname)?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let ip = (presence?.ip ?? node.ip)?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let mac = (presence?.mac ?? node.mac)?.trimmingCharacters(in: .whitespacesAndNewlines)
         let hostPart: String? = {
             if let host, !host.isEmpty { return host }
             if let ip, !ip.isEmpty { return ip }

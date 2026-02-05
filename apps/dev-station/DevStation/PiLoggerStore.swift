@@ -347,16 +347,31 @@ final class SODSStore: ObservableObject {
         req.httpMethod = "POST"
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         req.httpBody = body
-        URLSession.shared.dataTask(with: req) { [weak self] data, _, _ in
-            guard let data else { return }
+        URLSession.shared.dataTask(with: req) { [weak self] data, _, error in
+            if let error {
+                DispatchQueue.main.async {
+                    self?.lastError = error.localizedDescription
+                    NodeRegistry.shared.recordLastError(nodeID: nodeID, message: error.localizedDescription)
+                }
+                return
+            }
+            guard let data else {
+                DispatchQueue.main.async {
+                    self?.lastError = "connect failed: no response"
+                    NodeRegistry.shared.recordLastError(nodeID: nodeID, message: "connect failed: no response")
+                }
+                return
+            }
             if let result = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                let ok = result["ok"] as? Bool, !ok {
                 let error = result["error"] as? String ?? "connect failed"
                 DispatchQueue.main.async {
                     self?.lastError = error
+                    NodeRegistry.shared.recordLastError(nodeID: nodeID, message: error)
                 }
             } else {
                 DispatchQueue.main.async {
+                    NodeRegistry.shared.clearLastError(nodeID: nodeID)
                     self?.refreshStatus()
                 }
             }
@@ -375,13 +390,31 @@ final class SODSStore: ObservableObject {
         req.httpMethod = "POST"
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         req.httpBody = body
-        URLSession.shared.dataTask(with: req) { [weak self] data, _, _ in
-            guard let data else { return }
+        URLSession.shared.dataTask(with: req) { [weak self] data, _, error in
+            if let error {
+                DispatchQueue.main.async {
+                    self?.lastError = error.localizedDescription
+                    NodeRegistry.shared.recordLastError(nodeID: nodeID, message: error.localizedDescription)
+                }
+                return
+            }
+            guard let data else {
+                DispatchQueue.main.async {
+                    self?.lastError = "identify failed: no response"
+                    NodeRegistry.shared.recordLastError(nodeID: nodeID, message: "identify failed: no response")
+                }
+                return
+            }
             if let result = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                let ok = result["ok"] as? Bool, !ok {
                 let error = result["error"] as? String ?? "identify failed"
                 DispatchQueue.main.async {
                     self?.lastError = error
+                    NodeRegistry.shared.recordLastError(nodeID: nodeID, message: error)
+                }
+            } else {
+                DispatchQueue.main.async {
+                    NodeRegistry.shared.clearLastError(nodeID: nodeID)
                 }
             }
         }.resume()

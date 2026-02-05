@@ -7,6 +7,7 @@ struct DashboardView: View {
     @ObservedObject var entityStore: EntityStore
     @ObservedObject var sodsStore: SODSStore
     @ObservedObject var vaultTransport: VaultTransport
+    let connectingNodeIDs: Set<String>
     let inboxStatus: InboxStatus
     let retentionDays: Int
     let retentionMaxGB: Int
@@ -182,7 +183,9 @@ struct DashboardView: View {
                                 presence: sodsStore.nodePresence[node.id],
                                 eventCount: piAuxStore.recentEventCount(nodeID: node.id, window: 600),
                                 actions: dashboardActions(for: node),
+                                isConnecting: connectingNodeIDs.contains(node.id),
                                 onRefresh: {
+                                    NodeRegistry.shared.setConnecting(nodeID: node.id, connecting: true)
                                     sodsStore.connectNode(node.id)
                                     sodsStore.identifyNode(node.id)
                                     sodsStore.refreshStatus()

@@ -248,7 +248,10 @@ final class PiAuxStore: ObservableObject {
             lastHeartbeat: nil,
             connectionState: .idle,
             isScanning: false,
-            lastError: nil
+            lastError: nil,
+            ip: nil,
+            hostname: nil,
+            mac: nil
         )
         if let label = extractLabel(from: event) {
             record.label = label

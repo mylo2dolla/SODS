@@ -3,6 +3,7 @@ import SwiftUI
 struct FindDeviceView: View {
     let baseURL: String
     let onBindAlias: (String, String) -> Void
+    let onRegisterNode: (WhoamiPayload, DeviceCandidate, String?) -> Void
     let onClose: () -> Void
 
     @State private var nodeID: String = ""
@@ -102,14 +103,45 @@ struct FindDeviceView: View {
 
     private func bindCandidate(_ candidate: DeviceCandidate) {
         let trimmedNode = nodeID.trimmingCharacters(in: .whitespacesAndNewlines)
+        let aliasLabel = trimmedNode.isEmpty ? nil : trimmedNode
         if let ip = candidate.ip {
-            onBindAlias(ip, trimmedNode.isEmpty ? ip : trimmedNode)
+            onBindAlias(ip, aliasLabel ?? ip)
         }
         if let mac = candidate.mac {
-            onBindAlias(mac, trimmedNode.isEmpty ? mac : trimmedNode)
+            onBindAlias(mac, aliasLabel ?? mac)
         }
-        if !trimmedNode.isEmpty {
-            onBindAlias("node:\(trimmedNode)", trimmedNode)
+        if let payload = WhoamiParser.parse(candidate.whoami) {
+            onRegisterNode(payload, candidate, aliasLabel)
+        } else if let ip = candidate.ip {
+            Task {
+                if let payload = await fetchWhoami(ip: ip) {
+                    await MainActor.run {
+                        onRegisterNode(payload, candidate, aliasLabel)
+                    }
+                } else {
+                    await MainActor.run {
+                        lastError = "Unable to verify device identity via /whoami."
+                    }
+                }
+            }
+        } else if let aliasLabel {
+            onBindAlias("node:\(aliasLabel)", aliasLabel)
+        }
+    }
+
+    private func fetchWhoami(ip: String) async -> WhoamiPayload? {
+        guard let url = URL(string: "http://\(ip)/whoami") else { return nil }
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.timeoutInterval = 2.0
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            let status = (response as? HTTPURLResponse)?.statusCode ?? -1
+            guard status >= 200 && status < 300 else { return nil }
+            let text = String(data: data, encoding: .utf8)
+            return WhoamiParser.parse(text)
+        } catch {
+            return nil
         }
     }
 
