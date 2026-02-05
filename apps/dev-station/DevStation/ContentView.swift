@@ -5697,6 +5697,10 @@ private func p4RootPath() -> String {
     "\(sodsRootPath())/firmware/sods-p4-godbutton"
 }
 
+private func portalRootPath() -> String {
+    "\(sodsRootPath())/firmware/ops-portal"
+}
+
 struct FlashPopoverView: View {
     let status: APIHealth
     let onFlashEsp32: () -> Void
@@ -5759,6 +5763,7 @@ struct FlashPopoverView: View {
 enum FlashTarget: String, CaseIterable, Identifiable {
     case esp32dev
     case esp32c3
+    case portalCyd = "portal-cyd"
     case esp32p4
 
     var id: String { rawValue }
@@ -5769,6 +5774,8 @@ enum FlashTarget: String, CaseIterable, Identifiable {
             return "ESP32 DevKit v1"
         case .esp32c3:
             return "ESP32-C3 DevKitM-1"
+        case .portalCyd:
+            return "Ops Portal (CYD)"
         case .esp32p4:
             return "ESP32-P4 God Button"
         }
@@ -5780,6 +5787,8 @@ enum FlashTarget: String, CaseIterable, Identifiable {
             return 8000
         case .esp32c3:
             return 8001
+        case .portalCyd:
+            return 8003
         case .esp32p4:
             return 8002
         }
@@ -5791,6 +5800,8 @@ enum FlashTarget: String, CaseIterable, Identifiable {
             return nil
         case .esp32c3:
             return "chip=esp32c3"
+        case .portalCyd:
+            return nil
         case .esp32p4:
             return "chip=esp32p4"
         }
@@ -5802,6 +5813,8 @@ enum FlashTarget: String, CaseIterable, Identifiable {
             return "cd \(nodeAgentRootPath()) && ./tools/build-stage-esp32dev.sh"
         case .esp32c3:
             return "cd \(nodeAgentRootPath()) && ./tools/build-stage-esp32c3.sh"
+        case .portalCyd:
+            return "cd \(sodsRootPath()) && ./tools/portal-cyd-stage.sh"
         case .esp32p4:
             return "cd \(sodsRootPath()) && ./tools/p4-stage.sh"
         }
@@ -5834,6 +5847,7 @@ final class FlashServerManager: ObservableObject {
 
     private var process: Process?
     private var outputBuffer = ""
+    private var didLogTargets = false
 
     var isRunning: Bool { state == .running }
     var isStarting: Bool { state == .starting }
@@ -5873,6 +5887,14 @@ final class FlashServerManager: ObservableObject {
 
     func refreshPrepStatus() {
         prepStatus = buildPrepStatus(for: selectedTarget)
+        if !didLogTargets {
+            let labels = FlashTarget.allCases.map { $0.label }.joined(separator: ", ")
+            LogStore.logAsync(.info, "Flasher targets: \(labels)")
+            didLogTargets = true
+        }
+        if !prepStatus.missingItems.isEmpty {
+            LogStore.logAsync(.warn, "Flasher missing artifacts for \(selectedTarget.label): \(prepStatus.missingItems.joined(separator: ", "))")
+        }
     }
 
     func startSelectedTarget() {
@@ -5930,6 +5952,8 @@ final class FlashServerManager: ObservableObject {
             path = "/flash/esp32"
         case .esp32c3:
             path = "/flash/esp32c3"
+        case .portalCyd:
+            path = "/flash/portal-cyd"
         case .esp32p4:
             path = "/flash/p4"
         }
@@ -5990,6 +6014,10 @@ final class FlashServerManager: ObservableObject {
             root = nodeAgentRoot()
             toolsDir = "\(root)/tools"
             scriptPath = "\(toolsDir)/flash-esp32c3.sh"
+        case .portalCyd:
+            root = sodsRootPath()
+            toolsDir = "\(root)/tools"
+            scriptPath = "\(toolsDir)/portal-cyd-stage.sh"
         case .esp32p4:
             root = p4RootPath()
             toolsDir = "\(root)/tools"
@@ -5997,10 +6025,12 @@ final class FlashServerManager: ObservableObject {
         }
 
         if !scriptPath.isEmpty && FileManager.default.fileExists(atPath: scriptPath) {
-            let commandLine = "cd \(root) && \(scriptPath) --port \(port)"
+            let needsPort = target != .portalCyd
+            let suffix = needsPort ? " --port \(port)" : ""
+            let commandLine = "cd \(root) && \(scriptPath)\(suffix)"
             let config = ProcessConfig(
                 executableURL: URL(fileURLWithPath: "/bin/zsh"),
-                arguments: ["-lc", "\(scriptPath) --port \(port)"],
+                arguments: ["-lc", "\(scriptPath)\(suffix)"],
                 currentDirectoryURL: URL(fileURLWithPath: root)
             )
             return (commandLine, config)
@@ -6030,6 +6060,8 @@ final class FlashServerManager: ObservableObject {
         switch target {
         case .esp32dev, .esp32c3:
             root = nodeAgentRoot()
+        case .portalCyd:
+            root = portalRootPath()
         case .esp32p4:
             root = p4RootPath()
         }
@@ -6044,6 +6076,8 @@ final class FlashServerManager: ObservableObject {
             manifestPath = "\(webTools)/manifest.json"
         case .esp32c3:
             manifestPath = "\(webTools)/manifest-esp32c3.json"
+        case .portalCyd:
+            manifestPath = "\(webTools)/manifest-portal-cyd.json"
         case .esp32p4:
             manifestPath = "\(webTools)/manifest-p4.json"
         }
@@ -6077,6 +6111,16 @@ final class FlashServerManager: ObservableObject {
             fwCandidates = [
                 "\(firmwareBase)/esp32c3/firmware.bin"
             ]
+        case .portalCyd:
+            bootCandidates = [
+                "\(firmwareBase)/portal-cyd/bootloader.bin"
+            ]
+            partCandidates = [
+                "\(firmwareBase)/portal-cyd/partitions.bin"
+            ]
+            fwCandidates = [
+                "\(firmwareBase)/portal-cyd/firmware.bin"
+            ]
         case .esp32p4:
             bootCandidates = [
                 "\(firmwareBase)/p4/bootloader.bin"
@@ -6094,6 +6138,14 @@ final class FlashServerManager: ObservableObject {
         }
         if !anyExists(partCandidates) {
             missing.append(displayPath(partCandidates[0]))
+        }
+        if target == .portalCyd {
+            let appCandidates = [
+                "\(firmwareBase)/portal-cyd/boot_app0.bin"
+            ]
+            if !anyExists(appCandidates) {
+                missing.append(displayPath(appCandidates[0]))
+            }
         }
         if !anyExists(fwCandidates) {
             missing.append(displayPath(fwCandidates[0]))
