@@ -768,7 +768,8 @@ struct ContentView: View {
                 onFindDevice: { openFindDevice() },
                 onFlashStarted: { target in markFlashStarted(target: target) },
                 onFlashAwaitingHello: { markFlashAwaitingHello() },
-                onFlashClaimed: { nodeID in markFlashClaimed(nodeID: nodeID) }
+                onFlashClaimed: { nodeID in markFlashClaimed(nodeID: nodeID) },
+                onToast: { message in showBaseURLToast(message) }
             )
         } else if viewMode == .buttons {
             PresetButtonsView(
@@ -4339,6 +4340,7 @@ struct NodesView: View {
     let onFlashStarted: (FlashTarget) -> Void
     let onFlashAwaitingHello: () -> Void
     let onFlashClaimed: (String) -> Void
+    let onToast: (String) -> Void
     @State private var portText: String = ""
     @State private var manualConnectHost: String = ""
     @State private var manualConnectLabel: String = ""
@@ -4916,7 +4918,7 @@ struct NodesView: View {
 
     private func clearFlasherCache() {
         guard let host = URL(string: sodsStore.baseURL)?.host, !host.isEmpty else {
-            showBaseURLToast("Invalid station URL for cache clear.")
+            onToast("Invalid station URL for cache clear.")
             return
         }
         let store = WKWebsiteDataStore.default()
@@ -4924,11 +4926,11 @@ struct NodesView: View {
         store.fetchDataRecords(ofTypes: types) { records in
             let targets = records.filter { $0.displayName.contains(host) }
             guard !targets.isEmpty else {
-                showBaseURLToast("No cached flasher data for \(host).")
+                onToast("No cached flasher data for \(host).")
                 return
             }
             store.removeData(ofTypes: types, for: targets) {
-                showBaseURLToast("Cleared in-app flasher cache for \(host). Clear browser site data separately if needed.")
+                onToast("Cleared in-app flasher cache for \(host). Clear browser site data separately if needed.")
             }
         }
     }

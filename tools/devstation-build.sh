@@ -5,7 +5,7 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 PROJECT="$REPO_ROOT/apps/dev-station/DevStation.xcodeproj"
 SCHEME="DevStation"
-DERIVED="$REPO_ROOT/dist/DerivedData"
+DERIVED="${DEVSTATION_DERIVED_PATH:-/tmp/devstation-derived}"
 OUT_DIR="$REPO_ROOT/dist"
 BUILD_DIR="$REPO_ROOT/dist/build"
 APP_NAME="DevStation.app"
@@ -17,6 +17,11 @@ source "$REPO_ROOT/tools/_app_bundle.sh"
 
 if [[ ! -d "$PROJECT" ]]; then
   echo "devstation-build: project not found at $PROJECT" >&2
+  exit 2
+fi
+
+if [[ "$DERIVED" == "/path/you/want" || "$DERIVED" == *"/path/you/want"* ]]; then
+  echo "devstation-build: DEVSTATION_DERIVED_PATH points to a placeholder ('$DERIVED'). Use a writable path like /tmp/devstation-derived." >&2
   exit 2
 fi
 

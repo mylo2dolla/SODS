@@ -23,6 +23,9 @@ struct VisualizerView: View {
     @State private var replayAutoPlay: Bool = false
     @State private var replaySpeed: Double = 1.0
     @State private var ghostTrails: Bool = true
+    @State private var depthEmphasis: Double = 0.55
+    @State private var crossSectionEnabled: Bool = false
+    @State private var crossSectionDepth: Double = 0.5
     @State private var selectedNodeIDs: Set<String> = []
     @State private var selectedKinds: Set<String> = []
     @State private var selectedDeviceIDs: Set<String> = []
@@ -45,6 +48,9 @@ struct VisualizerView: View {
                     replayEnabled: replayEnabled,
                     replayOffset: replayOffset,
                     ghostTrails: ghostTrails,
+                    depthEmphasis: depthEmphasis,
+                    crossSectionEnabled: crossSectionEnabled,
+                    crossSectionDepth: crossSectionDepth,
                     aliases: nodeAliases,
                     nodePresentations: nodePresentationByID,
                     focusID: entityStore.selectedEntityID,
@@ -67,6 +73,9 @@ struct VisualizerView: View {
                     replayEnabled: replayEnabled,
                     replayOffset: replayOffset,
                     ghostTrails: ghostTrails,
+                    depthEmphasis: depthEmphasis,
+                    crossSectionEnabled: crossSectionEnabled,
+                    crossSectionDepth: crossSectionDepth,
                     aliases: nodeAliases,
                     nodePresentations: nodePresentationByID,
                     focusID: entityStore.selectedEntityID,
@@ -237,6 +246,7 @@ struct VisualizerView: View {
                     sliderRow(title: "Decay", value: $decayRate, range: 0.6...2.0, format: "%.2f")
                     sliderRow(title: "Time", value: $timeScale, range: 0.5...2.0, format: "%.2f")
                     sliderRow(title: "Particles", value: $maxParticles, range: 600...2400, format: "%.0f")
+                    sliderRow(title: "Depth", value: $depthEmphasis, range: 0.2...1.0, format: "%.2f")
                 }
                 HStack(spacing: 8) {
                     Button(store.isRecording ? "Stop Recording" : "Start Recording") {
@@ -273,6 +283,11 @@ struct VisualizerView: View {
                 }
                 Toggle("Ghost trails", isOn: $ghostTrails)
                     .font(.system(size: 11))
+                Toggle("Cross-section", isOn: $crossSectionEnabled)
+                    .font(.system(size: 11))
+                if crossSectionEnabled {
+                    sliderRow(title: "Slice", value: $crossSectionDepth, range: 0.1...0.9, format: "%.2f")
+                }
             }
             .padding(6)
         }
@@ -848,6 +863,9 @@ struct SignalFieldView: View {
     let replayEnabled: Bool
     let replayOffset: Double
     let ghostTrails: Bool
+    let depthEmphasis: Double
+    let crossSectionEnabled: Bool
+    let crossSectionDepth: Double
     let aliases: [String: String]
     let nodePresentations: [String: NodePresentation]
     let focusID: String?
@@ -867,6 +885,10 @@ struct SignalFieldView: View {
     @State private var panOffset: CGSize = .zero
     @State private var panAnchor: CGSize = .zero
     @State private var isPanning = false
+    @State private var orbitYaw: Double = 0
+    @State private var orbitPitch: Double = 0
+    @State private var orbitAnchorYaw: Double = 0
+    @State private var orbitAnchorPitch: Double = 0
 
     var body: some View {
         ZStack {
@@ -876,28 +898,33 @@ struct SignalFieldView: View {
                         x: (mousePoint.x - panOffset.width) / max(0.2, zoomScale),
                         y: (mousePoint.y - panOffset.height) / max(0.2, zoomScale)
                     )
-                    let parallax = Parallax.offset(mousePoint: adjustedMouse, size: size, now: timeline.date, lastMove: lastMouseMove)
-                    let isActive = fieldIsActive(now: timeline.date)
-                    engine.render(
-                        context: &context,
-                        size: size,
-                        now: timeline.date,
-                        events: events,
-                        frames: frames,
-                        paused: paused,
-                        decayRate: decayRate,
-                        timeScale: timeScale,
-                        maxParticles: maxParticles,
-                        intensity: intensity,
-                        parallax: parallax,
-                        selectedID: selectedNode?.id,
-                        focusID: focusID ?? focusedNodeID,
-                        ghostTrails: ghostTrails,
-                        nodePresentations: nodePresentations,
-                        framesAreDerived: framesAreDerived,
-                        isActive: isActive
-                    )
-                }
+            let parallax = Parallax.offset(mousePoint: adjustedMouse, size: size, now: timeline.date, lastMove: lastMouseMove)
+            let isActive = fieldIsActive(now: timeline.date)
+            engine.render(
+                context: &context,
+                size: size,
+                now: timeline.date,
+                events: events,
+                frames: frames,
+                paused: paused,
+                decayRate: decayRate,
+                timeScale: timeScale,
+                maxParticles: maxParticles,
+                intensity: intensity,
+                parallax: parallax,
+                selectedID: selectedNode?.id,
+                focusID: focusID ?? focusedNodeID,
+                ghostTrails: ghostTrails,
+                nodePresentations: nodePresentations,
+                framesAreDerived: framesAreDerived,
+                isActive: isActive,
+                depthEmphasis: depthEmphasis,
+                crossSectionEnabled: crossSectionEnabled,
+                crossSectionDepth: crossSectionDepth,
+                orbitYaw: orbitYaw,
+                orbitPitch: orbitPitch
+            )
+        }
             }
             .scaleEffect(zoomScale)
             .offset(panOffset)
@@ -918,11 +945,15 @@ struct SignalFieldView: View {
                             if !isPanning {
                                 isPanning = true
                                 panAnchor = panOffset
+                                orbitAnchorYaw = orbitYaw
+                                orbitAnchorPitch = orbitPitch
                             }
                             panOffset = CGSize(
                                 width: panAnchor.width + value.translation.width,
                                 height: panAnchor.height + value.translation.height
                             )
+                            orbitYaw = orbitAnchorYaw + Double(value.translation.width) * 0.002
+                            orbitPitch = orbitAnchorPitch - Double(value.translation.height) * 0.0016
                         }
                     }
                     .onEnded { value in
@@ -1647,7 +1678,12 @@ final class SignalFieldEngine: ObservableObject {
         ghostTrails: Bool,
         nodePresentations: [String: NodePresentation],
         framesAreDerived: Bool,
-        isActive: Bool
+        isActive: Bool,
+        depthEmphasis: Double,
+        crossSectionEnabled: Bool,
+        crossSectionDepth: Double,
+        orbitYaw: Double,
+        orbitPitch: Double
     ) {
         drawBackground(context: &context, size: size, now: now, isActive: isActive)
 
@@ -1669,16 +1705,16 @@ final class SignalFieldEngine: ObservableObject {
 
         let activityFade: CGFloat = isActive ? 1.0 : 0.25
         drawBins(context: &context, size: size, frames: frames, now: now, focusID: focusID, activityFade: activityFade)
-        lastProjected = drawSources(context: &context, size: size, now: now, parallax: parallax, selectedID: selectedID, focusID: focusID, nodePresentations: nodePresentations, activityFade: activityFade, isActive: isActive)
+        lastProjected = drawSources(context: &context, size: size, now: now, parallax: parallax, selectedID: selectedID, focusID: focusID, nodePresentations: nodePresentations, activityFade: activityFade, isActive: isActive, depthEmphasis: depthEmphasis, crossSectionEnabled: crossSectionEnabled, crossSectionDepth: crossSectionDepth, orbitYaw: orbitYaw, orbitPitch: orbitPitch)
         if ghostTrails {
             if isActive {
                 updateGhosts(now: now, nodePresentations: nodePresentations)
             }
-            drawGhosts(context: &context, size: size, now: now, parallax: parallax, focusID: focusID, activityFade: activityFade, isActive: isActive)
+            drawGhosts(context: &context, size: size, now: now, parallax: parallax, focusID: focusID, activityFade: activityFade, isActive: isActive, depthEmphasis: depthEmphasis, crossSectionEnabled: crossSectionEnabled, crossSectionDepth: crossSectionDepth, orbitYaw: orbitYaw, orbitPitch: orbitPitch)
         }
         drawConnections(context: &context, focusID: focusID, activityFade: activityFade)
-        drawPulses(context: &context, size: size, now: now, parallax: parallax, focusID: focusID, activityFade: activityFade, isActive: isActive)
-        drawParticles(context: &context, size: size, now: now, parallax: parallax, focusID: focusID, activityFade: activityFade, isActive: isActive)
+        drawPulses(context: &context, size: size, now: now, parallax: parallax, focusID: focusID, activityFade: activityFade, isActive: isActive, depthEmphasis: depthEmphasis, crossSectionEnabled: crossSectionEnabled, crossSectionDepth: crossSectionDepth, orbitYaw: orbitYaw, orbitPitch: orbitPitch)
+        drawParticles(context: &context, size: size, now: now, parallax: parallax, focusID: focusID, activityFade: activityFade, isActive: isActive, depthEmphasis: depthEmphasis, crossSectionEnabled: crossSectionEnabled, crossSectionDepth: crossSectionDepth, orbitYaw: orbitYaw, orbitPitch: orbitPitch)
 
         if particles.count > maxParticles {
             particles.removeFirst(particles.count - maxParticles)
@@ -1929,7 +1965,12 @@ final class SignalFieldEngine: ObservableObject {
         focusID: String?,
         nodePresentations: [String: NodePresentation],
         activityFade: CGFloat,
-        isActive: Bool
+        isActive: Bool,
+        depthEmphasis: Double,
+        crossSectionEnabled: Bool,
+        crossSectionDepth: Double,
+        orbitYaw: Double,
+        orbitPitch: Double
     ) -> [ProjectedNode] {
         var projected: [ProjectedNode] = []
         for source in sources.values {
@@ -1937,9 +1978,17 @@ final class SignalFieldEngine: ObservableObject {
             let lastSeen = source.lastSeen ?? now
             let age = max(0.0, now.timeIntervalSince(lastSeen))
             let recency = exp(-age / 6.0)
-            let depthScale = (0.65 + depth * 0.35) * (0.7 + 0.3 * CGFloat(recency))
+            let emphasis = 0.6 + 0.6 * CGFloat(max(0.0, min(1.0, depthEmphasis)))
+            let depthScale = (0.65 + depth * 0.35) * (0.7 + 0.3 * CGFloat(recency)) * emphasis
             let parallaxFactor = 0.4 + 0.6 * CGFloat(recency)
-            let point = projectPoint(source.position, size: size, parallax: parallax, depth: depth, now: now, isActive: isActive, depthScale: depthScale, parallaxFactor: parallaxFactor)
+            if crossSectionEnabled {
+                let sliceWidth = 0.12 + 0.08 * (1.0 - max(0.0, min(1.0, depthEmphasis)))
+                let dz = abs(source.position.z - crossSectionDepth)
+                if dz > sliceWidth {
+                    continue
+                }
+            }
+            let point = projectPoint(source.position, size: size, parallax: parallax, depth: depth, now: now, isActive: isActive, depthScale: depthScale, parallaxFactor: parallaxFactor, orbitYaw: orbitYaw, orbitPitch: orbitPitch)
             let depthFade = depthFade(for: depth)
             let hemisphere = hemisphereFade(z: source.position.z, recency: recency)
             let glow = CGSize(width: 26 * depth, height: 26 * depth)
@@ -1954,7 +2003,6 @@ final class SignalFieldEngine: ObservableObject {
                 return displayColor
             }()
             let color = Color(displayColor).opacity(dimmed ? 0.25 : 1.0)
-            let recency = exp(-age / 6.0)
             let strength = source.lastStrength ?? -65
             let strengthNorm = clamp(((-strength) - 30.0) / 70.0)
             let vitality = max(0.12, min(1.0, 0.2 + recency * 0.6 + strengthNorm * 0.35))
@@ -2021,10 +2069,15 @@ final class SignalFieldEngine: ObservableObject {
         return projected
     }
 
-    private func drawParticles(context: inout GraphicsContext, size: CGSize, now: Date, parallax: CGPoint, focusID: String?, activityFade: CGFloat, isActive: Bool) {
+    private func drawParticles(context: inout GraphicsContext, size: CGSize, now: Date, parallax: CGPoint, focusID: String?, activityFade: CGFloat, isActive: Bool, depthEmphasis: Double, crossSectionEnabled: Bool, crossSectionDepth: Double, orbitYaw: Double, orbitPitch: Double) {
+        let sliceWidth = 0.12 + 0.08 * (1.0 - max(0.0, min(1.0, depthEmphasis)))
         for particle in particles {
+            if crossSectionEnabled {
+                let dz = abs(particle.position.z - crossSectionDepth)
+                if dz > sliceWidth { continue }
+            }
             let dimmed = focusID != nil && focusID != particle.sourceID
-            particle.draw(context: &context, size: size, now: now, parallax: parallax, dimmed: dimmed, activityFade: activityFade, isActive: isActive)
+            particle.draw(context: &context, size: size, now: now, parallax: parallax, dimmed: dimmed, activityFade: activityFade, isActive: isActive, orbitYaw: orbitYaw, orbitPitch: orbitPitch)
         }
     }
 
@@ -2066,36 +2119,46 @@ final class SignalFieldEngine: ObservableObject {
         }
     }
 
-    private func drawGhosts(context: inout GraphicsContext, size: CGSize, now: Date, parallax: CGPoint, focusID: String?, activityFade: CGFloat, isActive: Bool) {
+    private func drawGhosts(context: inout GraphicsContext, size: CGSize, now: Date, parallax: CGPoint, focusID: String?, activityFade: CGFloat, isActive: Bool, depthEmphasis: Double, crossSectionEnabled: Bool, crossSectionDepth: Double, orbitYaw: Double, orbitPitch: Double) {
+        let sliceWidth = 0.12 + 0.08 * (1.0 - max(0.0, min(1.0, depthEmphasis)))
         guard !ghostAccumulator.isEmpty else { return }
         for ghost in ghostAccumulator {
             if let focusID, focusID != ghost.sourceID { continue }
+            if crossSectionEnabled {
+                let dz = abs(ghost.position.z - crossSectionDepth)
+                if dz > sliceWidth { continue }
+            }
             let ageSeconds = max(0.0, now.timeIntervalSince(ghost.ts))
             let alpha = max(0.02, 0.18 * exp(-ageSeconds / 4.5))
             let depth = depthScalar(id: ghost.sourceID, z: ghost.position.z, now: now)
             let depthScale = depthFade(for: depth)
-            let hemisphere = hemisphereFade(z: ghost.position.z, recency: recency)
             let recency = exp(-ageSeconds / 4.5)
+            let hemisphere = hemisphereFade(z: ghost.position.z, recency: recency)
             let temporalScale = (0.65 + depth * 0.35) * (0.7 + 0.3 * CGFloat(recency))
             let parallaxFactor = 0.4 + 0.6 * CGFloat(recency)
-            let basePoint = projectPoint(ghost.position, size: size, parallax: parallax, depth: depth, now: now, isActive: isActive, depthScale: temporalScale, parallaxFactor: parallaxFactor)
+            let basePoint = projectPoint(ghost.position, size: size, parallax: parallax, depth: depth, now: now, isActive: isActive, depthScale: temporalScale, parallaxFactor: parallaxFactor, orbitYaw: orbitYaw, orbitPitch: orbitPitch)
             let radius = CGFloat(1.0 + alpha * 10.0) * depth
             context.fill(Path(ellipseIn: CGRect(x: basePoint.x - radius, y: basePoint.y - radius, width: radius * 2, height: radius * 2)),
                          with: .color(Color(ghost.color).opacity(alpha * Double(activityFade) * Double(depthScale) * Double(hemisphere))))
         }
     }
 
-    private func drawPulses(context: inout GraphicsContext, size: CGSize, now: Date, parallax: CGPoint, focusID: String?, activityFade: CGFloat, isActive: Bool) {
+    private func drawPulses(context: inout GraphicsContext, size: CGSize, now: Date, parallax: CGPoint, focusID: String?, activityFade: CGFloat, isActive: Bool, depthEmphasis: Double, crossSectionEnabled: Bool, crossSectionDepth: Double, orbitYaw: Double, orbitPitch: Double) {
+        let sliceWidth = 0.12 + 0.08 * (1.0 - max(0.0, min(1.0, depthEmphasis)))
         for pulse in pulses {
             let focusScale: CGFloat = (focusID == nil || focusID == pulse.sourceID) ? 1.0 : 0.2
             let age = now.timeIntervalSince(pulse.birth)
             let progress = min(1.0, age / max(0.01, pulse.lifespan))
             let alpha = (1.0 - progress) * pulse.strength
             let depth = depthScalar(id: pulse.sourceID, z: pulse.position.z, now: now)
+            if crossSectionEnabled {
+                let dz = abs(pulse.position.z - crossSectionDepth)
+                if dz > sliceWidth { continue }
+            }
             let recency = max(0.0, 1.0 - progress)
             let temporalScale = (0.65 + depth * 0.35) * (0.7 + 0.3 * CGFloat(recency))
             let parallaxFactor = 0.4 + 0.6 * CGFloat(recency)
-            let center = projectPoint(pulse.position, size: size, parallax: parallax, depth: depth, now: now, isActive: isActive, depthScale: temporalScale, parallaxFactor: parallaxFactor)
+            let center = projectPoint(pulse.position, size: size, parallax: parallax, depth: depth, now: now, isActive: isActive, depthScale: temporalScale, parallaxFactor: parallaxFactor, orbitYaw: orbitYaw, orbitPitch: orbitPitch)
             let radius = CGFloat(18 + progress * 140) * depth
             let rect = CGRect(x: center.x - radius, y: center.y - radius, width: radius * 2, height: radius * 2)
             let accentColor: NSColor = {
@@ -2277,8 +2340,8 @@ final class SignalSource: Hashable {
         CGFloat(0.5 + position.z * 0.9)
     }
 
-    func project(in size: CGSize, parallax: CGPoint, now: Date, isActive: Bool) -> CGPoint {
-        return projectPoint(position, size: size, parallax: parallax, depth: depth, now: now, isActive: isActive)
+    func project(in size: CGSize, parallax: CGPoint, now: Date, isActive: Bool, orbitYaw: Double = 0, orbitPitch: Double = 0) -> CGPoint {
+        return projectPoint(position, size: size, parallax: parallax, depth: depth, now: now, isActive: isActive, orbitYaw: orbitYaw, orbitPitch: orbitPitch)
     }
 
     private func applyTarget(_ next: SIMD3<Double>) {
@@ -2336,7 +2399,7 @@ struct SignalParticle: Hashable {
         now.timeIntervalSince(birth) > lifespan
     }
 
-    func draw(context: inout GraphicsContext, size: CGSize, now: Date, parallax: CGPoint, dimmed: Bool, activityFade: CGFloat, isActive: Bool) {
+    func draw(context: inout GraphicsContext, size: CGSize, now: Date, parallax: CGPoint, dimmed: Bool, activityFade: CGFloat, isActive: Bool, orbitYaw: Double, orbitPitch: Double) {
         let age = now.timeIntervalSince(birth)
         let progress = min(1.0, age / max(0.01, lifespan))
         let alpha = 1.0 - progress
@@ -2344,7 +2407,7 @@ struct SignalParticle: Hashable {
         let recency = max(0.0, 1.0 - progress)
         let temporalScale = (0.65 + depth * 0.35) * (0.7 + 0.3 * CGFloat(recency))
         let parallaxFactor = 0.4 + 0.6 * CGFloat(recency)
-        let basePoint = projectPoint(position, size: size, parallax: parallax, depth: depth, now: now, isActive: isActive, depthScale: temporalScale, parallaxFactor: parallaxFactor)
+        let basePoint = projectPoint(position, size: size, parallax: parallax, depth: depth, now: now, isActive: isActive, depthScale: temporalScale, parallaxFactor: parallaxFactor, orbitYaw: orbitYaw, orbitPitch: orbitPitch)
         let glowStrength = max(0.0, min(1.0, glow))
         let accentColor: NSColor = {
             switch renderKind {
@@ -2375,7 +2438,7 @@ struct SignalParticle: Hashable {
             } else {
                 context.fill(Path(ellipseIn: rect), with: .color(drawColor))
             }
-            drawTrail(context: &context, size: size, now: now, parallax: parallax, alpha: alpha, dimmed: dimmed, activityFade: activityFade, isActive: isActive)
+            drawTrail(context: &context, size: size, now: now, parallax: parallax, alpha: alpha, dimmed: dimmed, activityFade: activityFade, isActive: isActive, orbitYaw: orbitYaw, orbitPitch: orbitPitch)
         case .ring:
             let radius = CGFloat(ringRadius) * depth
             let rect = CGRect(x: basePoint.x - radius, y: basePoint.y - radius, width: radius * 2, height: radius * 2)
@@ -2435,11 +2498,11 @@ struct SignalParticle: Hashable {
             } else {
                 context.stroke(Path(ellipseIn: rect), with: .color(drawColor.opacity(0.8 + CGFloat(glowStrength) * 0.2)), lineWidth: CGFloat(ringWidth) * depth)
             }
-            drawTrail(context: &context, size: size, now: now, parallax: parallax, alpha: alpha, dimmed: dimmed, activityFade: activityFade, isActive: isActive)
+            drawTrail(context: &context, size: size, now: now, parallax: parallax, alpha: alpha, dimmed: dimmed, activityFade: activityFade, isActive: isActive, orbitYaw: orbitYaw, orbitPitch: orbitPitch)
         }
     }
 
-    private func drawTrail(context: inout GraphicsContext, size: CGSize, now: Date, parallax: CGPoint, alpha: Double, dimmed: Bool, activityFade: CGFloat, isActive: Bool) {
+    private func drawTrail(context: inout GraphicsContext, size: CGSize, now: Date, parallax: CGPoint, alpha: Double, dimmed: Bool, activityFade: CGFloat, isActive: Bool, orbitYaw: Double, orbitPitch: Double) {
         guard trail.count > 1 else { return }
         let depth = depthScalar(id: sourceID, z: position.z, now: now)
         let recency = max(0.0, min(1.0, alpha))
@@ -2447,7 +2510,7 @@ struct SignalParticle: Hashable {
         let parallaxFactor = 0.4 + 0.6 * CGFloat(recency)
         var path = Path()
         for (index, point) in trail.enumerated() {
-            let projected = projectPoint(point, size: size, parallax: parallax, depth: depth, now: now, isActive: isActive, depthScale: temporalScale, parallaxFactor: parallaxFactor)
+            let projected = projectPoint(point, size: size, parallax: parallax, depth: depth, now: now, isActive: isActive, depthScale: temporalScale, parallaxFactor: parallaxFactor, orbitYaw: orbitYaw, orbitPitch: orbitPitch)
             let px = projected.x
             let py = projected.y
             let p = CGPoint(x: px, y: py)
@@ -2855,11 +2918,13 @@ private func projectPoint(
     now: Date,
     isActive: Bool,
     depthScale: CGFloat? = nil,
-    parallaxFactor: CGFloat = 1.0
+    parallaxFactor: CGFloat = 1.0,
+    orbitYaw: Double = 0,
+    orbitPitch: Double = 0
 ) -> CGPoint {
     let spin = isActive ? sin(now.timeIntervalSinceReferenceDate * 0.08) * 0.22 : sin(now.timeIntervalSinceReferenceDate * 0.04) * 0.12
     let tilt = isActive ? cos(now.timeIntervalSinceReferenceDate * 0.06) * 0.18 : cos(now.timeIntervalSinceReferenceDate * 0.03) * 0.1
-    let rotated = rotatePosition(position, yaw: spin, pitch: tilt)
+    let rotated = rotatePosition(position, yaw: spin + orbitYaw, pitch: tilt + orbitPitch)
     let resolvedDepthScale = depthScale ?? (0.65 + depth * 0.35)
     let depthScale = max(0.3, resolvedDepthScale)
     let px = CGFloat(rotated.x) * size.width * 0.45 * depthScale + size.width * 0.5
