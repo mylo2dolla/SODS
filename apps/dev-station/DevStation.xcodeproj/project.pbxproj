@@ -13,6 +13,7 @@
 		A1A1A1A1A1A1A1A1A1A1A1E1 /* ToolRegistryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1E1 /* ToolRegistryView.swift */; };
 		A1A1A1A1A1A1A1A1A1A1A1E2 /* StationProcessManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1E2 /* StationProcessManager.swift */; };
 		A1A1A1A1A1A1A1A1A1A1A1E3 /* PiLoggerStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1E3 /* PiLoggerStore.swift */; };
+		8BAE51ECB4CED21C4BE36BFF /* IdentityResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 805A0DFFD8FAFFA48F8F9BEF /* IdentityResolver.swift */; };
 		A1A1A1A1A1A1A1A1A1A1A1E4 /* ModalHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1E4 /* ModalHeaderView.swift */; };
 		A1A1A1A1A1A1A1A1A1A1A1E5 /* APIInspectorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1E5 /* APIInspectorView.swift */; };
 		A1A1A1A1A1A1A1A1A1A1A1E6 /* ToolRunnerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1E6 /* ToolRunnerView.swift */; };
@@ -73,6 +74,7 @@
 		B1B1B1B1B1B1B1B1B1B1B1E1 /* ToolRegistryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolRegistryView.swift; sourceTree = "<group>"; };
 		B1B1B1B1B1B1B1B1B1B1B1E2 /* StationProcessManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StationProcessManager.swift; sourceTree = "<group>"; };
 		B1B1B1B1B1B1B1B1B1B1B1E3 /* PiLoggerStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PiLoggerStore.swift; sourceTree = "<group>"; };
+		805A0DFFD8FAFFA48F8F9BEF /* IdentityResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevStation/IdentityResolver.swift; sourceTree = "<group>"; };
 		B1B1B1B1B1B1B1B1B1B1B1E4 /* ModalHeaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModalHeaderView.swift; sourceTree = "<group>"; };
 		B1B1B1B1B1B1B1B1B1B1B1E5 /* APIInspectorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIInspectorView.swift; sourceTree = "<group>"; };
 		B1B1B1B1B1B1B1B1B1B1B1E6 /* ToolRunnerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolRunnerView.swift; sourceTree = "<group>"; };
@@ -290,6 +292,7 @@
 				A1A1A1A1A1A1A1A1A1A1A1E1 /* ToolRegistryView.swift in Sources */,
 				A1A1A1A1A1A1A1A1A1A1A1E2 /* StationProcessManager.swift in Sources */,
 				A1A1A1A1A1A1A1A1A1A1A1E3 /* PiLoggerStore.swift in Sources */,
+				8BAE51ECB4CED21C4BE36BFF /* IdentityResolver.swift in Sources */,
 				A1A1A1A1A1A1A1A1A1A1A1E4 /* ModalHeaderView.swift in Sources */,
 				A1A1A1A1A1A1A1A1A1A1A1E5 /* APIInspectorView.swift in Sources */,
 				A1A1A1A1A1A1A1A1A1A1A1E6 /* ToolRunnerView.swift in Sources */,
@@ -352,7 +355,7 @@
 				ENABLE_HARDENED_RUNTIME = NO;
 				INFOPLIST_FILE = DevStation/Resources/Info.plist;
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.example.DevStation;
+				PRODUCT_BUNDLE_IDENTIFIER = com.strangelab.sods;
 				PRODUCT_NAME = DevStation;
 				SWIFT_VERSION = 5.0;
 				DEBUG_INFORMATION_FORMAT = dwarf;
@@ -369,7 +372,7 @@
 				ENABLE_HARDENED_RUNTIME = NO;
 				INFOPLIST_FILE = DevStation/Resources/Info.plist;
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.example.DevStation;
+				PRODUCT_BUNDLE_IDENTIFIER = com.strangelab.sods;
 				PRODUCT_NAME = DevStation;
 				SWIFT_VERSION = 5.0;
 			};
@@ -391,7 +394,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.example.DevStation;
+				PRODUCT_BUNDLE_IDENTIFIER = com.strangelab.sods;
 				PRODUCT_NAME = DevStation;
 				SWIFT_VERSION = 5.0;
 			};
@@ -413,7 +416,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.example.DevStation;
+				PRODUCT_BUNDLE_IDENTIFIER = com.strangelab.sods;
 				PRODUCT_NAME = DevStation;
 				SWIFT_VERSION = 5.0;
 			};

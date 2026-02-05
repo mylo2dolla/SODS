@@ -160,8 +160,10 @@ final class PiAuxStore: ObservableObject {
         heartbeatTimer?.invalidate()
         heartbeatTimer = Timer.scheduledTimer(withTimeInterval: heartbeatInterval, repeats: true) { [weak self] _ in
             guard let self else { return }
-            self.touchHeartbeat(nodeID: self.localNodeID, setConnected: true)
-            self.updateConnectionStates()
+            Task { @MainActor in
+                self.touchHeartbeat(nodeID: self.localNodeID, setConnected: true)
+                self.updateConnectionStates()
+            }
         }
     }
 

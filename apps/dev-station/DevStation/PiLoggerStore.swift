@@ -115,27 +115,31 @@ final class SODSStore: ObservableObject {
     private func receiveLoop() {
         wsTask?.receive { [weak self] result in
             guard let self else { return }
-            switch result {
-            case .failure(let error):
-                self.lastError = error.localizedDescription
-                self.health = .offline
-            case .success(let message):
-                self.handle(message: message)
+            Task { @MainActor in
+                switch result {
+                case .failure(let error):
+                    self.lastError = error.localizedDescription
+                    self.health = .offline
+                case .success(let message):
+                    self.handle(message: message)
+                }
+                self.receiveLoop()
             }
-            self.receiveLoop()
         }
     }
 
     private func receiveFramesLoop() {
         wsFramesTask?.receive { [weak self] result in
             guard let self else { return }
-            switch result {
-            case .failure:
-                break
-            case .success(let message):
-                self.handleFrames(message: message)
+            Task { @MainActor in
+                switch result {
+                case .failure:
+                    break
+                case .success(let message):
+                    self.handleFrames(message: message)
+                }
+                self.receiveFramesLoop()
             }
-            self.receiveFramesLoop()
         }
     }
 
@@ -211,7 +215,10 @@ final class SODSStore: ObservableObject {
         if realFramesActive { return }
         simulatedTimer?.invalidate()
         simulatedTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / 20.0, repeats: true) { [weak self] _ in
-            self?.emitSimulatedFrames()
+            guard let self else { return }
+            Task { @MainActor in
+                self.emitSimulatedFrames()
+            }
         }
     }
 
