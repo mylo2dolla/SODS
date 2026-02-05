@@ -178,11 +178,16 @@ struct DashboardView: View {
                 } else {
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 240), spacing: 10)], alignment: .leading, spacing: 10) {
                         ForEach(entityStore.nodes) { node in
+                            let presence = sodsStore.nodePresence[node.id]
+                            let isScannerNode = node.capabilities.contains("scan")
+                                || node.presenceState == .scanning
+                                || presence?.state.lowercased() == "scanning"
                             NodeCardView(
                                 node: node,
-                                presence: sodsStore.nodePresence[node.id],
+                                presence: presence,
                                 eventCount: piAuxStore.recentEventCount(nodeID: node.id, window: 600),
                                 actions: dashboardActions(for: node),
+                                isScannerNode: isScannerNode,
                                 isConnecting: connectingNodeIDs.contains(node.id),
                                 onRefresh: {
                                     NodeRegistry.shared.setConnecting(nodeID: node.id, connecting: true)

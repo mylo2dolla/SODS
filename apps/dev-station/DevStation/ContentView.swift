@@ -147,6 +147,7 @@ struct ContentView: View {
     @State private var sodsURLText = ""
     @State private var showFlashPopover = false
     @State private var showGodMenu = false
+    @State private var godMenuContextNodeID: String?
     @State private var baseURLValidationMessage: String?
     @State private var showBaseURLToast = false
     @State private var baseURLToastMessage = ""
@@ -406,6 +407,17 @@ struct ContentView: View {
                 piAuxStore.connectNode(connectNodeID)
             }
             .onReceive(NotificationCenter.default.publisher(for: .openGodMenuCommand)) { _ in
+                godMenuContextNodeID = nil
+                toolRegistry.reload()
+                runbookRegistry.reload()
+                showGodMenu = true
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .openGodMenuCommandWithContext)) { notification in
+                if let nodeID = notification.object as? String, !nodeID.isEmpty {
+                    godMenuContextNodeID = nodeID
+                } else {
+                    godMenuContextNodeID = nil
+                }
                 toolRegistry.reload()
                 runbookRegistry.reload()
                 showGodMenu = true
@@ -571,16 +583,24 @@ struct ContentView: View {
                     Button("Open Spectrum") { viewMode = .spectral }
                         .buttonStyle(PrimaryActionButtonStyle())
                     Button("God Button") {
+                        godMenuContextNodeID = nil
                         toolRegistry.reload()
                         runbookRegistry.reload()
                         showGodMenu = true
                     }
                         .buttonStyle(SecondaryActionButtonStyle())
                         .popover(isPresented: $showGodMenu, arrowEdge: .bottom) {
-                            ActionMenuView(sections: godButtonSections())
-                                .frame(minWidth: 320)
-                                .padding(10)
-                                .background(Theme.background)
+                            VStack(alignment: .leading, spacing: 8) {
+                                if let context = godMenuContextLabel {
+                                    Text("Context: \(context)")
+                                        .font(.system(size: 11, weight: .semibold))
+                                        .foregroundColor(Theme.textSecondary)
+                                }
+                                ActionMenuView(sections: godButtonSections())
+                            }
+                            .frame(minWidth: 320)
+                            .padding(10)
+                            .background(Theme.background)
                         }
                     Button("Flash") { showFlashPopover = true }
                         .buttonStyle(SecondaryActionButtonStyle())
@@ -1347,6 +1367,17 @@ struct ContentView: View {
         if connectNodeID.isEmpty || !ids.contains(connectNodeID) {
             connectNodeID = ids[0]
         }
+    }
+
+    private var godMenuContextLabel: String? {
+        guard let id = godMenuContextNodeID, !id.isEmpty else { return nil }
+        if let node = entityStore.nodes.first(where: { $0.id == id }) {
+            if node.label != id {
+                return "\(node.label) (\(id))"
+            }
+            return node.label
+        }
+        return id
     }
 
     private func godButtonSections() -> [ActionMenuSection] {
@@ -4301,6 +4332,7 @@ struct NodesView: View {
                             presence: nodePresence[node.id],
                             eventCount: store.recentEventCount(nodeID: node.id, window: 600),
                             actions: actions(for: node),
+                            isScannerNode: isScannerNode(node: node, presence: nodePresence[node.id]),
                             isConnecting: connectingNodeIDs.contains(node.id),
                             onRefresh: {
                                 NodeRegistry.shared.setConnecting(nodeID: node.id, connecting: true)
@@ -4767,6 +4799,12 @@ struct NodesView: View {
         return host == "127.0.0.1" || host == "localhost"
     }
 
+    private func isScannerNode(node: NodeRecord, presence: NodePresence?) -> Bool {
+        if node.capabilities.contains("scan") { return true }
+        if node.presenceState == .scanning { return true }
+        return presence?.state.lowercased() == "scanning"
+    }
+
     private func connectSelectedNode() {
         let manualHost = manualConnectHost.trimmingCharacters(in: .whitespacesAndNewlines)
         let target = connectNodeID.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -4842,6 +4880,7 @@ struct NodeCardView: View {
     let presence: NodePresence?
     let eventCount: Int
     let actions: [NodeAction]
+    let isScannerNode: Bool
     let isConnecting: Bool
     let onRefresh: () -> Void
     @State private var showActions = false
@@ -4915,36 +4954,43 @@ struct NodeCardView: View {
                     Button(refreshLabel) { onRefresh() }
                         .buttonStyle(SecondaryActionButtonStyle())
                         .disabled(isRefreshing)
-                    Button("Actions") { showActions.toggle() }
-                        .font(.system(size: 12, weight: .semibold))
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        .background(Theme.accent.opacity(0.85))
-                        .foregroundColor(.white)
-                        .clipShape(Capsule())
-                        .popover(isPresented: $showActions, arrowEdge: .bottom) {
-                            VStack(alignment: .leading, spacing: 8) {
-                                ModalHeaderView(title: "Node Actions", onBack: nil, onClose: { showActions = false })
-                                if actions.isEmpty {
-                                    Text("No actions available.")
-                                        .font(.system(size: 11))
-                                        .foregroundColor(.secondary)
-                                } else {
-                                    ForEach(actions) { action in
-                                        Button(action.title) { action.action() }
-                                            .buttonStyle(SecondaryActionButtonStyle())
-                                    }
-                                }
-                                Divider()
-                                Button("God Button") {
-                                    NotificationCenter.default.post(name: .openGodMenuCommand, object: nil)
-                                }
-                                .buttonStyle(SecondaryActionButtonStyle())
-                            }
-                            .padding(12)
-                            .frame(minWidth: 240)
-                            .background(Theme.panel)
+                    if isScannerNode {
+                        Button("God Button") {
+                            NotificationCenter.default.post(name: .openGodMenuCommandWithContext, object: node.id)
                         }
+                        .buttonStyle(SecondaryActionButtonStyle())
+                    } else {
+                        Button("Actions") { showActions.toggle() }
+                            .font(.system(size: 12, weight: .semibold))
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(Theme.accent.opacity(0.85))
+                            .foregroundColor(.white)
+                            .clipShape(Capsule())
+                            .popover(isPresented: $showActions, arrowEdge: .bottom) {
+                                VStack(alignment: .leading, spacing: 8) {
+                                    ModalHeaderView(title: "Node Actions", onBack: nil, onClose: { showActions = false })
+                                    if actions.isEmpty {
+                                        Text("No actions available.")
+                                            .font(.system(size: 11))
+                                            .foregroundColor(.secondary)
+                                    } else {
+                                        ForEach(actions) { action in
+                                            Button(action.title) { action.action() }
+                                                .buttonStyle(SecondaryActionButtonStyle())
+                                        }
+                                    }
+                                    Divider()
+                                    Button("God Button") {
+                                        NotificationCenter.default.post(name: .openGodMenuCommand, object: nil)
+                                    }
+                                    .buttonStyle(SecondaryActionButtonStyle())
+                                }
+                                .padding(12)
+                                .frame(minWidth: 240)
+                                .background(Theme.panel)
+                            }
+                    }
                     Spacer()
                 }
             }
@@ -6052,6 +6098,7 @@ extension Notification.Name {
     static let connectNodeCommand = Notification.Name("sods.connectNodeCommand")
     static let sodsOpenURLInApp = Notification.Name("sods.openUrlInApp")
     static let openGodMenuCommand = Notification.Name("sods.openGodMenuCommand")
+    static let openGodMenuCommandWithContext = Notification.Name("sods.openGodMenuCommandWithContext")
 }
 
 private func sodsRootPath() -> String {
