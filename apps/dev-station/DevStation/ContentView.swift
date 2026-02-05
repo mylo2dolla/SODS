@@ -330,6 +330,10 @@ struct ContentView: View {
                     scopeCIDR = "\(subnet.addressString)/\(subnet.prefixLength)"
                 }
                 sodsURLText = sodsStore.baseURL
+                if let error = sodsStore.baseURLError, !error.isEmpty {
+                    baseURLValidationMessage = error
+                    showBaseURLToast(error)
+                }
                 BLEMetadataStore.shared.reload(log: logStore)
                 bleTableWarning = BLEMetadataStore.shared.tableWarning()
                 if let warning = bleTableWarning {
@@ -400,6 +404,11 @@ struct ContentView: View {
                 sodsStore.identifyNode(connectNodeID)
                 sodsStore.refreshStatus()
                 piAuxStore.connectNode(connectNodeID)
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .openGodMenuCommand)) { _ in
+                toolRegistry.reload()
+                runbookRegistry.reload()
+                showGodMenu = true
             }
     }
 
@@ -536,8 +545,16 @@ struct ContentView: View {
                         } else {
                             let message = sodsStore.baseURLError ?? "Base URL must start with http:// or https://"
                             baseURLValidationMessage = message
+                            sodsURLText = sodsStore.baseURL
                             showBaseURLToast(message)
                         }
+                    }
+                    .buttonStyle(SecondaryActionButtonStyle())
+                    Button("Reset") {
+                        sodsStore.resetBaseURL()
+                        sodsURLText = sodsStore.baseURL
+                        baseURLValidationMessage = nil
+                        showBaseURLToast("Base URL reset to \(sodsStore.baseURL)")
                     }
                     .buttonStyle(SecondaryActionButtonStyle())
                     Button("Inspect API") {
@@ -1419,6 +1436,7 @@ struct ContentView: View {
 
         let flashItems: [ActionMenuItem] = [
             ActionMenuItem(title: "Find Newly Flashed Device", systemImage: "magnifyingglass", enabled: true, reason: nil, action: {
+                markFlashAwaitingHello()
                 openFindDevice()
             })
         ]
@@ -1624,8 +1642,7 @@ struct ContentView: View {
     }
 
     private func openFindDevice() {
-        markFlashAwaitingHello()
-        openFindDevice()
+        modalCoordinator.present(.findDevice)
     }
 
     private var baseURLToastView: some View {
@@ -1671,6 +1688,7 @@ struct ContentView: View {
             }
             if showFinder {
                 await MainActor.run {
+                    markFlashAwaitingHello()
                     openFindDevice()
                 }
             }
@@ -4777,6 +4795,13 @@ struct NodesView: View {
             manualConnectError = "No discovered or claimed node selected."
             return
         }
+        if nodes.first(where: { $0.id == resolved }) == nil,
+           let discovered = discoveredNodes.first(where: { $0.id == resolved }) {
+            if let record = NodeRegistry.shared.claimFromPresence(discovered.presence, preferredLabel: nil) {
+                connectNodeID = record.id
+                onFlashClaimed(record.id)
+            }
+        }
         connectRegisteredNode(resolved)
     }
 
@@ -4910,6 +4935,11 @@ struct NodeCardView: View {
                                             .buttonStyle(SecondaryActionButtonStyle())
                                     }
                                 }
+                                Divider()
+                                Button("God Button") {
+                                    NotificationCenter.default.post(name: .openGodMenuCommand, object: nil)
+                                }
+                                .buttonStyle(SecondaryActionButtonStyle())
                             }
                             .padding(12)
                             .frame(minWidth: 240)
@@ -6021,6 +6051,7 @@ extension Notification.Name {
     static let flashNodeCommand = Notification.Name("sods.flashNodeCommand")
     static let connectNodeCommand = Notification.Name("sods.connectNodeCommand")
     static let sodsOpenURLInApp = Notification.Name("sods.openUrlInApp")
+    static let openGodMenuCommand = Notification.Name("sods.openGodMenuCommand")
 }
 
 private func sodsRootPath() -> String {

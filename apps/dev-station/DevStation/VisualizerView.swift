@@ -86,6 +86,12 @@ struct VisualizerView: View {
         }
         .onAppear {
             baseURLText = store.baseURL
+            if let error = store.baseURLError, !error.isEmpty {
+                baseURLValidationMessage = error
+                showBaseURLToast(error)
+            } else {
+                baseURLValidationMessage = nil
+            }
         }
         .onChange(of: store.baseURL) { newValue in
             baseURLText = newValue
@@ -196,8 +202,16 @@ struct VisualizerView: View {
                         } else {
                             let message = store.baseURLError ?? "Base URL must start with http:// or https://"
                             baseURLValidationMessage = message
+                            baseURLText = store.baseURL
                             showBaseURLToast(message)
                         }
+                    }
+                    .buttonStyle(SecondaryActionButtonStyle())
+                    Button("Reset") {
+                        store.resetBaseURL()
+                        baseURLText = store.baseURL
+                        baseURLValidationMessage = nil
+                        showBaseURLToast("Base URL reset to \(store.baseURL)")
                     }
                     .buttonStyle(SecondaryActionButtonStyle())
                 }
@@ -1166,6 +1180,10 @@ struct SignalFieldView: View {
         if !ToolRegistry.shared.tools.isEmpty {
             actions.append(SignalAction(title: "Tools", enabled: true, action: { onOpenTools() }))
         }
+
+        actions.append(SignalAction(title: "God Button", enabled: true, action: {
+            NotificationCenter.default.post(name: .openGodMenuCommand, object: nil)
+        }))
 
         return actions
     }

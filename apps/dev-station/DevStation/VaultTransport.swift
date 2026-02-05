@@ -49,6 +49,7 @@ final class VaultTransport: ObservableObject {
     func shipPending(log: LogStore) async {
         let outbox = ArtifactStore.outboxURL()
         let files = listFiles(in: outbox)
+        let baseDestination = normalizeRemotePath(destinationPath)
         await MainActor.run {
             self.queuedCount = files.count
             self.lastShipResult = "Shipping..."
@@ -57,11 +58,11 @@ final class VaultTransport: ObservableObject {
         log.log(.info, "Vault ship queued: \(files.count) files")
         for file in files {
             let dateFolder = dateFolderFor(file.url)
-            let baseDest = destinationPath.appendingPathComponent(dateFolder, isDirectory: true)
+            let baseDest = baseDestination.appendingPathComponent(dateFolder, isDirectory: true)
             let filename = file.url.lastPathComponent
             let ensure = ensureRemoteDir(path: baseDest)
             if !ensure.success {
-                let base = ensureRemoteDir(path: destinationPath)
+                let base = ensureRemoteDir(path: baseDestination)
                 let retry = ensureRemoteDir(path: baseDest)
                 if !(base.success && retry.success) {
                     let detail = [ensure.stderr, base.stderr, retry.stderr].filter { !$0.isEmpty }.joined(separator: " | ")
@@ -125,7 +126,21 @@ final class VaultTransport: ObservableObject {
         return formatter.string(from: date)
     }
 
+    private func normalizeRemotePath(_ path: String) -> String {
+        let trimmed = path.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return trimmed }
+        if trimmed == "~" {
+            return "$HOME"
+        }
+        if trimmed.hasPrefix("~/") {
+            let suffix = trimmed.dropFirst(2)
+            return "$HOME/\(suffix)"
+        }
+        return trimmed
+    }
+
     private func ensureRemoteDir(path: String) -> (success: Bool, stderr: String) {
+        guard !path.isEmpty else { return (false, "Destination path is empty.") }
         let remoteCommand = "mkdir -p \"\(path)\" && test -w \"\(path)\""
         let args = ["-o", "BatchMode=yes", "-o", "ConnectTimeout=5", "\(user)@\(host)", remoteCommand]
         let result = runProcess("/usr/bin/ssh", args: args)

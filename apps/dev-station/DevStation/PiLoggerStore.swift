@@ -24,6 +24,7 @@ final class SODSStore: ObservableObject {
     @Published private(set) var aliasOverrides: [String: String] = [:]
 
     private let baseURLKey = "SODSBaseURL"
+    static let defaultBaseURL = "http://localhost:9123"
 
     private var wsTask: URLSessionWebSocketTask?
     private var wsFramesTask: URLSessionWebSocketTask?
@@ -39,12 +40,12 @@ final class SODSStore: ObservableObject {
                 baseURL = url
                 baseURLError = nil
             } else {
-                baseURL = "http://localhost:9123"
+                baseURL = Self.defaultBaseURL
                 baseURLError = validated.error
                 defaults.set(baseURL, forKey: baseURLKey)
             }
         } else {
-            baseURL = "http://localhost:9123"
+            baseURL = Self.defaultBaseURL
             defaults.set(baseURL, forKey: baseURLKey)
         }
         StationProcessManager.shared.ensureRunning(baseURL: baseURL)
@@ -68,6 +69,14 @@ final class SODSStore: ObservableObject {
         StationProcessManager.shared.ensureRunning(baseURL: baseURL)
         connect()
         return true
+    }
+
+    func resetBaseURL() {
+        baseURLError = nil
+        baseURL = Self.defaultBaseURL
+        UserDefaults.standard.set(baseURL, forKey: baseURLKey)
+        StationProcessManager.shared.ensureRunning(baseURL: baseURL)
+        connect()
     }
 
     func connect() {
@@ -499,6 +508,8 @@ final class SODSStore: ObservableObject {
     private func makeWebSocketURL(path: String) -> URL? {
         guard let httpURL = makeURL(path: path),
               var components = URLComponents(url: httpURL, resolvingAgainstBaseURL: false) else {
+            lastError = "Invalid station URL: \(baseURL)"
+            health = .offline
             return nil
         }
         let scheme = components.scheme?.lowercased()
