@@ -119,6 +119,11 @@ struct NodePresentation: Hashable {
             activityScore: activityScore
         )
     }
+
+    static func pulse(now: Date, seed: String, speed: Double = 2.4, depth: Double = 0.12) -> Double {
+        let phase = Double(abs(seed.hashValue % 360)) * 0.0174533
+        return 1.0 + depth * sin(now.timeIntervalSinceReferenceDate * speed + phase)
+    }
 }
 
 struct HostConfidence: Codable, Hashable {

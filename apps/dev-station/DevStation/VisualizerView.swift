@@ -1219,8 +1219,7 @@ final class SignalFieldEngine: ObservableObject {
             let coreRect = CGRect(x: point.x - core.width / 2, y: point.y - core.height / 2, width: core.width, height: core.height)
             context.fill(Path(ellipseIn: coreRect), with: .color(color.opacity(coreAlpha)))
             if activity > 0.01, presentation?.isOffline == false {
-                let phase = Double(abs(source.id.hashValue % 360)) * 0.0174533
-                let pulse = 1.0 + 0.12 * sin(now.timeIntervalSinceReferenceDate * 2.4 + phase)
+                let pulse = NodePresentation.pulse(now: now, seed: source.id)
                 let ringScale = CGFloat((1.4 + activity * 2.2) * pulse) * depth
                 let ringSize = CGSize(width: core.width * ringScale, height: core.height * ringScale)
                 let ringRect = CGRect(

@@ -4351,103 +4351,109 @@ struct NodeCardView: View {
     @State private var showActions = false
 
     var body: some View {
-        let status = nodeStatus()
-        let activity = min(1.0, Double(eventCount) / 40.0)
-        let presentation = NodePresentation.forNode(
-            id: node.id,
-            keys: [node.id, "node:\(node.id)"],
-            isOnline: status.isOnline,
-            activityScore: activity
-        )
-        let isRefreshing = {
-            let state = presence?.state.lowercased() ?? ""
-            return state == "connecting" || state == "scanning"
-        }()
-        let secondaryColor = presentation.isOffline ? Theme.muted : Theme.textSecondary
-        VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                Text(node.label)
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(presentation.isOffline ? Theme.muted : Theme.textPrimary)
-                Spacer()
-                Circle()
-                    .fill(Color(presentation.displayColor))
-                    .frame(width: 8, height: 8)
-                Text(status.label)
-                    .font(.system(size: 11))
-                    .foregroundColor(secondaryColor)
-            }
-            Text("Node ID: \(node.id)")
-                .font(.system(size: 11))
-                .foregroundColor(secondaryColor)
-            Text("Type: \(node.type.rawValue)")
-                .font(.system(size: 11))
-                .foregroundColor(secondaryColor)
-            if let hostLine = hostSummary() {
-                Text(hostLine)
-                    .font(.system(size: 11))
-                    .foregroundColor(secondaryColor)
-            }
-            Text("Last seen: \(status.lastSeenText)")
-                .font(.system(size: 11))
-                .foregroundColor(secondaryColor)
-            Text("Events (10m): \(eventCount)")
-                .font(.system(size: 11))
-                .foregroundColor(secondaryColor)
-            if !node.capabilities.isEmpty {
-                Text("Capabilities: \(node.capabilities.joined(separator: ", "))")
-                    .font(.system(size: 11))
-                    .foregroundColor(secondaryColor)
-            }
-            Text(controlRelationship())
-                .font(.system(size: 11))
-                .foregroundColor(secondaryColor)
-            if let errorLine = lastErrorLine() {
-                Text(errorLine)
-                    .font(.system(size: 11))
-                    .foregroundColor(secondaryColor)
-            }
+        TimelineView(.animation(minimumInterval: 1.0 / 6.0)) { timeline in
+            let status = nodeStatus()
+            let activity = min(1.0, Double(eventCount) / 40.0)
+            let presentation = NodePresentation.forNode(
+                id: node.id,
+                keys: [node.id, "node:\(node.id)"],
+                isOnline: status.isOnline,
+                activityScore: activity
+            )
+            let isRefreshing = {
+                let state = presence?.state.lowercased() ?? ""
+                return state == "connecting" || state == "scanning"
+            }()
+            let secondaryColor = presentation.isOffline ? Theme.muted : Theme.textSecondary
+            let pulse = NodePresentation.pulse(now: timeline.date, seed: node.id)
+            let glowAlpha = presentation.shouldGlow ? (0.18 + activity * 0.18) : 0
+            let glowRadius = presentation.shouldGlow ? (6 + activity * 6) * pulse : 0
 
-            HStack(spacing: 8) {
-                Button(isRefreshing ? "Refreshing…" : "Refresh/Reconnect") { onRefresh() }
-                    .buttonStyle(SecondaryActionButtonStyle())
-                    .disabled(isRefreshing)
-                Button("Actions") { showActions.toggle() }
-                    .font(.system(size: 12, weight: .semibold))
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(Theme.accent.opacity(0.85))
-                    .foregroundColor(.white)
-                    .clipShape(Capsule())
-                    .popover(isPresented: $showActions, arrowEdge: .bottom) {
-                        VStack(alignment: .leading, spacing: 8) {
-                            ModalHeaderView(title: "Node Actions", onBack: nil, onClose: { showActions = false })
-                            if actions.isEmpty {
-                                Text("No actions available.")
-                                    .font(.system(size: 11))
-                                    .foregroundColor(.secondary)
-                            } else {
-                                ForEach(actions) { action in
-                                    Button(action.title) { action.action() }
-                                        .buttonStyle(SecondaryActionButtonStyle())
+            VStack(alignment: .leading, spacing: 6) {
+                HStack {
+                    Text(node.label)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(presentation.isOffline ? Theme.muted : Theme.textPrimary)
+                    Spacer()
+                    Circle()
+                        .fill(Color(presentation.displayColor))
+                        .frame(width: 8, height: 8)
+                    Text(status.label)
+                        .font(.system(size: 11))
+                        .foregroundColor(secondaryColor)
+                }
+                Text("Node ID: \(node.id)")
+                    .font(.system(size: 11))
+                    .foregroundColor(secondaryColor)
+                Text("Type: \(node.type.rawValue)")
+                    .font(.system(size: 11))
+                    .foregroundColor(secondaryColor)
+                if let hostLine = hostSummary() {
+                    Text(hostLine)
+                        .font(.system(size: 11))
+                        .foregroundColor(secondaryColor)
+                }
+                Text("Last seen: \(status.lastSeenText)")
+                    .font(.system(size: 11))
+                    .foregroundColor(secondaryColor)
+                Text("Events (10m): \(eventCount)")
+                    .font(.system(size: 11))
+                    .foregroundColor(secondaryColor)
+                if !node.capabilities.isEmpty {
+                    Text("Capabilities: \(node.capabilities.joined(separator: ", "))")
+                        .font(.system(size: 11))
+                        .foregroundColor(secondaryColor)
+                }
+                Text(controlRelationship())
+                    .font(.system(size: 11))
+                    .foregroundColor(secondaryColor)
+                if let errorLine = lastErrorLine() {
+                    Text(errorLine)
+                        .font(.system(size: 11))
+                        .foregroundColor(secondaryColor)
+                }
+
+                HStack(spacing: 8) {
+                    Button(isRefreshing ? "Refreshing…" : "Refresh/Reconnect") { onRefresh() }
+                        .buttonStyle(SecondaryActionButtonStyle())
+                        .disabled(isRefreshing)
+                    Button("Actions") { showActions.toggle() }
+                        .font(.system(size: 12, weight: .semibold))
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(Theme.accent.opacity(0.85))
+                        .foregroundColor(.white)
+                        .clipShape(Capsule())
+                        .popover(isPresented: $showActions, arrowEdge: .bottom) {
+                            VStack(alignment: .leading, spacing: 8) {
+                                ModalHeaderView(title: "Node Actions", onBack: nil, onClose: { showActions = false })
+                                if actions.isEmpty {
+                                    Text("No actions available.")
+                                        .font(.system(size: 11))
+                                        .foregroundColor(.secondary)
+                                } else {
+                                    ForEach(actions) { action in
+                                        Button(action.title) { action.action() }
+                                            .buttonStyle(SecondaryActionButtonStyle())
+                                    }
                                 }
                             }
+                            .padding(12)
+                            .frame(minWidth: 240)
+                            .background(Theme.panel)
                         }
-                        .padding(12)
-                        .frame(minWidth: 240)
-                        .background(Theme.panel)
-                    }
-                Spacer()
+                    Spacer()
+                }
             }
+            .padding(12)
+            .background(Theme.panel)
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(Theme.border, lineWidth: 1)
+            )
+            .cornerRadius(12)
+            .shadow(color: presentation.shouldGlow ? Color(presentation.baseColor).opacity(glowAlpha) : .clear, radius: glowRadius)
         }
-        .padding(12)
-        .background(Theme.panel)
-        .overlay(
-            RoundedRectangle(cornerRadius: 12)
-                .stroke(Theme.border, lineWidth: 1)
-        )
-        .cornerRadius(12)
-        .shadow(color: presentation.shouldGlow ? Color(presentation.baseColor).opacity(0.3) : .clear, radius: 8)
     }
 
     private func nodeStatus() -> (label: String, isOnline: Bool, lastSeenText: String) {
