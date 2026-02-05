@@ -78,22 +78,9 @@ final class NodeRegistry: ObservableObject {
             if item.state.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() != "connecting" {
                 setConnecting(nodeID: nodeID, connecting: false)
             }
-            let existing = nodesByID[nodeID]
-            let nextLabel = existing?.label.isEmpty == false ? existing?.label : (item.hostname ?? item.ip ?? nodeID)
-            var merged = existing ?? NodeRecord(
-                id: nodeID,
-                label: nextLabel ?? nodeID,
-                type: .unknown,
-                capabilities: [],
-                lastSeen: nil,
-                lastHeartbeat: nil,
-                connectionState: .offline,
-                isScanning: false,
-                lastError: nil,
-                ip: nil,
-                hostname: nil,
-                mac: nil
-            )
+            guard let existing = nodesByID[nodeID] else { continue }
+            let nextLabel = existing.label.isEmpty == false ? existing.label : (item.hostname ?? item.ip ?? nodeID)
+            var merged = existing
 
             if let nextLabel, !nextLabel.isEmpty, nextLabel != merged.label {
                 merged.label = nextLabel
@@ -120,7 +107,7 @@ final class NodeRegistry: ObservableObject {
                 merged.capabilities = Array(Set(merged.capabilities + caps)).sorted()
             }
 
-            if existing == nil || existing != merged {
+            if existing != merged {
                 nodesByID[nodeID] = merged
                 changed = true
             }
@@ -195,6 +182,46 @@ final class NodeRegistry: ObservableObject {
         )
         upsert(record, allowStateUpdate: true)
         return nodeID
+    }
+
+    @discardableResult
+    func claimFromPresence(_ presence: NodePresence, preferredLabel: String?) -> NodeRecord? {
+        let trimmedID = presence.nodeID.trimmingCharacters(in: .whitespacesAndNewlines)
+        let resolvedID: String = {
+            if !trimmedID.isEmpty { return trimmedID }
+            let base = presence.mac?.trimmingCharacters(in: .whitespacesAndNewlines)
+                ?? presence.ip?.trimmingCharacters(in: .whitespacesAndNewlines)
+                ?? "node"
+            let stamp = presence.lastSeen > 0 ? "\(presence.lastSeen)" : "\(Int(Date().timeIntervalSince1970 * 1000))"
+            return "\(base)-\(stamp)"
+        }()
+        guard !resolvedID.isEmpty else { return nil }
+
+        let nextLabel = preferredLabel?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let label = (nextLabel?.isEmpty == false ? nextLabel : (presence.hostname ?? presence.ip ?? resolvedID)) ?? resolvedID
+        let mapped = mapPresenceState(presence.state)
+        var record = NodeRecord(
+            id: resolvedID,
+            label: label,
+            type: .unknown,
+            capabilities: [],
+            lastSeen: nil,
+            lastHeartbeat: nil,
+            connectionState: mapped.connectionState ?? .offline,
+            isScanning: mapped.isScanning ?? false,
+            lastError: presence.lastError,
+            ip: presence.ip,
+            hostname: presence.hostname,
+            mac: presence.mac
+        )
+        if presence.lastSeen > 0 {
+            record.lastSeen = Date(timeIntervalSince1970: TimeInterval(presence.lastSeen) / 1000.0)
+        }
+        if let caps = capabilitiesFromPresence(presence.capabilities) {
+            record.capabilities = caps
+        }
+        upsert(record, allowStateUpdate: true)
+        return nodesByID[resolvedID]
     }
 
     func registerFromHost(_ host: String, preferredLabel: String?) async -> ManualRegisterResult {
