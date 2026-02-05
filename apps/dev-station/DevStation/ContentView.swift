@@ -466,6 +466,7 @@ struct ContentView: View {
                 bleScanner: bleScanner,
                 piAuxStore: piAuxStore,
                 entityStore: entityStore,
+                sodsStore: sodsStore,
                 vaultTransport: vaultTransport,
                 inboxStatus: inboxStatus,
                 retentionDays: inboxRetentionDays,
@@ -478,6 +479,20 @@ struct ContentView: View {
                 onlyLocalSubnet: onlyLocalSubnet,
                 onOpenNodes: {
                     viewMode = .nodes
+                },
+                onStartScan: {
+                    let scope = makeScope()
+                    scanner.startScan(enableOnvifDiscovery: onvifDiscoveryEnabled, enableServiceDiscovery: serviceDiscoveryEnabled, enableArpWarmup: arpWarmupEnabled, scope: scope, mode: networkScanMode)
+                    piAuxStore.setNodeScanning(nodeID: piAuxStore.localNodeIdentifier, enabled: true)
+                    piAuxStore.refreshLocalNodeHeartbeat()
+                },
+                onStopScan: {
+                    scanner.stopScan()
+                    piAuxStore.setNodeScanning(nodeID: piAuxStore.localNodeIdentifier, enabled: false)
+                    piAuxStore.refreshLocalNodeHeartbeat()
+                },
+                onGenerateScanReport: {
+                    generateScanReport()
                 }
             )
         } else if viewMode == .interesting {
@@ -1089,7 +1104,6 @@ struct ContentView: View {
     private func godButtonSections() -> [ActionMenuSection] {
         let isBleTab = viewMode == .ble
         let isNodesTab = viewMode == .nodes
-        let hasHostSelection = selectedIP != nil
         let nowItems: [ActionMenuItem] = {
             var items: [ActionMenuItem] = []
             if isBleTab {
@@ -3799,7 +3813,11 @@ struct NodesView: View {
                                 node: node,
                                 presence: nodePresence[node.id],
                                 eventCount: store.recentEventCount(nodeID: node.id, window: 600),
-                                actions: actions(for: node)
+                                actions: actions(for: node),
+                                onRefresh: {
+                                    sodsStore.connectNode(node.id)
+                                    sodsStore.identifyNode(node.id)
+                                }
                             )
                         }
                     }
@@ -4234,70 +4252,102 @@ struct NodeCardView: View {
     let presence: NodePresence?
     let eventCount: Int
     let actions: [NodeAction]
+    let onRefresh: () -> Void
     @State private var showActions = false
 
     var body: some View {
         let status = nodeStatus()
+        let activity = min(1.0, Double(eventCount) / 40.0)
+        let presentation = NodePresentation.forNode(
+            id: node.id,
+            keys: [node.id, "node:\(node.id)"],
+            isOnline: status.isOnline,
+            activityScore: activity
+        )
+        let secondaryColor = presentation.isOffline ? Theme.muted : Theme.textSecondary
         VStack(alignment: .leading, spacing: 6) {
             HStack {
                 Text(node.label)
                     .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(presentation.isOffline ? Theme.muted : Theme.textPrimary)
                 Spacer()
                 Circle()
-                    .fill(status.isOnline ? Theme.accent : Theme.muted)
+                    .fill(Color(presentation.displayColor))
                     .frame(width: 8, height: 8)
                 Text(status.label)
                     .font(.system(size: 11))
-                    .foregroundColor(Theme.textSecondary)
+                    .foregroundColor(secondaryColor)
             }
             Text("Node ID: \(node.id)")
                 .font(.system(size: 11))
-                .foregroundColor(Theme.textSecondary)
+                .foregroundColor(secondaryColor)
             Text("Type: \(node.type.rawValue)")
                 .font(.system(size: 11))
-                .foregroundColor(Theme.textSecondary)
+                .foregroundColor(secondaryColor)
+            if let hostLine = hostSummary() {
+                Text(hostLine)
+                    .font(.system(size: 11))
+                    .foregroundColor(secondaryColor)
+            }
             Text("Last seen: \(status.lastSeenText)")
                 .font(.system(size: 11))
-                .foregroundColor(Theme.textSecondary)
+                .foregroundColor(secondaryColor)
             Text("Events (10m): \(eventCount)")
                 .font(.system(size: 11))
-                .foregroundColor(Theme.textSecondary)
+                .foregroundColor(secondaryColor)
             if !node.capabilities.isEmpty {
                 Text("Capabilities: \(node.capabilities.joined(separator: ", "))")
                     .font(.system(size: 11))
-                    .foregroundColor(Theme.textSecondary)
+                    .foregroundColor(secondaryColor)
             }
             Text(controlRelationship())
                 .font(.system(size: 11))
-                .foregroundColor(Theme.textSecondary)
+                .foregroundColor(secondaryColor)
+            if let errorLine = lastErrorLine() {
+                Text(errorLine)
+                    .font(.system(size: 11))
+                    .foregroundColor(secondaryColor)
+            }
 
-            Button("Actions") { showActions.toggle() }
-                .font(.system(size: 12, weight: .semibold))
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .background(Theme.accent.opacity(0.85))
-                .foregroundColor(.white)
-                .clipShape(Capsule())
-                .popover(isPresented: $showActions, arrowEdge: .bottom) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        ModalHeaderView(title: "Node Actions", onBack: nil, onClose: { showActions = false })
-                        if actions.isEmpty {
-                            Text("No actions available.")
-                                .font(.system(size: 11))
-                                .foregroundColor(.secondary)
-                        } else {
-                            ForEach(actions) { action in
-                                Button(action.title) { action.action() }
-                                    .buttonStyle(SecondaryActionButtonStyle())
+            HStack(spacing: 8) {
+                Button("Refresh/Reconnect") { onRefresh() }
+                    .buttonStyle(SecondaryActionButtonStyle())
+                Button("Actions") { showActions.toggle() }
+                    .font(.system(size: 12, weight: .semibold))
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(Theme.accent.opacity(0.85))
+                    .foregroundColor(.white)
+                    .clipShape(Capsule())
+                    .popover(isPresented: $showActions, arrowEdge: .bottom) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            ModalHeaderView(title: "Node Actions", onBack: nil, onClose: { showActions = false })
+                            if actions.isEmpty {
+                                Text("No actions available.")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(.secondary)
+                            } else {
+                                ForEach(actions) { action in
+                                    Button(action.title) { action.action() }
+                                        .buttonStyle(SecondaryActionButtonStyle())
+                                }
                             }
                         }
+                        .padding(12)
+                        .frame(minWidth: 240)
+                        .background(Theme.panel)
                     }
-                    .padding(12)
-                    .frame(minWidth: 240)
-                    .background(Theme.panel)
-                }
+                Spacer()
+            }
         }
-        .modifier(Theme.cardStyle())
+        .padding(12)
+        .background(Theme.panel)
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(Theme.border, lineWidth: 1)
+        )
+        .cornerRadius(12)
+        .shadow(color: presentation.shouldGlow ? Color(presentation.baseColor).opacity(0.3) : .clear, radius: 8)
     }
 
     private func nodeStatus() -> (label: String, isOnline: Bool, lastSeenText: String) {
@@ -4329,6 +4379,27 @@ struct NodeCardView: View {
         case .unknown:
             return "Control: Unknown"
         }
+    }
+
+    private func hostSummary() -> String? {
+        let host = presence?.hostname?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let ip = presence?.ip?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let mac = presence?.mac?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let hostPart: String? = {
+            if let host, !host.isEmpty { return host }
+            if let ip, !ip.isEmpty { return ip }
+            return nil
+        }()
+        var parts: [String] = []
+        if let hostPart { parts.append("Host: \(hostPart)") }
+        if let mac, !mac.isEmpty { parts.append("MAC: \(mac)") }
+        return parts.isEmpty ? nil : parts.joined(separator: " • ")
+    }
+
+    private func lastErrorLine() -> String? {
+        let error = (presence?.lastError ?? node.lastError)?.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let error, !error.isEmpty else { return nil }
+        return "Last error: \(error)"
     }
 }
 struct CasesView: View {

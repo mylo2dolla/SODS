@@ -5,6 +5,7 @@ struct DashboardView: View {
     @ObservedObject var bleScanner: BLEScanner
     @ObservedObject var piAuxStore: PiAuxStore
     @ObservedObject var entityStore: EntityStore
+    @ObservedObject var sodsStore: SODSStore
     @ObservedObject var vaultTransport: VaultTransport
     let inboxStatus: InboxStatus
     let retentionDays: Int
@@ -16,6 +17,9 @@ struct DashboardView: View {
     let safeModeEnabled: Bool
     let onlyLocalSubnet: Bool
     let onOpenNodes: () -> Void
+    let onStartScan: () -> Void
+    let onStopScan: () -> Void
+    let onGenerateScanReport: () -> Void
 
     @State private var showNet = true
     @State private var showBLE = true
@@ -28,6 +32,25 @@ struct DashboardView: View {
                 .font(.system(size: 18, weight: .semibold))
 
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
+                statusCard(title: "Station") {
+                    statusLine("Health", sodsStore.health == .connected || sodsStore.health == .degraded)
+                    if let status = sodsStore.stationStatus {
+                        Text("Uptime: \(uptimeLabel(ms: status.uptimeMs))")
+                            .font(.system(size: 11))
+                            .foregroundColor(Theme.textSecondary)
+                        Text("Nodes online: \(status.nodesOnline ?? 0) / \(status.nodesTotal ?? 0)")
+                            .font(.system(size: 11))
+                            .foregroundColor(Theme.textSecondary)
+                    } else {
+                        Text("Uptime: Unknown")
+                            .font(.system(size: 11))
+                            .foregroundColor(Theme.textSecondary)
+                    }
+                    Text("Now: \(Date().formatted(date: .abbreviated, time: .shortened))")
+                        .font(.system(size: 11))
+                        .foregroundColor(Theme.textSecondary)
+                }
+
                 statusCard(title: "Scan Systems") {
                     statusLine("ONVIF Discovery", onvifDiscoveryEnabled)
                     statusLine("ARP Warmup", arpWarmupEnabled)
@@ -103,6 +126,29 @@ struct DashboardView: View {
                 }
             }
 
+            statusCard(title: "Nodes") {
+                if entityStore.nodes.isEmpty {
+                    Text("No nodes registered yet.")
+                        .font(.system(size: 11))
+                        .foregroundColor(Theme.textSecondary)
+                } else {
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 240), spacing: 10)], alignment: .leading, spacing: 10) {
+                        ForEach(entityStore.nodes) { node in
+                            NodeCardView(
+                                node: node,
+                                presence: sodsStore.nodePresence[node.id],
+                                eventCount: piAuxStore.recentEventCount(nodeID: node.id, window: 600),
+                                actions: dashboardActions(for: node),
+                                onRefresh: {
+                                    sodsStore.connectNode(node.id)
+                                    sodsStore.identifyNode(node.id)
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+
             statusCard(title: "Recent Events") {
                 HStack(spacing: 10) {
                     Toggle("Net", isOn: $showNet)
@@ -167,6 +213,50 @@ struct DashboardView: View {
                 .font(.system(size: 11))
                 .foregroundColor(Theme.textSecondary)
         }
+    }
+
+    private func uptimeLabel(ms: Int?) -> String {
+        guard let ms, ms > 0 else { return "Unknown" }
+        let seconds = ms / 1000
+        let hours = seconds / 3600
+        let minutes = (seconds % 3600) / 60
+        let secs = seconds % 60
+        if hours > 0 {
+            return "\(hours)h \(minutes)m \(secs)s"
+        }
+        if minutes > 0 {
+            return "\(minutes)m \(secs)s"
+        }
+        return "\(secs)s"
+    }
+
+    private func dashboardActions(for node: NodeRecord) -> [NodeAction] {
+        var items: [NodeAction] = []
+        let supportsScan = node.type == .mac || node.capabilities.contains("scan")
+        let supportsReport = node.type == .mac || node.capabilities.contains("report")
+        let supportsProbe = node.capabilities.contains("probe")
+        let supportsPing = node.capabilities.contains("ping")
+
+        if supportsScan {
+            if scanner.isScanning {
+                items.append(NodeAction(title: "Stop Scan", action: { onStopScan() }))
+            } else {
+                items.append(NodeAction(title: "Start Scan", action: { onStartScan() }))
+            }
+        }
+        items.append(NodeAction(title: "Identify", action: { sodsStore.identifyNode(node.id) }))
+        if supportsProbe {
+            items.append(NodeAction(title: "Probe", action: {
+                LogStore.shared.log(.info, "Probe action requested for node \(node.id)")
+            }))
+        }
+        if supportsPing {
+            items.append(NodeAction(title: "Ping", action: { piAuxStore.pingNode(node.id) }))
+        }
+        if supportsReport {
+            items.append(NodeAction(title: "Generate Report", action: { onGenerateScanReport() }))
+        }
+        return items
     }
 
     private func filteredEvents(limit: Int) -> [PiAuxEvent] {

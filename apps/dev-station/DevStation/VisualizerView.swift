@@ -40,6 +40,7 @@ struct VisualizerView: View {
                 replayOffset: replayOffset,
                 ghostTrails: ghostTrails,
                 aliases: nodeAliases,
+                nodePresentations: nodePresentationByID,
                 focusID: entityStore.selectedEntityID
             )
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -252,10 +253,14 @@ struct VisualizerView: View {
         GroupBox("Nodes") {
             VStack(alignment: .leading, spacing: 6) {
                 ForEach(store.nodes) { node in
+                    let isOnline = isNodeOnline(node)
+                    let keys = [node.id, node.hostname ?? "", node.ip ?? ""]
+                    let activity = activityScore(for: node.id)
+                    let presentation = NodePresentation.forNode(id: node.id, keys: keys, isOnline: isOnline, activityScore: activity)
                     NodeRow(
                         node: node,
                         alias: nodeAliases[node.id] ?? nodeAliases["node:\(node.id)"],
-                        color: SignalColor.deviceColor(id: node.id),
+                        presentation: presentation,
                         selected: selectedNodeIDs.contains(node.id),
                         onToggle: {
                             toggleFilter(id: node.id, in: &selectedNodeIDs)
@@ -370,6 +375,46 @@ struct VisualizerView: View {
         return IdentityResolver.shared.aliasMap()
     }
 
+    private var nodePresentationByID: [String: NodePresentation] {
+        var map: [String: NodePresentation] = [:]
+        for node in store.nodes {
+            let isOnline = isNodeOnline(node)
+            let keys = [node.id, node.hostname ?? "", node.ip ?? ""]
+            map[node.id] = NodePresentation.forNode(
+                id: node.id,
+                keys: keys,
+                isOnline: isOnline,
+                activityScore: activityScore(for: node.id)
+            )
+        }
+        return map
+    }
+
+    private func isNodeOnline(_ node: SignalNode) -> Bool {
+        if let presence = store.nodePresence[node.id] {
+            return presence.state == "online" || presence.state == "connecting"
+        }
+        return !node.isStale
+    }
+
+    private func activityScore(for nodeID: String) -> Double {
+        let now = Date()
+        let window: TimeInterval = 20
+        let recent = store.events.suffix(240).filter { event in
+            guard event.nodeID == nodeID else { return false }
+            let ts = event.eventTs ?? event.recvTs ?? now
+            return now.timeIntervalSince(ts) <= window
+        }
+        guard !recent.isEmpty else { return 0.0 }
+        let weighted = recent.reduce(0.0) { partial, event in
+            let strength = event.signal.strength ?? -65
+            let norm = max(0.0, min(1.0, ((-strength) - 30.0) / 70.0))
+            return partial + norm
+        }
+        let base = min(1.0, weighted / Double(max(1, recent.count)))
+        return max(0.2, min(1.0, base))
+    }
+
     // persistence handled inside SignalFieldView
 
     private func toggleFilter(id: String, in set: inout Set<String>) {
@@ -384,7 +429,7 @@ struct VisualizerView: View {
 struct NodeRow: View {
     let node: SignalNode
     let alias: String?
-    let color: NSColor
+    let presentation: NodePresentation
     let selected: Bool
     let onToggle: () -> Void
     let onOpenWhoami: () -> Void
@@ -396,24 +441,25 @@ struct NodeRow: View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 8) {
                 Circle()
-                    .fill(Color(color))
+                    .fill(Color(presentation.displayColor))
                     .frame(width: 8, height: 8)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(node.id)
                         .font(.system(size: 11, weight: .semibold))
+                        .foregroundColor(presentation.isOffline ? Theme.muted : Theme.textPrimary)
                     if let alias, !alias.isEmpty, alias != node.id {
                         Text(alias)
                             .font(.system(size: 10))
-                            .foregroundColor(.secondary)
+                            .foregroundColor(presentation.isOffline ? Theme.muted : .secondary)
                     }
                     Text(node.hostname ?? node.ip ?? "Unknown host")
                         .font(.system(size: 10))
-                        .foregroundColor(.secondary)
+                        .foregroundColor(presentation.isOffline ? Theme.muted : .secondary)
                 }
                 Spacer()
-                Text(node.isStale ? "Stale" : "Live")
+                Text(presentation.isOffline ? "Offline" : (node.isStale ? "Stale" : "Live"))
                     .font(.system(size: 10))
-                    .foregroundColor(node.isStale ? .orange : .green)
+                    .foregroundColor(presentation.isOffline ? Theme.muted : (node.isStale ? .orange : .green))
             }
             HStack(spacing: 6) {
                 Button(selected ? "Hide" : "Show") { onToggle() }
@@ -435,6 +481,7 @@ struct NodeRow: View {
         .padding(6)
         .background(selected ? Theme.panelAlt : Theme.panel)
         .cornerRadius(6)
+        .shadow(color: presentation.shouldGlow ? Color(presentation.baseColor).opacity(0.25) : .clear, radius: 6)
     }
 }
 
@@ -480,6 +527,7 @@ struct SignalFieldView: View {
     let replayOffset: Double
     let ghostTrails: Bool
     let aliases: [String: String]
+    let nodePresentations: [String: NodePresentation]
     let focusID: String?
 
     @StateObject private var engine = SignalFieldEngine()
@@ -510,7 +558,8 @@ struct SignalFieldView: View {
                         parallax: parallax,
                         selectedID: selectedNode?.id,
                         focusID: focusID ?? focusedNodeID,
-                        ghostTrails: ghostTrails
+                        ghostTrails: ghostTrails,
+                        nodePresentations: nodePresentations
                     )
                 }
             }
@@ -921,7 +970,8 @@ final class SignalFieldEngine: ObservableObject {
         parallax: CGPoint,
         selectedID: String?,
         focusID: String?,
-        ghostTrails: Bool
+        ghostTrails: Bool,
+        nodePresentations: [String: NodePresentation]
     ) {
         drawBackground(context: &context, size: size, now: now)
 
@@ -937,9 +987,9 @@ final class SignalFieldEngine: ObservableObject {
         }
 
         drawBins(context: &context, size: size, frames: frames, now: now, focusID: focusID)
-        lastProjected = drawSources(context: &context, size: size, parallax: parallax, selectedID: selectedID, focusID: focusID)
+        lastProjected = drawSources(context: &context, size: size, parallax: parallax, selectedID: selectedID, focusID: focusID, nodePresentations: nodePresentations)
         if ghostTrails {
-            updateGhosts(now: now)
+            updateGhosts(now: now, nodePresentations: nodePresentations)
             drawGhosts(context: &context, size: size, parallax: parallax, focusID: focusID)
         }
         drawConnections(context: &context, focusID: focusID)
@@ -1123,7 +1173,14 @@ final class SignalFieldEngine: ObservableObject {
         }
     }
 
-    private func drawSources(context: inout GraphicsContext, size: CGSize, parallax: CGPoint, selectedID: String?, focusID: String?) -> [ProjectedNode] {
+    private func drawSources(
+        context: inout GraphicsContext,
+        size: CGSize,
+        parallax: CGPoint,
+        selectedID: String?,
+        focusID: String?,
+        nodePresentations: [String: NodePresentation]
+    ) -> [ProjectedNode] {
         var projected: [ProjectedNode] = []
         for source in sources.values {
             let point = source.project(in: size, parallax: parallax)
@@ -1131,17 +1188,36 @@ final class SignalFieldEngine: ObservableObject {
             let glow = CGSize(width: 26 * depth, height: 26 * depth)
             let core = CGSize(width: 10 * depth, height: 10 * depth)
             let dimmed = focusID != nil && focusID != source.id
-            let color = Color(source.color).opacity(dimmed ? 0.25 : 1.0)
+            let presentation = nodePresentations[source.id]
+            let displayColor = presentation?.displayColor ?? source.color
+            let color = Color(displayColor).opacity(dimmed ? 0.25 : 1.0)
+            let glowAlpha = presentation?.shouldGlow == false ? 0.0 : (dimmed ? 0.08 : 0.2)
+            let coreAlpha = presentation?.isOffline == true ? 0.35 : (dimmed ? 0.4 : 0.9)
+            let activity = presentation?.activityScore ?? 0.0
 
             let glowRect = CGRect(x: point.x - glow.width / 2, y: point.y - glow.height / 2, width: glow.width, height: glow.height)
-            context.fill(Path(ellipseIn: glowRect), with: .color(color.opacity(dimmed ? 0.08 : 0.2)))
+            if glowAlpha > 0 {
+                context.fill(Path(ellipseIn: glowRect), with: .color(color.opacity(glowAlpha)))
+            }
 
             let coreRect = CGRect(x: point.x - core.width / 2, y: point.y - core.height / 2, width: core.width, height: core.height)
-            context.fill(Path(ellipseIn: coreRect), with: .color(color.opacity(dimmed ? 0.4 : 0.9)))
+            context.fill(Path(ellipseIn: coreRect), with: .color(color.opacity(coreAlpha)))
+            if activity > 0.01, presentation?.isOffline == false {
+                let ringScale = CGFloat(1.4 + activity * 2.2) * depth
+                let ringSize = CGSize(width: core.width * ringScale, height: core.height * ringScale)
+                let ringRect = CGRect(
+                    x: point.x - ringSize.width / 2,
+                    y: point.y - ringSize.height / 2,
+                    width: ringSize.width,
+                    height: ringSize.height
+                )
+                let ringAlpha = min(0.22, 0.08 + activity * 0.18)
+                context.stroke(Path(ellipseIn: ringRect), with: .color(color.opacity(ringAlpha)), lineWidth: 1.2)
+            }
             if let selectedID, selectedID == source.id {
                 context.stroke(Path(ellipseIn: glowRect), with: .color(color.opacity(0.9)), lineWidth: 2.0)
             }
-            projected.append(ProjectedNode(id: source.id, point: point, color: source.color, depth: depth))
+            projected.append(ProjectedNode(id: source.id, point: point, color: displayColor, depth: depth))
         }
         return projected
     }
@@ -1178,11 +1254,12 @@ final class SignalFieldEngine: ObservableObject {
         String(id.split(separator: ":").first ?? Substring(id))
     }
 
-    private func updateGhosts(now: Date) {
+    private func updateGhosts(now: Date, nodePresentations: [String: NodePresentation]) {
         if now.timeIntervalSince(ghostLastFlush) > 0.12 {
             ghostLastFlush = now
             for source in sources.values {
-                ghostAccumulator.append(GhostPoint(position: source.position, color: source.color, ts: now))
+                let color = nodePresentations[source.id]?.displayColor ?? source.color
+                ghostAccumulator.append(GhostPoint(position: source.position, color: color, ts: now))
             }
             if ghostAccumulator.count > 180 {
                 ghostAccumulator.removeFirst(ghostAccumulator.count - 180)

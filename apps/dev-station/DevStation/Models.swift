@@ -1,4 +1,5 @@
 import Foundation
+import AppKit
 
 enum ConfidenceLevel: String, Codable {
     case low = "Low"
@@ -83,6 +84,40 @@ struct NodeRecord: Identifiable, Codable, Hashable {
         case .offline: return .offline
         case .error: return .error
         }
+    }
+}
+
+struct NodePresentation: Hashable {
+    let baseColor: NSColor
+    let displayColor: NSColor
+    let shouldGlow: Bool
+    let isOffline: Bool
+    let glowColor: NSColor
+    let activityScore: Double
+
+    @MainActor
+    static func forNode(id: String, keys: [String], isOnline: Bool, activityScore: Double) -> NodePresentation {
+        let identityKey = IdentityResolver.shared.resolveLabel(keys: keys) ?? id
+        let base = SignalColor.deviceColor(id: identityKey)
+        if isOnline {
+            return NodePresentation(
+                baseColor: base,
+                displayColor: base,
+                shouldGlow: true,
+                isOffline: false,
+                glowColor: base,
+                activityScore: activityScore
+            )
+        }
+        let muted = NSColor(calibratedWhite: 0.6, alpha: 1.0)
+        return NodePresentation(
+            baseColor: base,
+            displayColor: muted,
+            shouldGlow: false,
+            isOffline: true,
+            glowColor: base,
+            activityScore: activityScore
+        )
     }
 }
 
