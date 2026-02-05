@@ -8,6 +8,7 @@ final class SODSStore: ObservableObject {
     @Published private(set) var events: [NormalizedEvent] = []
     @Published private(set) var frames: [SignalFrame] = []
     @Published private(set) var nodes: [SignalNode] = []
+    @Published private(set) var nodePresence: [String: NodePresence] = [:]
     @Published private(set) var health: APIHealth = .offline
     @Published private(set) var lastError: String?
     @Published private(set) var lastPoll: Date?
@@ -269,7 +270,7 @@ final class SODSStore: ObservableObject {
     private func pollStatusAndNodes() async {
         do {
             let statusURL = makeURL(path: "/api/status")
-            let nodesURL = makeURL(path: "/nodes")
+            let nodesURL = makeURL(path: "/api/nodes")
             guard let statusURL, let nodesURL else { return }
 
             async let statusReq = URLSession.shared.data(from: statusURL)
@@ -280,12 +281,13 @@ final class SODSStore: ObservableObject {
 
             let decoder = JSONDecoder()
             let statusPayload = try decoder.decode(StationStatusEnvelope.self, from: statusData)
-            let nodesPayload = try decoder.decode(SODSNodesEnvelope.self, from: nodesData)
+            let nodesPayload = try decoder.decode(NodePresenceEnvelope.self, from: nodesData)
 
             health = statusPayload.station.ok ? .connected : .degraded
             lastError = nil
             stationStatus = statusPayload.station
             loggerStatus = statusPayload.logger
+            nodePresence = Dictionary(uniqueKeysWithValues: nodesPayload.items.map { ($0.nodeID, $0) })
             nodes = nodesPayload.items.map {
                 SignalNode(
                     id: $0.nodeID,
@@ -306,6 +308,46 @@ final class SODSStore: ObservableObject {
         guard let ip = node.ip, !ip.isEmpty else { return }
         guard let url = URL(string: "http://\(ip)\(path)") else { return }
         NotificationCenter.default.post(name: .sodsOpenURLInApp, object: url)
+    }
+
+    func connectNode(_ nodeID: String) {
+        guard let url = makeURL(path: "/api/node/connect") else { return }
+        let payload = ["node_id": nodeID]
+        guard let body = try? JSONSerialization.data(withJSONObject: payload) else { return }
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.httpBody = body
+        URLSession.shared.dataTask(with: req) { [weak self] data, _, _ in
+            guard let data else { return }
+            if let result = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let ok = result["ok"] as? Bool, !ok {
+                let error = result["error"] as? String ?? "connect failed"
+                DispatchQueue.main.async {
+                    self?.lastError = error
+                }
+            }
+        }.resume()
+    }
+
+    func identifyNode(_ nodeID: String) {
+        guard let url = makeURL(path: "/api/node/identify") else { return }
+        let payload = ["node_id": nodeID]
+        guard let body = try? JSONSerialization.data(withJSONObject: payload) else { return }
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.httpBody = body
+        URLSession.shared.dataTask(with: req) { [weak self] data, _, _ in
+            guard let data else { return }
+            if let result = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let ok = result["ok"] as? Bool, !ok {
+                let error = result["error"] as? String ?? "identify failed"
+                DispatchQueue.main.async {
+                    self?.lastError = error
+                }
+            }
+        }.resume()
     }
 
     func setAlias(id: String, alias: String) {
@@ -436,6 +478,48 @@ struct SODSNode: Decodable {
         case lastSeen = "last_seen"
         case lastKind = "last_kind"
     }
+}
+
+struct NodePresenceEnvelope: Decodable {
+    let items: [NodePresence]
+}
+
+struct NodePresence: Decodable, Hashable {
+    let nodeID: String
+    let state: String
+    let lastSeen: Int
+    let lastSeenAgeMs: Int?
+    let lastError: String?
+    let ip: String?
+    let mac: String?
+    let hostname: String?
+    let confidence: Double?
+    let capabilities: NodeCapabilities
+    let provenanceID: String?
+    let lastKind: String?
+
+    enum CodingKeys: String, CodingKey {
+        case nodeID = "node_id"
+        case state
+        case lastSeen = "last_seen"
+        case lastSeenAgeMs = "last_seen_age_ms"
+        case lastError = "last_error"
+        case ip
+        case mac
+        case hostname
+        case confidence
+        case capabilities
+        case provenanceID = "provenance_id"
+        case lastKind = "last_kind"
+    }
+}
+
+struct NodeCapabilities: Decodable, Hashable {
+    let canScanWifi: Bool?
+    let canScanBle: Bool?
+    let canFrames: Bool?
+    let canFlash: Bool?
+    let canWhoami: Bool?
 }
 
 struct CanonicalEvent: Decodable, Hashable {

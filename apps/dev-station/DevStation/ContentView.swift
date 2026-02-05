@@ -480,7 +480,9 @@ struct ContentView: View {
         } else if viewMode == .nodes {
             NodesView(
                 store: piAuxStore,
+                sodsStore: sodsStore,
                 nodes: entityStore.nodes,
+                nodePresence: sodsStore.nodePresence,
                 scanner: scanner,
                 flashManager: flashManager,
                 onvifDiscoveryEnabled: $onvifDiscoveryEnabled,
@@ -3679,7 +3681,9 @@ struct BLEFindPanel: View {
 
 struct NodesView: View {
     @ObservedObject var store: PiAuxStore
+    @ObservedObject var sodsStore: SODSStore
     let nodes: [NodeRecord]
+    let nodePresence: [String: NodePresence]
     @ObservedObject var scanner: NetworkScanner
     @ObservedObject var flashManager: FlashServerManager
     @Binding var onvifDiscoveryEnabled: Bool
@@ -3717,6 +3721,7 @@ struct NodesView: View {
                 ForEach(nodes) { node in
                     NodeCardView(
                         node: node,
+                        presence: nodePresence[node.id],
                         eventCount: store.recentEventCount(nodeID: node.id, window: 600),
                         actions: actions(for: node)
                     )
@@ -3951,6 +3956,7 @@ struct NodesView: View {
                         let target = connectableNodeIDs.contains(connectNodeID) ? connectNodeID : (connectableNodeIDs.first ?? connectNodeID)
                         if !target.isEmpty {
                             connectNodeID = target
+                            sodsStore.connectNode(target)
                             store.connectNode(target)
                             store.refreshLocalNodeHeartbeat()
                             if !bleDiscoveryEnabled {
@@ -4151,8 +4157,10 @@ struct NodeAction: Identifiable {
 
 struct NodeCardView: View {
     let node: NodeRecord
+    let presence: NodePresence?
     let eventCount: Int
     let actions: [NodeAction]
+    @State private var showActions = false
 
     var body: some View {
         let status = nodeStatus()
@@ -4189,44 +4197,50 @@ struct NodeCardView: View {
                 .font(.system(size: 11))
                 .foregroundColor(Theme.textSecondary)
 
-            Menu {
-                if actions.isEmpty {
-                    Button("Capability not advertised by node") {}
-                        .disabled(true)
-                } else {
-                    ForEach(actions) { action in
-                        Button(action.title) {
-                            action.action()
+            Button("Actions") { showActions.toggle() }
+                .font(.system(size: 12, weight: .semibold))
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(Theme.accent.opacity(0.85))
+                .foregroundColor(.white)
+                .clipShape(Capsule())
+                .popover(isPresented: $showActions, arrowEdge: .bottom) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        ModalHeaderView(title: "Node Actions", onBack: nil, onClose: { showActions = false })
+                        if actions.isEmpty {
+                            Text("No actions available.")
+                                .font(.system(size: 11))
+                                .foregroundColor(.secondary)
+                        } else {
+                            ForEach(actions) { action in
+                                Button(action.title) { action.action() }
+                                    .buttonStyle(SecondaryActionButtonStyle())
+                            }
                         }
                     }
+                    .padding(12)
+                    .frame(minWidth: 240)
+                    .background(Theme.panel)
                 }
-            } label: {
-                Text("Actions")
-                    .font(.system(size: 12, weight: .semibold))
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(Theme.accent.opacity(0.85))
-                    .foregroundColor(.white)
-                    .clipShape(Capsule())
-            }
         }
         .modifier(Theme.cardStyle())
     }
 
     private func nodeStatus() -> (label: String, isOnline: Bool, lastSeenText: String) {
-        let lastSeen = node.lastSeen ?? node.lastHeartbeat
-        let lastSeenText = lastSeen?.formatted(date: .abbreviated, time: .shortened) ?? "Not seen yet"
-        switch node.presenceState {
-        case .connected:
-            return ("Connected", true, lastSeenText)
-        case .idle:
-            return ("Idle", true, lastSeenText)
-        case .scanning:
-            return ("Scanning", true, lastSeenText)
-        case .offline:
-            return ("Offline", false, lastSeenText)
-        case .error:
+        let lastSeen = presence?.lastSeen ?? Int((node.lastSeen ?? node.lastHeartbeat)?.timeIntervalSince1970 ?? 0) * 1000
+        let lastSeenText = lastSeen > 0
+        ? Date(timeIntervalSince1970: TimeInterval(lastSeen) / 1000).formatted(date: .abbreviated, time: .shortened)
+        : "Not seen yet"
+        let state = presence?.state ?? "offline"
+        switch state {
+        case "online":
+            return ("Online", true, lastSeenText)
+        case "connecting":
+            return ("Connecting", true, lastSeenText)
+        case "error":
             return ("Error", false, lastSeenText)
+        default:
+            return ("Offline", false, lastSeenText)
         }
     }
 
