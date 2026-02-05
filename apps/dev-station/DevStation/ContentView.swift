@@ -99,6 +99,7 @@ struct ContentView: View {
     @State private var rtspPromptPassword = ""
     @State private var rtspSessionCreds: [String: (String, String)] = [:]
     @State private var showInterestingDetail = false
+    @State private var showAllHostsDetail = false
     private let rtspTrySemaphore = AsyncSemaphore(value: 4)
 
     @State private var scopeCIDR = ""
@@ -241,14 +242,23 @@ struct ContentView: View {
 
     @ViewBuilder
     private var mainContent: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            ScrollView(.vertical) {
-                VStack(alignment: .leading, spacing: 12) {
-                    statusSection
-                    contentSection
-                    logSection
+        if usesIndependentScrollLayout {
+            VStack(alignment: .leading, spacing: 12) {
+                statusSection
+                contentSection
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                logSection
+            }
+        } else {
+            VStack(alignment: .leading, spacing: 12) {
+                ScrollView(.vertical) {
+                    VStack(alignment: .leading, spacing: 12) {
+                        statusSection
+                        contentSection
+                        logSection
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
         .padding(16)
@@ -276,6 +286,7 @@ struct ContentView: View {
             entityStore.ingestBLE(bleScanner.peripherals)
             entityStore.ingestNodes(piAuxStore.activeNodes)
             IdentityResolver.shared.updateFromSignals(sodsStore.nodes)
+            refreshConnectSelection()
             Task.detached {
                 await ArtifactStore.shared.runCleanup(log: logStore)
             }
@@ -320,6 +331,8 @@ struct ContentView: View {
             viewMode = .nodes
             guard !connectNodeID.isEmpty else { return }
             sodsStore.connectNode(connectNodeID)
+            sodsStore.identifyNode(connectNodeID)
+            sodsStore.refreshStatus()
             piAuxStore.connectNode(connectNodeID)
         }
         .onChange(of: selectedIP) { newValue in
@@ -347,9 +360,14 @@ struct ContentView: View {
         }
         .onChange(of: piAuxStore.activeNodes) { _ in
             entityStore.ingestNodes(piAuxStore.activeNodes)
+            refreshConnectSelection()
         }
         .onChange(of: sodsStore.nodes) { _ in
             IdentityResolver.shared.updateFromSignals(sodsStore.nodes)
+            refreshConnectSelection()
+        }
+        .onChange(of: sodsStore.nodePresence) { _ in
+            refreshConnectSelection()
         }
         .onChange(of: scanner.isScanning) { _ in
             updateLocalScanningState()
@@ -366,6 +384,15 @@ struct ContentView: View {
         
         .onChange(of: showRtspCredentialsPrompt) { show in
             if show { modalCoordinator.present(.rtspCredentials) }
+        }
+    }
+
+    private var usesIndependentScrollLayout: Bool {
+        switch viewMode {
+        case .interesting, .allHosts, .ble, .spectral:
+            return true
+        default:
+            return false
         }
     }
 
@@ -726,6 +753,119 @@ struct ContentView: View {
         .frame(minWidth: 520, minHeight: 560)
     }
 
+    private var allHostsDetailSheet: some View {
+        UnifiedDetailView(
+            host: selectedHost,
+            device: selectedDevice,
+            selectedIP: selectedIP,
+            bestHTTPURL: selectedIP.flatMap { bestHTTPURL(for: $0) },
+            bestRTSPURI: selectedIP.flatMap { bestRTSPURI(for: $0) },
+            bestONVIFXAddr: selectedIP.flatMap { bestONVIFXAddr(for: $0) },
+            bestSSDPURL: selectedIP.flatMap { bestSSDPURL(for: $0) },
+            bestPorts: selectedIP.map { AppTruth.shared.bestPorts(ip: $0, scanner: scanner) } ?? [],
+            rtspOverrideEnabled: selectedIP.map { rtspOverrideEnabledBinding(for: $0) },
+            rtspOverrideValue: selectedIP.map { rtspOverrideValueBinding(for: $0) },
+            statusText: selectedDevice.flatMap { onvifStatus(for: $0) },
+            username: selectedDevice.map { _ in credentialBinding("username") },
+            password: selectedDevice.map { _ in credentialBinding("password") },
+            credentialsAutofilled: credentialsAutofilled,
+            isFetching: selectedDevice.map { scanner.onvifFetchInProgress.contains($0.id) } ?? false,
+            safeMode: scanner.safeModeEnabled,
+            showHardProbe: false,
+            onFetch: { device in
+                let safeMode = scanner.safeModeEnabled
+                logStore.log(.info, "Retry RTSP Fetch clicked ip=\(device.ip) safeMode=\(safeMode)")
+                guard !safeMode else {
+                    logStore.log(.warn, "Retry RTSP Fetch blocked ip=\(device.ip)")
+                    return
+                }
+                scanner.fetchOnvifRtsp(for: device.id, reason: .manual)
+            },
+            onProbeRtsp: { device in
+                let safeMode = scanner.safeModeEnabled
+                logStore.log(.info, "Probe RTSP clicked ip=\(device.ip) safeMode=\(safeMode)")
+                guard !safeMode else {
+                    logStore.log(.warn, "Probe RTSP blocked ip=\(device.ip)")
+                    return
+                }
+                scanner.probeRtsp(for: device.id)
+            },
+            onHardProbe: { device in
+                let safeMode = scanner.safeModeEnabled
+                let selected = selectedIP ?? device.ip
+                RTSPHardProbe.run(device: device, log: logStore, safeMode: safeMode, selectedIP: selected)
+            },
+            onOpenWeb: { ip in
+                openWebUI(for: ip)
+            },
+            onOpenSSDP: { ip in
+                openSSDP(for: ip)
+            },
+            onExportEvidence: { ip in
+                exportEvidenceJSON(for: ip)
+            },
+            onCopyIP: { ip in
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(ip, forType: .string)
+                logStore.log(.info, "Copied IP \(ip) to clipboard")
+            },
+            onCopyRTSP: { url in
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(url, forType: .string)
+                logStore.log(.info, "Copied RTSP URL for \(url)")
+            },
+            onOpenVLC: { url, ip in
+                openRTSPInVLC(url: url, ip: ip)
+            },
+            onGenerateDeviceReport: { ip in
+                generateDeviceReport(for: ip)
+            },
+            onTryRtspPaths: { ip in
+                if let creds = rtspSessionCreds[ip] {
+                    tryRtspPaths(for: ip, credentials: creds)
+                } else {
+                    let cached = cachedCredentials(for: ip)
+                    rtspPromptIP = ip
+                    rtspPromptUsername = cached.0
+                    rtspPromptPassword = cached.1
+                    showRtspCredentialsPrompt = true
+                }
+            },
+            onPinCase: { ip in
+                caseManager.pinHost(ip: ip, scanner: scanner, log: logStore)
+            },
+            onRevealEvidence: { ip in
+                revealLatestEvidence(for: ip)
+            },
+            onRevealProbeReport: { ip in
+                revealLatestProbeReport(for: ip)
+            },
+            onRevealArtifacts: { ip in
+                revealDeviceArtifacts(for: ip)
+            },
+            onGenerateScanReport: {
+                generateScanReport()
+            },
+            onRevealLatestReport: {
+                revealLatestReport()
+            },
+            onExportAudit: {
+                exportAudit()
+            },
+            onExportRuntimeLog: {
+                exportRuntimeLog()
+            },
+            onRevealExports: {
+                revealExports()
+            },
+            onShipNow: {
+                vaultTransport.shipNow(log: logStore)
+            }
+        )
+        .padding(16)
+        .frame(minWidth: 520, minHeight: 560)
+    }
+
     private var allHostsSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
@@ -771,118 +911,19 @@ struct ContentView: View {
                     aliasForHost: { host in aliasForDevice(ip: host.ip, host: host, device: nil) }
                 )
                 .frame(minWidth: 700)
-                Divider()
-                UnifiedDetailView(
-                    host: selectedHost,
-                    device: selectedDevice,
-                    selectedIP: selectedIP,
-                    bestHTTPURL: selectedIP.flatMap { bestHTTPURL(for: $0) },
-                    bestRTSPURI: selectedIP.flatMap { bestRTSPURI(for: $0) },
-                    bestONVIFXAddr: selectedIP.flatMap { bestONVIFXAddr(for: $0) },
-                    bestSSDPURL: selectedIP.flatMap { bestSSDPURL(for: $0) },
-                    bestPorts: selectedIP.map { AppTruth.shared.bestPorts(ip: $0, scanner: scanner) } ?? [],
-                    rtspOverrideEnabled: selectedIP.map { rtspOverrideEnabledBinding(for: $0) },
-                    rtspOverrideValue: selectedIP.map { rtspOverrideValueBinding(for: $0) },
-                    statusText: selectedDevice.flatMap { onvifStatus(for: $0) },
-                    username: selectedDevice.map { _ in credentialBinding("username") },
-                    password: selectedDevice.map { _ in credentialBinding("password") },
-                    credentialsAutofilled: credentialsAutofilled,
-                    isFetching: selectedDevice.map { scanner.onvifFetchInProgress.contains($0.id) } ?? false,
-                    safeMode: scanner.safeModeEnabled,
-                    showHardProbe: false,
-                    onFetch: { device in
-                        let safeMode = scanner.safeModeEnabled
-                        logStore.log(.info, "Retry RTSP Fetch clicked ip=\(device.ip) safeMode=\(safeMode)")
-                        guard !safeMode else {
-                            logStore.log(.warn, "Retry RTSP Fetch blocked ip=\(device.ip)")
-                            return
-                        }
-                        scanner.fetchOnvifRtsp(for: device.id, reason: .manual)
-                    },
-                    onProbeRtsp: { device in
-                        let safeMode = scanner.safeModeEnabled
-                        logStore.log(.info, "Probe RTSP clicked ip=\(device.ip) safeMode=\(safeMode)")
-                        guard !safeMode else {
-                            logStore.log(.warn, "Probe RTSP blocked ip=\(device.ip)")
-                            return
-                        }
-                        scanner.probeRtsp(for: device.id)
-                    },
-                    onHardProbe: { device in
-                        let safeMode = scanner.safeModeEnabled
-                        let selected = selectedIP ?? device.ip
-                        RTSPHardProbe.run(device: device, log: logStore, safeMode: safeMode, selectedIP: selected)
-                    },
-                    onOpenWeb: { ip in
-                        openWebUI(for: ip)
-                    },
-                    onOpenSSDP: { ip in
-                        openSSDP(for: ip)
-                    },
-                    onExportEvidence: { ip in
-                        exportEvidenceJSON(for: ip)
-                    },
-                    onCopyIP: { ip in
-                        NSPasteboard.general.clearContents()
-                        NSPasteboard.general.setString(ip, forType: .string)
-                        logStore.log(.info, "Copied IP \(ip) to clipboard")
-                    },
-                    onCopyRTSP: { url in
-                        NSPasteboard.general.clearContents()
-                        NSPasteboard.general.setString(url, forType: .string)
-                        logStore.log(.info, "Copied RTSP URL for \(url)")
-                    },
-                    onOpenVLC: { url, ip in
-                        openRTSPInVLC(url: url, ip: ip)
-                    },
-                    onGenerateDeviceReport: { ip in
-                        generateDeviceReport(for: ip)
-                    },
-                    onTryRtspPaths: { ip in
-                        if let creds = rtspSessionCreds[ip] {
-                            tryRtspPaths(for: ip, credentials: creds)
-                        } else {
-                            let cached = cachedCredentials(for: ip)
-                            rtspPromptIP = ip
-                            rtspPromptUsername = cached.0
-                            rtspPromptPassword = cached.1
-                            showRtspCredentialsPrompt = true
-                        }
-                    },
-                    onPinCase: { ip in
-                        caseManager.pinHost(ip: ip, scanner: scanner, log: logStore)
-                    },
-                    onRevealEvidence: { ip in
-                        revealLatestEvidence(for: ip)
-                    },
-                    onRevealProbeReport: { ip in
-                        revealLatestProbeReport(for: ip)
-                    },
-                    onRevealArtifacts: { ip in
-                        revealDeviceArtifacts(for: ip)
-                    },
-                    onGenerateScanReport: {
-                        generateScanReport()
-                    },
-                    onRevealLatestReport: {
-                        revealLatestReport()
-                    },
-                    onExportAudit: {
-                        exportAudit()
-                    },
-                    onExportRuntimeLog: {
-                        exportRuntimeLog()
-                    },
-                    onRevealExports: {
-                        revealExports()
-                    },
-                    onShipNow: {
-                        vaultTransport.shipNow(log: logStore)
-                    }
-                )
-                .frame(minWidth: 420)
             }
             .frame(maxHeight: .infinity)
+        }
+        .onChange(of: selectedIP) { newValue in
+            if viewMode == .allHosts {
+                showAllHostsDetail = newValue != nil
+            }
+        }
+        .sheet(isPresented: Binding(
+            get: { showAllHostsDetail && viewMode == .allHosts && selectedIP != nil },
+            set: { showAllHostsDetail = $0 }
+        )) {
+            allHostsDetailSheet
         }
     }
 
@@ -960,9 +1001,8 @@ struct ContentView: View {
             }
             .pickerStyle(.segmented)
             .labelsHidden()
-            .frame(minWidth: 240, idealWidth: 360, maxWidth: 520)
         }
-        ToolbarItemGroup(placement: .automatic) {
+        ToolbarItemGroup(placement: .status) {
             Button("Flash") { showFlashPopover = true }
                 .buttonStyle(SecondaryActionButtonStyle())
                 .popover(isPresented: $showFlashPopover, arrowEdge: .bottom) {
@@ -1116,10 +1156,30 @@ struct ContentView: View {
 
     private func connectableNodeIDs() -> [String] {
         var ids: Set<String> = []
+        for node in sodsStore.nodes {
+            ids.insert(node.id)
+        }
+        for id in sodsStore.nodePresence.keys {
+            ids.insert(id)
+        }
+        for node in entityStore.nodes {
+            ids.insert(node.id)
+        }
         for node in piAuxStore.activeNodes {
             ids.insert(node.id)
         }
         return ids.sorted()
+    }
+
+    private func refreshConnectSelection() {
+        let ids = connectableNodeIDs()
+        if ids.isEmpty {
+            connectNodeID = ""
+            return
+        }
+        if connectNodeID.isEmpty || !ids.contains(connectNodeID) {
+            connectNodeID = ids[0]
+        }
     }
 
     private func godButtonSections() -> [ActionMenuSection] {
@@ -1157,6 +1217,8 @@ struct ContentView: View {
                         guard !target.isEmpty else { return }
                         connectNodeID = target
                         sodsStore.connectNode(target)
+                        sodsStore.identifyNode(target)
+                        sodsStore.refreshStatus()
                         piAuxStore.connectNode(target)
                         if !bleDiscoveryEnabled { bleDiscoveryEnabled = true }
                     }
@@ -1197,6 +1259,8 @@ struct ContentView: View {
                 guard !target.isEmpty else { return }
                 connectNodeID = target
                 sodsStore.connectNode(target)
+                sodsStore.identifyNode(target)
+                sodsStore.refreshStatus()
                 piAuxStore.connectNode(target)
             })
         ]
@@ -3936,6 +4000,7 @@ struct NodesView: View {
                             onRefresh: {
                                 sodsStore.connectNode(node.id)
                                 sodsStore.identifyNode(node.id)
+                                sodsStore.refreshStatus()
                             }
                         )
                     }
@@ -4131,6 +4196,8 @@ struct NodesView: View {
                         if !target.isEmpty {
                             connectNodeID = target
                             sodsStore.connectNode(target)
+                            sodsStore.identifyNode(target)
+                            sodsStore.refreshStatus()
                             store.connectNode(target)
                             if !bleDiscoveryEnabled {
                                 bleDiscoveryEnabled = true
@@ -4142,6 +4209,11 @@ struct NodesView: View {
                     }
                     .buttonStyle(PrimaryActionButtonStyle())
                     Spacer()
+                }
+                if let lastError = sodsStore.lastError, !lastError.isEmpty {
+                    Text("Connect error: \(lastError)")
+                        .font(.system(size: 11))
+                        .foregroundColor(Theme.textSecondary)
                 }
 
                 HStack(spacing: 10) {
@@ -4331,12 +4403,7 @@ struct NodeCardView: View {
         TimelineView(.animation(minimumInterval: 1.0 / 6.0)) { timeline in
             let status = nodeStatus()
             let activity = min(1.0, Double(eventCount) / 40.0)
-            let presentation = NodePresentation.forNode(
-                id: node.id,
-                keys: [node.id, "node:\(node.id)"],
-                isOnline: status.isOnline,
-                activityScore: activity
-            )
+            let presentation = NodePresentation.forNode(node, presence: presence, activityScore: activity)
             let isRefreshing = {
                 let state = presence?.state.lowercased() ?? ""
                 return state == "connecting" || state == "scanning"
@@ -4438,15 +4505,32 @@ struct NodeCardView: View {
         let lastSeenText = lastSeen > 0
         ? Date(timeIntervalSince1970: TimeInterval(lastSeen) / 1000).formatted(date: .abbreviated, time: .shortened)
         : "Not seen yet"
-        let state = presence?.state ?? "offline"
-        switch state {
-        case "online":
+        if let state = presence?.state.lowercased() {
+            switch state {
+            case "online":
+                return ("Online", true, lastSeenText)
+            case "idle":
+                return ("Idle", true, lastSeenText)
+            case "scanning":
+                return ("Scanning", true, lastSeenText)
+            case "connecting":
+                return ("Connecting", false, lastSeenText)
+            case "error":
+                return ("Error", false, lastSeenText)
+            default:
+                break
+            }
+        }
+        switch node.presenceState {
+        case .connected:
             return ("Online", true, lastSeenText)
-        case "connecting":
-            return ("Connecting", false, lastSeenText)
-        case "error":
+        case .idle:
+            return ("Idle", true, lastSeenText)
+        case .scanning:
+            return ("Scanning", true, lastSeenText)
+        case .error:
             return ("Error", false, lastSeenText)
-        default:
+        case .offline:
             return ("Offline", false, lastSeenText)
         }
     }
@@ -4560,13 +4644,7 @@ struct CasesView: View {
                             let aliasOverrides = IdentityResolver.shared.aliasMap()
                             ForEach(entityStore.nodes) { node in
                                 let alias = aliasOverrides[node.id]
-                                let isOnline = node.presenceState == .connected || node.presenceState == .idle || node.presenceState == .scanning
-                                let presentation = NodePresentation.forNode(
-                                    id: node.id,
-                                    keys: [node.id, "node:\(node.id)"],
-                                    isOnline: isOnline,
-                                    activityScore: 0
-                                )
+                                let presentation = NodePresentation.forNode(node, presence: nil, activityScore: 0)
                                 HStack {
                                     Circle()
                                         .fill(Color(presentation.displayColor))

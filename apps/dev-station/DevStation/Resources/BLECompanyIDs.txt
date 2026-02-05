@@ -1,4 +1,4 @@
-# Bluetooth Company Identifiers (subset, non-trivial)
+# Bluetooth Company Identifiers (built-in)
 0x004C Apple, Inc.
 0x0006 Microsoft
 0x000F Broadcom Corporation

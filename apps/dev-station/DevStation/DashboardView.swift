@@ -185,6 +185,7 @@ struct DashboardView: View {
                                 onRefresh: {
                                     sodsStore.connectNode(node.id)
                                     sodsStore.identifyNode(node.id)
+                                    sodsStore.refreshStatus()
                                 }
                             )
                         }
@@ -345,8 +346,7 @@ struct DashboardView: View {
                     .font(.system(size: 11, weight: .semibold))
                 ForEach(entityStore.nodes) { node in
                     let status = sodsStore.nodePresence[node.id]?.state ?? node.presenceState.rawValue
-                    let isOnline = status == "online" || status == "connecting" || status == "connected" || status == "idle" || status == "scanning"
-                    let presentation = NodePresentation.forNode(id: node.id, keys: [node.id, "node:\(node.id)"], isOnline: isOnline, activityScore: 0)
+                    let presentation = NodePresentation.forNode(node, presence: sodsStore.nodePresence[node.id], activityScore: 0)
                     HStack(spacing: 6) {
                         Circle()
                             .fill(Color(presentation.displayColor))

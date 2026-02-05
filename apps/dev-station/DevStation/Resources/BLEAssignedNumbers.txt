@@ -1,4 +1,4 @@
-# Bluetooth Assigned Numbers (subset, non-trivial)
+# Bluetooth Assigned Numbers (built-in)
 1800 service Generic Access
 1801 service Generic Attribute
 1802 service Immediate Alert

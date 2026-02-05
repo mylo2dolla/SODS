@@ -139,6 +139,13 @@ final class BLEMetadataStore {
             } else {
                 log?.log(.warn, "BLEAssignedNumbers.txt missing in bundle")
             }
+            if let bundleServiceURL = Bundle.main.url(forResource: "BLEServiceUUIDs", withExtension: "txt") {
+                if let bundleServices = loadLines(url: bundleServiceURL) {
+                    mergeServiceUUIDs(lines: bundleServices)
+                }
+            } else {
+                log?.log(.warn, "BLEServiceUUIDs.txt missing in bundle")
+            }
 
             if let userPath = UserDefaults.standard.string(forKey: DefaultsKey.companyMapPath) {
                 mergeCompany(lines: loadLines(url: URL(fileURLWithPath: userPath)) ?? [])
@@ -208,6 +215,25 @@ final class BLEMetadataStore {
             let key = normalizeUUIDKey(uuidRaw)
             let short = shortUUID(from: uuidRaw)
             assignedMap[key] = BLEAssignedUUIDInfo(uuidFull: full, uuidShort: short, name: name, type: typeRaw, source: "bluetooth-sig")
+        }
+    }
+
+    private func mergeServiceUUIDs(lines: [String]) {
+        for line in lines {
+            let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
+            if trimmed.isEmpty || trimmed.hasPrefix("#") { continue }
+            let parts = trimmed.split(whereSeparator: { $0 == " " || $0 == "\t" })
+            guard parts.count >= 2 else { continue }
+            let uuidRaw = String(parts[0])
+            let name = parts.dropFirst().joined(separator: " ").trimmingCharacters(in: .whitespacesAndNewlines)
+            guard let full = normalizeUUIDFullOptional(uuidRaw), !name.isEmpty else {
+                parseErrors += 1
+                continue
+            }
+            let key = normalizeUUIDKey(uuidRaw)
+            if assignedMap[key] != nil { continue }
+            let short = shortUUID(from: uuidRaw)
+            assignedMap[key] = BLEAssignedUUIDInfo(uuidFull: full, uuidShort: short, name: name, type: "service", source: "bluetooth-sig")
         }
     }
 

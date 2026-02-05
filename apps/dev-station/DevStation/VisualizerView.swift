@@ -32,7 +32,8 @@ struct VisualizerView: View {
                     .frame(minWidth: 320, maxWidth: 360)
                 SignalFieldView(
                     events: filteredEvents,
-                    frames: store.frames,
+                    frames: displayFrames,
+                    framesAreDerived: framesAreDerived,
                     paused: paused,
                     decayRate: decayRate,
                     timeScale: timeScale,
@@ -51,7 +52,8 @@ struct VisualizerView: View {
                 sidebar
                 SignalFieldView(
                     events: filteredEvents,
-                    frames: store.frames,
+                    frames: displayFrames,
+                    framesAreDerived: framesAreDerived,
                     paused: paused,
                     decayRate: decayRate,
                     timeScale: timeScale,
@@ -130,12 +132,20 @@ struct VisualizerView: View {
                     .font(.system(size: 11))
                 Spacer()
             }
-            if let last = store.lastFramesAt {
+            if store.realFramesActive, let last = store.lastFramesAt {
                 Text("Last frames: \(last.formatted(date: .abbreviated, time: .standard))")
                     .font(.system(size: 10))
                     .foregroundColor(.secondary)
+            } else if framesAreDerived, let last = latestFallbackFrameTime {
+                Text("Last activity: \(last.formatted(date: .abbreviated, time: .standard))")
+                    .font(.system(size: 10))
+                    .foregroundColor(.secondary)
             }
-            if let source = store.frames.first?.source {
+            if framesAreDerived {
+                Text("Source: events")
+                    .font(.system(size: 10))
+                    .foregroundColor(.secondary)
+            } else if let source = store.frames.first?.source {
                 Text("Source: \(source)")
                     .font(.system(size: 10))
                     .foregroundColor(.secondary)
@@ -284,10 +294,8 @@ struct VisualizerView: View {
         GroupBox("Nodes") {
             VStack(alignment: .leading, spacing: 6) {
                 ForEach(store.nodes) { node in
-                    let isOnline = isNodeOnline(node)
-                    let keys = [node.id, node.hostname ?? "", node.ip ?? ""]
                     let activity = activityScore(for: node.id)
-                    let presentation = NodePresentation.forNode(id: node.id, keys: keys, isOnline: isOnline, activityScore: activity)
+                    let presentation = NodePresentation.forSignalNode(node, presence: store.nodePresence[node.id], activityScore: activity)
                     NodeRow(
                         node: node,
                         alias: nodeAliases[node.id] ?? nodeAliases["node:\(node.id)"],
@@ -376,11 +384,7 @@ struct VisualizerView: View {
     }
 
     private var hasRecentLiveEvents: Bool {
-        let now = Date()
-        return liveEvents.contains { event in
-            let ts = event.eventTs ?? event.recvTs ?? now
-            return now.timeIntervalSince(ts) <= 6.0
-        }
+        !fallbackFrames.isEmpty
     }
 
     private var filteredEvents: [NormalizedEvent] {
@@ -402,6 +406,66 @@ struct VisualizerView: View {
             let ts = event.eventTs ?? event.recvTs ?? now
             return abs(ts.timeIntervalSince(cursor)) <= window
         }
+    }
+
+    private var fallbackFrames: [SignalFrame] {
+        let now = Date()
+        let window: TimeInterval = 4.0
+        let cutoff = now.addingTimeInterval(-window)
+        let recent = filteredEvents.filter { event in
+            let ts = event.eventTs ?? event.recvTs ?? now
+            return ts >= cutoff
+        }
+        guard !recent.isEmpty else { return [] }
+        return recent.suffix(140).compactMap { event in
+            let ts = event.eventTs ?? event.recvTs ?? now
+            let deviceID = event.deviceID ?? event.nodeID
+            let kind = event.kind.lowercased()
+            let source: String = {
+                if kind.contains("ble") { return "ble" }
+                if kind.contains("wifi") { return "wifi" }
+                if kind.contains("rf") { return "rf" }
+                if kind.contains("gps") { return "gps" }
+                if kind.contains("node") { return "node" }
+                return "event"
+            }()
+            let style = SignalVisualStyle.from(event: event, now: now)
+            let (nx, ny, nz) = normalizedFramePosition(for: event)
+            let channel = Int(Double(event.signal.channel ?? "") ?? 0)
+            let strength = event.signal.strength ?? -65
+            return SignalFrame(
+                t: Int(ts.timeIntervalSince1970 * 1000),
+                source: source,
+                nodeID: event.nodeID,
+                deviceID: deviceID,
+                channel: channel,
+                frequency: 0,
+                rssi: strength,
+                x: nx,
+                y: ny,
+                z: nz,
+                color: FrameColor(h: style.hue * 360.0, s: style.saturation, l: style.brightness),
+                glow: style.glow,
+                persistence: 0.45,
+                velocity: nil,
+                confidence: style.confidence
+            )
+        }
+    }
+
+    private var framesAreDerived: Bool {
+        !store.realFramesActive && !fallbackFrames.isEmpty
+    }
+
+    private var displayFrames: [SignalFrame] {
+        store.realFramesActive ? store.frames : fallbackFrames
+    }
+
+    private var latestFallbackFrameTime: Date? {
+        guard !fallbackFrames.isEmpty else { return nil }
+        let latest = fallbackFrames.max(by: { $0.t < $1.t })?.t ?? 0
+        guard latest > 0 else { return nil }
+        return Date(timeIntervalSince1970: TimeInterval(latest) / 1000)
     }
 
     private var nodeAliases: [String: String] {
@@ -504,26 +568,31 @@ struct VisualizerView: View {
         return map
     }
 
+    private func normalizedFramePosition(for event: NormalizedEvent) -> (Double?, Double?, Double?) {
+        let kind = event.kind.lowercased()
+        let kindOffset = kind.contains("wifi") ? 0.08 : kind.contains("ble") ? -0.06 : 0.0
+        let baseHue = Double(SignalColor.stableHue(for: event.deviceID ?? event.nodeID))
+        let channelValue = Double(event.signal.channel ?? "") ?? baseHue * 180
+        let angle = (channelValue.truncatingRemainder(dividingBy: 180) / 180.0) * Double.pi * 2 + kindOffset
+        let radius = kind.contains("ble") ? 0.32 : kind.contains("wifi") ? 0.52 : 0.7
+        let x = cos(angle) * radius
+        let y = sin(angle) * radius
+        let z = max(0.2, min(1.0, 0.45 + (event.signal.strength ?? -60) / -120))
+        let nx = clamp(0.5 + (x / 1.2))
+        let ny = clamp(0.5 + (y / 1.2))
+        return (nx, ny, z)
+    }
+
+    private func clamp(_ value: Double, min: Double = 0.0, max: Double = 1.0) -> Double {
+        Swift.max(min, Swift.min(max, value))
+    }
+
     private var nodePresentationByID: [String: NodePresentation] {
         var map: [String: NodePresentation] = [:]
         for node in store.nodes {
-            let isOnline = isNodeOnline(node)
-            let keys = [node.id, node.hostname ?? "", node.ip ?? ""]
-            map[node.id] = NodePresentation.forNode(
-                id: node.id,
-                keys: keys,
-                isOnline: isOnline,
-                activityScore: activityScore(for: node.id)
-            )
+            map[node.id] = NodePresentation.forSignalNode(node, presence: store.nodePresence[node.id], activityScore: activityScore(for: node.id))
         }
         return map
-    }
-
-    private func isNodeOnline(_ node: SignalNode) -> Bool {
-        if let presence = store.nodePresence[node.id] {
-            return presence.state == "online"
-        }
-        return !node.isStale
     }
 
     private func activityScore(for nodeID: String) -> Double {
@@ -650,6 +719,7 @@ struct FilterRow: View {
 struct SignalFieldView: View {
     let events: [NormalizedEvent]
     let frames: [SignalFrame]
+    let framesAreDerived: Bool
     let paused: Bool
     let decayRate: Double
     let timeScale: Double
@@ -691,7 +761,8 @@ struct SignalFieldView: View {
                         selectedID: selectedNode?.id,
                         focusID: focusID ?? focusedNodeID,
                         ghostTrails: ghostTrails,
-                        nodePresentations: nodePresentations
+                        nodePresentations: nodePresentations,
+                        framesAreDerived: framesAreDerived
                     )
                 }
             }
@@ -716,10 +787,16 @@ struct SignalFieldView: View {
             })
 
             if quickOverlayVisible {
+                let now = Date()
+                let hasRecentEvents = events.contains { event in
+                    let ts = event.eventTs ?? event.recvTs ?? now
+                    return now.timeIntervalSince(ts) <= 6.0
+                }
+                let isLive = !frames.isEmpty || hasRecentEvents
                 QuickOverlayView(
                     activeCount: max(frames.count, events.count),
                     hottestSource: hottestLabel,
-                    status: frames.isEmpty ? "Idle" : "Live",
+                    status: isLive ? "Live" : "Idle",
                     focused: focusedLabel
                 )
                 .transition(.opacity)
@@ -1111,13 +1188,17 @@ final class SignalFieldEngine: ObservableObject {
         selectedID: String?,
         focusID: String?,
         ghostTrails: Bool,
-        nodePresentations: [String: NodePresentation]
+        nodePresentations: [String: NodePresentation],
+        framesAreDerived: Bool
     ) {
         drawBackground(context: &context, size: size, now: now)
 
         if !paused {
             if !frames.isEmpty {
                 ingest(frames: frames, now: now)
+                if framesAreDerived {
+                    ingest(events: events, intensity: intensity, now: now)
+                }
             } else {
                 ingest(events: events, intensity: intensity, now: now)
             }
@@ -1817,10 +1898,10 @@ struct SignalVisualStyle: Hashable {
         let timestamp = event.eventTs ?? event.recvTs ?? now
         let age = max(0.0, now.timeIntervalSince(timestamp))
         let recency = exp(-age / 6.0)
-        let brightness = clamp(0.22 + recency * 0.72)
 
         let strength = event.signal.strength ?? -65
         let strengthNorm = clamp(((-strength) - 30.0) / 70.0)
+        let brightness = clamp(0.22 + recency * 0.55 + strengthNorm * 0.35)
         let confidence = clamp(0.2 + strengthNorm * 0.8)
         let saturation = clamp(0.25 + confidence * 0.7)
 

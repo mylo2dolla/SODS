@@ -112,9 +112,57 @@ struct NodePresentation: Hashable {
         )
     }
 
+    @MainActor
+    static func forNode(_ node: NodeRecord, presence: NodePresence?, activityScore: Double) -> NodePresentation {
+        let keys = normalizedKeys([
+            node.id,
+            "node:\(node.id)",
+            node.label,
+            presence?.hostname,
+            presence?.ip,
+            presence?.mac
+        ])
+        let presenceOnline = isPresenceOnline(presence?.state)
+        let fallbackOnline = node.presenceState == .connected || node.presenceState == .idle || node.presenceState == .scanning
+        return NodePresentation.forNode(id: node.id, keys: keys, isOnline: presenceOnline || fallbackOnline, activityScore: activityScore)
+    }
+
+    @MainActor
+    static func forSignalNode(_ node: SignalNode, presence: NodePresence?, activityScore: Double) -> NodePresentation {
+        let keys = normalizedKeys([
+            node.id,
+            "node:\(node.id)",
+            node.hostname,
+            node.ip,
+            node.mac
+        ])
+        let presenceOnline = isPresenceOnline(presence?.state)
+        let fallbackOnline = !node.isStale
+        let isOnline = presence == nil ? fallbackOnline : presenceOnline
+        return NodePresentation.forNode(id: node.id, keys: keys, isOnline: isOnline, activityScore: activityScore)
+    }
+
     static func pulse(now: Date, seed: String, speed: Double = 2.4, depth: Double = 0.12) -> Double {
         let phase = Double(abs(seed.hashValue % 360)) * 0.0174533
         return 1.0 + depth * sin(now.timeIntervalSinceReferenceDate * speed + phase)
+    }
+
+    private static func normalizedKeys(_ keys: [String?]) -> [String] {
+        keys.compactMap { item in
+            let trimmed = item?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            return trimmed.isEmpty ? nil : trimmed
+        }
+    }
+
+    private static func isPresenceOnline(_ state: String?) -> Bool {
+        guard let state = state?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(),
+              !state.isEmpty else { return false }
+        switch state {
+        case "online", "idle", "scanning", "connected":
+            return true
+        default:
+            return false
+        }
     }
 }
 

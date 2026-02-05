@@ -1,4 +1,4 @@
-# BLE Service UUIDs (subset, non-trivial)
+# BLE Service UUIDs (built-in)
 1800 Generic Access
 1801 Generic Attribute
 1802 Immediate Alert
