@@ -936,6 +936,7 @@ struct ContentView: View {
                 }
             }
             .pickerStyle(.segmented)
+            .frame(width: 460)
             Button("Flash") { showFlashPopover = true }
                 .buttonStyle(SecondaryActionButtonStyle())
                 .popover(isPresented: $showFlashPopover, arrowEdge: .bottom) {
