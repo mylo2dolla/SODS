@@ -64,6 +64,7 @@ final class BLEScanner: NSObject, ObservableObject, @preconcurrency CBCentralMan
     func stopScan() {
         logStore.log(.info, "BLE toggle off")
         shouldScan = false
+        scanMode = .continuous
         oneShotTask?.cancel()
         oneShotTask = nil
         stopScanning()

@@ -340,6 +340,7 @@ final class SODSStore: ObservableObject {
 
     func connectNode(_ nodeID: String) {
         guard let url = makeURL(path: "/api/node/connect") else { return }
+        lastError = nil
         let payload = ["node_id": nodeID]
         guard let body = try? JSONSerialization.data(withJSONObject: payload) else { return }
         var req = URLRequest(url: url)
@@ -354,8 +355,16 @@ final class SODSStore: ObservableObject {
                 DispatchQueue.main.async {
                     self?.lastError = error
                 }
+            } else {
+                DispatchQueue.main.async {
+                    self?.refreshStatus()
+                }
             }
         }.resume()
+    }
+
+    func refreshStatus() {
+        Task { await pollStatusAndNodes() }
     }
 
     func identifyNode(_ nodeID: String) {

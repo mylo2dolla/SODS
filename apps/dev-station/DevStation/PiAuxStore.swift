@@ -102,11 +102,7 @@ final class PiAuxStore: ObservableObject {
     func connectNode(_ nodeID: String) {
         let trimmed = nodeID.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
-        guard var record = activeByID[trimmed] else { return }
-        if record.connectionState == .offline {
-            record.connectionState = .idle
-        }
-        activeByID[trimmed] = record
+        guard activeByID[trimmed] != nil else { return }
         activeNodes = activeByID.values.sorted { ($0.lastSeen ?? .distantPast) > ($1.lastSeen ?? .distantPast) }
     }
 

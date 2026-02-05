@@ -98,6 +98,7 @@ struct ContentView: View {
     @State private var rtspPromptUsername = ""
     @State private var rtspPromptPassword = ""
     @State private var rtspSessionCreds: [String: (String, String)] = [:]
+    @State private var showInterestingDetail = false
     private let rtspTrySemaphore = AsyncSemaphore(value: 4)
 
     @State private var scopeCIDR = ""
@@ -587,136 +588,142 @@ struct ContentView: View {
     }
 
     private var interestingSection: some View {
-        HStack(spacing: 0) {
-            List(selection: $selectedIP) {
-                ForEach(sortedDevices) { device in
-                    DeviceRow(
-                        device: device,
-                        status: onvifStatus(for: device),
-                        alias: aliasForDevice(ip: device.ip, host: hostForDevice(device), device: device)
-                    )
-                    .tag(device.ip)
-                }
-            }
-            .frame(minWidth: 360)
-
-            Divider()
-
-            VStack(alignment: .leading, spacing: 12) {
-                UnifiedDetailView(
-                    host: selectedHost,
-                    device: selectedDevice,
-                    selectedIP: selectedIP,
-                    bestHTTPURL: selectedIP.flatMap { bestHTTPURL(for: $0) },
-                    bestRTSPURI: selectedIP.flatMap { bestRTSPURI(for: $0) },
-                    bestONVIFXAddr: selectedIP.flatMap { bestONVIFXAddr(for: $0) },
-                    bestSSDPURL: selectedIP.flatMap { bestSSDPURL(for: $0) },
-                    bestPorts: selectedIP.map { AppTruth.shared.bestPorts(ip: $0, scanner: scanner) } ?? [],
-                    rtspOverrideEnabled: selectedIP.map { rtspOverrideEnabledBinding(for: $0) },
-                    rtspOverrideValue: selectedIP.map { rtspOverrideValueBinding(for: $0) },
-                    statusText: selectedDevice.flatMap { onvifStatus(for: $0) },
-                    username: selectedDevice.map { _ in credentialBinding("username") },
-                    password: selectedDevice.map { _ in credentialBinding("password") },
-                    credentialsAutofilled: credentialsAutofilled,
-                    isFetching: selectedDevice.map { scanner.onvifFetchInProgress.contains($0.id) } ?? false,
-                    safeMode: scanner.safeModeEnabled,
-                    showHardProbe: true,
-                    onFetch: { device in
-                        let safeMode = scanner.safeModeEnabled
-                        logStore.log(.info, "Retry RTSP Fetch clicked ip=\(device.ip) safeMode=\(safeMode)")
-                        guard !safeMode else {
-                            logStore.log(.warn, "Retry RTSP Fetch blocked ip=\(device.ip)")
-                            return
-                        }
-                        scanner.fetchOnvifRtsp(for: device.id, reason: .manual)
-                    },
-                    onProbeRtsp: { device in
-                        let safeMode = scanner.safeModeEnabled
-                        logStore.log(.info, "Probe RTSP clicked ip=\(device.ip) safeMode=\(safeMode)")
-                        guard !safeMode else {
-                            logStore.log(.warn, "Probe RTSP blocked ip=\(device.ip)")
-                            return
-                        }
-                        scanner.probeRtsp(for: device.id)
-                    },
-                    onHardProbe: { device in
-                        let safeMode = scanner.safeModeEnabled
-                        let selected = selectedIP ?? device.ip
-                        RTSPHardProbe.run(device: device, log: logStore, safeMode: safeMode, selectedIP: selected)
-                    },
-                    onOpenWeb: { ip in
-                        openWebUI(for: ip)
-                    },
-                    onOpenSSDP: { ip in
-                        openSSDP(for: ip)
-                    },
-                    onExportEvidence: { ip in
-                        exportEvidenceJSON(for: ip)
-                    },
-                    onCopyIP: { ip in
-                        NSPasteboard.general.clearContents()
-                        NSPasteboard.general.setString(ip, forType: .string)
-                        logStore.log(.info, "Copied IP \(ip) to clipboard")
-                    },
-                    onCopyRTSP: { url in
-                        NSPasteboard.general.clearContents()
-                        NSPasteboard.general.setString(url, forType: .string)
-                        logStore.log(.info, "Copied RTSP URL for \(url)")
-                    },
-                    onOpenVLC: { url, ip in
-                        openRTSPInVLC(url: url, ip: ip)
-                    },
-                    onGenerateDeviceReport: { ip in
-                        generateDeviceReport(for: ip)
-                    },
-                    onTryRtspPaths: { ip in
-                        if let creds = rtspSessionCreds[ip] {
-                            tryRtspPaths(for: ip, credentials: creds)
-                        } else {
-                            let cached = cachedCredentials(for: ip)
-                            rtspPromptIP = ip
-                            rtspPromptUsername = cached.0
-                            rtspPromptPassword = cached.1
-                            showRtspCredentialsPrompt = true
-                        }
-                    },
-                    onPinCase: { ip in
-                        caseManager.pinHost(ip: ip, scanner: scanner, log: logStore)
-                    },
-                    onRevealEvidence: { ip in
-                        revealLatestEvidence(for: ip)
-                    },
-                    onRevealProbeReport: { ip in
-                        revealLatestProbeReport(for: ip)
-                    },
-                    onRevealArtifacts: { ip in
-                        revealDeviceArtifacts(for: ip)
-                    },
-                    onGenerateScanReport: {
-                        generateScanReport()
-                    },
-                    onRevealLatestReport: {
-                        revealLatestReport()
-                    },
-                    onExportAudit: {
-                        exportAudit()
-                    },
-                    onExportRuntimeLog: {
-                        exportRuntimeLog()
-                    },
-                    onRevealExports: {
-                        revealExports()
-                    },
-                    onShipNow: {
-                        vaultTransport.shipNow(log: logStore)
-                    }
+        List(selection: $selectedIP) {
+            ForEach(sortedDevices) { device in
+                DeviceRow(
+                    device: device,
+                    status: onvifStatus(for: device),
+                    alias: aliasForDevice(ip: device.ip, host: hostForDevice(device), device: device)
                 )
-                Spacer()
+                .tag(device.ip)
             }
-            .padding(16)
-            .frame(minWidth: 420)
+        }
+        .frame(minWidth: 360)
+        .onChange(of: selectedIP) { newValue in
+            if viewMode == .interesting {
+                showInterestingDetail = newValue != nil
+            }
+        }
+        .sheet(isPresented: Binding(
+            get: { showInterestingDetail && viewMode == .interesting && selectedIP != nil },
+            set: { showInterestingDetail = $0 }
+        )) {
+            interestingDetailSheet
         }
         .frame(maxHeight: .infinity)
+    }
+
+    private var interestingDetailSheet: some View {
+        UnifiedDetailView(
+            host: selectedHost,
+            device: selectedDevice,
+            selectedIP: selectedIP,
+            bestHTTPURL: selectedIP.flatMap { bestHTTPURL(for: $0) },
+            bestRTSPURI: selectedIP.flatMap { bestRTSPURI(for: $0) },
+            bestONVIFXAddr: selectedIP.flatMap { bestONVIFXAddr(for: $0) },
+            bestSSDPURL: selectedIP.flatMap { bestSSDPURL(for: $0) },
+            bestPorts: selectedIP.map { AppTruth.shared.bestPorts(ip: $0, scanner: scanner) } ?? [],
+            rtspOverrideEnabled: selectedIP.map { rtspOverrideEnabledBinding(for: $0) },
+            rtspOverrideValue: selectedIP.map { rtspOverrideValueBinding(for: $0) },
+            statusText: selectedDevice.flatMap { onvifStatus(for: $0) },
+            username: selectedDevice.map { _ in credentialBinding("username") },
+            password: selectedDevice.map { _ in credentialBinding("password") },
+            credentialsAutofilled: credentialsAutofilled,
+            isFetching: selectedDevice.map { scanner.onvifFetchInProgress.contains($0.id) } ?? false,
+            safeMode: scanner.safeModeEnabled,
+            showHardProbe: true,
+            onFetch: { device in
+                let safeMode = scanner.safeModeEnabled
+                logStore.log(.info, "Retry RTSP Fetch clicked ip=\(device.ip) safeMode=\(safeMode)")
+                guard !safeMode else {
+                    logStore.log(.warn, "Retry RTSP Fetch blocked ip=\(device.ip)")
+                    return
+                }
+                scanner.fetchOnvifRtsp(for: device.id, reason: .manual)
+            },
+            onProbeRtsp: { device in
+                let safeMode = scanner.safeModeEnabled
+                logStore.log(.info, "Probe RTSP clicked ip=\(device.ip) safeMode=\(safeMode)")
+                guard !safeMode else {
+                    logStore.log(.warn, "Probe RTSP blocked ip=\(device.ip)")
+                    return
+                }
+                scanner.probeRtsp(for: device.id)
+            },
+            onHardProbe: { device in
+                let safeMode = scanner.safeModeEnabled
+                let selected = selectedIP ?? device.ip
+                RTSPHardProbe.run(device: device, log: logStore, safeMode: safeMode, selectedIP: selected)
+            },
+            onOpenWeb: { ip in
+                openWebUI(for: ip)
+            },
+            onOpenSSDP: { ip in
+                openSSDP(for: ip)
+            },
+            onExportEvidence: { ip in
+                exportEvidenceJSON(for: ip)
+            },
+            onCopyIP: { ip in
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(ip, forType: .string)
+                logStore.log(.info, "Copied IP \(ip) to clipboard")
+            },
+            onCopyRTSP: { url in
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(url, forType: .string)
+                logStore.log(.info, "Copied RTSP URL for \(url)")
+            },
+            onOpenVLC: { url, ip in
+                openRTSPInVLC(url: url, ip: ip)
+            },
+            onGenerateDeviceReport: { ip in
+                generateDeviceReport(for: ip)
+            },
+            onTryRtspPaths: { ip in
+                if let creds = rtspSessionCreds[ip] {
+                    tryRtspPaths(for: ip, credentials: creds)
+                } else {
+                    let cached = cachedCredentials(for: ip)
+                    rtspPromptIP = ip
+                    rtspPromptUsername = cached.0
+                    rtspPromptPassword = cached.1
+                    showRtspCredentialsPrompt = true
+                }
+            },
+            onPinCase: { ip in
+                caseManager.pinHost(ip: ip, scanner: scanner, log: logStore)
+            },
+            onRevealEvidence: { ip in
+                revealLatestEvidence(for: ip)
+            },
+            onRevealProbeReport: { ip in
+                revealLatestProbeReport(for: ip)
+            },
+            onRevealArtifacts: { ip in
+                revealDeviceArtifacts(for: ip)
+            },
+            onGenerateScanReport: {
+                generateScanReport()
+            },
+            onRevealLatestReport: {
+                revealLatestReport()
+            },
+            onExportAudit: {
+                exportAudit()
+            },
+            onExportRuntimeLog: {
+                exportRuntimeLog()
+            },
+            onRevealExports: {
+                revealExports()
+            },
+            onShipNow: {
+                vaultTransport.shipNow(log: logStore)
+            }
+        )
+        .padding(16)
+        .frame(minWidth: 520, minHeight: 560)
     }
 
     private var allHostsSection: some View {
@@ -935,25 +942,27 @@ struct ContentView: View {
 
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
-        ToolbarItem(placement: .principal) {
+        ToolbarItemGroup(placement: .navigation) {
             Text("SODS Dev Station")
                 .font(.system(size: 16, weight: .semibold))
-        }
-        ToolbarItemGroup(placement: .automatic) {
             Button("Tools") { openSODSTools() }
                 .buttonStyle(SecondaryActionButtonStyle())
             Button("Guide") { modalCoordinator.present(.consent) }
                 .buttonStyle(SecondaryActionButtonStyle())
             Button("Aliases") { modalCoordinator.present(.aliasManager) }
                 .buttonStyle(SecondaryActionButtonStyle())
+        }
+        ToolbarItem(placement: .principal) {
             Picker("View", selection: $viewMode) {
                 ForEach(ViewMode.allCases) { mode in
                     Text(mode.rawValue).tag(mode)
                 }
             }
             .pickerStyle(.segmented)
-            .frame(minWidth: 260, idealWidth: 420, maxWidth: 520)
-            .layoutPriority(1)
+            .labelsHidden()
+            .frame(minWidth: 240, idealWidth: 360, maxWidth: 520)
+        }
+        ToolbarItemGroup(placement: .automatic) {
             Button("Flash") { showFlashPopover = true }
                 .buttonStyle(SecondaryActionButtonStyle())
                 .popover(isPresented: $showFlashPopover, arrowEdge: .bottom) {
@@ -3188,6 +3197,7 @@ struct BLEListView: View {
     let onShipNow: () -> Void
     @State private var showRecentOnly = true
     @State private var lockFindTarget = true
+    @State private var showDetail = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -3344,6 +3354,7 @@ struct BLEListView: View {
                                     if lockFindTarget {
                                         findFingerprintID = peripheral.fingerprintID
                                     }
+                                    showDetail = true
                                 }
                             }
                         }
@@ -3351,25 +3362,27 @@ struct BLEListView: View {
                     }
                 }
                 .frame(minWidth: 520)
-
-                Divider()
-
-                BLEDetailView(
-                    peripheral: selectedPeripheral,
-                    prober: prober,
-                    findFingerprintID: $findFingerprintID,
-                    aliasForPeripheral: { peripheral in
-                        IdentityResolver.shared.resolveLabel(keys: [peripheral.fingerprintID, peripheral.id.uuidString])
-                    },
-                    onGenerateScanReport: onGenerateScanReport,
-                    onRevealLatestReport: onRevealLatestReport,
-                    onExportAudit: onExportAudit,
-                    onExportRuntimeLog: onExportRuntimeLog,
-                    onRevealExports: onRevealExports,
-                    onShipNow: onShipNow
-                )
-                .frame(minWidth: 320, maxWidth: 380)
             }
+        }
+        .sheet(isPresented: Binding(
+            get: { showDetail && selectedPeripheral != nil },
+            set: { showDetail = $0 }
+        )) {
+            BLEDetailView(
+                peripheral: selectedPeripheral,
+                prober: prober,
+                findFingerprintID: $findFingerprintID,
+                aliasForPeripheral: { peripheral in
+                    IdentityResolver.shared.resolveLabel(keys: [peripheral.fingerprintID, peripheral.id.uuidString])
+                },
+                onGenerateScanReport: onGenerateScanReport,
+                onRevealLatestReport: onRevealLatestReport,
+                onExportAudit: onExportAudit,
+                onExportRuntimeLog: onExportRuntimeLog,
+                onRevealExports: onRevealExports,
+                onShipNow: onShipNow
+            )
+            .frame(minWidth: 520, minHeight: 620)
         }
     }
 
