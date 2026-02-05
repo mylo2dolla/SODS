@@ -102,11 +102,11 @@ struct VisualizerView: View {
     }
 
     private var dataSourceStatus: (label: String, color: Color) {
+        if replayEnabled {
+            return ("Playback", Color.orange)
+        }
         if store.realFramesActive {
             return ("Live", Color.green)
-        }
-        if store.simulateFrames {
-            return ("Simulated", Color.orange)
         }
         return ("Idle", Color.gray)
     }
@@ -143,7 +143,24 @@ struct VisualizerView: View {
                     sliderRow(title: "Time", value: $timeScale, range: 0.5...2.0, format: "%.2f")
                     sliderRow(title: "Particles", value: $maxParticles, range: 600...2400, format: "%.0f")
                 }
-                Toggle("Replay last 60s", isOn: $replayEnabled)
+                HStack(spacing: 8) {
+                    Button(store.isRecording ? "Stop Recording" : "Start Recording") {
+                        if store.isRecording {
+                            store.stopRecording()
+                        } else {
+                            store.startRecording()
+                        }
+                    }
+                    .buttonStyle(PrimaryActionButtonStyle())
+                    Button("Clear Recording") {
+                        store.clearRecording()
+                    }
+                    .buttonStyle(SecondaryActionButtonStyle())
+                    Text("\(store.recordedEvents.count) events")
+                        .font(.system(size: 10))
+                        .foregroundColor(.secondary)
+                }
+                Toggle("Playback", isOn: $replayEnabled)
                     .font(.system(size: 11))
                 if replayEnabled {
                     Toggle("Auto Play", isOn: $replayAutoPlay)
@@ -153,11 +170,6 @@ struct VisualizerView: View {
                 }
                 Toggle("Ghost trails", isOn: $ghostTrails)
                     .font(.system(size: 11))
-                if FeatureFlags.shared.simulationEnabled {
-                    Toggle("Simulate frames", isOn: $store.simulateFrames)
-                        .font(.system(size: 11))
-                        .help(store.realFramesActive ? "Real frames streaming; simulation will yield to live frames." : "Generate local simulated frames.")
-                }
             }
             .padding(6)
         }
@@ -278,7 +290,8 @@ struct VisualizerView: View {
     }
 
     private var filteredEvents: [NormalizedEvent] {
-        let base = store.events.filter { event in
+        let sourceEvents = replayEnabled ? store.recordedEvents : store.events
+        let base = sourceEvents.filter { event in
             if !selectedNodeIDs.isEmpty && !selectedNodeIDs.contains(event.nodeID) { return false }
             if !selectedKinds.isEmpty && !selectedKinds.contains(event.kind) { return false }
             if !selectedDeviceIDs.isEmpty {

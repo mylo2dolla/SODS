@@ -17,15 +17,9 @@ final class SODSStore: ObservableObject {
     @Published private(set) var loggerStatus: LoggerStatus?
     @Published private(set) var realFramesActive: Bool = false
     @Published var baseURL: String
-    @Published var simulateFrames: Bool = false {
-        didSet {
-            if simulateFrames {
-                startSimulatedFrames()
-            } else {
-                stopSimulatedFrames()
-            }
-        }
-    }
+    @Published var isRecording: Bool = false
+    @Published private(set) var recordedEvents: [NormalizedEvent] = []
+    @Published private(set) var recordingStartedAt: Date?
     @Published private(set) var aliasOverrides: [String: String] = [:]
 
     private let baseURLKey = "SODSBaseURL"
@@ -35,7 +29,6 @@ final class SODSStore: ObservableObject {
     private var pollTimer: Timer?
     private var maxEvents = 1200
     private let aliasOverridesKey = "SODSAliasOverrides"
-    private var simulatedTimer: Timer?
 
     private init() {
         let defaults = UserDefaults.standard
@@ -74,7 +67,6 @@ final class SODSStore: ObservableObject {
         connectWebSocket()
         connectFramesWebSocket()
         schedulePoll()
-        if simulateFrames { startSimulatedFrames() }
     }
 
     private func schedulePoll() {
@@ -168,6 +160,12 @@ final class SODSStore: ObservableObject {
             let event = try decoder.decode(CanonicalEvent.self, from: data)
             let normalized = NormalizedEvent(from: event)
             events.append(normalized)
+            if isRecording {
+                recordedEvents.append(normalized)
+                if recordedEvents.count > maxEvents * 5 {
+                    recordedEvents.removeFirst(recordedEvents.count - maxEvents * 5)
+                }
+            }
             if events.count > maxEvents {
                 events.removeFirst(events.count - maxEvents)
             }
@@ -185,9 +183,6 @@ final class SODSStore: ObservableObject {
             lastFramesAt = Date()
             realFramesActive = true
             scheduleRealFramesDecayCheck()
-            if simulateFrames {
-                simulateFrames = false
-            }
         } catch {
             // ignore frame decode errors
         }
@@ -202,69 +197,21 @@ final class SODSStore: ObservableObject {
         }
     }
 
-    private func startSimulatedFrames() {
-        guard FeatureFlags.shared.simulationEnabled else { return }
-        if realFramesActive { return }
-        simulatedTimer?.invalidate()
-        simulatedTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / 20.0, repeats: true) { [weak self] _ in
-            guard let self else { return }
-            Task { @MainActor in
-                self.emitSimulatedFrames()
-            }
+    func startRecording() {
+        if !isRecording {
+            recordedEvents.removeAll()
+            recordingStartedAt = Date()
         }
+        isRecording = true
     }
 
-    private func stopSimulatedFrames() {
-        simulatedTimer?.invalidate()
-        simulatedTimer = nil
+    func stopRecording() {
+        isRecording = false
     }
 
-    private func emitSimulatedFrames() {
-        if !simulateFrames { return }
-        if realFramesActive { return }
-        if let lastFramesAt, Date().timeIntervalSince(lastFramesAt) < 1.5 {
-            return
-        }
-        frames = makeSimulatedFrames()
-        lastFramesAt = Date()
-    }
-
-    private func makeSimulatedFrames() -> [SignalFrame] {
-        let nowMs = Int(Date().timeIntervalSince1970 * 1000)
-        var next: [SignalFrame] = []
-        let baseHue: Double = 8
-        let count = 12
-        for idx in 0..<count {
-            let angle = Double(idx) / Double(count) * (Double.pi * 2.0)
-            let drift = sin(Double(nowMs) / 1000.0 + angle) * 0.08
-            let x = 0.5 + cos(angle) * (0.28 + drift)
-            let y = 0.5 + sin(angle) * (0.28 + drift)
-            let hue = fmod(baseHue + Double(idx) * 24.0 + Double(nowMs % 1000) / 1000.0 * 10.0, 360.0)
-            let confidence = 0.4 + 0.6 * abs(sin(Double(nowMs) / 1300.0 + angle))
-            let persistence = 0.35 + 0.5 * abs(cos(Double(nowMs) / 1800.0 + angle))
-            let glow = 0.3 + confidence * 0.6
-            let rssi = -70 + (confidence * 30.0)
-            next.append(
-                SignalFrame(
-                    t: nowMs,
-                    source: "sim",
-                    nodeID: "sim-node-\(idx % 3)",
-                    deviceID: "sim-device-\(idx)",
-                    channel: 0,
-                    frequency: 0,
-                    rssi: rssi,
-                    x: x,
-                    y: y,
-                    z: 0.2 + confidence * 0.6,
-                    color: FrameColor(h: hue, s: 0.7, l: 0.45),
-                    glow: glow,
-                    persistence: persistence,
-                    velocity: 0.4,
-                    confidence: confidence
-                )
-            )
-        }
-        return next
+    func clearRecording() {
+        recordedEvents.removeAll()
+        recordingStartedAt = nil
     }
 
     private func pollStatusAndNodes() async {

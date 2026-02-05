@@ -5,7 +5,6 @@ final class FeatureFlags {
 
     private init() {}
 
-    var simulationEnabled: Bool { true }
     var showAdvancedTools: Bool { true }
     var showBuilders: Bool { true }
     var showScratchpad: Bool { true }
