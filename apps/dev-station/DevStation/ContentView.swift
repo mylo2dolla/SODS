@@ -493,7 +493,12 @@ struct ContentView: View {
                 },
                 onGenerateScanReport: {
                     generateScanReport()
-                }
+                },
+                stationActionSections: { dashboardStationSections() },
+                scanActionSections: { dashboardScanSections() },
+                eventsActionSections: { dashboardEventsSections() },
+                vaultActionSections: { dashboardVaultSections() },
+                inboxActionSections: { dashboardInboxSections() }
             )
         } else if viewMode == .interesting {
             interestingSection
@@ -577,12 +582,7 @@ struct ContentView: View {
                 retentionDays: $inboxRetentionDays,
                 retentionMaxGB: $inboxMaxGB,
                 onPrune: {
-                    Task.detached {
-                        await ArtifactStore.shared.runCleanup(log: logStore)
-                        await MainActor.run {
-                            inboxStatus = InboxRetention.shared.currentStatus()
-                        }
-                    }
+                    pruneInbox()
                 },
                 onRevealShipper: { NSWorkspace.shared.open(ArtifactStore.stateURL()) },
                 onRevealResources: { StoragePaths.revealResourcesFolder() }
@@ -1169,12 +1169,7 @@ struct ContentView: View {
             return items
         }()
 
-        let inspectItems: [ActionMenuItem] = [
-            ActionMenuItem(title: "Open Tools", systemImage: "wrench", enabled: true, reason: nil, action: { modalCoordinator.present(.toolRegistry) }),
-            ActionMenuItem(title: "Inspect Station", systemImage: "info.circle", enabled: true, reason: nil, action: { modalCoordinator.present(.apiInspector(endpoint: .status)) }),
-            ActionMenuItem(title: "Inspect Tools JSON", systemImage: "doc.text", enabled: true, reason: nil, action: { modalCoordinator.present(.apiInspector(endpoint: .tools)) }),
-            ActionMenuItem(title: "Open Web UI", systemImage: "globe", enabled: true, reason: nil, action: { if let ip = selectedIP { openWebUI(for: ip) } })
-        ]
+        let inspectItems: [ActionMenuItem] = stationInspectItems()
 
         let connectItems: [ActionMenuItem] = [
             ActionMenuItem(title: "Connect Node", systemImage: "link", enabled: true, reason: nil, action: {
@@ -1193,14 +1188,7 @@ struct ContentView: View {
             })
         ]
 
-        let exportItems: [ActionMenuItem] = [
-            ActionMenuItem(title: "Generate Scan Report", systemImage: "doc.badge.plus", enabled: true, reason: nil, action: { generateScanReport() }),
-            ActionMenuItem(title: "Reveal Latest Report", systemImage: "folder", enabled: true, reason: nil, action: { revealLatestReport() }),
-            ActionMenuItem(title: "Export Audit", systemImage: "tray.and.arrow.down", enabled: true, reason: nil, action: { exportAudit() }),
-            ActionMenuItem(title: "Export Runtime Log", systemImage: "doc.plaintext", enabled: true, reason: nil, action: { exportRuntimeLog() }),
-            ActionMenuItem(title: "Reveal Exports", systemImage: "folder.fill", enabled: true, reason: nil, action: { revealExports() }),
-            ActionMenuItem(title: "Ship Now", systemImage: "paperplane", enabled: true, reason: nil, action: { vaultTransport.shipNow(log: logStore) })
-        ]
+        let exportItems: [ActionMenuItem] = exportMenuItems()
 
         var sections: [ActionMenuSection] = []
         if !nowItems.isEmpty { sections.append(ActionMenuSection(title: "Now", items: nowItems)) }
@@ -1241,6 +1229,103 @@ struct ContentView: View {
             sections.append(ActionMenuSection(title: "Advanced", items: devItems))
         }
         return sections
+    }
+
+    private func stationInspectItems() -> [ActionMenuItem] {
+        [
+            ActionMenuItem(title: "Open Tools", systemImage: "wrench", enabled: true, reason: nil, action: { modalCoordinator.present(.toolRegistry) }),
+            ActionMenuItem(title: "Inspect Station", systemImage: "info.circle", enabled: true, reason: nil, action: { modalCoordinator.present(.apiInspector(endpoint: .status)) }),
+            ActionMenuItem(title: "Inspect Tools JSON", systemImage: "doc.text", enabled: true, reason: nil, action: { modalCoordinator.present(.apiInspector(endpoint: .tools)) }),
+            ActionMenuItem(title: "Open Web UI", systemImage: "globe", enabled: true, reason: nil, action: { if let ip = selectedIP { openWebUI(for: ip) } })
+        ]
+    }
+
+    private func exportMenuItems() -> [ActionMenuItem] {
+        [
+            ActionMenuItem(title: "Generate Scan Report", systemImage: "doc.badge.plus", enabled: true, reason: nil, action: { generateScanReport() }),
+            ActionMenuItem(title: "Reveal Latest Report", systemImage: "folder", enabled: true, reason: nil, action: { revealLatestReport() }),
+            ActionMenuItem(title: "Export Audit", systemImage: "tray.and.arrow.down", enabled: true, reason: nil, action: { exportAudit() }),
+            ActionMenuItem(title: "Export Runtime Log", systemImage: "doc.plaintext", enabled: true, reason: nil, action: { exportRuntimeLog() }),
+            ActionMenuItem(title: "Reveal Exports", systemImage: "folder.fill", enabled: true, reason: nil, action: { revealExports() }),
+            ActionMenuItem(title: "Ship Now", systemImage: "paperplane", enabled: true, reason: nil, action: { vaultTransport.shipNow(log: logStore) })
+        ]
+    }
+
+    private func scanControlItems() -> [ActionMenuItem] {
+        var items: [ActionMenuItem] = []
+        items.append(ActionMenuItem(
+            title: bleDiscoveryEnabled ? "Stop BLE Scan" : "Start BLE Scan",
+            systemImage: "antenna.radiowaves.left.and.right",
+            enabled: true,
+            reason: nil,
+            action: { bleDiscoveryEnabled.toggle() }
+        ))
+        items.append(ActionMenuItem(
+            title: "One-shot BLE Scan",
+            systemImage: "scope",
+            enabled: true,
+            reason: nil,
+            action: {
+                bleScanMode = .oneShot
+                if !bleDiscoveryEnabled { bleDiscoveryEnabled = true }
+            }
+        ))
+        items.append(ActionMenuItem(
+            title: scanner.isScanning ? "Stop Network Scan" : "Start Network Scan",
+            systemImage: "dot.radiowaves.left.and.right",
+            enabled: true,
+            reason: nil,
+            action: {
+                if scanner.isScanning {
+                    scanner.stopScan()
+                } else {
+                    let scope = makeScope()
+                    scanner.startScan(enableOnvifDiscovery: onvifDiscoveryEnabled, enableServiceDiscovery: serviceDiscoveryEnabled, enableArpWarmup: arpWarmupEnabled, scope: scope, mode: networkScanMode)
+                    piAuxStore.setNodeScanning(nodeID: piAuxStore.localNodeIdentifier, enabled: true)
+                }
+            }
+        ))
+        return items
+    }
+
+    private func dashboardStationSections() -> [ActionMenuSection] {
+        let items = stationInspectItems()
+        return items.isEmpty ? [] : [ActionMenuSection(title: "Inspect", items: items)]
+    }
+
+    private func dashboardScanSections() -> [ActionMenuSection] {
+        let items = scanControlItems()
+        return items.isEmpty ? [] : [ActionMenuSection(title: "Scan", items: items)]
+    }
+
+    private func dashboardEventsSections() -> [ActionMenuSection] {
+        let items = exportMenuItems()
+        return items.isEmpty ? [] : [ActionMenuSection(title: "Reports", items: items)]
+    }
+
+    private func dashboardVaultSections() -> [ActionMenuSection] {
+        let items: [ActionMenuItem] = [
+            ActionMenuItem(title: "Ship Now", systemImage: "paperplane", enabled: true, reason: nil, action: { vaultTransport.shipNow(log: logStore) }),
+            ActionMenuItem(title: "Reveal Exports", systemImage: "folder.fill", enabled: true, reason: nil, action: { revealExports() })
+        ]
+        return [ActionMenuSection(title: "Vault", items: items)]
+    }
+
+    private func dashboardInboxSections() -> [ActionMenuSection] {
+        let items: [ActionMenuItem] = [
+            ActionMenuItem(title: "Run Cleanup", systemImage: "trash", enabled: true, reason: nil, action: { pruneInbox() }),
+            ActionMenuItem(title: "Reveal Resources", systemImage: "folder", enabled: true, reason: nil, action: { StoragePaths.revealResourcesFolder() })
+        ]
+        return [ActionMenuSection(title: "Inbox", items: items)]
+    }
+
+    private func pruneInbox() {
+        Task.detached {
+            await ArtifactStore.shared.runCleanup(log: logStore)
+            await MainActor.run {
+                inboxStatus = InboxRetention.shared.currentStatus()
+            }
+        }
     }
 
     private func openFlashPath(_ path: String) {
@@ -3885,9 +3970,19 @@ struct NodesView: View {
                         if !store.plannedNodes.isEmpty {
                             VStack(alignment: .leading, spacing: 6) {
                                 ForEach(store.plannedNodes) { node in
+                                    let presentation = NodePresentation.forNode(
+                                        id: node.id,
+                                        keys: [node.id, "node:\(node.id)"],
+                                        isOnline: false,
+                                        activityScore: 0
+                                    )
                                     HStack {
+                                        Circle()
+                                            .fill(Color(presentation.displayColor))
+                                            .frame(width: 7, height: 7)
                                         Text("\(node.id) • \(node.label) • \(node.type.rawValue)")
                                             .font(.system(size: 11))
+                                            .foregroundColor(presentation.isOffline ? Theme.muted : Theme.textPrimary)
                                         Spacer()
                                         Button("Remove") {
                                             store.removePlannedNode(node)
@@ -4264,6 +4359,10 @@ struct NodeCardView: View {
             isOnline: status.isOnline,
             activityScore: activity
         )
+        let isRefreshing = {
+            let state = presence?.state.lowercased() ?? ""
+            return state == "connecting" || state == "scanning"
+        }()
         let secondaryColor = presentation.isOffline ? Theme.muted : Theme.textSecondary
         VStack(alignment: .leading, spacing: 6) {
             HStack {
@@ -4310,8 +4409,9 @@ struct NodeCardView: View {
             }
 
             HStack(spacing: 8) {
-                Button("Refresh/Reconnect") { onRefresh() }
+                Button(isRefreshing ? "Refreshing…" : "Refresh/Reconnect") { onRefresh() }
                     .buttonStyle(SecondaryActionButtonStyle())
+                    .disabled(isRefreshing)
                 Button("Actions") { showActions.toggle() }
                     .font(.system(size: 12, weight: .semibold))
                     .padding(.horizontal, 12)
@@ -4463,13 +4563,25 @@ struct CasesView: View {
                                 let aliasOverrides = IdentityResolver.shared.aliasMap()
                                 ForEach(entityStore.nodes) { node in
                                     let alias = aliasOverrides[node.id]
+                                    let isOnline = node.presenceState == .connected || node.presenceState == .idle || node.presenceState == .scanning
+                                    let presentation = NodePresentation.forNode(
+                                        id: node.id,
+                                        keys: [node.id, "node:\(node.id)"],
+                                        isOnline: isOnline,
+                                        activityScore: 0
+                                    )
                                     HStack {
+                                        Circle()
+                                            .fill(Color(presentation.displayColor))
+                                            .frame(width: 7, height: 7)
                                         if let alias, !alias.isEmpty {
                                             Text("\(alias) (\(node.label) • \(node.id))")
                                                 .font(.system(size: 11))
+                                                .foregroundColor(presentation.isOffline ? Theme.muted : Theme.textPrimary)
                                         } else {
                                             Text("\(node.label) (\(node.id))")
                                                 .font(.system(size: 11))
+                                                .foregroundColor(presentation.isOffline ? Theme.muted : Theme.textPrimary)
                                         }
                                         Spacer()
                                         Button("Add") {

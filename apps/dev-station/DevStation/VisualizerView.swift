@@ -23,6 +23,7 @@ struct VisualizerView: View {
     @State private var selectedNodeIDs: Set<String> = []
     @State private var selectedKinds: Set<String> = []
     @State private var selectedDeviceIDs: Set<String> = []
+    @State private var activityTick: Date = Date()
 
     var body: some View {
         HStack(spacing: 12) {
@@ -54,6 +55,9 @@ struct VisualizerView: View {
             guard replayEnabled, replayAutoPlay else { return }
             replayOffset += replaySpeed
             if replayOffset > 60 { replayOffset = 0 }
+        }
+        .onReceive(Timer.publish(every: 0.4, on: .main, in: .common).autoconnect()) { _ in
+            activityTick = Date()
         }
         .onReceive(NotificationCenter.default.publisher(for: .sodsReplaySeek)) { notification in
             if let value = notification.object as? Double {
@@ -398,7 +402,7 @@ struct VisualizerView: View {
     }
 
     private func activityScore(for nodeID: String) -> Double {
-        let now = Date()
+        let now = activityTick
         let window: TimeInterval = 20
         let recent = store.events.suffix(240).filter { event in
             guard event.nodeID == nodeID else { return false }
@@ -443,6 +447,7 @@ struct NodeRow: View {
                 Circle()
                     .fill(Color(presentation.displayColor))
                     .frame(width: 8, height: 8)
+                    .shadow(color: presentation.shouldGlow ? Color(presentation.baseColor).opacity(0.35) : .clear, radius: 6)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(node.id)
                         .font(.system(size: 11, weight: .semibold))
@@ -482,6 +487,8 @@ struct NodeRow: View {
         .background(selected ? Theme.panelAlt : Theme.panel)
         .cornerRadius(6)
         .shadow(color: presentation.shouldGlow ? Color(presentation.baseColor).opacity(0.25) : .clear, radius: 6)
+        .animation(.easeInOut(duration: 0.25), value: presentation.isOffline)
+        .animation(.easeOut(duration: 0.35), value: presentation.activityScore)
     }
 }
 
@@ -603,6 +610,12 @@ struct SignalFieldView: View {
             if let node = selectedNode {
                 NodeInspectorView(
                     node: node,
+                    presentation: nodePresentations[node.id] ?? NodePresentation.forNode(
+                        id: node.id,
+                        keys: [node.id],
+                        isOnline: true,
+                        activityScore: 0
+                    ),
                     alias: aliases[node.id],
                     suggestions: Array(Set(aliases.values)).sorted(),
                     focused: focusedNodeID == node.id,
@@ -831,6 +844,7 @@ struct ReplayBarView: View {
 
 struct NodeInspectorView: View {
     let node: SignalFieldEngine.ProjectedNode
+    let presentation: NodePresentation
     let alias: String?
     let suggestions: [String]
     let focused: Bool
@@ -853,8 +867,9 @@ struct NodeInspectorView: View {
             }
             HStack(spacing: 8) {
                 Circle()
-                    .fill(Color(node.color))
+                    .fill(Color(presentation.displayColor))
                     .frame(width: 10, height: 10)
+                    .shadow(color: presentation.shouldGlow ? Color(presentation.baseColor).opacity(0.35) : .clear, radius: 6)
                 Text(node.id)
                     .font(.system(size: 11, weight: .semibold))
             }
@@ -987,7 +1002,7 @@ final class SignalFieldEngine: ObservableObject {
         }
 
         drawBins(context: &context, size: size, frames: frames, now: now, focusID: focusID)
-        lastProjected = drawSources(context: &context, size: size, parallax: parallax, selectedID: selectedID, focusID: focusID, nodePresentations: nodePresentations)
+        lastProjected = drawSources(context: &context, size: size, now: now, parallax: parallax, selectedID: selectedID, focusID: focusID, nodePresentations: nodePresentations)
         if ghostTrails {
             updateGhosts(now: now, nodePresentations: nodePresentations)
             drawGhosts(context: &context, size: size, parallax: parallax, focusID: focusID)
@@ -1176,6 +1191,7 @@ final class SignalFieldEngine: ObservableObject {
     private func drawSources(
         context: inout GraphicsContext,
         size: CGSize,
+        now: Date,
         parallax: CGPoint,
         selectedID: String?,
         focusID: String?,
@@ -1203,7 +1219,9 @@ final class SignalFieldEngine: ObservableObject {
             let coreRect = CGRect(x: point.x - core.width / 2, y: point.y - core.height / 2, width: core.width, height: core.height)
             context.fill(Path(ellipseIn: coreRect), with: .color(color.opacity(coreAlpha)))
             if activity > 0.01, presentation?.isOffline == false {
-                let ringScale = CGFloat(1.4 + activity * 2.2) * depth
+                let phase = Double(abs(source.id.hashValue % 360)) * 0.0174533
+                let pulse = 1.0 + 0.12 * sin(now.timeIntervalSinceReferenceDate * 2.4 + phase)
+                let ringScale = CGFloat((1.4 + activity * 2.2) * pulse) * depth
                 let ringSize = CGSize(width: core.width * ringScale, height: core.height * ringScale)
                 let ringRect = CGRect(
                     x: point.x - ringSize.width / 2,
@@ -1211,7 +1229,7 @@ final class SignalFieldEngine: ObservableObject {
                     width: ringSize.width,
                     height: ringSize.height
                 )
-                let ringAlpha = min(0.22, 0.08 + activity * 0.18)
+                let ringAlpha = min(0.22, 0.08 + activity * 0.18) * (dimmed ? 0.5 : 1.0)
                 context.stroke(Path(ellipseIn: ringRect), with: .color(color.opacity(ringAlpha)), lineWidth: 1.2)
             }
             if let selectedID, selectedID == source.id {
