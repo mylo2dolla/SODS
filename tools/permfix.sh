@@ -36,6 +36,7 @@ targets=(
   "$TOOLS_DIR/p4-build.sh"
   "$TOOLS_DIR/p4-flash.sh"
   "$TOOLS_DIR/p4-monitor.sh"
+  "$TOOLS_DIR/p4-stage.sh"
   "$TOOLS_DIR/verify.sh"
 )
 

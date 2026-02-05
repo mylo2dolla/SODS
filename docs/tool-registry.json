@@ -78,6 +78,24 @@
       "output_schema": {"items": "object[]"}
     },
     {
+      "name": "p4.status",
+      "scope": "p4",
+      "kind": "passive",
+      "description": "Fetch ESP32-P4 God Button status.",
+      "input": "ip (required)",
+      "output": "p4 status",
+      "output_schema": {"node_id": "string", "state": "object"}
+    },
+    {
+      "name": "p4.god",
+      "scope": "p4",
+      "kind": "passive",
+      "description": "Trigger ESP32-P4 God Button actions.",
+      "input": "ip (required)",
+      "output": "p4 action summary",
+      "output_schema": {"ok": "boolean", "details": "object"}
+    },
+    {
       "name": "station.portal_state",
       "scope": "station",
       "kind": "passive",

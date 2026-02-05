@@ -136,6 +136,22 @@ export async function runTool(
     const json = await res.json();
     return { ok: true, output: JSON.stringify(json), data: json, duration_ms: performance.now() - start };
   }
+  if (name === "p4.status") {
+    const ip = input.ip;
+    if (!ip) throw new Error("ip is required");
+    const res = await fetch(`http://${ip}/status`, { method: "GET" });
+    if (!res.ok) throw new Error(`p4 responded ${res.status}`);
+    const json = await res.json();
+    return { ok: true, output: JSON.stringify(json), data: json, duration_ms: performance.now() - start };
+  }
+  if (name === "p4.god") {
+    const ip = input.ip;
+    if (!ip) throw new Error("ip is required");
+    const res = await fetch(`http://${ip}/god`, { method: "POST" });
+    if (!res.ok) throw new Error(`p4 responded ${res.status}`);
+    const json = await res.json();
+    return { ok: true, output: JSON.stringify(json), data: json, duration_ms: performance.now() - start };
+  }
   if (name === "ble.rssi_trend") {
     const device = input.device_id;
     const points = events

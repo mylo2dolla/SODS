@@ -21,6 +21,7 @@ type ServerOptions = {
   publicDir: string;
   flashDir: string;
   portalFlashDir?: string;
+  p4FlashDir?: string;
   localLogPath?: string;
 };
 
@@ -244,6 +245,9 @@ export class SODSServer {
     if (url.pathname === "/flash/portal-cyd") {
       return this.respondFlashHtml(res, "portal-cyd", "Ops Portal CYD", "/flash-portal/manifest-portal-cyd.json");
     }
+    if (url.pathname === "/flash/p4") {
+      return this.respondFlashHtml(res, "esp32p4", "ESP32-P4 God Button", "/flash-p4/manifest-p4.json");
+    }
     if (url.pathname.startsWith("/flash/")) {
       const rel = url.pathname.replace(/^\/flash\/+/, "");
       return this.serveStaticFrom(res, this.options.flashDir, rel || "index.html");
@@ -251,6 +255,10 @@ export class SODSServer {
     if (url.pathname.startsWith("/flash-portal/") && this.options.portalFlashDir) {
       const rel = url.pathname.replace(/^\/flash-portal\/+/, "");
       return this.serveStaticFrom(res, this.options.portalFlashDir, rel || "index.html");
+    }
+    if (url.pathname.startsWith("/flash-p4/") && this.options.p4FlashDir) {
+      const rel = url.pathname.replace(/^\/flash-p4\/+/, "");
+      return this.serveStaticFrom(res, this.options.p4FlashDir, rel || "index.html");
     }
     if (url.pathname === "/opsportal/state") {
       return this.respondJson(res, this.buildOpsPortalState());
@@ -1270,6 +1278,12 @@ export class SODSServer {
           label: "Ops Portal CYD",
           url: `${base}/flash/portal-cyd`,
           manifest: `${base}/flash-portal/manifest-portal-cyd.json`,
+        },
+        {
+          id: "esp32p4",
+          label: "ESP32-P4 God Button",
+          url: `${base}/flash/p4`,
+          manifest: `${base}/flash-p4/manifest-p4.json`,
         },
       ],
     };

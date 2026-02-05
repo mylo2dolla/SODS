@@ -204,6 +204,7 @@ async function cmdStart() {
     publicDir: new URL("../public/", import.meta.url).pathname,
     flashDir: new URL("../../../firmware/node-agent/esp-web-tools/", import.meta.url).pathname,
     portalFlashDir: new URL("../../../firmware/ops-portal/esp-web-tools/", import.meta.url).pathname,
+    p4FlashDir: new URL("../../../firmware/sods-p4-godbutton/esp-web-tools/", import.meta.url).pathname,
     localLogPath: localLogPath && localLogPath.trim() ? localLogPath.trim() : undefined,
   });
   server.start();

@@ -417,6 +417,7 @@ struct ContentView: View {
                                 onFlashEsp32: { openFlashPath("/flash/esp32") },
                                 onFlashEsp32c3: { openFlashPath("/flash/esp32c3") },
                                 onFlashPortalCyd: { openFlashPath("/flash/portal-cyd") },
+                                onFlashP4: { openFlashPath("/flash/p4") },
                                 onOpenWebTools: { openFlashPath("/flash/") }
                             )
                         }
@@ -947,6 +948,7 @@ struct ContentView: View {
                         onFlashEsp32: { openFlashPath("/flash/esp32") },
                         onFlashEsp32c3: { openFlashPath("/flash/esp32c3") },
                         onFlashPortalCyd: { openFlashPath("/flash/portal-cyd") },
+                        onFlashP4: { openFlashPath("/flash/p4") },
                         onOpenWebTools: { openFlashPath("/flash/") }
                     )
                 }
@@ -5345,11 +5347,16 @@ private func nodeAgentRootPath() -> String {
     "\(sodsRootPath())/firmware/node-agent"
 }
 
+private func p4RootPath() -> String {
+    "\(sodsRootPath())/firmware/sods-p4-godbutton"
+}
+
 struct FlashPopoverView: View {
     let status: APIHealth
     let onFlashEsp32: () -> Void
     let onFlashEsp32c3: () -> Void
     let onFlashPortalCyd: () -> Void
+    let onFlashP4: () -> Void
     let onOpenWebTools: () -> Void
 
     var body: some View {
@@ -5389,6 +5396,8 @@ struct FlashPopoverView: View {
             HStack(spacing: 10) {
                 Button("Ops Portal CYD") { onFlashPortalCyd() }
                     .buttonStyle(PrimaryActionButtonStyle())
+                Button("ESP32-P4 God Button") { onFlashP4() }
+                    .buttonStyle(PrimaryActionButtonStyle())
             }
 
             Button("Open Web Tools Folder") { onOpenWebTools() }
@@ -5404,6 +5413,7 @@ struct FlashPopoverView: View {
 enum FlashTarget: String, CaseIterable, Identifiable {
     case esp32dev
     case esp32c3
+    case esp32p4
 
     var id: String { rawValue }
 
@@ -5413,6 +5423,8 @@ enum FlashTarget: String, CaseIterable, Identifiable {
             return "ESP32 DevKit v1"
         case .esp32c3:
             return "ESP32-C3 DevKitM-1"
+        case .esp32p4:
+            return "ESP32-P4 God Button"
         }
     }
 
@@ -5422,6 +5434,8 @@ enum FlashTarget: String, CaseIterable, Identifiable {
             return 8000
         case .esp32c3:
             return 8001
+        case .esp32p4:
+            return 8002
         }
     }
 
@@ -5431,6 +5445,8 @@ enum FlashTarget: String, CaseIterable, Identifiable {
             return nil
         case .esp32c3:
             return "chip=esp32c3"
+        case .esp32p4:
+            return "chip=esp32p4"
         }
     }
 
@@ -5440,6 +5456,8 @@ enum FlashTarget: String, CaseIterable, Identifiable {
             return "cd \(nodeAgentRootPath()) && ./tools/build-stage-esp32dev.sh"
         case .esp32c3:
             return "cd \(nodeAgentRootPath()) && ./tools/build-stage-esp32c3.sh"
+        case .esp32p4:
+            return "cd \(sodsRootPath()) && ./tools/p4-stage.sh"
         }
     }
 }
@@ -5566,6 +5584,8 @@ final class FlashServerManager: ObservableObject {
             path = "/flash/esp32"
         case .esp32c3:
             path = "/flash/esp32c3"
+        case .esp32p4:
+            path = "/flash/p4"
         }
         return URL(string: "\(baseURL)\(path)")
     }
@@ -5652,7 +5672,13 @@ final class FlashServerManager: ObservableObject {
     }
 
     private func buildPrepStatus(for target: FlashTarget) -> FlashPrepStatus {
-        let root = nodeAgentRoot()
+        let root: String
+        switch target {
+        case .esp32dev, .esp32c3:
+            root = nodeAgentRoot()
+        case .esp32p4:
+            root = p4RootPath()
+        }
         let webTools = "\(root)/esp-web-tools"
         let firmwareBase = "\(webTools)/firmware"
 
@@ -5664,6 +5690,8 @@ final class FlashServerManager: ObservableObject {
             manifestPath = "\(webTools)/manifest.json"
         case .esp32c3:
             manifestPath = "\(webTools)/manifest-esp32c3.json"
+        case .esp32p4:
+            manifestPath = "\(webTools)/manifest-p4.json"
         }
 
         if !FileManager.default.fileExists(atPath: manifestPath) {
@@ -5694,6 +5722,16 @@ final class FlashServerManager: ObservableObject {
             ]
             fwCandidates = [
                 "\(firmwareBase)/esp32c3/firmware.bin"
+            ]
+        case .esp32p4:
+            bootCandidates = [
+                "\(firmwareBase)/p4/bootloader.bin"
+            ]
+            partCandidates = [
+                "\(firmwareBase)/p4/partitions.bin"
+            ]
+            fwCandidates = [
+                "\(firmwareBase)/p4/firmware.bin"
             ]
         }
 
