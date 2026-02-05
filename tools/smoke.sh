@@ -26,6 +26,8 @@ echo "Checking /api/status"
 curl -fsS "http://localhost:${PORT}/api/status" | head -n 5
 echo "Checking /api/tools"
 curl -fsS "http://localhost:${PORT}/api/tools" | head -n 5
+echo "Checking /api/nodes"
+curl -fsS "http://localhost:${PORT}/api/nodes" | head -n 5
 echo "Checking /api/flash"
 curl -fsS "http://localhost:${PORT}/api/flash"
 echo "Checking /api/presets"
@@ -55,6 +57,7 @@ REQUIRED_SHEETS=(
   "PresetBuilderView.swift"
   "ScratchpadView.swift"
   "AliasManagerView.swift"
+  "FindDeviceView.swift"
   "ViewerSheet.swift"
 )
 for sheet in "${REQUIRED_SHEETS[@]}"; do
