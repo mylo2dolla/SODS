@@ -361,10 +361,6 @@ struct ContentView: View {
         .onChange(of: showRtspCredentialsPrompt) { show in
             if show { modalCoordinator.present(.rtspCredentials) }
         }
-            }
-            .padding(16)
-            .frame(width: 360)
-        }
     }
 
     @ViewBuilder
@@ -541,6 +537,7 @@ struct ContentView: View {
                 sessionManager: sessionManager,
                 piAuxStore: piAuxStore,
                 vaultTransport: vaultTransport,
+                entityStore: entityStore,
                 onRefresh: { caseManager.refreshCases() }
             )
         } else if viewMode == .vault {
@@ -1058,6 +1055,116 @@ struct ContentView: View {
     private func openSODSTools() {
         toolRegistry.reload()
         modalCoordinator.present(.toolRegistry)
+    }
+
+    private func godButtonSections() -> [ActionMenuSection] {
+        let isBleTab = viewMode == .ble
+        let isNodesTab = viewMode == .nodes
+        let hasHostSelection = selectedIP != nil
+        let nowItems: [ActionMenuItem] = {
+            var items: [ActionMenuItem] = []
+            if isBleTab {
+                items.append(ActionMenuItem(
+                    title: bleDiscoveryEnabled ? "Stop BLE Scan" : "Start BLE Scan",
+                    systemImage: "antenna.radiowaves.left.and.right",
+                    enabled: bleScanner.isAvailableForScan,
+                    reason: bleScanner.isAvailableForScan ? nil : "Bluetooth unavailable",
+                    action: { bleDiscoveryEnabled.toggle() }
+                ))
+                items.append(ActionMenuItem(
+                    title: "One-shot BLE Scan",
+                    systemImage: "scope",
+                    enabled: bleScanner.isAvailableForScan,
+                    reason: bleScanner.isAvailableForScan ? nil : "Bluetooth unavailable",
+                    action: {
+                        bleScanMode = .oneShot
+                        bleDiscoveryEnabled = true
+                    }
+                ))
+            }
+            if isNodesTab {
+                items.append(ActionMenuItem(
+                    title: "Connect Node",
+                    systemImage: "link",
+                    enabled: !connectNodeID.isEmpty,
+                    reason: connectNodeID.isEmpty ? "No node selected" : nil,
+                    action: {
+                        let target = connectNodeID
+                        if !target.isEmpty {
+                            piAuxStore.connectNode(target)
+                            piAuxStore.refreshLocalNodeHeartbeat()
+                            if !bleDiscoveryEnabled { bleDiscoveryEnabled = true }
+                        }
+                    }
+                ))
+                items.append(ActionMenuItem(
+                    title: scanner.isScanning ? "Stop Network Scan" : "Start Network Scan",
+                    systemImage: "dot.radiowaves.left.and.right",
+                    enabled: true,
+                    reason: nil,
+                    action: {
+                        if scanner.isScanning {
+                            scanner.stopScan()
+                        } else {
+                            let scope = makeScope()
+                            scanner.startScan(enableOnvifDiscovery: onvifDiscoveryEnabled, enableServiceDiscovery: serviceDiscoveryEnabled, enableArpWarmup: arpWarmupEnabled, scope: scope, mode: networkScanMode)
+                            piAuxStore.setNodeScanning(nodeID: piAuxStore.localNodeIdentifier, enabled: true)
+                        }
+                    }
+                ))
+            }
+            for runbook in runbookRegistry.runbooks where (runbook.ui?.capsule ?? false) {
+                items.append(ActionMenuItem(
+                    title: runbook.name,
+                    systemImage: "bolt",
+                    enabled: true,
+                    reason: nil,
+                    action: { modalCoordinator.present(.runbookRunner(runbook: runbook)) }
+                ))
+            }
+            return items
+        }()
+
+        let inspectItems: [ActionMenuItem] = [
+            ActionMenuItem(title: "Open Tools", systemImage: "wrench", enabled: true, reason: nil, action: { modalCoordinator.present(.toolRegistry) }),
+            ActionMenuItem(title: "Inspect Station", systemImage: "info.circle", enabled: true, reason: nil, action: { modalCoordinator.present(.apiInspector(endpoint: .status)) }),
+            ActionMenuItem(title: "Inspect Tools JSON", systemImage: "doc.text", enabled: true, reason: nil, action: { modalCoordinator.present(.apiInspector(endpoint: .tools)) }),
+            ActionMenuItem(title: "Open Web UI", systemImage: "globe", enabled: hasHostSelection && bestHTTPURL(for: selectedIP ?? "") != nil, reason: hasHostSelection ? nil : "No host selected", action: { if let ip = selectedIP { openWebUI(for: ip) } })
+        ]
+
+        let connectItems: [ActionMenuItem] = [
+            ActionMenuItem(title: "Connect Node", systemImage: "link", enabled: !connectNodeID.isEmpty, reason: connectNodeID.isEmpty ? "No node selected" : nil, action: {
+                let target = connectNodeID
+                if !target.isEmpty {
+                    piAuxStore.connectNode(target)
+                    piAuxStore.refreshLocalNodeHeartbeat()
+                }
+            })
+        ]
+
+        let exportItems: [ActionMenuItem] = [
+            ActionMenuItem(title: "Generate Scan Report", systemImage: "doc.badge.plus", enabled: true, reason: nil, action: { generateScanReport() }),
+            ActionMenuItem(title: "Reveal Latest Report", systemImage: "folder", enabled: true, reason: nil, action: { revealLatestReport() }),
+            ActionMenuItem(title: "Export Audit", systemImage: "tray.and.arrow.down", enabled: true, reason: nil, action: { exportAudit() }),
+            ActionMenuItem(title: "Export Runtime Log", systemImage: "doc.plaintext", enabled: true, reason: nil, action: { exportRuntimeLog() }),
+            ActionMenuItem(title: "Reveal Exports", systemImage: "folder.fill", enabled: true, reason: nil, action: { revealExports() }),
+            ActionMenuItem(title: "Ship Now", systemImage: "paperplane", enabled: true, reason: nil, action: { vaultTransport.shipNow(log: logStore) })
+        ]
+
+        var sections: [ActionMenuSection] = []
+        if !nowItems.isEmpty { sections.append(ActionMenuSection(title: "Now", items: nowItems)) }
+        sections.append(ActionMenuSection(title: "Inspect", items: inspectItems))
+        sections.append(ActionMenuSection(title: "Connect / Control", items: connectItems))
+        sections.append(ActionMenuSection(title: "Export / Ship", items: exportItems))
+#if DEBUG
+        let devItems: [ActionMenuItem] = [
+            ActionMenuItem(title: "Tool Builder", systemImage: "hammer", enabled: true, reason: nil, action: { modalCoordinator.present(.toolBuilder) }),
+            ActionMenuItem(title: "Preset Builder", systemImage: "slider.horizontal.3", enabled: true, reason: nil, action: { modalCoordinator.present(.presetBuilder) }),
+            ActionMenuItem(title: "Scratchpad", systemImage: "terminal", enabled: true, reason: nil, action: { modalCoordinator.present(.scratchpad) })
+        ]
+        sections.append(ActionMenuSection(title: "Dev", items: devItems))
+#endif
+        return sections
     }
 
     private func openFlashPath(_ path: String) {
@@ -3389,118 +3496,6 @@ struct BLEDetailView: View {
         }
     }
 
-    private func godButtonSections() -> [ActionMenuSection] {
-        let isBleTab = viewMode == .ble
-        let isNodesTab = viewMode == .nodes
-        let hasHostSelection = selectedIP != nil
-        let nowItems: [ActionMenuItem] = {
-            var items: [ActionMenuItem] = []
-            if isBleTab {
-                items.append(ActionMenuItem(
-                    title: bleDiscoveryEnabled ? "Stop BLE Scan" : "Start BLE Scan",
-                    systemImage: "antenna.radiowaves.left.and.right",
-                    enabled: bleScanner.isAvailableForScan,
-                    reason: bleScanner.isAvailableForScan ? nil : "Bluetooth unavailable",
-                    action: {
-                        bleDiscoveryEnabled.toggle()
-                    }
-                ))
-                items.append(ActionMenuItem(
-                    title: "One-shot BLE Scan",
-                    systemImage: "scope",
-                    enabled: bleScanner.isAvailableForScan,
-                    reason: bleScanner.isAvailableForScan ? nil : "Bluetooth unavailable",
-                    action: {
-                        bleScanMode = .oneShot
-                        bleDiscoveryEnabled = true
-                    }
-                ))
-            }
-            if isNodesTab {
-                items.append(ActionMenuItem(
-                    title: "Connect Node",
-                    systemImage: "link",
-                    enabled: !connectNodeID.isEmpty,
-                    reason: connectNodeID.isEmpty ? "No node selected" : nil,
-                    action: {
-                        let target = connectNodeID
-                        if !target.isEmpty {
-                            piAuxStore.connectNode(target)
-                            piAuxStore.refreshLocalNodeHeartbeat()
-                            if !bleDiscoveryEnabled { bleDiscoveryEnabled = true }
-                        }
-                    }
-                ))
-                items.append(ActionMenuItem(
-                    title: scanner.isScanning ? "Stop Network Scan" : "Start Network Scan",
-                    systemImage: "dot.radiowaves.left.and.right",
-                    enabled: true,
-                    reason: nil,
-                    action: {
-                        if scanner.isScanning {
-                            scanner.stopScan()
-                        } else {
-                            let scope = makeScope()
-                            scanner.startScan(enableOnvifDiscovery: onvifDiscoveryEnabled, enableServiceDiscovery: serviceDiscoveryEnabled, enableArpWarmup: arpWarmupEnabled, scope: scope, mode: networkScanMode)
-                            piAuxStore.setNodeScanning(nodeID: piAuxStore.localNodeIdentifier, enabled: true)
-                        }
-                    }
-                ))
-            }
-            for runbook in runbookRegistry.runbooks where (runbook.ui?.capsule ?? false) {
-                items.append(ActionMenuItem(
-                    title: runbook.name,
-                    systemImage: "bolt",
-                    enabled: true,
-                    reason: nil,
-                    action: { modalCoordinator.present(.runbookRunner(runbook: runbook)) }
-                ))
-            }
-            return items
-        }()
-
-        let inspectItems: [ActionMenuItem] = [
-            ActionMenuItem(title: "Open Tools", systemImage: "wrench", enabled: true, reason: nil, action: { modalCoordinator.present(.toolRegistry) }),
-            ActionMenuItem(title: "Inspect Station", systemImage: "info.circle", enabled: true, reason: nil, action: { modalCoordinator.present(.apiInspector(endpoint: .status)) }),
-            ActionMenuItem(title: "Inspect Tools JSON", systemImage: "doc.text", enabled: true, reason: nil, action: { modalCoordinator.present(.apiInspector(endpoint: .tools)) }),
-            ActionMenuItem(title: "Open Web UI", systemImage: "globe", enabled: hasHostSelection && bestHTTPURL(for: selectedIP ?? "") != nil, reason: hasHostSelection ? nil : "No host selected", action: { if let ip = selectedIP { openWebUI(for: ip) } })
-        ]
-
-        let connectItems: [ActionMenuItem] = [
-            ActionMenuItem(title: "Connect Node", systemImage: "link", enabled: !connectNodeID.isEmpty, reason: connectNodeID.isEmpty ? "No node selected" : nil, action: {
-                let target = connectNodeID
-                if !target.isEmpty {
-                    piAuxStore.connectNode(target)
-                    piAuxStore.refreshLocalNodeHeartbeat()
-                }
-            })
-        ]
-
-        let exportItems: [ActionMenuItem] = [
-            ActionMenuItem(title: "Generate Scan Report", systemImage: "doc.badge.plus", enabled: true, reason: nil, action: onGenerateScanReport),
-            ActionMenuItem(title: "Reveal Latest Report", systemImage: "folder", enabled: true, reason: nil, action: onRevealLatestReport),
-            ActionMenuItem(title: "Export Audit", systemImage: "tray.and.arrow.down", enabled: true, reason: nil, action: onExportAudit),
-            ActionMenuItem(title: "Export Runtime Log", systemImage: "doc.plaintext", enabled: true, reason: nil, action: onExportRuntimeLog),
-            ActionMenuItem(title: "Reveal Exports", systemImage: "folder.fill", enabled: true, reason: nil, action: onRevealExports),
-            ActionMenuItem(title: "Ship Now", systemImage: "paperplane", enabled: true, reason: nil, action: onShipNow)
-        ]
-
-        var sections: [ActionMenuSection] = []
-        if !nowItems.isEmpty { sections.append(ActionMenuSection(title: "Now", items: nowItems)) }
-        sections.append(ActionMenuSection(title: "Inspect", items: inspectItems))
-        sections.append(ActionMenuSection(title: "Connect / Control", items: connectItems))
-        sections.append(ActionMenuSection(title: "Export / Ship", items: exportItems))
-#if DEBUG
-        let devItems: [ActionMenuItem] = [
-            ActionMenuItem(title: "Tool Builder", systemImage: "hammer", enabled: true, reason: nil, action: { modalCoordinator.present(.toolBuilder) }),
-            ActionMenuItem(title: "Preset Builder", systemImage: "slider.horizontal.3", enabled: true, reason: nil, action: { modalCoordinator.present(.presetBuilder) }),
-            ActionMenuItem(title: "Scratchpad", systemImage: "terminal", enabled: true, reason: nil, action: { modalCoordinator.present(.scratchpad) })
-        ]
-        sections.append(ActionMenuSection(title: "Dev", items: devItems))
-#endif
-        return sections
-    }
-
     private func actionSections() -> [ActionMenuSection] {
         let hostActions = ActionMenuSection(
             title: "Host Actions",
@@ -4253,6 +4248,7 @@ struct CasesView: View {
     @ObservedObject var sessionManager: CaseSessionManager
     @ObservedObject var piAuxStore: PiAuxStore
     @ObservedObject var vaultTransport: VaultTransport
+    @ObservedObject var entityStore: EntityStore
     let onRefresh: () -> Void
     @State private var selectedCase: CaseIndex?
     @State private var sessionNodesText: String = ""
@@ -4846,7 +4842,7 @@ private func buildReadableLog(rawFilename: String, scanner: NetworkScanner, bleS
     lines.append("")
 
     let aliasOverrides = IdentityResolver.shared.aliasMap()
-    let highConfidence = entityStore.hosts
+    let highConfidence = EntityStore.shared.hosts
         .filter { $0.hostConfidence.level == .high }
         .sorted { $0.hostConfidence.score > $1.hostConfidence.score }
         .prefix(10)
@@ -4865,7 +4861,7 @@ private func buildReadableLog(rawFilename: String, scanner: NetworkScanner, bleS
     lines.append("")
 
     lines.append("BLE SUMMARY")
-    let bleDevices = entityStore.blePeripherals
+    let bleDevices = EntityStore.shared.blePeripherals
     lines.append("Devices: \(bleDevices.count)")
     let beacons = bleDevices.filter { $0.fingerprint.beaconHint != nil }
     if !beacons.isEmpty {

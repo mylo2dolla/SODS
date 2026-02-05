@@ -39,7 +39,8 @@ struct VisualizerView: View {
                 replayEnabled: replayEnabled,
                 replayOffset: replayOffset,
                 ghostTrails: ghostTrails,
-                aliases: nodeAliases
+                aliases: nodeAliases,
+                focusID: entityStore.selectedEntityID
             )
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
@@ -47,10 +48,6 @@ struct VisualizerView: View {
         .background(Theme.background)
         .onAppear {
             baseURLText = store.baseURL
-        }
-        .onChange(of: entityStore.selectedEntityID) { newValue in
-            let trimmed = newValue?.trimmingCharacters(in: .whitespacesAndNewlines)
-            focusedNodeID = (trimmed?.isEmpty == false) ? trimmed : nil
         }
         .onReceive(Timer.publish(every: 0.5, on: .main, in: .common).autoconnect()) { _ in
             guard replayEnabled, replayAutoPlay else { return }
@@ -79,7 +76,7 @@ struct VisualizerView: View {
 
     private var header: some View {
         let dataSource = dataSourceStatus
-        VStack(alignment: .leading, spacing: 6) {
+        return VStack(alignment: .leading, spacing: 6) {
             Text("SODS Spectrum")
                 .font(.system(size: 16, weight: .semibold))
             Text("Strange Ops Dev Station • inferred signal field")
@@ -421,6 +418,7 @@ struct SignalFieldView: View {
     let replayOffset: Double
     let ghostTrails: Bool
     let aliases: [String: String]
+    let focusID: String?
 
     @StateObject private var engine = SignalFieldEngine()
     @State private var mousePoint: CGPoint = .zero
@@ -449,7 +447,7 @@ struct SignalFieldView: View {
                         intensity: intensity,
                         parallax: parallax,
                         selectedID: selectedNode?.id,
-                        focusID: focusedNodeID,
+                        focusID: focusID ?? focusedNodeID,
                         ghostTrails: ghostTrails
                     )
                 }
@@ -458,6 +456,10 @@ struct SignalFieldView: View {
                 mousePoint = location
                 lastMouseMove = Date()
             })
+            .onChange(of: focusID ?? "") { newValue in
+                let trimmed = newValue.trimmingCharacters(in: .whitespacesAndNewlines)
+                focusedNodeID = trimmed.isEmpty ? nil : trimmed
+            }
             .contentShape(Rectangle())
             .gesture(DragGesture(minimumDistance: 0).onEnded { value in
                 if let hit = engine.nearestNode(to: value.location) {
