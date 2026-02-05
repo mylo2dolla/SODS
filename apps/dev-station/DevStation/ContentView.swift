@@ -1156,14 +1156,14 @@ struct ContentView: View {
         sections.append(ActionMenuSection(title: "Inspect", items: inspectItems))
         sections.append(ActionMenuSection(title: "Connect / Control", items: connectItems))
         sections.append(ActionMenuSection(title: "Export / Ship", items: exportItems))
-#if DEBUG
-        let devItems: [ActionMenuItem] = [
-            ActionMenuItem(title: "Tool Builder", systemImage: "hammer", enabled: true, reason: nil, action: { modalCoordinator.present(.toolBuilder) }),
-            ActionMenuItem(title: "Preset Builder", systemImage: "slider.horizontal.3", enabled: true, reason: nil, action: { modalCoordinator.present(.presetBuilder) }),
-            ActionMenuItem(title: "Scratchpad", systemImage: "terminal", enabled: true, reason: nil, action: { modalCoordinator.present(.scratchpad) })
-        ]
-        sections.append(ActionMenuSection(title: "Dev", items: devItems))
-#endif
+        if FeatureFlags.shared.showDevActions {
+            let devItems: [ActionMenuItem] = [
+                ActionMenuItem(title: "Tool Builder", systemImage: "hammer", enabled: true, reason: nil, action: { modalCoordinator.present(.toolBuilder) }),
+                ActionMenuItem(title: "Preset Builder", systemImage: "slider.horizontal.3", enabled: true, reason: nil, action: { modalCoordinator.present(.presetBuilder) }),
+                ActionMenuItem(title: "Scratchpad", systemImage: "terminal", enabled: true, reason: nil, action: { modalCoordinator.present(.scratchpad) })
+            ]
+            sections.append(ActionMenuSection(title: "Advanced", items: devItems))
+        }
         return sections
     }
 

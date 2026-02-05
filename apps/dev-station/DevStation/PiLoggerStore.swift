@@ -18,10 +18,6 @@ final class SODSStore: ObservableObject {
     @Published var baseURL: String
     @Published var simulateFrames: Bool = false {
         didSet {
-            if !simulationAllowed, simulateFrames {
-                simulateFrames = false
-                return
-            }
             if simulateFrames {
                 startSimulatedFrames()
             } else {
@@ -32,11 +28,6 @@ final class SODSStore: ObservableObject {
     @Published private(set) var aliasOverrides: [String: String] = [:]
 
     private let baseURLKey = "SODSBaseURL"
-#if DEBUG
-    private let simulationAllowed = true
-#else
-    private let simulationAllowed = false
-#endif
 
     private var wsTask: URLSessionWebSocketTask?
     private var wsFramesTask: URLSessionWebSocketTask?

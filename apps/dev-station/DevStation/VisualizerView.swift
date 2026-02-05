@@ -153,12 +153,11 @@ struct VisualizerView: View {
                 }
                 Toggle("Ghost trails", isOn: $ghostTrails)
                     .font(.system(size: 11))
-#if DEBUG
-                Toggle("Simulate frames (dev)", isOn: $store.simulateFrames)
-                    .font(.system(size: 11))
-                    .disabled(store.realFramesActive)
-                    .help(store.realFramesActive ? "Real frames streaming; simulation is disabled." : "Generate local simulated frames.")
-#endif
+                if FeatureFlags.shared.simulationEnabled {
+                    Toggle("Simulate frames", isOn: $store.simulateFrames)
+                        .font(.system(size: 11))
+                        .help(store.realFramesActive ? "Real frames streaming; simulation will yield to live frames." : "Generate local simulated frames.")
+                }
             }
             .padding(6)
         }
