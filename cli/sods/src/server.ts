@@ -205,6 +205,42 @@ export class SODSServer {
     if (url.pathname === "/api/flash") {
       return this.respondJson(res, this.buildFlashInfo(req));
     }
+    if (url.pathname === "/api/p4/status") {
+      const ip = url.searchParams.get("ip");
+      if (!ip) {
+        res.writeHead(400);
+        res.end("missing ip");
+        return;
+      }
+      fetch(`http://${ip}/status`, { method: "GET" })
+        .then(async (r) => {
+          res.writeHead(r.status, { "Content-Type": "application/json" });
+          res.end(await r.text());
+        })
+        .catch((err) => {
+          res.writeHead(502);
+          res.end(String(err?.message ?? "p4 fetch failed"));
+        });
+      return;
+    }
+    if (url.pathname === "/api/p4/god") {
+      const ip = url.searchParams.get("ip");
+      if (!ip) {
+        res.writeHead(400);
+        res.end("missing ip");
+        return;
+      }
+      fetch(`http://${ip}/god`, { method: "POST" })
+        .then(async (r) => {
+          res.writeHead(r.status, { "Content-Type": "application/json" });
+          res.end(await r.text());
+        })
+        .catch((err) => {
+          res.writeHead(502);
+          res.end(String(err?.message ?? "p4 fetch failed"));
+        });
+      return;
+    }
     if (url.pathname === "/api/tool/run" && req.method === "POST") {
       let body = "";
       req.on("data", (chunk) => body += chunk);
