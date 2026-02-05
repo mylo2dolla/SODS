@@ -10,6 +10,8 @@ OUT_DIR="$REPO_ROOT/dist"
 BUILD_DIR="$REPO_ROOT/dist/build"
 APP_NAME="DevStation.app"
 PLIST_NAME="Dev Station"
+CONFIGURATION="${DEVSTATION_CONFIGURATION:-Release}"
+CLEAN="${DEVSTATION_CLEAN:-1}"
 
 source "$REPO_ROOT/tools/_app_bundle.sh"
 
@@ -21,12 +23,12 @@ fi
 mkdir -p "$OUT_DIR"
 mkdir -p "$BUILD_DIR"
 
-if [[ -n "${DEVSTATION_CLEAN:-}" ]]; then
+if [[ "${CLEAN}" != "0" ]]; then
   echo "Cleaning Dev Station..."
   /usr/bin/xcodebuild \
     -project "$PROJECT" \
     -scheme "$SCHEME" \
-    -configuration Release \
+    -configuration "$CONFIGURATION" \
     -derivedDataPath "$DERIVED" \
     CODE_SIGNING_ALLOWED=NO \
     clean
@@ -36,7 +38,7 @@ echo "Building Dev Station..."
 /usr/bin/xcodebuild \
   -project "$PROJECT" \
   -scheme "$SCHEME" \
-  -configuration Release \
+  -configuration "$CONFIGURATION" \
   -derivedDataPath "$DERIVED" \
   CONFIGURATION_BUILD_DIR="$BUILD_DIR" \
   CODE_SIGNING_ALLOWED=NO \

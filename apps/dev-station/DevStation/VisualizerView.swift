@@ -2110,7 +2110,7 @@ struct SignalParticle: Hashable {
         }()
         let depthFadeValue = depthFade(for: depth)
         let alphaScale = CGFloat(alpha) * (dimmed ? 0.25 : 0.9) * activityFade * depthFadeValue
-        let color = Color(accentColor).opacity(Double(alphaScale))
+        let drawColor = Color(accentColor).opacity(Double(alphaScale))
 
         switch kind {
         case .spark:
@@ -2119,9 +2119,9 @@ struct SignalParticle: Hashable {
             if glowStrength > 0.05 {
                 let glowRadius = radius * (1.6 + CGFloat(glowStrength) * 2.4)
                 let glowRect = CGRect(x: basePoint.x - glowRadius / 2, y: basePoint.y - glowRadius / 2, width: glowRadius, height: glowRadius)
-                context.fill(Path(ellipseIn: glowRect), with: .color(color.opacity((dimmed ? 0.06 : 0.18) + CGFloat(glowStrength) * 0.35)))
+                context.fill(Path(ellipseIn: glowRect), with: .color(drawColor.opacity((dimmed ? 0.06 : 0.18) + CGFloat(glowStrength) * 0.35)))
             }
-            context.fill(Path(ellipseIn: rect), with: .color(color))
+            context.fill(Path(ellipseIn: rect), with: .color(drawColor))
             drawTrail(context: &context, size: size, parallax: parallax, alpha: alpha, dimmed: dimmed, activityFade: activityFade)
         case .ring:
             let radius = CGFloat(ringRadius) * depth
@@ -2141,7 +2141,7 @@ struct SignalParticle: Hashable {
                         width: dotRadius * 2,
                         height: dotRadius * 2
                     )
-                    context.fill(Path(ellipseIn: dotRect), with: .color(color.opacity(0.8)))
+                    context.fill(Path(ellipseIn: dotRect), with: .color(drawColor.opacity(0.8)))
                 }
             case .wifi:
                 let segments = 5
@@ -2150,15 +2150,15 @@ struct SignalParticle: Hashable {
                     let end = Angle(radians: start.radians + 0.5)
                     var path = Path()
                     path.addArc(center: basePoint, radius: radius, startAngle: start, endAngle: end, clockwise: false)
-                    context.stroke(path, with: .color(color.opacity(0.6 + CGFloat(glowStrength) * 0.2)), lineWidth: lineWidth)
+                    context.stroke(path, with: .color(drawColor.opacity(0.6 + CGFloat(glowStrength) * 0.2)), lineWidth: lineWidth)
                 }
             default:
-                context.stroke(Path(ellipseIn: rect), with: .color(color.opacity(0.6 + CGFloat(glowStrength) * 0.2)), lineWidth: lineWidth)
+                context.stroke(Path(ellipseIn: rect), with: .color(drawColor.opacity(0.6 + CGFloat(glowStrength) * 0.2)), lineWidth: lineWidth)
             }
         case .pulse:
             let radius = CGFloat(ringRadius) * depth
             let rect = CGRect(x: basePoint.x - radius, y: basePoint.y - radius, width: radius * 2, height: radius * 2)
-            context.stroke(Path(ellipseIn: rect), with: .color(color.opacity(0.8 + CGFloat(glowStrength) * 0.15)), lineWidth: CGFloat(ringWidth) * depth)
+            context.stroke(Path(ellipseIn: rect), with: .color(drawColor.opacity(0.8 + CGFloat(glowStrength) * 0.15)), lineWidth: CGFloat(ringWidth) * depth)
         case .burst:
             let radius = CGFloat(ringRadius) * depth
             let rect = CGRect(x: basePoint.x - radius, y: basePoint.y - radius, width: radius * 2, height: radius * 2)
@@ -2174,9 +2174,9 @@ struct SignalParticle: Hashable {
                     if i == 0 { path.move(to: CGPoint(x: x, y: y)) } else { path.addLine(to: CGPoint(x: x, y: y)) }
                 }
                 path.closeSubpath()
-                context.stroke(path, with: .color(color.opacity(0.85 + CGFloat(glowStrength) * 0.2)), lineWidth: CGFloat(ringWidth) * depth)
+                context.stroke(path, with: .color(drawColor.opacity(0.85 + CGFloat(glowStrength) * 0.2)), lineWidth: CGFloat(ringWidth) * depth)
             } else {
-                context.stroke(Path(ellipseIn: rect), with: .color(color.opacity(0.8 + CGFloat(glowStrength) * 0.2)), lineWidth: CGFloat(ringWidth) * depth)
+                context.stroke(Path(ellipseIn: rect), with: .color(drawColor.opacity(0.8 + CGFloat(glowStrength) * 0.2)), lineWidth: CGFloat(ringWidth) * depth)
             }
             drawTrail(context: &context, size: size, parallax: parallax, alpha: alpha, dimmed: dimmed, activityFade: activityFade)
         }

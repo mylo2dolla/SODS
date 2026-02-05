@@ -256,23 +256,11 @@ struct ContentView: View {
 
     @ViewBuilder
     private var mainContent: some View {
-        if usesIndependentScrollLayout {
-            VStack(alignment: .leading, spacing: 12) {
-                statusSection
-                contentSection
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                logSection
-            }
-        } else {
-            VStack(alignment: .leading, spacing: 12) {
-                ScrollView(.vertical) {
-                    VStack(alignment: .leading, spacing: 12) {
-                        statusSection
-                        contentSection
-                        logSection
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                }
+        Group {
+            if usesIndependentScrollLayout {
+                independentScrollContent
+            } else {
+                stackedScrollContent
             }
         }
         .padding(16)
@@ -414,6 +402,28 @@ struct ContentView: View {
         
         .onChange(of: showRtspCredentialsPrompt) { show in
             if show { modalCoordinator.present(.rtspCredentials) }
+        }
+    }
+
+    private var independentScrollContent: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            statusSection
+            contentSection
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            logSection
+        }
+    }
+
+    private var stackedScrollContent: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            ScrollView(.vertical) {
+                VStack(alignment: .leading, spacing: 12) {
+                    statusSection
+                    contentSection
+                    logSection
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
         }
     }
 
