@@ -397,7 +397,11 @@ struct ContentView: View {
                 HStack(spacing: 10) {
                     Button("Open Spectrum") { viewMode = .spectral }
                         .buttonStyle(PrimaryActionButtonStyle())
-                    Button("God Button") { showGodMenu = true }
+                    Button("God Button") {
+                        toolRegistry.reload()
+                        runbookRegistry.reload()
+                        showGodMenu = true
+                    }
                         .buttonStyle(SecondaryActionButtonStyle())
                         .popover(isPresented: $showGodMenu, arrowEdge: .bottom) {
                             ActionMenuView(sections: godButtonSections())
@@ -3764,153 +3768,160 @@ struct NodesView: View {
     @State private var plannedCaps: String = ""
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Nodes")
-                .font(.system(size: 16, weight: .semibold))
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Nodes")
+                    .font(.system(size: 16, weight: .semibold))
 
-            scanControlSection
+                ScrollView {
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 260), spacing: 12)], alignment: .leading, spacing: 12) {
+                        ForEach(nodes) { node in
+                            NodeCardView(
+                                node: node,
+                                presence: nodePresence[node.id],
+                                eventCount: store.recentEventCount(nodeID: node.id, window: 600),
+                                actions: actions(for: node)
+                            )
+                        }
+                    }
+                    .padding(.bottom, 12)
 
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 260), spacing: 12)], alignment: .leading, spacing: 12) {
-                ForEach(nodes) { node in
-                    NodeCardView(
-                        node: node,
-                        presence: nodePresence[node.id],
-                        eventCount: store.recentEventCount(nodeID: node.id, window: 600),
-                        actions: actions(for: node)
-                    )
+                    Text("Last \(store.events.count) Events")
+                        .font(.system(size: 12, weight: .semibold))
+                    VStack(alignment: .leading, spacing: 6) {
+                        ForEach(store.events.suffix(50).reversed()) { event in
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("\(event.timestamp) • \(event.kind.rawValue) • \(event.deviceID)")
+                                    .font(.system(size: 11))
+                                if !event.data.isEmpty {
+                                    Text(event.data.map { "\($0.key)=\($0.value)" }.sorted().joined(separator: " "))
+                                        .font(.system(size: 10))
+                                        .foregroundColor(.secondary)
+                                }
+                                if !event.tags.isEmpty {
+                                    Text("tags: \(event.tags.joined(separator: ", "))")
+                                        .font(.system(size: 10))
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                            .padding(.vertical, 4)
+                            Divider()
+                        }
+                    }
                 }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
 
-            GroupBox("Planned Nodes") {
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        TextField("Node ID", text: $plannedID)
-                            .textFieldStyle(.roundedBorder)
-                            .frame(width: 160)
-                        TextField("Label", text: $plannedLabel)
-                            .textFieldStyle(.roundedBorder)
-                            .frame(width: 160)
-                        Picker("Type", selection: $plannedType) {
-                            ForEach(NodeType.allCases, id: \.self) { type in
-                                Text(type.rawValue)
-                                    .tag(type)
+            VStack(alignment: .leading, spacing: 12) {
+                scanControlSection
+                GroupBox("Planned Nodes") {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            TextField("Node ID", text: $plannedID)
+                                .textFieldStyle(.roundedBorder)
+                                .frame(width: 160)
+                            TextField("Label", text: $plannedLabel)
+                                .textFieldStyle(.roundedBorder)
+                                .frame(width: 160)
+                            Picker("Type", selection: $plannedType) {
+                                ForEach(NodeType.allCases, id: \.self) { type in
+                                    Text(type.rawValue)
+                                        .tag(type)
+                                }
                             }
+                            .frame(width: 120)
                         }
-                        .frame(width: 120)
-                    }
-                    TextField("Capabilities (comma-separated)", text: $plannedCaps)
-                        .textFieldStyle(.roundedBorder)
-                        .frame(maxWidth: 420)
-                    HStack {
-                        Button("Add Planned Node") {
-                            let caps = plannedCaps.split(separator: ",").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
-                            store.addPlannedNode(id: plannedID, label: plannedLabel, type: plannedType, capabilities: caps)
-                            plannedID = ""
-                            plannedLabel = ""
-                            plannedCaps = ""
+                        TextField("Capabilities (comma-separated)", text: $plannedCaps)
+                            .textFieldStyle(.roundedBorder)
+                            .frame(maxWidth: 420)
+                        HStack {
+                            Button("Add Planned Node") {
+                                let caps = plannedCaps.split(separator: ",").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
+                                store.addPlannedNode(id: plannedID, label: plannedLabel, type: plannedType, capabilities: caps)
+                                plannedID = ""
+                                plannedLabel = ""
+                                plannedCaps = ""
+                            }
+                            .buttonStyle(SecondaryActionButtonStyle())
+                            Spacer()
                         }
-                        .buttonStyle(SecondaryActionButtonStyle())
-                        Spacer()
-                    }
-                    if !store.plannedNodes.isEmpty {
-                        VStack(alignment: .leading, spacing: 6) {
-                            ForEach(store.plannedNodes) { node in
-                                HStack {
-                                    Text("\(node.id) • \(node.label) • \(node.type.rawValue)")
-                                        .font(.system(size: 11))
-                                    Spacer()
-                                    Button("Remove") {
-                                        store.removePlannedNode(node)
+                        if !store.plannedNodes.isEmpty {
+                            VStack(alignment: .leading, spacing: 6) {
+                                ForEach(store.plannedNodes) { node in
+                                    HStack {
+                                        Text("\(node.id) • \(node.label) • \(node.type.rawValue)")
+                                            .font(.system(size: 11))
+                                        Spacer()
+                                        Button("Remove") {
+                                            store.removePlannedNode(node)
+                                        }
+                                        .buttonStyle(SecondaryActionButtonStyle())
                                     }
-                                    .buttonStyle(SecondaryActionButtonStyle())
                                 }
                             }
                         }
                     }
+                    .padding(6)
                 }
-                .padding(6)
-            }
 
-            GroupBox("Setup") {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Endpoint: \(store.endpointURL)")
-                        .font(.system(size: 12))
-                    Text("Endpoint host: \(endpointHost)")
-                        .font(.system(size: 11))
-                        .foregroundColor(Theme.textSecondary)
-                    if endpointIsLocal {
-                        Text("Warning: localhost endpoints cannot be reached by remote nodes.")
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundColor(Theme.accent)
-                    }
-                    if let lastError = store.lastError, !lastError.isEmpty {
-                        Text("Last error: \(lastError)")
-                            .font(.system(size: 11))
-                            .foregroundColor(Theme.textSecondary)
-                    }
-                    Text("Shared Secret:")
-                        .font(.system(size: 12, weight: .semibold))
-                    Text(store.token)
-                        .font(.system(size: 11, design: .monospaced))
-                        .textSelection(.enabled)
-                    HStack {
-                        Text("Port:")
+                GroupBox("Setup") {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Endpoint: \(store.endpointURL)")
                             .font(.system(size: 12))
-                        TextField("8787", text: $portText)
-                            .textFieldStyle(.roundedBorder)
-                            .frame(width: 80)
-                            .onAppear {
-                                portText = String(store.port)
-                            }
-                        Button("Apply") {
-                            if let value = Int(portText) {
-                                store.updatePort(value)
-                            }
-                        }
-                        Button("Test Ping") {
-                            store.testPing()
-                        }
-                        .buttonStyle(SecondaryActionButtonStyle())
-                    }
-                    if let lastPing = store.lastPingResult, !lastPing.isEmpty {
-                        Text("Ping: \(lastPing)")
+                        Text("Endpoint host: \(endpointHost)")
                             .font(.system(size: 11))
                             .foregroundColor(Theme.textSecondary)
-                    } else if let lastPingError = store.lastPingError, !lastPingError.isEmpty {
-                        Text("Ping error: \(lastPingError)")
-                            .font(.system(size: 11))
-                            .foregroundColor(Theme.textSecondary)
-                    }
-                }
-                .padding(6)
-            }
-
-            flashControlSection
-
-            Text("Last \(store.events.count) Events")
-                .font(.system(size: 12, weight: .semibold))
-            ScrollView {
-                VStack(alignment: .leading, spacing: 6) {
-                    ForEach(store.events.suffix(50).reversed()) { event in
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("\(event.timestamp) • \(event.kind.rawValue) • \(event.deviceID)")
+                        if endpointIsLocal {
+                            Text("Warning: localhost endpoints cannot be reached by remote nodes.")
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundColor(Theme.accent)
+                        }
+                        if let lastError = store.lastError, !lastError.isEmpty {
+                            Text("Last error: \(lastError)")
                                 .font(.system(size: 11))
-                            if !event.data.isEmpty {
-                                Text(event.data.map { "\($0.key)=\($0.value)" }.sorted().joined(separator: " "))
-                                    .font(.system(size: 10))
-                                    .foregroundColor(.secondary)
-                            }
-                            if !event.tags.isEmpty {
-                                Text("tags: \(event.tags.joined(separator: ", "))")
-                                    .font(.system(size: 10))
-                                    .foregroundColor(.secondary)
-                            }
+                                .foregroundColor(Theme.textSecondary)
                         }
-                        .padding(.vertical, 4)
-                        Divider()
+                        Text("Shared Secret:")
+                            .font(.system(size: 12, weight: .semibold))
+                        Text(store.token)
+                            .font(.system(size: 11, design: .monospaced))
+                            .textSelection(.enabled)
+                        HStack {
+                            Text("Port:")
+                                .font(.system(size: 12))
+                            TextField("8787", text: $portText)
+                                .textFieldStyle(.roundedBorder)
+                                .frame(width: 80)
+                                .onAppear {
+                                    portText = String(store.port)
+                                }
+                            Button("Apply") {
+                                if let value = Int(portText) {
+                                    store.updatePort(value)
+                                }
+                            }
+                            Button("Test Ping") {
+                                store.testPing()
+                            }
+                            .buttonStyle(SecondaryActionButtonStyle())
+                        }
+                        if let lastPing = store.lastPingResult, !lastPing.isEmpty {
+                            Text("Ping: \(lastPing)")
+                                .font(.system(size: 11))
+                                .foregroundColor(Theme.textSecondary)
+                        } else if let lastPingError = store.lastPingError, !lastPingError.isEmpty {
+                            Text("Ping error: \(lastPingError)")
+                                .font(.system(size: 11))
+                                .foregroundColor(Theme.textSecondary)
+                        }
                     }
+                    .padding(6)
                 }
+
+                flashControlSection
+                Spacer()
             }
+            .frame(width: 420, alignment: .topLeading)
         }
         .padding(16)
     }
@@ -4178,6 +4189,7 @@ struct NodesView: View {
                 items.append(NodeAction(title: "Start Scan", action: { onStartScan() }))
             }
         }
+        items.append(NodeAction(title: "Identify", action: { sodsStore.identifyNode(node.id) }))
         if supportsProbe {
             items.append(NodeAction(title: "Probe", action: {
                 LogStore.shared.log(.info, "Probe action requested for node \(node.id)")
