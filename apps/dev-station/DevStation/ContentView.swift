@@ -6,6 +6,39 @@ import Network
 import AppKit
 
 struct ContentView: View {
+    enum DeviceLifecycleStage: String {
+        case staged
+        case flashing
+        case flashed
+        case discovered
+        case claimed
+        case online
+        case offline
+
+        var label: String {
+            switch self {
+            case .staged: return "Staged"
+            case .flashing: return "Flashing"
+            case .flashed: return "Waiting for first hello"
+            case .discovered: return "Discovered"
+            case .claimed: return "Claimed"
+            case .online: return "Online"
+            case .offline: return "Offline"
+            }
+        }
+
+        var detail: String {
+            switch self {
+            case .staged: return "Firmware artifacts staged locally."
+            case .flashing: return "Flasher open. Complete USB flash."
+            case .flashed: return "Waiting for network/BLE hello."
+            case .discovered: return "Device observed. Claim to persist."
+            case .claimed: return "Persistent record created."
+            case .online: return "Presence verified."
+            case .offline: return "Claimed but not responding."
+            }
+        }
+    }
     enum ViewMode: String, CaseIterable, Identifiable {
         case dashboard = "Dashboard"
         case interesting = "Cameras/Interesting"
@@ -114,10 +147,22 @@ struct ContentView: View {
     @State private var sodsURLText = ""
     @State private var showFlashPopover = false
     @State private var showGodMenu = false
+    @State private var baseURLValidationMessage: String?
+    @State private var showBaseURLToast = false
+    @State private var baseURLToastMessage = ""
+    @State private var flashLifecycleStage: DeviceLifecycleStage?
+    @State private var flashLifecycleTarget: FlashTarget?
+    @State private var flashLifecycleNodeID: String?
 
     var body: some View {
         mainContent
             .toolbar { toolbarContent }
+            .overlay(alignment: .top) {
+                if showBaseURLToast {
+                    baseURLToastView
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                }
+            }
             .sheet(item: $modalCoordinator.activeSheet) { sheet in
                 switch sheet {
                 case .toolRegistry:
@@ -205,6 +250,7 @@ struct ContentView: View {
                                 if let alias, !alias.isEmpty {
                                     aliasStore.setAlias(id: nodeID, alias: alias)
                                 }
+                                markFlashClaimed(nodeID: nodeID)
                                 sodsStore.identifyNode(nodeID)
                                 sodsStore.refreshStatus()
                             }
@@ -294,6 +340,9 @@ struct ContentView: View {
             IdentityResolver.shared.updateFromNodes(nodeRegistry.nodes)
             IdentityResolver.shared.updateFromSignals(sodsStore.nodes)
             refreshConnectSelection()
+            if flashManager.prepStatus.isReady, flashLifecycleStage == nil {
+                flashLifecycleStage = .staged
+            }
             Task.detached {
                 await ArtifactStore.shared.runCleanup(log: logStore)
             }
@@ -377,21 +426,37 @@ struct ContentView: View {
             IdentityResolver.shared.updateFromSignals(sodsStore.nodes)
             refreshConnectSelection()
         }
+        .onChange(of: sodsStore.baseURL) { newValue in
+            sodsURLText = newValue
+            baseURLValidationMessage = nil
+        }
         .onChange(of: sodsStore.nodePresence) { _ in
             nodeRegistry.updateFromPresence(sodsStore.nodePresence)
             entityStore.ingestNodes(nodeRegistry.nodes)
             refreshConnectSelection()
+            updateFlashLifecycleFromPresence()
         }
         .onChange(of: nodeRegistry.nodes) { _ in
             entityStore.ingestNodes(nodeRegistry.nodes)
             IdentityResolver.shared.updateFromNodes(nodeRegistry.nodes)
             refreshConnectSelection()
+            if let nodeID = flashLifecycleNodeID,
+               nodeRegistry.nodes.contains(where: { $0.id == nodeID }) {
+                if flashLifecycleStage == .discovered || flashLifecycleStage == .flashed {
+                    flashLifecycleStage = .claimed
+                }
+            }
         }
         .onChange(of: scanner.isScanning) { _ in
             updateLocalScanningState()
         }
         .onChange(of: bleScanner.isScanning) { _ in
             updateLocalScanningState()
+        }
+        .onChange(of: flashManager.prepStatus) { status in
+            if status.isReady, flashLifecycleStage == nil {
+                flashLifecycleStage = .staged
+            }
         }
         .onChange(of: selectedBleID) { newValue in
             guard let id = newValue else { return }
@@ -453,13 +518,25 @@ struct ContentView: View {
                     TextField("", text: $sodsURLText)
                         .textFieldStyle(.roundedBorder)
                     Button("Apply") {
-                        sodsStore.updateBaseURL(sodsURLText)
+                        if sodsStore.updateBaseURL(sodsURLText) {
+                            baseURLValidationMessage = nil
+                            sodsURLText = sodsStore.baseURL
+                        } else {
+                            let message = sodsStore.baseURLError ?? "Base URL must start with http:// or https://"
+                            baseURLValidationMessage = message
+                            showBaseURLToast(message)
+                        }
                     }
                     .buttonStyle(SecondaryActionButtonStyle())
                     Button("Inspect API") {
                         modalCoordinator.present(.apiInspector(endpoint: .status))
                     }
                     .buttonStyle(SecondaryActionButtonStyle())
+                }
+                if let message = baseURLValidationMessage {
+                    Text(message)
+                        .font(.system(size: 10))
+                        .foregroundColor(.red)
                 }
                 HStack(spacing: 10) {
                     Button("Open Spectrum") { viewMode = .spectral }
@@ -583,7 +660,8 @@ struct ContentView: View {
                 connectingNodeIDs: nodeRegistry.connectingNodeIDs,
                 scanner: scanner,
                 flashManager: flashManager,
-                connectableNodeIDs: connectableNodeIDs(),
+                connectCandidates: connectCandidates,
+                discoveredNodes: discoveredNodes,
                 bleIsScanning: bleScanner.isScanning,
                 onvifDiscoveryEnabled: $onvifDiscoveryEnabled,
                 serviceDiscoveryEnabled: $serviceDiscoveryEnabled,
@@ -618,7 +696,10 @@ struct ContentView: View {
                         logStore.log(.warn, "No readable scan report found in ~/SODS/reports/scan-readable/")
                     }
                 },
-                onFindDevice: { modalCoordinator.present(.findDevice) }
+                onFindDevice: { openFindDevice() },
+                onFlashStarted: { target in markFlashStarted(target: target) },
+                onFlashAwaitingHello: { markFlashAwaitingHello() },
+                onFlashClaimed: { nodeID in markFlashClaimed(nodeID: nodeID) }
             )
         } else if viewMode == .buttons {
             PresetButtonsView(
@@ -1196,12 +1277,37 @@ struct ContentView: View {
         piAuxStore.refreshLocalNodeHeartbeat()
     }
 
+    private var discoveredNodes: [DiscoveredNodeItem] {
+        let claimedIDs = Set(nodeRegistry.nodes.map { $0.id })
+        return sodsStore.nodePresence.values.compactMap { presence in
+            let nodeID = presence.nodeID.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !nodeID.isEmpty, !claimedIDs.contains(nodeID) else { return nil }
+            let label = (presence.hostname ?? presence.ip ?? nodeID).trimmingCharacters(in: .whitespacesAndNewlines)
+            let lastSeen = presence.lastSeen > 0 ? Date(timeIntervalSince1970: TimeInterval(presence.lastSeen) / 1000.0) : nil
+            return DiscoveredNodeItem(id: nodeID, label: label.isEmpty ? nodeID : label, lastSeen: lastSeen, presence: presence)
+        }
+        .sorted { ($0.lastSeen ?? .distantPast) > ($1.lastSeen ?? .distantPast) }
+    }
+
+    private var connectCandidates: [ConnectCandidate] {
+        var items: [String: ConnectCandidate] = [:]
+        for node in nodeRegistry.nodes {
+            let label = node.label.trimmingCharacters(in: .whitespacesAndNewlines)
+            let display = label.isEmpty ? node.id : label
+            items[node.id] = ConnectCandidate(id: node.id, label: display, isClaimed: true, lastSeen: node.lastSeen ?? node.lastHeartbeat)
+        }
+        for item in discoveredNodes where items[item.id] == nil {
+            items[item.id] = ConnectCandidate(id: item.id, label: item.label, isClaimed: false, lastSeen: item.lastSeen)
+        }
+        return items.values.sorted { ($0.lastSeen ?? .distantPast) > ($1.lastSeen ?? .distantPast) }
+    }
+
     private func connectableNodeIDs() -> [String] {
-        nodeRegistry.nodes.map { $0.id }.sorted()
+        connectCandidates.map { $0.id }
     }
 
     private func refreshConnectSelection() {
-        let ids = connectableNodeIDs()
+        let ids = connectCandidates.map { $0.id }
         if ids.isEmpty {
             connectNodeID = ""
             return
@@ -1242,7 +1348,7 @@ struct ContentView: View {
                     enabled: true,
                     reason: nil,
                         action: {
-                            let target = !connectNodeID.isEmpty ? connectNodeID : (self.connectableNodeIDs().first ?? "")
+                            let target = !connectNodeID.isEmpty ? connectNodeID : (self.connectCandidates.first?.id ?? "")
                             guard !target.isEmpty else { return }
                             connectNodeID = target
                             NodeRegistry.shared.setConnecting(nodeID: target, connecting: true)
@@ -1285,7 +1391,7 @@ struct ContentView: View {
 
         let connectItems: [ActionMenuItem] = [
             ActionMenuItem(title: "Connect Node", systemImage: "link", enabled: true, reason: nil, action: {
-                let target = !connectNodeID.isEmpty ? connectNodeID : (self.connectableNodeIDs().first ?? "")
+                let target = !connectNodeID.isEmpty ? connectNodeID : (self.connectCandidates.first?.id ?? "")
                 guard !target.isEmpty else { return }
                 connectNodeID = target
                 NodeRegistry.shared.setConnecting(nodeID: target, connecting: true)
@@ -1298,7 +1404,7 @@ struct ContentView: View {
 
         let flashItems: [ActionMenuItem] = [
             ActionMenuItem(title: "Find Newly Flashed Device", systemImage: "magnifyingglass", enabled: true, reason: nil, action: {
-                modalCoordinator.present(.findDevice)
+                openFindDevice()
             })
         ]
 
@@ -1442,8 +1548,101 @@ struct ContentView: View {
         }
     }
 
+    private func flashTarget(from path: String) -> FlashTarget? {
+        switch path {
+        case "/flash/esp32":
+            return .esp32dev
+        case "/flash/esp32c3":
+            return .esp32c3
+        case "/flash/portal-cyd":
+            return .portalCyd
+        case "/flash/p4":
+            return .esp32p4
+        default:
+            return nil
+        }
+    }
+
+    private func markFlashStarted(target: FlashTarget?) {
+        guard let target else { return }
+        flashLifecycleTarget = target
+        flashLifecycleNodeID = nil
+        flashLifecycleStage = .flashing
+    }
+
+    private func markFlashAwaitingHello() {
+        guard flashLifecycleStage != nil || flashLifecycleTarget != nil else { return }
+        flashLifecycleStage = .flashed
+    }
+
+    private func markFlashDiscovered(nodeID: String) {
+        let trimmed = nodeID.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        flashLifecycleNodeID = trimmed
+        flashLifecycleStage = .discovered
+    }
+
+    private func markFlashClaimed(nodeID: String) {
+        let trimmed = nodeID.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        flashLifecycleNodeID = trimmed
+        flashLifecycleStage = .claimed
+    }
+
+    private func updateFlashLifecycleFromPresence() {
+        guard let stage = flashLifecycleStage else { return }
+        if (stage == .flashing || stage == .flashed) {
+            if let candidate = discoveredNodes.first {
+                markFlashDiscovered(nodeID: candidate.id)
+            }
+        }
+        guard let nodeID = flashLifecycleNodeID,
+              let presence = sodsStore.nodePresence[nodeID] else { return }
+        let state = presence.state.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        if ["online", "idle", "scanning", "connected"].contains(state) {
+            flashLifecycleStage = .online
+        } else if stage == .claimed || stage == .online {
+            flashLifecycleStage = .offline
+        }
+    }
+
+    private func openFindDevice() {
+        markFlashAwaitingHello()
+        openFindDevice()
+    }
+
+    private var baseURLToastView: some View {
+        Text(baseURLToastMessage)
+            .font(.system(size: 11, weight: .semibold))
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+            .background(
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(.ultraThinMaterial)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 10)
+                    .stroke(Theme.border, lineWidth: 1)
+            )
+            .padding(.top, 12)
+    }
+
+    private func showBaseURLToast(_ message: String) {
+        baseURLToastMessage = message
+        withAnimation(.easeInOut(duration: 0.2)) {
+            showBaseURLToast = true
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.8) {
+            withAnimation(.easeInOut(duration: 0.2)) {
+                showBaseURLToast = false
+            }
+        }
+    }
+
     private func openFlashPath(_ path: String, showFinder: Bool = false) {
         let base = sodsStore.baseURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        let target = flashTarget(from: path)
+        markFlashStarted(target: target)
         StationProcessManager.shared.ensureRunning(baseURL: base)
         Task {
             if await waitForStation(baseURL: base, timeout: 6.0) {
@@ -1455,7 +1654,7 @@ struct ContentView: View {
             }
             if showFinder {
                 await MainActor.run {
-                    modalCoordinator.present(.findDevice)
+                    openFindDevice()
                 }
             }
         }
@@ -3972,6 +4171,25 @@ struct BLEFindPanel: View {
         } else {
             return "Far"
         }
+    }
+}
+
+struct DiscoveredNodeItem: Identifiable, Hashable {
+    let id: String
+    let label: String
+    let lastSeen: Date?
+    let presence: NodePresence
+}
+
+struct ConnectCandidate: Identifiable, Hashable {
+    let id: String
+    let label: String
+    let isClaimed: Bool
+    let lastSeen: Date?
+
+    var displayLabel: String {
+        let status = isClaimed ? "claimed" : "discovered"
+        return "\(label) • \(status)"
     }
 }
 

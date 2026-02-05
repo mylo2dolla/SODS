@@ -17,6 +17,7 @@ final class SODSStore: ObservableObject {
     @Published private(set) var loggerStatus: LoggerStatus?
     @Published private(set) var realFramesActive: Bool = false
     @Published var baseURL: String
+    @Published private(set) var baseURLError: String?
     @Published var isRecording: Bool = false
     @Published private(set) var recordedEvents: [NormalizedEvent] = []
     @Published private(set) var recordingStartedAt: Date?
@@ -33,7 +34,15 @@ final class SODSStore: ObservableObject {
     private init() {
         let defaults = UserDefaults.standard
         if let saved = defaults.string(forKey: baseURLKey), !saved.isEmpty {
-            baseURL = saved
+            let validated = normalizeBaseURL(saved)
+            if let url = validated.url {
+                baseURL = url
+                baseURLError = nil
+            } else {
+                baseURL = "http://localhost:9123"
+                baseURLError = validated.error
+                defaults.set(baseURL, forKey: baseURLKey)
+            }
         } else {
             baseURL = "http://localhost:9123"
             defaults.set(baseURL, forKey: baseURLKey)
@@ -46,13 +55,19 @@ final class SODSStore: ObservableObject {
         connect()
     }
 
-    func updateBaseURL(_ value: String) {
-        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
-        baseURL = trimmed
-        UserDefaults.standard.set(trimmed, forKey: baseURLKey)
+    @discardableResult
+    func updateBaseURL(_ value: String) -> Bool {
+        let validated = normalizeBaseURL(value)
+        guard let url = validated.url else {
+            baseURLError = validated.error ?? "Invalid base URL."
+            return false
+        }
+        baseURLError = nil
+        baseURL = url
+        UserDefaults.standard.set(url, forKey: baseURLKey)
         StationProcessManager.shared.ensureRunning(baseURL: baseURL)
         connect()
+        return true
     }
 
     func connect() {
@@ -453,6 +468,32 @@ final class SODSStore: ObservableObject {
             components.path = existingPath + path
         }
         return components.url
+    }
+
+    private func normalizeBaseURL(_ value: String) -> (url: String?, error: String?) {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            return (nil, "Base URL is required.")
+        }
+        let candidate = trimmed.contains("://") ? trimmed : "http://\(trimmed)"
+        guard var components = URLComponents(string: candidate) else {
+            return (nil, "Base URL is invalid.")
+        }
+        let scheme = components.scheme?.lowercased() ?? ""
+        guard scheme == "http" || scheme == "https" else {
+            return (nil, "Base URL must start with http:// or https://")
+        }
+        guard let host = components.host, !host.isEmpty else {
+            return (nil, "Base URL must include a host.")
+        }
+        if components.path == "/" {
+            components.path = ""
+        }
+        let normalized = components.url?.absoluteString ?? candidate
+        if normalized.contains("rtsp://") || normalized.contains("ws://") || normalized.contains("wss://") {
+            return (nil, "Base URL must use http:// or https:// only.")
+        }
+        return (normalized, nil)
     }
 
     private func makeWebSocketURL(path: String) -> URL? {
