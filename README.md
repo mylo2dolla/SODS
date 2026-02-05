@@ -55,6 +55,7 @@ Install:
 ```bash
 /Users/letsdev/sods/SODS/tools/devstation-install.sh
 ```
+Fast rebuild: tools/devstation-rebuild.sh
 
 **Ops Portal (CYD)**
 ```bash
