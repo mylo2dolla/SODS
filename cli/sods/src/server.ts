@@ -32,6 +32,7 @@ export class SODSServer {
   private lastFrames: SignalFrame[] = [];
   private lastError: string | null = null;
   private lastIngestAt = 0;
+  private nodePresence = new Map<string, { state: string; lastError?: string; updatedAt: number }>();
   private activeTool: { name: string; started_at: number; status: string; ok?: boolean } | null = null;
   private activeRunbook: { id: string; started_at: number; status: string; step?: string; ok?: boolean } | null = null;
   private eventsClients: Set<WebSocket> = new Set();
@@ -133,6 +134,15 @@ export class SODSServer {
     }
     if (url.pathname === "/api/tools") {
       return this.respondJson(res, this.buildToolRegistry());
+    }
+    if (url.pathname === "/api/nodes") {
+      return this.respondJson(res, this.buildNodePresence());
+    }
+    if (url.pathname === "/api/node/connect" && req.method === "POST") {
+      return this.handleNodeConnect(req, res);
+    }
+    if (url.pathname === "/api/node/identify" && req.method === "POST") {
+      return this.handleNodeIdentify(req, res);
     }
     if (url.pathname === "/api/runbooks") {
       return this.respondJson(res, this.buildRunbooks());
@@ -554,6 +564,131 @@ export class SODSServer {
       `nodes:${this.ingestor.getNodes().filter((n) => now - n.last_seen < 60_000).length}`,
       lastAge > 0 ? `last:${lastAge}s` : "last:na",
     ];
+  }
+
+  private buildNodePresence() {
+    const nodes = this.ingestor.getNodes();
+    const now = nowMs();
+    const recentEvents = this.eventBuffer.slice(-400);
+    const byNodeKind = new Map<string, Set<string>>();
+    for (const ev of recentEvents) {
+      if (!byNodeKind.has(ev.node_id)) byNodeKind.set(ev.node_id, new Set());
+      byNodeKind.get(ev.node_id)!.add(ev.kind);
+    }
+
+    return {
+      items: nodes.map((node) => {
+        const override = this.nodePresence.get(node.node_id);
+        const age = now - node.last_seen;
+        let state = "offline";
+        if (override && override.state === "connecting" && now - override.updatedAt < 30_000) {
+          state = "connecting";
+        } else if (age < 30_000) {
+          state = "online";
+        } else if (override && override.state === "error" && now - override.updatedAt < 60_000) {
+          state = "error";
+        }
+        const kinds = byNodeKind.get(node.node_id) ?? new Set();
+        const canScanWifi = Array.from(kinds).some((k) => k.includes("wifi"));
+        const canScanBle = Array.from(kinds).some((k) => k.includes("ble"));
+        const canFrames = this.lastFrames.some((f) => f.node_id === node.node_id);
+        const canWhoami = Boolean(node.ip || node.hostname);
+        const canFlash = node.node_id !== "station";
+        return {
+          node_id: node.node_id,
+          state,
+          last_seen: node.last_seen,
+          last_seen_age_ms: age,
+          last_error: override?.lastError ?? "",
+          ip: node.ip,
+          mac: node.mac,
+          hostname: node.hostname,
+          confidence: node.confidence,
+          capabilities: {
+            canScanWifi,
+            canScanBle,
+            canFrames,
+            canFlash,
+            canWhoami,
+          },
+          provenance_id: node.node_id,
+        };
+      }),
+    };
+  }
+
+  private async handleNodeConnect(req: http.IncomingMessage, res: http.ServerResponse) {
+    let body = "";
+    req.on("data", (chunk) => body += chunk);
+    req.on("end", async () => {
+      try {
+        const payload = body ? JSON.parse(body) : {};
+        const nodeId = payload.node_id;
+        if (!nodeId) {
+          res.writeHead(400);
+          res.end("missing node_id");
+          return;
+        }
+        this.nodePresence.set(nodeId, { state: "connecting", updatedAt: nowMs() });
+        const result = await this.probeNode(nodeId);
+        this.respondJson(res, result);
+      } catch (err: any) {
+        res.writeHead(400);
+        res.end(err?.message ?? "connect error");
+      }
+    });
+  }
+
+  private async handleNodeIdentify(req: http.IncomingMessage, res: http.ServerResponse) {
+    let body = "";
+    req.on("data", (chunk) => body += chunk);
+    req.on("end", async () => {
+      try {
+        const payload = body ? JSON.parse(body) : {};
+        const nodeId = payload.node_id;
+        if (!nodeId) {
+          res.writeHead(400);
+          res.end("missing node_id");
+          return;
+        }
+        const result = await this.probeNode(nodeId);
+        this.respondJson(res, result);
+      } catch (err: any) {
+        res.writeHead(400);
+        res.end(err?.message ?? "identify error");
+      }
+    });
+  }
+
+  private async probeNode(nodeId: string) {
+    const nodes = this.ingestor.getNodes();
+    const snapshot = nodes.find((n) => n.node_id === nodeId);
+    const host = snapshot?.ip || snapshot?.hostname || "";
+    if (!host) {
+      const errMsg = "node has no ip/hostname";
+      this.nodePresence.set(nodeId, { state: "error", lastError: errMsg, updatedAt: nowMs() });
+      return { ok: false, node_id: nodeId, error: errMsg };
+    }
+    const url = `http://${host}/whoami`;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 2000);
+    try {
+      const res = await fetch(url, { method: "GET", signal: controller.signal });
+      clearTimeout(timer);
+      const text = await res.text();
+      if (!res.ok) {
+        const errMsg = `HTTP ${res.status}`;
+        this.nodePresence.set(nodeId, { state: "error", lastError: errMsg, updatedAt: nowMs() });
+        return { ok: false, node_id: nodeId, error: errMsg, whoami: text };
+      }
+      this.nodePresence.set(nodeId, { state: "online", updatedAt: nowMs() });
+      return { ok: true, node_id: nodeId, whoami: text, host };
+    } catch (err: any) {
+      clearTimeout(timer);
+      const errMsg = err?.message ?? "probe failed";
+      this.nodePresence.set(nodeId, { state: "error", lastError: errMsg, updatedAt: nowMs() });
+      return { ok: false, node_id: nodeId, error: errMsg };
+    }
   }
 
   private async fetchLoggerHealth() {
