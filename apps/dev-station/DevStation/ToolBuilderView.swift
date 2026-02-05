@@ -10,7 +10,7 @@ struct ToolBuilderView: View {
     @State private var runner = "shell"
     @State private var kind = "inspect"
     @State private var tags = ""
-    @State private var timeoutMs = "0"
+    @State private var timeoutMs = ""
     @State private var script = ""
     @State private var inputSchema = "{}"
     @State private var outputFormat = "text"
@@ -43,7 +43,7 @@ struct ToolBuilderView: View {
                     Text("report").tag("report")
                 }
                 .pickerStyle(.segmented)
-                TextField("Timeout ms", text: $timeoutMs)
+                TextField("Timeout ms (optional)", text: $timeoutMs)
                     .textFieldStyle(.roundedBorder)
             }
 

@@ -202,7 +202,7 @@ final class SODSStore: ObservableObject {
     }
 
     private func startSimulatedFrames() {
-        guard simulationAllowed else { return }
+        guard FeatureFlags.shared.simulationEnabled else { return }
         if realFramesActive { return }
         simulatedTimer?.invalidate()
         simulatedTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / 20.0, repeats: true) { [weak self] _ in
