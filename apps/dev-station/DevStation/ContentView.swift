@@ -189,6 +189,12 @@ struct ContentView: View {
                         onDelete: { id in aliasStore.deleteAlias(id: id) },
                         onClose: { modalCoordinator.dismiss() }
                     )
+                case .findDevice:
+                    FindDeviceView(
+                        baseURL: sodsStore.baseURL,
+                        onBindAlias: { id, alias in aliasStore.setAlias(id: id, alias: alias) },
+                        onClose: { modalCoordinator.dismiss() }
+                    )
                 case .consent:
                     ConsentView {
                         consentAcknowledged = true
@@ -1146,6 +1152,12 @@ struct ContentView: View {
             })
         ]
 
+        let flashItems: [ActionMenuItem] = [
+            ActionMenuItem(title: "Find Newly Flashed Device", systemImage: "magnifyingglass", enabled: true, reason: nil, action: {
+                modalCoordinator.present(.findDevice)
+            })
+        ]
+
         let exportItems: [ActionMenuItem] = [
             ActionMenuItem(title: "Generate Scan Report", systemImage: "doc.badge.plus", enabled: true, reason: nil, action: { generateScanReport() }),
             ActionMenuItem(title: "Reveal Latest Report", systemImage: "folder", enabled: true, reason: nil, action: { revealLatestReport() }),
@@ -1183,6 +1195,7 @@ struct ContentView: View {
         }
         sections.append(ActionMenuSection(title: "Inspect", items: inspectItems))
         sections.append(ActionMenuSection(title: "Connect / Control", items: connectItems))
+        sections.append(ActionMenuSection(title: "Flash / Bind", items: flashItems))
         sections.append(ActionMenuSection(title: "Export / Ship", items: exportItems))
         if FeatureFlags.shared.showDevActions {
             let devItems: [ActionMenuItem] = [
@@ -4047,6 +4060,10 @@ struct NodesView: View {
                         }
                         .buttonStyle(SecondaryActionButtonStyle())
                     }
+                    Button("Find Newly Flashed Device") {
+                        modalCoordinator.present(.findDevice)
+                    }
+                    .buttonStyle(SecondaryActionButtonStyle())
                     Spacer()
                 }
 

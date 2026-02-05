@@ -14,6 +14,7 @@
 		A1A1A1A1A1A1A1A1A1A1A1E2 /* StationProcessManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1E2 /* StationProcessManager.swift */; };
 		A1A1A1A1A1A1A1A1A1A1A1E3 /* PiLoggerStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1E3 /* PiLoggerStore.swift */; };
 		A1A1A1A1A1A1A1A1A1A1A1FB /* FeatureFlags.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1FB /* FeatureFlags.swift */; };
+		A1A1A1A1A1A1A1A1A1A1A1FC /* FindDeviceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1FC /* FindDeviceView.swift */; };
 		8BAE51ECB4CED21C4BE36BFF /* IdentityResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 805A0DFFD8FAFFA48F8F9BEF /* IdentityResolver.swift */; };
 		471C1C5F48C984D3E44253D8 /* EntityStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1FE992EC78DBFB2B9A2C9C1 /* EntityStore.swift */; };
 		7D2DC7DD97FBFE250002E63F /* ModalCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30E4251FCC8DE55EACC023CC /* ModalCoordinator.swift */; };
@@ -78,6 +79,7 @@
 		B1B1B1B1B1B1B1B1B1B1B1E2 /* StationProcessManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StationProcessManager.swift; sourceTree = "<group>"; };
 		B1B1B1B1B1B1B1B1B1B1B1E3 /* PiLoggerStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PiLoggerStore.swift; sourceTree = "<group>"; };
 		B1B1B1B1B1B1B1B1B1B1B1FB /* FeatureFlags.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeatureFlags.swift; sourceTree = "<group>"; };
+		B1B1B1B1B1B1B1B1B1B1B1FC /* FindDeviceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FindDeviceView.swift; sourceTree = "<group>"; };
 		805A0DFFD8FAFFA48F8F9BEF /* IdentityResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevStation/IdentityResolver.swift; sourceTree = "<group>"; };
 		B1FE992EC78DBFB2B9A2C9C1 /* EntityStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevStation/EntityStore.swift; sourceTree = "<group>"; };
 		30E4251FCC8DE55EACC023CC /* ModalCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevStation/ModalCoordinator.swift; sourceTree = "<group>"; };
@@ -162,6 +164,7 @@
 				B1B1B1B1B1B1B1B1B1B1B1E2 /* StationProcessManager.swift */,
 				B1B1B1B1B1B1B1B1B1B1B1E3 /* PiLoggerStore.swift */,
 				B1B1B1B1B1B1B1B1B1B1B1FB /* FeatureFlags.swift */,
+				B1B1B1B1B1B1B1B1B1B1B1FC /* FindDeviceView.swift */,
 				B1B1B1B1B1B1B1B1B1B1B1E4 /* ModalHeaderView.swift */,
 				B1B1B1B1B1B1B1B1B1B1B1E5 /* APIInspectorView.swift */,
 				B1B1B1B1B1B1B1B1B1B1B1E6 /* ToolRunnerView.swift */,
@@ -300,6 +303,7 @@
 				A1A1A1A1A1A1A1A1A1A1A1E2 /* StationProcessManager.swift in Sources */,
 				A1A1A1A1A1A1A1A1A1A1A1E3 /* PiLoggerStore.swift in Sources */,
 				A1A1A1A1A1A1A1A1A1A1A1FB /* FeatureFlags.swift in Sources */,
+				A1A1A1A1A1A1A1A1A1A1A1FC /* FindDeviceView.swift in Sources */,
 				8BAE51ECB4CED21C4BE36BFF /* IdentityResolver.swift in Sources */,
 				471C1C5F48C984D3E44253D8 /* EntityStore.swift in Sources */,
 				7D2DC7DD97FBFE250002E63F /* ModalCoordinator.swift in Sources */,

@@ -13,6 +13,7 @@ final class ModalCoordinator: ObservableObject {
         case presetBuilder
         case scratchpad
         case aliasManager
+        case findDevice
         case viewer(url: URL)
         case consent
         case rtspCredentials
@@ -28,6 +29,7 @@ final class ModalCoordinator: ObservableObject {
             case .presetBuilder: return "presetBuilder"
             case .scratchpad: return "scratchpad"
             case .aliasManager: return "aliasManager"
+            case .findDevice: return "findDevice"
             case .viewer(let url): return "viewer:\(url.absoluteString)"
             case .consent: return "consent"
             case .rtspCredentials: return "rtspCredentials"
