@@ -14,9 +14,14 @@ final class SODSStore: ObservableObject {
     @Published private(set) var lastFramesAt: Date?
     @Published private(set) var stationStatus: StationStatus?
     @Published private(set) var loggerStatus: LoggerStatus?
+    @Published private(set) var realFramesActive: Bool = false
     @Published var baseURL: String
     @Published var simulateFrames: Bool = false {
         didSet {
+            if !simulationAllowed, simulateFrames {
+                simulateFrames = false
+                return
+            }
             if simulateFrames {
                 startSimulatedFrames()
             } else {
@@ -27,6 +32,12 @@ final class SODSStore: ObservableObject {
     @Published private(set) var aliasOverrides: [String: String] = [:]
 
     private let baseURLKey = "SODSBaseURL"
+#if DEBUG
+    private let simulationAllowed = true
+#else
+    private let simulationAllowed = false
+#endif
+
     private var wsTask: URLSessionWebSocketTask?
     private var wsFramesTask: URLSessionWebSocketTask?
     private var pollTimer: Timer?
@@ -45,6 +56,7 @@ final class SODSStore: ObservableObject {
         StationProcessManager.shared.ensureRunning(baseURL: baseURL)
         if let saved = defaults.dictionary(forKey: aliasOverridesKey) as? [String: String] {
             aliasOverrides = saved
+            IdentityResolver.shared.updateOverrides(aliasOverrides)
         }
         connect()
     }
@@ -175,12 +187,28 @@ final class SODSStore: ObservableObject {
             let payload = try decoder.decode(SignalFrameEnvelope.self, from: data)
             frames = payload.frames
             lastFramesAt = Date()
+            realFramesActive = true
+            scheduleRealFramesDecayCheck()
+            if simulateFrames {
+                simulateFrames = false
+            }
         } catch {
             // ignore frame decode errors
         }
     }
 
+    private func scheduleRealFramesDecayCheck() {
+        let timestamp = lastFramesAt
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
+            guard let self else { return }
+            guard self.lastFramesAt == timestamp else { return }
+            self.realFramesActive = false
+        }
+    }
+
     private func startSimulatedFrames() {
+        guard simulationAllowed else { return }
+        if realFramesActive { return }
         simulatedTimer?.invalidate()
         simulatedTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / 20.0, repeats: true) { [weak self] _ in
             self?.emitSimulatedFrames()
@@ -194,6 +222,7 @@ final class SODSStore: ObservableObject {
 
     private func emitSimulatedFrames() {
         if !simulateFrames { return }
+        if realFramesActive { return }
         if let lastFramesAt, Date().timeIntervalSince(lastFramesAt) < 1.5 {
             return
         }
@@ -292,6 +321,7 @@ final class SODSStore: ObservableObject {
         URLSession.shared.dataTask(with: req).resume()
         aliasOverrides[id] = alias
         UserDefaults.standard.set(aliasOverrides, forKey: aliasOverridesKey)
+        IdentityResolver.shared.updateOverrides(aliasOverrides)
     }
 
     func deleteAlias(id: String) {
@@ -305,6 +335,7 @@ final class SODSStore: ObservableObject {
         URLSession.shared.dataTask(with: req).resume()
         aliasOverrides.removeValue(forKey: id)
         UserDefaults.standard.set(aliasOverrides, forKey: aliasOverridesKey)
+        IdentityResolver.shared.updateOverrides(aliasOverrides)
     }
 
     private func makeURL(path: String) -> URL? {

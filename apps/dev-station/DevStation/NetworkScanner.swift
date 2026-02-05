@@ -13,6 +13,8 @@ final class NetworkScanner: ObservableObject {
     @Published var allHosts: [HostEntry] = []
     @Published var safeModeEnabled = true
 
+    @Published private(set) var scanMode: ScanMode = .oneShot
+
     private let ports = [80, 443, 554, 8000, 8080, 8443, 1935, 3702, 8554]
     private let maxConcurrentHosts = 64
     private let maxConcurrentPortProbes = 128
@@ -63,8 +65,9 @@ final class NetworkScanner: ObservableObject {
         )
     }
 
-    func startScan(enableOnvifDiscovery: Bool, enableServiceDiscovery: Bool, enableArpWarmup: Bool, scope: ScanScope) {
+    func startScan(enableOnvifDiscovery: Bool, enableServiceDiscovery: Bool, enableArpWarmup: Bool, scope: ScanScope, mode: ScanMode) {
         guard !isScanning else { return }
+        scanMode = mode
         isScanning = true
         devices = []
         allHosts = []
@@ -78,7 +81,7 @@ final class NetworkScanner: ObservableObject {
         logStore.log(.info, "Scan started (ONVIF discovery \(enableOnvifDiscovery ? "enabled" : "disabled"), service discovery \(enableServiceDiscovery ? "enabled" : "disabled"), ARP warmup \(enableArpWarmup ? "enabled" : "disabled"), safe mode \(safeModeEnabled ? "on" : "off"))")
         scanTask?.cancel()
         scanTask = Task {
-            await runScan(enableOnvifDiscovery: enableOnvifDiscovery, enableServiceDiscovery: enableServiceDiscovery, enableArpWarmup: enableArpWarmup, scope: scope)
+            await runScanLoop(enableOnvifDiscovery: enableOnvifDiscovery, enableServiceDiscovery: enableServiceDiscovery, enableArpWarmup: enableArpWarmup, scope: scope)
         }
     }
 
@@ -89,6 +92,15 @@ final class NetworkScanner: ObservableObject {
         scanTask = nil
         isScanning = false
         statusMessage = "Scan stopped."
+    }
+
+    private func runScanLoop(enableOnvifDiscovery: Bool, enableServiceDiscovery: Bool, enableArpWarmup: Bool, scope: ScanScope) async {
+        repeat {
+            await MainActor.run { self.isScanning = true }
+            await runScan(enableOnvifDiscovery: enableOnvifDiscovery, enableServiceDiscovery: enableServiceDiscovery, enableArpWarmup: enableArpWarmup, scope: scope)
+            if Task.isCancelled { break }
+            if scanMode != .continuous { break }
+        } while true
     }
 
     private func startOUIWatcher() {

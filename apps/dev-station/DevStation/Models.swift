@@ -15,6 +15,35 @@ enum NodeType: String, Codable, CaseIterable {
     case unknown = "unknown"
 }
 
+enum NodeConnectionState: String, Codable {
+    case connected
+    case idle
+    case offline
+    case error
+}
+
+enum NodePresenceState: String, Codable {
+    case connected
+    case idle
+    case scanning
+    case offline
+    case error
+}
+
+enum ScanMode: String, CaseIterable, Identifiable {
+    case oneShot
+    case continuous
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .oneShot: return "One-shot"
+        case .continuous: return "Continuous"
+        }
+    }
+}
+
 struct PlannedNode: Identifiable, Codable, Hashable {
     let id: String
     var label: String
@@ -28,7 +57,22 @@ struct NodeRecord: Identifiable, Codable, Hashable {
     var type: NodeType
     var capabilities: [String]
     var lastSeen: Date?
+    var lastHeartbeat: Date?
+    var connectionState: NodeConnectionState
+    var isScanning: Bool
+    var lastError: String?
     var planned: Bool
+
+    var presenceState: NodePresenceState {
+        if connectionState == .error { return .error }
+        if isScanning { return .scanning }
+        switch connectionState {
+        case .connected: return .connected
+        case .idle: return .idle
+        case .offline: return .offline
+        case .error: return .error
+        }
+    }
 }
 
 struct HostConfidence: Codable, Hashable {

@@ -22,7 +22,7 @@ struct RTSPHardProbe {
         let rtspURI = device.onvifRtspURI
         let rtspState = (rtspURI?.isEmpty == false) ? "present" : "missing"
         log.log(.info, "HardProbe click: ip=\(device.ip) safeMode=\(safeMode) rtspURI=\(rtspState) selectedIP=\(selectedIP)")
-        let alias = SODSStore.shared.aliasOverrides[device.ip]
+        let alias = IdentityResolver.shared.resolveLabel(keys: [device.ip, device.macAddress ?? ""])
         let iso = LogStore.isoTimestamp()
         let baseDir = LogStore.exportSubdirectory("rtsp-hard-probe", log: log)
         let safeIP = LogStore.sanitizeFilename(device.ip)

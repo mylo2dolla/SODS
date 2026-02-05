@@ -64,7 +64,7 @@ final class VaultTransport: ObservableObject {
                 if !(base.success && retry.success) {
                     let detail = [ensure.stderr, base.stderr, retry.stderr].filter { !$0.isEmpty }.joined(separator: " | ")
                     log.log(.error, "Vault ship error: failed to create \(baseDest) \(detail)")
-                    await MainActor.run { self.lastShipResult = "Error creating remote dir" }
+                    await MainActor.run { self.lastShipResult = "Error creating remote dir: \(detail)" }
                     continue
                 }
                 await MainActor.run { self.lastShipResult = "" }
@@ -80,9 +80,10 @@ final class VaultTransport: ObservableObject {
                     self.lastShipResult = "OK"
                 }
             } else {
-                let detail = send.stderr.isEmpty ? "" : " (\(send.stderr))"
-                log.log(.error, "Vault ship error: \(file.url.path)\(detail)")
-                await MainActor.run { self.lastShipResult = "Failed to ship one or more files" }
+                let detail = send.stderr.trimmingCharacters(in: .whitespacesAndNewlines)
+                let message = detail.isEmpty ? "Failed to ship one or more files" : "Ship failed: \(detail)"
+                log.log(.error, "Vault ship error: \(file.url.path)\(detail.isEmpty ? "" : " (\(detail))")")
+                await MainActor.run { self.lastShipResult = message }
             }
         }
     }
@@ -115,9 +116,11 @@ final class VaultTransport: ObservableObject {
     }
 
     private func ensureRemoteDir(path: String) -> (success: Bool, stderr: String) {
-        let args = ["-o", "BatchMode=yes", "-o", "ConnectTimeout=5", "\(user)@\(host)", "mkdir", "-p", path]
+        let remoteCommand = "mkdir -p \"\(path)\" && test -w \"\(path)\""
+        let args = ["-o", "BatchMode=yes", "-o", "ConnectTimeout=5", "\(user)@\(host)", remoteCommand]
         let result = runProcess("/usr/bin/ssh", args: args)
-        return (result.success, result.stderr.trimmingCharacters(in: .whitespacesAndNewlines))
+        let stderr = result.stderr.trimmingCharacters(in: .whitespacesAndNewlines)
+        return (result.success, stderr)
     }
 
     private func uniqueRemoteFilename(dir: String, filename: String) -> String {

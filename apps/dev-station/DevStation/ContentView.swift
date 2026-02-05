@@ -106,7 +106,11 @@ struct ContentView: View {
     @State private var showHighConfidenceOnly = false
     @State private var arpWarmupEnabled = true
     @State private var bleDiscoveryEnabled = false
+    @State private var networkScanMode: ScanMode = .oneShot
+    @State private var bleScanMode: ScanMode = .oneShot
     @State private var selectedBleID: UUID?
+    @State private var connectNodeID: String = "pi-aux"
+    @State private var showFlashConfirm: Bool = false
     @State private var credentialIP: String?
     @State private var credentialUsername = ""
     @State private var credentialPassword = ""
@@ -252,6 +256,12 @@ struct ContentView: View {
             }
             inboxStatus = InboxRetention.shared.currentStatus()
             piAuxStore.refreshLocalNodeHeartbeat()
+            IdentityResolver.shared.updateOverrides(sodsStore.aliasOverrides)
+            IdentityResolver.shared.updateFromHosts(scanner.allHosts)
+            IdentityResolver.shared.updateFromDevices(scanner.devices)
+            IdentityResolver.shared.updateFromBLE(bleScanner.peripherals)
+            IdentityResolver.shared.updateFromNodes(piAuxStore.activeNodes)
+            IdentityResolver.shared.updateFromSignals(sodsStore.nodes)
             Task.detached {
                 await ArtifactStore.shared.runCleanup(log: logStore)
             }
@@ -261,14 +271,25 @@ struct ContentView: View {
         }
         .onChange(of: bleDiscoveryEnabled) { enabled in
             if enabled {
-                bleScanner.startScan()
+                bleScanner.startScan(mode: bleScanMode)
+                piAuxStore.setNodeScanning(nodeID: piAuxStore.localNodeIdentifier, enabled: true)
+                if bleScanMode == .oneShot {
+                    Task { @MainActor in
+                        try? await Task.sleep(nanoseconds: 8_000_000_000)
+                        if bleScanMode == .oneShot {
+                            bleDiscoveryEnabled = false
+                            piAuxStore.setNodeScanning(nodeID: piAuxStore.localNodeIdentifier, enabled: scanner.isScanning)
+                        }
+                    }
+                }
             } else {
                 bleScanner.stopScan()
+                piAuxStore.setNodeScanning(nodeID: piAuxStore.localNodeIdentifier, enabled: scanner.isScanning)
             }
         }
         .onChange(of: viewMode) { mode in
             if (mode == .ble || mode == .spectral) && bleDiscoveryEnabled && !bleScanner.isScanning {
-                bleScanner.startScan()
+                bleScanner.startScan(mode: bleScanMode)
             }
             if mode == .vault {
                 inboxStatus = InboxRetention.shared.currentStatus()
@@ -279,7 +300,14 @@ struct ContentView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .flashNodeCommand)) { _ in
             viewMode = .nodes
-            flashManager.startSelectedTarget()
+            showFlashConfirm = true
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .connectNodeCommand)) { _ in
+            viewMode = .nodes
+            let target = connectNodeID.isEmpty ? "pi-aux" : connectNodeID
+            connectNodeID = target
+            piAuxStore.connectNode(target)
+            piAuxStore.refreshLocalNodeHeartbeat()
         }
         .onChange(of: selectedIP) { newValue in
             guard let ip = newValue else { return }
@@ -290,10 +318,26 @@ struct ContentView: View {
             }
         }
         .onChange(of: scanner.devices) { _ in
+            IdentityResolver.shared.updateFromDevices(scanner.devices)
             refreshAutofillForSelectedIP()
         }
         .onChange(of: scanner.allHosts) { _ in
+            IdentityResolver.shared.updateFromHosts(scanner.allHosts)
             refreshAutofillForSelectedIP()
+        }
+        .onChange(of: bleScanner.peripherals) { _ in
+            IdentityResolver.shared.updateFromBLE(bleScanner.peripherals)
+        }
+        .onChange(of: piAuxStore.activeNodes) { _ in
+            IdentityResolver.shared.updateFromNodes(piAuxStore.activeNodes)
+        }
+        .onChange(of: sodsStore.nodes) { _ in
+            IdentityResolver.shared.updateFromSignals(sodsStore.nodes)
+        }
+        .onChange(of: scanner.isScanning) { scanning in
+            if !scanning {
+                piAuxStore.setNodeScanning(nodeID: piAuxStore.localNodeIdentifier, enabled: bleDiscoveryEnabled)
+            }
         }
         .sheet(isPresented: Binding(get: { !consentAcknowledged }, set: { _ in })) {
             ConsentView {
@@ -448,13 +492,19 @@ struct ContentView: View {
                 rangeStart: $rangeStart,
                 rangeEnd: $rangeEnd,
                 showLogs: $showLogs,
+                networkScanMode: $networkScanMode,
+                bleScanMode: $bleScanMode,
+                connectNodeID: $connectNodeID,
+                showFlashConfirm: $showFlashConfirm,
                 onStartScan: {
                     let scope = makeScope()
-                    scanner.startScan(enableOnvifDiscovery: onvifDiscoveryEnabled, enableServiceDiscovery: serviceDiscoveryEnabled, enableArpWarmup: arpWarmupEnabled, scope: scope)
+                    scanner.startScan(enableOnvifDiscovery: onvifDiscoveryEnabled, enableServiceDiscovery: serviceDiscoveryEnabled, enableArpWarmup: arpWarmupEnabled, scope: scope, mode: networkScanMode)
+                    piAuxStore.setNodeScanning(nodeID: piAuxStore.localNodeIdentifier, enabled: true)
                     piAuxStore.refreshLocalNodeHeartbeat()
                 },
                 onStopScan: {
                     scanner.stopScan()
+                    piAuxStore.setNodeScanning(nodeID: piAuxStore.localNodeIdentifier, enabled: false)
                     piAuxStore.refreshLocalNodeHeartbeat()
                 },
                 onGenerateScanReport: {
@@ -807,7 +857,7 @@ struct ContentView: View {
             prober: bleProber,
             peripherals: bleScanner.peripherals,
             aliasForPeripheral: { peripheral in
-                SODSStore.shared.aliasOverrides[peripheral.fingerprintID]
+                IdentityResolver.shared.resolveLabel(keys: [peripheral.fingerprintID, peripheral.id.uuidString])
             },
             selectedID: $selectedBleID,
             findFingerprintID: $bleFindFingerprintID,
@@ -941,26 +991,26 @@ struct ContentView: View {
     }
 
     private func aliasForDevice(ip: String, host: HostEntry?, device: Device?) -> String? {
-        let overrides = SODSStore.shared.aliasOverrides
-        if let alias = overrides[ip] { return alias }
-        if let mac = host?.macAddress, let alias = overrides[mac] { return alias }
-        if let mac = device?.macAddress, let alias = overrides[mac] { return alias }
+        let keys = [
+            ip,
+            host?.macAddress ?? "",
+            device?.macAddress ?? "",
+            host?.hostname ?? "",
+            device?.httpTitle ?? ""
+        ]
+        if let resolved = IdentityResolver.shared.resolveLabel(keys: keys) {
+            return resolved
+        }
         if let hostname = host?.hostname, !hostname.isEmpty { return hostname }
         return nil
     }
 
     private func buildAliasMap(for snapshot: ExportSnapshot) -> [String: String] {
-        var out: [String: String] = [:]
-        let overrides = SODSStore.shared.aliasOverrides
+        var out: [String: String] = IdentityResolver.shared.aliasMap()
         for record in snapshot.records {
-            if let alias = overrides[record.ip] {
-                out[record.ip] = alias
-            } else if !record.hostname.isEmpty {
+            if out[record.ip] == nil, !record.hostname.isEmpty {
                 out[record.ip] = record.hostname
             }
-        }
-        for (key, value) in overrides where out[key] == nil {
-            out[key] = value
         }
         return out
     }
@@ -2281,17 +2331,12 @@ struct UnifiedDetailView: View {
     }
 
     private func resolvedAlias() -> String? {
-        let overrides = SODSStore.shared.aliasOverrides
-        if let ip = selectedIP ?? host?.ip ?? device?.ip, let alias = overrides[ip] {
-            return alias
-        }
-        if let mac = host?.macAddress ?? device?.macAddress, let alias = overrides[mac] {
-            return alias
-        }
-        if let hostname = host?.hostname, let alias = overrides[hostname] {
-            return alias
-        }
-        return nil
+        let keys = [
+            selectedIP ?? host?.ip ?? device?.ip ?? "",
+            host?.macAddress ?? device?.macAddress ?? "",
+            host?.hostname ?? ""
+        ]
+        return IdentityResolver.shared.resolveLabel(keys: keys)
     }
 
     @ViewBuilder
@@ -2689,14 +2734,8 @@ struct DeviceDetailView: View {
     }
 
     private func resolvedAlias() -> String? {
-        let overrides = SODSStore.shared.aliasOverrides
-        if let alias = overrides[device.ip] {
-            return alias
-        }
-        if let mac = device.macAddress, let alias = overrides[mac] {
-            return alias
-        }
-        return nil
+        let keys = [device.ip, device.macAddress ?? ""]
+        return IdentityResolver.shared.resolveLabel(keys: keys)
     }
 }
 
@@ -2837,17 +2876,8 @@ struct HostDetailView: View {
     }
 
     private func resolvedAlias(for host: HostEntry) -> String? {
-        let overrides = SODSStore.shared.aliasOverrides
-        if let alias = overrides[host.ip] {
-            return alias
-        }
-        if let mac = host.macAddress, let alias = overrides[mac] {
-            return alias
-        }
-        if let hostname = host.hostname, let alias = overrides[hostname] {
-            return alias
-        }
-        return nil
+        let keys = [host.ip, host.macAddress ?? "", host.hostname ?? ""]
+        return IdentityResolver.shared.resolveLabel(keys: keys)
     }
 
 }
@@ -3032,7 +3062,7 @@ struct BLEListView: View {
                     prober: prober,
                     findFingerprintID: $findFingerprintID,
                     aliasForPeripheral: { peripheral in
-                        SODSStore.shared.aliasOverrides[peripheral.fingerprintID]
+                        IdentityResolver.shared.resolveLabel(keys: [peripheral.fingerprintID, peripheral.id.uuidString])
                     },
                     onGenerateScanReport: onGenerateScanReport,
                     onRevealLatestReport: onRevealLatestReport,
@@ -3549,6 +3579,10 @@ struct NodesView: View {
     @Binding var rangeStart: String
     @Binding var rangeEnd: String
     @Binding var showLogs: Bool
+    @Binding var networkScanMode: ScanMode
+    @Binding var bleScanMode: ScanMode
+    @Binding var connectNodeID: String
+    @Binding var showFlashConfirm: Bool
     let onStartScan: () -> Void
     let onStopScan: () -> Void
     let onGenerateScanReport: () -> Void
@@ -3744,12 +3778,33 @@ struct NodesView: View {
                 }
                 .font(.system(size: 11))
                 .toggleStyle(SwitchToggleStyle(tint: Theme.accent))
+                HStack(spacing: 12) {
+                    Text("Net Scan")
+                        .font(.system(size: 11, weight: .semibold))
+                    Picker("Net Scan", selection: $networkScanMode) {
+                        ForEach(ScanMode.allCases) { mode in
+                            Text(mode.label).tag(mode)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .frame(width: 220)
+                    Text("BLE Scan")
+                        .font(.system(size: 11, weight: .semibold))
+                    Picker("BLE Scan", selection: $bleScanMode) {
+                        ForEach(ScanMode.allCases) { mode in
+                            Text(mode.label).tag(mode)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .frame(width: 220)
+                    Spacer()
+                }
                 HStack(spacing: 10) {
                     if scanner.isScanning {
                         Button("Stop Scan") { onStopScan() }
                             .buttonStyle(PrimaryActionButtonStyle())
                     } else {
-                        Button("Start Scan") { onStartScan() }
+                        Button("Start \(networkScanMode.label) Scan") { onStartScan() }
                             .buttonStyle(PrimaryActionButtonStyle())
                     }
                     Button("Generate Scan Report") { onGenerateScanReport() }
@@ -3768,10 +3823,37 @@ struct NodesView: View {
     }
 
     private var flashControlSection: some View {
-        GroupBox("Flash Node") {
-            VStack(alignment: .leading, spacing: 8) {
+        GroupBox("Node Actions") {
+            VStack(alignment: .leading, spacing: 10) {
                 HStack(spacing: 10) {
-                    Text("Target")
+                    Text("Connect")
+                        .font(.system(size: 11))
+                    Picker("Node", selection: $connectNodeID) {
+                        ForEach(connectableNodeIDs, id: \.self) { id in
+                            Text(id).tag(id)
+                        }
+                    }
+                    .frame(width: 220)
+                    Button("Connect Node") {
+                        let target = connectableNodeIDs.contains(connectNodeID) ? connectNodeID : (connectableNodeIDs.first ?? connectNodeID)
+                        if !target.isEmpty {
+                            connectNodeID = target
+                            store.connectNode(target)
+                            store.refreshLocalNodeHeartbeat()
+                            if !bleDiscoveryEnabled {
+                                bleDiscoveryEnabled = true
+                            }
+                            if networkScanMode == .continuous && !scanner.isScanning {
+                                onStartScan()
+                            }
+                        }
+                    }
+                    .buttonStyle(PrimaryActionButtonStyle())
+                    Spacer()
+                }
+
+                HStack(spacing: 10) {
+                    Text("Flash Target")
                         .font(.system(size: 11))
                     Picker("Target", selection: $flashManager.selectedTarget) {
                         ForEach(FlashTarget.allCases) { target in
@@ -3784,11 +3866,23 @@ struct NodesView: View {
                 }
 
                 HStack(spacing: 10) {
-                    Button("Connect / Flash Node") {
-                        flashManager.startSelectedTarget()
+                    Button("Flash Firmware") {
+                        showFlashConfirm = true
                     }
                     .buttonStyle(PrimaryActionButtonStyle())
                     .disabled(flashManager.isStarting)
+                    .confirmationDialog(
+                        "Flash firmware to \(flashManager.selectedTarget.label)?",
+                        isPresented: $showFlashConfirm,
+                        titleVisibility: .visible
+                    ) {
+                        Button("Flash \(flashManager.selectedTarget.label)", role: .destructive) {
+                            flashManager.startSelectedTarget()
+                        }
+                        Button("Cancel", role: .cancel) {}
+                    } message: {
+                        Text("This will open the station flasher for the selected target. Confirm before continuing.")
+                    }
 
                     Button("Open Station Flasher") {
                         flashManager.openLocalFlasher()
@@ -3880,6 +3974,18 @@ struct NodesView: View {
                 }
             }
         }
+    }
+
+    private var connectableNodeIDs: [String] {
+        var ids: Set<String> = []
+        for node in store.plannedNodes {
+            ids.insert(node.id)
+        }
+        for node in store.activeNodes {
+            ids.insert(node.id)
+        }
+        if ids.isEmpty { return ["pi-aux"] }
+        return ids.sorted()
     }
 
     private func actions(for node: NodeRecord) -> [NodeAction] {
@@ -3995,14 +4101,20 @@ struct NodeCardView: View {
     }
 
     private func nodeStatus() -> (label: String, isOnline: Bool, lastSeenText: String) {
-        guard let lastSeen = node.lastSeen else {
-            return ("Not Seen Yet", false, "Not seen yet")
+        let lastSeen = node.lastSeen ?? node.lastHeartbeat
+        let lastSeenText = lastSeen?.formatted(date: .abbreviated, time: .shortened) ?? "Not seen yet"
+        switch node.presenceState {
+        case .connected:
+            return ("Connected", true, lastSeenText)
+        case .idle:
+            return ("Idle", true, lastSeenText)
+        case .scanning:
+            return ("Scanning", true, lastSeenText)
+        case .offline:
+            return ("Offline", false, lastSeenText)
+        case .error:
+            return ("Error", false, lastSeenText)
         }
-        let age = Date().timeIntervalSince(lastSeen)
-        if age <= 60 {
-            return ("Online", true, lastSeen.formatted(date: .abbreviated, time: .shortened))
-        }
-        return ("Offline", false, lastSeen.formatted(date: .abbreviated, time: .shortened))
     }
 
     private func controlRelationship() -> String {
@@ -4035,7 +4147,7 @@ struct CasesView: View {
     var body: some View {
         HStack(spacing: 0) {
             List(selection: $selectedCase) {
-                let aliases = SODSStore.shared.aliasOverrides
+                let aliases = IdentityResolver.shared.aliasMap()
                 ForEach(caseManager.cases) { item in
                     let alias = aliases[item.targetID]
                     VStack(alignment: .leading, spacing: 2) {
@@ -4075,7 +4187,7 @@ struct CasesView: View {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text("Active Nodes")
                                     .font(.system(size: 11, weight: .semibold))
-                                let aliasOverrides = SODSStore.shared.aliasOverrides
+                                let aliasOverrides = IdentityResolver.shared.aliasMap()
                                 ForEach(piAuxStore.activeNodes) { node in
                                     let alias = aliasOverrides[node.id]
                                     HStack {
@@ -4131,7 +4243,7 @@ struct CasesView: View {
                     Spacer()
                 }
                 if let selectedCase {
-                    let alias = SODSStore.shared.aliasOverrides[selectedCase.targetID]
+                    let alias = IdentityResolver.shared.resolveLabel(keys: [selectedCase.targetID])
                     if let alias, !alias.isEmpty {
                         Text("Target: \(alias) (\(selectedCase.targetID))")
                             .font(.system(size: 12))
@@ -4615,7 +4727,7 @@ private func buildReadableLog(rawFilename: String, scanner: NetworkScanner, bleS
     lines.append("Toggles: ONVIF=\(scanToggles.onvifDiscovery), ServiceDiscovery=\(scanToggles.serviceDiscovery), ARPWarmup=\(scanToggles.arpWarmup), BLE=\(scanToggles.bleDiscovery)")
     lines.append("")
 
-    let aliasOverrides = SODSStore.shared.aliasOverrides
+    let aliasOverrides = IdentityResolver.shared.aliasMap()
     let highConfidence = scanner.allHosts
         .filter { $0.hostConfidence.level == .high }
         .sorted { $0.hostConfidence.score > $1.hostConfidence.score }
@@ -4645,7 +4757,7 @@ private func buildReadableLog(rawFilename: String, scanner: NetworkScanner, bleS
     if !topBle.isEmpty {
         lines.append("Strongest RSSI:")
         for item in topBle {
-            let label = aliasOverrides[item.fingerprintID] ?? bleScanner.label(for: item.fingerprintID) ?? item.name ?? "Unknown"
+            let label = IdentityResolver.shared.resolveLabel(keys: [item.fingerprintID, item.id.uuidString]) ?? bleScanner.label(for: item.fingerprintID) ?? item.name ?? "Unknown"
             lines.append("- \(label) rssi=\(item.rssi) dBm")
         }
     }
@@ -5011,6 +5123,7 @@ private func openBluetoothPrivacySettings() {
 
 extension Notification.Name {
     static let flashNodeCommand = Notification.Name("sods.flashNodeCommand")
+    static let connectNodeCommand = Notification.Name("sods.connectNodeCommand")
     static let sodsOpenURLInApp = Notification.Name("sods.openUrlInApp")
 }
 

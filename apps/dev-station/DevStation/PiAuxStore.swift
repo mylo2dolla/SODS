@@ -51,6 +51,11 @@ final class PiAuxStore: ObservableObject {
     private var activeByID: [String: NodeRecord] = [:]
     private let localNodeID = "mac-local"
 
+    var localNodeIdentifier: String { localNodeID }
+    private var heartbeatTimer: Timer?
+    private let heartbeatInterval: TimeInterval = 5
+    private let offlineThreshold: TimeInterval = 30
+
     private init() {
         let defaults = UserDefaults.standard
         if let token = defaults.string(forKey: tokenKey), !token.isEmpty {
@@ -74,6 +79,7 @@ final class PiAuxStore: ObservableObject {
         }
         registerLocalNode()
         mergePlannedIntoActive()
+        startHeartbeatTimer()
         start()
     }
 
@@ -105,6 +111,97 @@ final class PiAuxStore: ObservableObject {
         server?.stop()
         server = nil
         isRunning = false
+    }
+
+    func connectNode(_ nodeID: String) {
+        let trimmed = nodeID.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        var record = activeByID[trimmed] ?? NodeRecord(
+            id: trimmed,
+            label: trimmed,
+            type: .unknown,
+            capabilities: [],
+            lastSeen: nil,
+            lastHeartbeat: nil,
+            connectionState: .idle,
+            isScanning: false,
+            lastError: nil,
+            planned: false
+        )
+        record.connectionState = .connected
+        record.lastHeartbeat = Date()
+        if record.lastSeen == nil { record.lastSeen = Date() }
+        activeByID[trimmed] = record
+        activeNodes = activeByID.values.sorted { ($0.lastSeen ?? .distantPast) > ($1.lastSeen ?? .distantPast) }
+    }
+
+    func setNodeScanning(nodeID: String, enabled: Bool) {
+        var record = activeByID[nodeID] ?? NodeRecord(
+            id: nodeID,
+            label: nodeID,
+            type: .unknown,
+            capabilities: [],
+            lastSeen: nil,
+            lastHeartbeat: nil,
+            connectionState: .idle,
+            isScanning: false,
+            lastError: nil,
+            planned: false
+        )
+        record.isScanning = enabled
+        if enabled, record.connectionState == .offline {
+            record.connectionState = .idle
+        }
+        activeByID[nodeID] = record
+        activeNodes = activeByID.values.sorted { ($0.lastSeen ?? .distantPast) > ($1.lastSeen ?? .distantPast) }
+    }
+
+    private func startHeartbeatTimer() {
+        heartbeatTimer?.invalidate()
+        heartbeatTimer = Timer.scheduledTimer(withTimeInterval: heartbeatInterval, repeats: true) { [weak self] _ in
+            guard let self else { return }
+            self.touchHeartbeat(nodeID: self.localNodeID, setConnected: true)
+            self.updateConnectionStates()
+        }
+    }
+
+    private func touchHeartbeat(nodeID: String, setConnected: Bool) {
+        var record = activeByID[nodeID] ?? NodeRecord(
+            id: nodeID,
+            label: nodeID,
+            type: .unknown,
+            capabilities: [],
+            lastSeen: nil,
+            lastHeartbeat: nil,
+            connectionState: .idle,
+            isScanning: false,
+            lastError: nil,
+            planned: false
+        )
+        record.lastHeartbeat = Date()
+        if setConnected {
+            record.connectionState = .connected
+        }
+        activeByID[nodeID] = record
+        activeNodes = activeByID.values.sorted { ($0.lastSeen ?? .distantPast) > ($1.lastSeen ?? .distantPast) }
+    }
+
+    private func updateConnectionStates() {
+        let now = Date()
+        for (id, record) in activeByID {
+            var updated = record
+            if let lastHeartbeat = record.lastHeartbeat {
+                if now.timeIntervalSince(lastHeartbeat) > offlineThreshold {
+                    if updated.connectionState != .error {
+                        updated.connectionState = .offline
+                    }
+                } else if updated.connectionState == .offline {
+                    updated.connectionState = .idle
+                }
+            }
+            activeByID[id] = updated
+        }
+        activeNodes = activeByID.values.sorted { ($0.lastSeen ?? .distantPast) > ($1.lastSeen ?? .distantPast) }
     }
 
     func updatePort(_ newPort: Int) {
@@ -209,7 +306,7 @@ final class PiAuxStore: ObservableObject {
     }
 
     func refreshLocalNodeHeartbeat() {
-        registerLocalNode()
+        touchHeartbeat(nodeID: localNodeID, setConnected: true)
         mergePlannedIntoActive()
     }
 
@@ -228,6 +325,10 @@ final class PiAuxStore: ObservableObject {
             type: .unknown,
             capabilities: [],
             lastSeen: nil,
+            lastHeartbeat: nil,
+            connectionState: .idle,
+            isScanning: false,
+            lastError: nil,
             planned: false
         )
         let planned = plannedNodes.first(where: { $0.id == nodeID })
@@ -248,6 +349,10 @@ final class PiAuxStore: ObservableObject {
             record.capabilities = Array(Set(record.capabilities + caps)).sorted()
         }
         record.lastSeen = now
+        if record.connectionState != .error {
+            record.connectionState = .connected
+        }
+        record.lastHeartbeat = now
         activeByID[nodeID] = record
         activeNodes = activeByID.values.sorted { ($0.lastSeen ?? .distantPast) > ($1.lastSeen ?? .distantPast) }
     }
@@ -261,6 +366,10 @@ final class PiAuxStore: ObservableObject {
                     type: planned.type,
                     capabilities: planned.capabilities,
                     lastSeen: nil,
+                    lastHeartbeat: nil,
+                    connectionState: .idle,
+                    isScanning: false,
+                    lastError: nil,
                     planned: true
                 )
             } else {
@@ -284,6 +393,10 @@ final class PiAuxStore: ObservableObject {
             type: .mac,
             capabilities: ["net", "ble", "scan", "report"],
             lastSeen: Date(),
+            lastHeartbeat: Date(),
+            connectionState: .connected,
+            isScanning: false,
+            lastError: nil,
             planned: true
         )
         activeByID[localNodeID] = record

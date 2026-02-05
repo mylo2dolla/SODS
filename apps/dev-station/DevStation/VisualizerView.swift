@@ -132,8 +132,12 @@ struct VisualizerView: View {
                 }
                 Toggle("Ghost trails", isOn: $ghostTrails)
                     .font(.system(size: 11))
+#if DEBUG
                 Toggle("Simulate frames (dev)", isOn: $store.simulateFrames)
                     .font(.system(size: 11))
+                    .disabled(store.realFramesActive)
+                    .help(store.realFramesActive ? "Real frames streaming; simulation is disabled." : "Generate local simulated frames.")
+#endif
             }
             .padding(6)
         }
@@ -274,15 +278,7 @@ struct VisualizerView: View {
     }
 
     private var nodeAliases: [String: String] {
-        var out: [String: String] = [:]
-        for node in store.nodes {
-            let alias = node.hostname ?? node.ip ?? node.id
-            out[node.id] = alias
-            out["node:\(node.id)"] = alias
-        }
-        for (id, alias) in store.aliasOverrides {
-            out[id] = alias
-        }
+        IdentityResolver.shared.updateFromSignals(store.nodes)
         for event in store.events {
             let data = event.data
             let ssid = data["ssid"]?.stringValue ?? ""
@@ -291,12 +287,12 @@ struct VisualizerView: View {
             let bssid = data["bssid"]?.stringValue ?? data["mac"]?.stringValue ?? ""
             let alias = hostname.isEmpty ? (ssid.isEmpty ? (ip.isEmpty ? "" : ip) : ssid) : hostname
             if let deviceID = event.deviceID, !alias.isEmpty {
-                out[deviceID] = alias
+                IdentityResolver.shared.record(keys: [deviceID], label: alias)
             } else if !bssid.isEmpty, !alias.isEmpty {
-                out[bssid] = alias
+                IdentityResolver.shared.record(keys: [bssid], label: alias)
             }
         }
-        return out
+        return IdentityResolver.shared.aliasMap()
     }
 
     // persistence handled inside SignalFieldView
