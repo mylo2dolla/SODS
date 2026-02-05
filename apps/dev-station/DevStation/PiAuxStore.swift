@@ -65,6 +65,7 @@ final class PiAuxStore: ObservableObject {
         }
         let savedPort = defaults.integer(forKey: portKey)
         self.port = savedPort > 0 ? savedPort : 8787
+        ensureLocalNodeRecord()
         startHeartbeatTimer()
         start()
     }
@@ -233,7 +234,43 @@ final class PiAuxStore: ObservableObject {
     }
 
     func refreshLocalNodeHeartbeat() {
+        ensureLocalNodeRecord()
         touchHeartbeat(nodeID: localNodeID, setConnected: true)
+    }
+
+    private func ensureLocalNodeRecord() {
+        let nodeID = localNodeID
+        let hostLabel = Host.current().localizedName ?? "Mac"
+        let defaultLabel = "DevStation Scanner (\(hostLabel))"
+        if var record = activeByID[nodeID] {
+            if record.label.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                record.label = defaultLabel
+            }
+            if record.type != .mac {
+                record.type = .mac
+            }
+            if !record.capabilities.contains("scan") {
+                record.capabilities = Array(Set(record.capabilities + ["scan"])).sorted()
+            }
+            activeByID[nodeID] = record
+        } else {
+            let record = NodeRecord(
+                id: nodeID,
+                label: defaultLabel,
+                type: .mac,
+                capabilities: ["scan"],
+                lastSeen: nil,
+                lastHeartbeat: nil,
+                connectionState: .idle,
+                isScanning: false,
+                lastError: nil,
+                ip: nil,
+                hostname: hostLabel,
+                mac: nil
+            )
+            activeByID[nodeID] = record
+        }
+        activeNodes = activeByID.values.sorted { ($0.lastSeen ?? .distantPast) > ($1.lastSeen ?? .distantPast) }
     }
 
     private func updateActiveNode(from event: PiAuxEvent) {

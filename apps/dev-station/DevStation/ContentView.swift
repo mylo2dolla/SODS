@@ -154,6 +154,8 @@ struct ContentView: View {
     @State private var flashLifecycleStage: DeviceLifecycleStage?
     @State private var flashLifecycleTarget: FlashTarget?
     @State private var flashLifecycleNodeID: String?
+    @State private var autoLinkAttemptedIDs: Set<String> = []
+    @State private var didAutoLinkAtLaunch = false
 
     var body: some View {
         mainContent
@@ -357,6 +359,10 @@ struct ContentView: View {
                 if flashManager.prepStatus.isReady, flashLifecycleStage == nil {
                     flashLifecycleStage = .staged
                 }
+                if !didAutoLinkAtLaunch {
+                    autoLinkNodesIfNeeded(nodeRegistry.nodes)
+                    didAutoLinkAtLaunch = true
+                }
                 Task.detached {
                     await ArtifactStore.shared.runCleanup(log: logStore)
                 }
@@ -480,6 +486,7 @@ struct ContentView: View {
                         flashLifecycleStage = .claimed
                     }
                 }
+                autoLinkNodesIfNeeded(nodeRegistry.nodes)
             }
             .onChange(of: scanner.isScanning) { _ in
                 updateLocalScanningState()
@@ -1369,6 +1376,29 @@ struct ContentView: View {
         }
     }
 
+    private func shouldAutoLink(_ node: NodeRecord) -> Bool {
+        if node.type == .mac { return false }
+        return true
+    }
+
+    private func autoLinkNode(_ node: NodeRecord) {
+        guard shouldAutoLink(node) else { return }
+        let nodeID = node.id
+        guard !nodeID.isEmpty else { return }
+        if autoLinkAttemptedIDs.contains(nodeID) { return }
+        autoLinkAttemptedIDs.insert(nodeID)
+        NodeRegistry.shared.setConnecting(nodeID: nodeID, connecting: true)
+        sodsStore.connectNode(nodeID)
+        sodsStore.identifyNode(nodeID)
+        sodsStore.refreshStatus()
+    }
+
+    private func autoLinkNodesIfNeeded(_ nodes: [NodeRecord]) {
+        for node in nodes {
+            autoLinkNode(node)
+        }
+    }
+
     private var godMenuContextLabel: String? {
         guard let id = godMenuContextNodeID, !id.isEmpty else { return nil }
         if let node = entityStore.nodes.first(where: { $0.id == id }) {
@@ -1675,6 +1705,7 @@ struct ContentView: View {
     private func openFindDevice() {
         modalCoordinator.present(.findDevice)
     }
+
 
     private var baseURLToastView: some View {
         Text(baseURLToastMessage)
@@ -4303,6 +4334,8 @@ struct NodesView: View {
     @State private var manualConnectLabel: String = ""
     @State private var manualConnectError: String?
     @State private var isManualConnecting = false
+    @State private var cliFlashStatus: String?
+    @State private var cliFlashError: String?
 
     var body: some View {
         ViewThatFits(in: .horizontal) {
@@ -4660,6 +4693,11 @@ struct NodesView: View {
                         Text("This will open the station flasher for the selected target. Confirm before continuing.")
                     }
 
+                    Button("Open Flasher (In-App)") {
+                        openFlashInApp(target: flashManager.selectedTarget)
+                    }
+                    .buttonStyle(SecondaryActionButtonStyle())
+
                     Button("Open Station Flasher") {
                         flashManager.openLocalFlasher()
                     }
@@ -4668,6 +4706,13 @@ struct NodesView: View {
                     if flashManager.canOpenFlasher {
                         Button("Open Flasher") {
                             flashManager.openFlasher()
+                        }
+                        .buttonStyle(SecondaryActionButtonStyle())
+                    }
+
+                    if canCLIFlash(flashManager.selectedTarget) {
+                        Button("CLI Flash") {
+                            runCLIFlash(flashManager.selectedTarget)
                         }
                         .buttonStyle(SecondaryActionButtonStyle())
                     }
@@ -4712,6 +4757,16 @@ struct NodesView: View {
                         }
                         .buttonStyle(SecondaryActionButtonStyle())
                     }
+                }
+                if let cliFlashStatus, !cliFlashStatus.isEmpty {
+                    Text(cliFlashStatus)
+                        .font(.system(size: 11))
+                        .foregroundColor(Theme.textSecondary)
+                }
+                if let cliFlashError, !cliFlashError.isEmpty {
+                    Text(cliFlashError)
+                        .font(.system(size: 11))
+                        .foregroundColor(.red)
                 }
 
                 flashPrepSection
@@ -4803,6 +4858,85 @@ struct NodesView: View {
         if node.capabilities.contains("scan") { return true }
         if node.presenceState == .scanning { return true }
         return presence?.state.lowercased() == "scanning"
+    }
+
+    private func flashPath(for target: FlashTarget) -> String {
+        switch target {
+        case .esp32dev:
+            return "/flash/esp32"
+        case .esp32c3:
+            return "/flash/esp32c3"
+        case .portalCyd:
+            return "/flash/portal-cyd"
+        case .esp32p4:
+            return "/flash/p4"
+        }
+    }
+
+    private func openFlashInApp(target: FlashTarget) {
+        let base = sodsStore.baseURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let url = URL(string: base + flashPath(for: target)) else {
+            LogStore.shared.log(.warn, "Invalid station URL for flasher: \(base)")
+            return
+        }
+        NotificationCenter.default.post(name: .sodsOpenURLInApp, object: url)
+    }
+
+    private func canCLIFlash(_ target: FlashTarget) -> Bool {
+        let script = cliFlashScript(for: target)
+        return FileManager.default.fileExists(atPath: script)
+    }
+
+    private func runCLIFlash(_ target: FlashTarget) {
+        guard canCLIFlash(target) else { return }
+        cliFlashStatus = "Running CLI flash..."
+        cliFlashError = nil
+        let root = sodsRootPath()
+        let script = cliFlashScript(for: target)
+        Task.detached {
+            let process = Process()
+            process.executableURL = URL(fileURLWithPath: "/bin/zsh")
+            process.arguments = ["-lc", "cd \(root) && \(script)"]
+            let out = Pipe()
+            let err = Pipe()
+            process.standardOutput = out
+            process.standardError = err
+            do {
+                try process.run()
+                process.waitUntilExit()
+                let stdout = String(data: out.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
+                let stderr = String(data: err.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
+                let success = process.terminationStatus == 0
+                await MainActor.run {
+                    if success {
+                        cliFlashStatus = stdout.isEmpty ? "CLI flash complete." : stdout.trimmingCharacters(in: .whitespacesAndNewlines)
+                        cliFlashError = nil
+                    } else {
+                        cliFlashStatus = nil
+                        cliFlashError = stderr.isEmpty ? "CLI flash failed." : stderr.trimmingCharacters(in: .whitespacesAndNewlines)
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    cliFlashStatus = nil
+                    cliFlashError = error.localizedDescription
+                }
+            }
+        }
+    }
+
+    private func cliFlashScript(for target: FlashTarget) -> String {
+        let root = sodsRootPath()
+        switch target {
+        case .esp32dev:
+            return "\(root)/tools/flash-esp32dev-cli.sh"
+        case .esp32c3:
+            return "\(root)/tools/flash-esp32c3-cli.sh"
+        case .portalCyd:
+            return "\(root)/tools/flash-portal-cyd-cli.sh"
+        case .esp32p4:
+            return "\(root)/tools/p4-flash.sh"
+        }
     }
 
     private func connectSelectedNode() {
@@ -5002,6 +5136,14 @@ struct NodeCardView: View {
             )
             .cornerRadius(12)
             .shadow(color: presentation.shouldGlow ? Color(presentation.baseColor).opacity(glowAlpha) : .clear, radius: glowRadius)
+            .contentShape(RoundedRectangle(cornerRadius: 12))
+            .onTapGesture {
+                if isScannerNode {
+                    NotificationCenter.default.post(name: .openGodMenuCommandWithContext, object: node.id)
+                } else {
+                    showActions = true
+                }
+            }
         }
     }
 
