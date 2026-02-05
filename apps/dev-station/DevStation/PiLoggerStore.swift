@@ -671,10 +671,28 @@ struct NormalizedEvent: Identifiable, Hashable {
         return nil
     }
 
-    private static func deriveID(node: String, kind: String, ts: Date?, data: [String: JSONValue]) -> String {
+    static func deriveID(node: String, kind: String, ts: Date?, data: [String: JSONValue]) -> String {
         let base = "\(node)|\(kind)|\(ts?.timeIntervalSince1970 ?? 0)"
         let hash = data.map { "\($0.key)=\($0.value.stringValue ?? "")" }.joined(separator: "|")
         return "derived-\(base.hashValue)-\(hash.hashValue)"
+    }
+}
+
+extension NormalizedEvent {
+    init(localNodeID: String, kind: String, summary: String, data: [String: JSONValue], deviceID: String?, eventTs: Date = Date()) {
+        self.nodeID = localNodeID
+        self.kind = kind
+        self.severity = "info"
+        self.summary = summary
+        self.data = data
+        self.eventTs = eventTs
+        self.recvTs = eventTs
+        self.deviceID = deviceID
+        let strength = SignalMeta.extractStrength(from: data)
+        let channel = SignalMeta.extractChannel(from: data)
+        let tags = SignalMeta.tags(from: kind)
+        self.signal = SignalMeta(strength: strength, channel: channel, tags: tags)
+        self.id = NormalizedEvent.deriveID(node: localNodeID, kind: kind, ts: eventTs, data: data)
     }
 }
 

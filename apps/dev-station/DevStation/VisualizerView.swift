@@ -26,25 +26,46 @@ struct VisualizerView: View {
     @State private var activityTick: Date = Date()
 
     var body: some View {
-        HStack(spacing: 12) {
-            sidebar
-                .frame(minWidth: 320, maxWidth: 360)
-            SignalFieldView(
-                events: filteredEvents,
-                frames: store.frames,
-                paused: paused,
-                decayRate: decayRate,
-                timeScale: timeScale,
-                maxParticles: Int(maxParticles),
-                intensity: intensityMode,
-                replayEnabled: replayEnabled,
-                replayOffset: replayOffset,
-                ghostTrails: ghostTrails,
-                aliases: nodeAliases,
-                nodePresentations: nodePresentationByID,
-                focusID: entityStore.selectedEntityID
-            )
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 12) {
+                sidebar
+                    .frame(minWidth: 320, maxWidth: 360)
+                SignalFieldView(
+                    events: filteredEvents,
+                    frames: store.frames,
+                    paused: paused,
+                    decayRate: decayRate,
+                    timeScale: timeScale,
+                    maxParticles: Int(maxParticles),
+                    intensity: intensityMode,
+                    replayEnabled: replayEnabled,
+                    replayOffset: replayOffset,
+                    ghostTrails: ghostTrails,
+                    aliases: nodeAliases,
+                    nodePresentations: nodePresentationByID,
+                    focusID: entityStore.selectedEntityID
+                )
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+            VStack(spacing: 12) {
+                sidebar
+                SignalFieldView(
+                    events: filteredEvents,
+                    frames: store.frames,
+                    paused: paused,
+                    decayRate: decayRate,
+                    timeScale: timeScale,
+                    maxParticles: Int(maxParticles),
+                    intensity: intensityMode,
+                    replayEnabled: replayEnabled,
+                    replayOffset: replayOffset,
+                    ghostTrails: ghostTrails,
+                    aliases: nodeAliases,
+                    nodePresentations: nodePresentationByID,
+                    focusID: entityStore.selectedEntityID
+                )
+                .frame(maxWidth: .infinity, minHeight: 420)
+            }
         }
         .padding(12)
         .background(Theme.background)
@@ -67,6 +88,13 @@ struct VisualizerView: View {
     }
 
     private var sidebar: some View {
+        ScrollView {
+            sidebarContent
+        }
+        .modifier(Theme.cardStyle())
+    }
+
+    private var sidebarContent: some View {
         VStack(alignment: .leading, spacing: 10) {
             header
             controls
@@ -76,7 +104,6 @@ struct VisualizerView: View {
             devicesSection
             Spacer()
         }
-        .modifier(Theme.cardStyle())
     }
 
     private var header: some View {
@@ -120,7 +147,7 @@ struct VisualizerView: View {
         if replayEnabled {
             return ("Playback", Color.orange)
         }
-        if store.realFramesActive {
+        if store.realFramesActive || hasRecentLiveEvents {
             return ("Live", Color.green)
         }
         return ("Idle", Color.gray)
@@ -324,12 +351,12 @@ struct VisualizerView: View {
     }
 
     private var availableKinds: [String] {
-        let kinds = Set(store.events.map { $0.kind })
+        let kinds = Set(liveEvents.map { $0.kind })
         return kinds.sorted()
     }
 
     private var availableDevices: [String] {
-        let devices = store.events.compactMap { $0.deviceID }
+        let devices = liveEvents.compactMap { $0.deviceID }
         return Array(Set(devices)).sorted()
     }
 
@@ -340,8 +367,24 @@ struct VisualizerView: View {
         return deviceID
     }
 
+    private var liveEvents: [NormalizedEvent] {
+        let combined = store.events + localEvents
+        if combined.count > 1400 {
+            return Array(combined.suffix(1400))
+        }
+        return combined
+    }
+
+    private var hasRecentLiveEvents: Bool {
+        let now = Date()
+        return liveEvents.contains { event in
+            let ts = event.eventTs ?? event.recvTs ?? now
+            return now.timeIntervalSince(ts) <= 6.0
+        }
+    }
+
     private var filteredEvents: [NormalizedEvent] {
-        let sourceEvents = replayEnabled ? store.recordedEvents : store.events
+        let sourceEvents = replayEnabled ? store.recordedEvents : liveEvents
         let base = sourceEvents.filter { event in
             if !selectedNodeIDs.isEmpty && !selectedNodeIDs.contains(event.nodeID) { return false }
             if !selectedKinds.isEmpty && !selectedKinds.contains(event.kind) { return false }
@@ -363,7 +406,7 @@ struct VisualizerView: View {
 
     private var nodeAliases: [String: String] {
         IdentityResolver.shared.updateFromSignals(store.nodes)
-        for event in store.events {
+        for event in liveEvents {
             let data = event.data
             let ssid = data["ssid"]?.stringValue ?? ""
             let hostname = data["hostname"]?.stringValue ?? ""
@@ -377,6 +420,88 @@ struct VisualizerView: View {
             }
         }
         return IdentityResolver.shared.aliasMap()
+    }
+
+    private var localEvents: [NormalizedEvent] {
+        let obsByID = latestObservationByID
+        let now = Date()
+        var output: [NormalizedEvent] = []
+
+        for peripheral in entityStore.blePeripherals.prefix(120) {
+            let timestamp = obsByID[peripheral.fingerprintID]?.timestamp ?? peripheral.lastSeen
+            let label = IdentityResolver.shared.resolveLabel(keys: [peripheral.fingerprintID, peripheral.id.uuidString]) ?? peripheral.name ?? peripheral.fingerprintID
+            var data: [String: JSONValue] = [
+                "rssi": .number(Double(peripheral.smoothedRSSI)),
+                "fingerprint": .string(peripheral.fingerprintID),
+                "name": .string(peripheral.name ?? "")
+            ]
+            if !peripheral.serviceUUIDs.isEmpty {
+                data["services"] = .string(peripheral.serviceUUIDs.joined(separator: ","))
+            }
+            if let vendor = peripheral.fingerprint.manufacturerCompanyName, !vendor.isEmpty {
+                data["vendor"] = .string(vendor)
+            }
+            output.append(
+                NormalizedEvent(
+                    localNodeID: "mac-local",
+                    kind: "ble.seen",
+                    summary: "BLE \(label)",
+                    data: data,
+                    deviceID: "ble:\(peripheral.fingerprintID)",
+                    eventTs: timestamp
+                )
+            )
+        }
+
+        for device in entityStore.devices.prefix(120) {
+            let timestamp = obsByID[device.ip]?.timestamp ?? now
+            var data: [String: JSONValue] = [
+                "ip": .string(device.ip),
+                "mac": .string(device.macAddress ?? "")
+            ]
+            if let vendor = device.vendor, !vendor.isEmpty { data["vendor"] = .string(vendor) }
+            if let title = device.httpTitle, !title.isEmpty { data["http_title"] = .string(title) }
+            output.append(
+                NormalizedEvent(
+                    localNodeID: "mac-local",
+                    kind: "net.device",
+                    summary: "Device \(device.ip)",
+                    data: data,
+                    deviceID: device.ip,
+                    eventTs: timestamp
+                )
+            )
+        }
+
+        for host in entityStore.hosts.prefix(120) where host.isAlive {
+            let timestamp = obsByID[host.ip]?.timestamp ?? now
+            var data: [String: JSONValue] = [
+                "ip": .string(host.ip),
+                "mac": .string(host.macAddress ?? "")
+            ]
+            if let vendor = host.vendor, !vendor.isEmpty { data["vendor"] = .string(vendor) }
+            if let hostname = host.hostname, !hostname.isEmpty { data["hostname"] = .string(hostname) }
+            output.append(
+                NormalizedEvent(
+                    localNodeID: "mac-local",
+                    kind: "net.host",
+                    summary: "Host \(host.ip)",
+                    data: data,
+                    deviceID: host.ip,
+                    eventTs: timestamp
+                )
+            )
+        }
+
+        return output
+    }
+
+    private var latestObservationByID: [String: Observation] {
+        var map: [String: Observation] = [:]
+        for obs in entityStore.observations {
+            map[obs.entityID] = obs
+        }
+        return map
     }
 
     private var nodePresentationByID: [String: NodePresentation] {
@@ -396,7 +521,7 @@ struct VisualizerView: View {
 
     private func isNodeOnline(_ node: SignalNode) -> Bool {
         if let presence = store.nodePresence[node.id] {
-            return presence.state == "online" || presence.state == "connecting"
+            return presence.state == "online"
         }
         return !node.isStale
     }
@@ -404,7 +529,7 @@ struct VisualizerView: View {
     private func activityScore(for nodeID: String) -> Double {
         let now = activityTick
         let window: TimeInterval = 20
-        let recent = store.events.suffix(240).filter { event in
+        let recent = liveEvents.suffix(240).filter { event in
             guard event.nodeID == nodeID else { return false }
             let ts = event.eventTs ?? event.recvTs ?? now
             return now.timeIntervalSince(ts) <= window

@@ -43,7 +43,8 @@ struct DashboardView: View {
             Text("Dashboard")
                 .font(.system(size: 18, weight: .semibold))
 
-            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
+            let columns = [GridItem(.adaptive(minimum: 300), spacing: 12)]
+            LazyVGrid(columns: columns, spacing: 12) {
                 statusCard(title: "Station", onOpen: { showStationOverlay = true }) {
                     statusLine("Health", sodsStore.health == .connected || sodsStore.health == .degraded)
                     if let status = sodsStore.stationStatus {
@@ -249,19 +250,13 @@ struct DashboardView: View {
                         .buttonStyle(SecondaryActionButtonStyle())
                 }
             }
+            .contentShape(Rectangle())
+            .onTapGesture {
+                onOpen?()
+            }
             content()
         }
         .modifier(Theme.cardStyle())
-        .background(
-            Group {
-                if onOpen != nil {
-                    Rectangle()
-                        .fill(Color.clear)
-                        .contentShape(Rectangle())
-                        .onTapGesture { onOpen?() }
-                }
-            }
-        )
         .accessibilityAddTraits(onOpen == nil ? [] : .isButton)
     }
 

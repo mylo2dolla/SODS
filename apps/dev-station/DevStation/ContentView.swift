@@ -241,9 +241,9 @@ struct ContentView: View {
     @ViewBuilder
     private var mainContent: some View {
         VStack(alignment: .leading, spacing: 12) {
-            statusSection
             ScrollView(.vertical) {
                 VStack(alignment: .leading, spacing: 12) {
+                    statusSection
                     contentSection
                     logSection
                 }
@@ -256,7 +256,6 @@ struct ContentView: View {
         .foregroundColor(Theme.textPrimary)
         .tint(Theme.accent)
         .preferredColorScheme(.dark)
-        .frame(minWidth: 1200, minHeight: 760)
         .onAppear {
             if !consentAcknowledged { modalCoordinator.present(.consent) }
             if scopeCIDR.isEmpty, let subnet = IPv4Subnet.active() {
@@ -286,19 +285,19 @@ struct ContentView: View {
         .onChange(of: bleDiscoveryEnabled) { enabled in
             if enabled {
                 bleScanner.startScan(mode: bleScanMode)
-                piAuxStore.setNodeScanning(nodeID: piAuxStore.localNodeIdentifier, enabled: true)
+                updateLocalScanningState()
                 if bleScanMode == .oneShot {
                     Task { @MainActor in
                         try? await Task.sleep(nanoseconds: 8_000_000_000)
                         if bleScanMode == .oneShot {
                             bleDiscoveryEnabled = false
-                            piAuxStore.setNodeScanning(nodeID: piAuxStore.localNodeIdentifier, enabled: scanner.isScanning)
+                            updateLocalScanningState()
                         }
                     }
                 }
             } else {
                 bleScanner.stopScan()
-                piAuxStore.setNodeScanning(nodeID: piAuxStore.localNodeIdentifier, enabled: scanner.isScanning)
+                updateLocalScanningState()
             }
         }
         .onChange(of: viewMode) { mode in
@@ -351,10 +350,11 @@ struct ContentView: View {
         .onChange(of: sodsStore.nodes) { _ in
             IdentityResolver.shared.updateFromSignals(sodsStore.nodes)
         }
-        .onChange(of: scanner.isScanning) { scanning in
-            if !scanning {
-                piAuxStore.setNodeScanning(nodeID: piAuxStore.localNodeIdentifier, enabled: bleDiscoveryEnabled)
-            }
+        .onChange(of: scanner.isScanning) { _ in
+            updateLocalScanningState()
+        }
+        .onChange(of: bleScanner.isScanning) { _ in
+            updateLocalScanningState()
         }
         .onChange(of: selectedBleID) { newValue in
             guard let id = newValue else { return }
@@ -473,7 +473,7 @@ struct ContentView: View {
                 onvifDiscoveryEnabled: onvifDiscoveryEnabled,
                 serviceDiscoveryEnabled: serviceDiscoveryEnabled,
                 arpWarmupEnabled: arpWarmupEnabled,
-                bleDiscoveryEnabled: bleDiscoveryEnabled,
+                bleDiscoveryEnabled: bleScanner.isScanning,
                 safeModeEnabled: scanner.safeModeEnabled,
                 onlyLocalSubnet: onlyLocalSubnet,
                 onOpenNodes: {
@@ -486,9 +486,7 @@ struct ContentView: View {
                     piAuxStore.refreshLocalNodeHeartbeat()
                 },
                 onStopScan: {
-                    scanner.stopScan()
-                    piAuxStore.setNodeScanning(nodeID: piAuxStore.localNodeIdentifier, enabled: false)
-                    piAuxStore.refreshLocalNodeHeartbeat()
+                    stopAllScanning()
                 },
                 onGenerateScanReport: {
                     generateScanReport()
@@ -516,6 +514,7 @@ struct ContentView: View {
                 scanner: scanner,
                 flashManager: flashManager,
                 connectableNodeIDs: connectableNodeIDs(),
+                bleIsScanning: bleScanner.isScanning,
                 onvifDiscoveryEnabled: $onvifDiscoveryEnabled,
                 serviceDiscoveryEnabled: $serviceDiscoveryEnabled,
                 arpWarmupEnabled: $arpWarmupEnabled,
@@ -537,9 +536,7 @@ struct ContentView: View {
                     piAuxStore.refreshLocalNodeHeartbeat()
                 },
                 onStopScan: {
-                    scanner.stopScan()
-                    piAuxStore.setNodeScanning(nodeID: piAuxStore.localNodeIdentifier, enabled: false)
-                    piAuxStore.refreshLocalNodeHeartbeat()
+                    stopAllScanning()
                 },
                 onGenerateScanReport: {
                     generateScanReport()
@@ -945,6 +942,8 @@ struct ContentView: View {
         ToolbarItemGroup(placement: .automatic) {
             Button("Tools") { openSODSTools() }
                 .buttonStyle(SecondaryActionButtonStyle())
+            Button("Guide") { modalCoordinator.present(.consent) }
+                .buttonStyle(SecondaryActionButtonStyle())
             Button("Aliases") { modalCoordinator.present(.aliasManager) }
                 .buttonStyle(SecondaryActionButtonStyle())
             Picker("View", selection: $viewMode) {
@@ -953,7 +952,8 @@ struct ContentView: View {
                 }
             }
             .pickerStyle(.segmented)
-            .frame(width: 460)
+            .frame(minWidth: 260, idealWidth: 420, maxWidth: 520)
+            .layoutPriority(1)
             Button("Flash") { showFlashPopover = true }
                 .buttonStyle(SecondaryActionButtonStyle())
                 .popover(isPresented: $showFlashPopover, arrowEdge: .bottom) {
@@ -1086,6 +1086,23 @@ struct ContentView: View {
     private func openSODSTools() {
         toolRegistry.reload()
         modalCoordinator.present(.toolRegistry)
+    }
+
+    private func updateLocalScanningState() {
+        let scanning = scanner.isScanning || bleScanner.isScanning
+        piAuxStore.setNodeScanning(nodeID: piAuxStore.localNodeIdentifier, enabled: scanning)
+    }
+
+    private func stopAllScanning() {
+        scanner.stopScan()
+        if bleDiscoveryEnabled {
+            bleDiscoveryEnabled = false
+        }
+        if bleScanner.isScanning {
+            bleScanner.stopScan()
+        }
+        updateLocalScanningState()
+        piAuxStore.refreshLocalNodeHeartbeat()
     }
 
     private func connectableNodeIDs() -> [String] {
@@ -3853,6 +3870,7 @@ struct NodesView: View {
     @ObservedObject var scanner: NetworkScanner
     @ObservedObject var flashManager: FlashServerManager
     let connectableNodeIDs: [String]
+    let bleIsScanning: Bool
     @Binding var onvifDiscoveryEnabled: Bool
     @Binding var serviceDiscoveryEnabled: Bool
     @Binding var arpWarmupEnabled: Bool
@@ -3875,116 +3893,129 @@ struct NodesView: View {
     @State private var portText: String = ""
 
     var body: some View {
-        HStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Nodes")
-                    .font(.system(size: 16, weight: .semibold))
-
-                ScrollView {
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 260), spacing: 12)], alignment: .leading, spacing: 12) {
-                        ForEach(nodes) { node in
-                            NodeCardView(
-                                node: node,
-                                presence: nodePresence[node.id],
-                                eventCount: store.recentEventCount(nodeID: node.id, window: 600),
-                                actions: actions(for: node),
-                                onRefresh: {
-                                    sodsStore.connectNode(node.id)
-                                    sodsStore.identifyNode(node.id)
-                                }
-                            )
-                        }
-                    }
-                    .padding(.bottom, 12)
-
-                    Text("Last \(store.events.count) Events")
-                        .font(.system(size: 12, weight: .semibold))
-                    VStack(alignment: .leading, spacing: 6) {
-                        ForEach(store.events.suffix(50).reversed()) { event in
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("\(event.timestamp) • \(event.kind.rawValue) • \(event.deviceID)")
-                                    .font(.system(size: 11))
-                                if !event.data.isEmpty {
-                                    Text(event.data.map { "\($0.key)=\($0.value)" }.sorted().joined(separator: " "))
-                                        .font(.system(size: 10))
-                                        .foregroundColor(.secondary)
-                                }
-                                if !event.tags.isEmpty {
-                                    Text("tags: \(event.tags.joined(separator: ", "))")
-                                        .font(.system(size: 10))
-                                        .foregroundColor(.secondary)
-                                }
-                            }
-                            .padding(.vertical, 4)
-                            Divider()
-                        }
-                    }
-                }
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 12) {
+                nodesColumn
+                sideColumn
+                    .frame(minWidth: 320, idealWidth: 420, maxWidth: 520, alignment: .topLeading)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-
-            VStack(alignment: .leading, spacing: 12) {
-                scanControlSection
-                GroupBox("Setup") {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Endpoint: \(store.endpointURL)")
-                            .font(.system(size: 12))
-                        Text("Endpoint host: \(endpointHost)")
-                            .font(.system(size: 11))
-                            .foregroundColor(Theme.textSecondary)
-                        if endpointIsLocal {
-                            Text("Warning: localhost endpoints cannot be reached by remote nodes.")
-                                .font(.system(size: 11, weight: .semibold))
-                                .foregroundColor(Theme.accent)
-                        }
-                        if let lastError = store.lastError, !lastError.isEmpty {
-                            Text("Last error: \(lastError)")
-                                .font(.system(size: 11))
-                                .foregroundColor(Theme.textSecondary)
-                        }
-                        Text("Shared Secret:")
-                            .font(.system(size: 12, weight: .semibold))
-                        Text(store.token)
-                            .font(.system(size: 11, design: .monospaced))
-                            .textSelection(.enabled)
-                        HStack {
-                            Text("Port:")
-                                .font(.system(size: 12))
-                            TextField("8787", text: $portText)
-                                .textFieldStyle(.roundedBorder)
-                                .frame(width: 80)
-                                .onAppear {
-                                    portText = String(store.port)
-                                }
-                            Button("Apply") {
-                                if let value = Int(portText) {
-                                    store.updatePort(value)
-                                }
-                            }
-                            Button("Test Ping") {
-                                store.testPing()
-                            }
-                            .buttonStyle(SecondaryActionButtonStyle())
-                        }
-                        if let lastPing = store.lastPingResult, !lastPing.isEmpty {
-                            Text("Ping: \(lastPing)")
-                                .font(.system(size: 11))
-                                .foregroundColor(Theme.textSecondary)
-                        } else if let lastPingError = store.lastPingError, !lastPingError.isEmpty {
-                            Text("Ping error: \(lastPingError)")
-                                .font(.system(size: 11))
-                                .foregroundColor(Theme.textSecondary)
-                        }
-                    }
-                    .padding(6)
-                }
-
-                flashControlSection
-                Spacer()
+            VStack(spacing: 12) {
+                nodesColumn
+                sideColumn
             }
-            .frame(width: 420, alignment: .topLeading)
         }
         .padding(16)
+    }
+
+    private var nodesColumn: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Nodes")
+                .font(.system(size: 16, weight: .semibold))
+
+            ScrollView {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 260), spacing: 12)], alignment: .leading, spacing: 12) {
+                    ForEach(nodes) { node in
+                        NodeCardView(
+                            node: node,
+                            presence: nodePresence[node.id],
+                            eventCount: store.recentEventCount(nodeID: node.id, window: 600),
+                            actions: actions(for: node),
+                            onRefresh: {
+                                sodsStore.connectNode(node.id)
+                                sodsStore.identifyNode(node.id)
+                            }
+                        )
+                    }
+                }
+                .padding(.bottom, 12)
+
+                Text("Last \(store.events.count) Events")
+                    .font(.system(size: 12, weight: .semibold))
+                VStack(alignment: .leading, spacing: 6) {
+                    ForEach(store.events.suffix(50).reversed()) { event in
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("\(event.timestamp) • \(event.kind.rawValue) • \(event.deviceID)")
+                                .font(.system(size: 11))
+                            if !event.data.isEmpty {
+                                Text(event.data.map { "\($0.key)=\($0.value)" }.sorted().joined(separator: " "))
+                                    .font(.system(size: 10))
+                                    .foregroundColor(.secondary)
+                            }
+                            if !event.tags.isEmpty {
+                                Text("tags: \(event.tags.joined(separator: ", "))")
+                                    .font(.system(size: 10))
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        .padding(.vertical, 4)
+                        Divider()
+                    }
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var sideColumn: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            scanControlSection
+            GroupBox("Setup") {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Endpoint: \(store.endpointURL)")
+                        .font(.system(size: 12))
+                    Text("Endpoint host: \(endpointHost)")
+                        .font(.system(size: 11))
+                        .foregroundColor(Theme.textSecondary)
+                    if endpointIsLocal {
+                        Text("Warning: localhost endpoints cannot be reached by remote nodes.")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundColor(Theme.accent)
+                    }
+                    if let lastError = store.lastError, !lastError.isEmpty {
+                        Text("Last error: \(lastError)")
+                            .font(.system(size: 11))
+                            .foregroundColor(Theme.textSecondary)
+                    }
+                    Text("Shared Secret:")
+                        .font(.system(size: 12, weight: .semibold))
+                    Text(store.token)
+                        .font(.system(size: 11, design: .monospaced))
+                        .textSelection(.enabled)
+                    HStack {
+                        Text("Port:")
+                            .font(.system(size: 12))
+                        TextField("8787", text: $portText)
+                            .textFieldStyle(.roundedBorder)
+                            .frame(width: 80)
+                            .onAppear {
+                                portText = String(store.port)
+                            }
+                        Button("Apply") {
+                            if let value = Int(portText) {
+                                store.updatePort(value)
+                            }
+                        }
+                        Button("Test Ping") {
+                            store.testPing()
+                        }
+                        .buttonStyle(SecondaryActionButtonStyle())
+                    }
+                    if let lastPing = store.lastPingResult, !lastPing.isEmpty {
+                        Text("Ping: \(lastPing)")
+                            .font(.system(size: 11))
+                            .foregroundColor(Theme.textSecondary)
+                    } else if let lastPingError = store.lastPingError, !lastPingError.isEmpty {
+                        Text("Ping error: \(lastPingError)")
+                            .font(.system(size: 11))
+                            .foregroundColor(Theme.textSecondary)
+                    }
+                }
+                .padding(6)
+            }
+
+            flashControlSection
+            Spacer()
+        }
     }
 
     private var scanControlSection: some View {
@@ -4017,7 +4048,7 @@ struct NodesView: View {
                     Toggle("ONVIF", isOn: $onvifDiscoveryEnabled)
                     Toggle("Service Disc.", isOn: $serviceDiscoveryEnabled)
                     Toggle("ARP Warmup", isOn: $arpWarmupEnabled)
-                    Toggle("BLE", isOn: $bleDiscoveryEnabled)
+                    Toggle("BLE", isOn: Binding(get: { bleIsScanning }, set: { bleDiscoveryEnabled = $0 }))
                 }
                 .font(.system(size: 11))
                 .toggleStyle(SwitchToggleStyle(tint: Theme.accent))
@@ -4399,7 +4430,7 @@ struct NodeCardView: View {
         case "online":
             return ("Online", true, lastSeenText)
         case "connecting":
-            return ("Connecting", true, lastSeenText)
+            return ("Connecting", false, lastSeenText)
         case "error":
             return ("Error", false, lastSeenText)
         default:
@@ -4457,154 +4488,166 @@ struct CasesView: View {
     @State private var includeNet = true
 
     var body: some View {
-        HStack(spacing: 0) {
-            List(selection: $selectedCase) {
-                let aliases = IdentityResolver.shared.aliasMap()
-                ForEach(caseManager.cases) { item in
-                    let alias = aliases[item.targetID]
-                    VStack(alignment: .leading, spacing: 2) {
-                        if let alias, !alias.isEmpty {
-                            Text("\(alias) (\(item.targetID))")
-                                .font(.system(size: 12, weight: .semibold))
-                        } else {
-                            Text(item.targetID)
-                                .font(.system(size: 12, weight: .semibold))
-                        }
-                        Text("\(item.targetType) • \(item.confidenceLevel) (\(item.confidenceScore))")
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 0) {
+                caseList
+                Divider()
+                caseDetail
+                    .frame(minWidth: 320)
+            }
+            VStack(spacing: 12) {
+                caseList
+                caseDetail
+            }
+        }
+    }
+
+    private var caseList: some View {
+        List(selection: $selectedCase) {
+            let aliases = IdentityResolver.shared.aliasMap()
+            ForEach(caseManager.cases) { item in
+                let alias = aliases[item.targetID]
+                VStack(alignment: .leading, spacing: 2) {
+                    if let alias, !alias.isEmpty {
+                        Text("\(alias) (\(item.targetID))")
+                            .font(.system(size: 12, weight: .semibold))
+                    } else {
+                        Text(item.targetID)
+                            .font(.system(size: 12, weight: .semibold))
+                    }
+                    Text("\(item.targetType) • \(item.confidenceLevel) (\(item.confidenceScore))")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                }
+                .tag(item)
+            }
+        }
+        .frame(minWidth: 300)
+    }
+
+    private var caseDetail: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Cases")
+                .font(.system(size: 16, weight: .semibold))
+            GroupBox("Case Session") {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(sessionManager.isActive ? "Session Active" : "Session Idle")
+                        .font(.system(size: 12, weight: .semibold))
+                    if let started = sessionManager.startedAt {
+                        Text("Started: \(started.formatted(date: .abbreviated, time: .shortened))")
                             .font(.system(size: 11))
                             .foregroundColor(.secondary)
                     }
-                    .tag(item)
-                }
-            }
-            .frame(minWidth: 300)
-
-            Divider()
-
-            VStack(alignment: .leading, spacing: 10) {
-                Text("Cases")
-                    .font(.system(size: 16, weight: .semibold))
-                GroupBox("Case Session") {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text(sessionManager.isActive ? "Session Active" : "Session Idle")
-                            .font(.system(size: 12, weight: .semibold))
-                        if let started = sessionManager.startedAt {
-                            Text("Started: \(started.formatted(date: .abbreviated, time: .shortened))")
-                                .font(.system(size: 11))
-                                .foregroundColor(.secondary)
-                        }
-                        TextField("Nodes (comma-separated IDs)", text: $sessionNodesText)
-                            .textFieldStyle(.roundedBorder)
-                        if !entityStore.nodes.isEmpty {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("Active Nodes")
-                                    .font(.system(size: 11, weight: .semibold))
-                                let aliasOverrides = IdentityResolver.shared.aliasMap()
-                                ForEach(entityStore.nodes) { node in
-                                    let alias = aliasOverrides[node.id]
-                                    let isOnline = node.presenceState == .connected || node.presenceState == .idle || node.presenceState == .scanning
-                                    let presentation = NodePresentation.forNode(
-                                        id: node.id,
-                                        keys: [node.id, "node:\(node.id)"],
-                                        isOnline: isOnline,
-                                        activityScore: 0
-                                    )
-                                    HStack {
-                                        Circle()
-                                            .fill(Color(presentation.displayColor))
-                                            .frame(width: 7, height: 7)
-                                        if let alias, !alias.isEmpty {
-                                            Text("\(alias) (\(node.label) • \(node.id))")
-                                                .font(.system(size: 11))
-                                                .foregroundColor(presentation.isOffline ? Theme.muted : Theme.textPrimary)
-                                        } else {
-                                            Text("\(node.label) (\(node.id))")
-                                                .font(.system(size: 11))
-                                                .foregroundColor(presentation.isOffline ? Theme.muted : Theme.textPrimary)
-                                        }
-                                        Spacer()
-                                        Button("Add") {
-                                            appendNodeID(node.id)
-                                        }
-                                        .buttonStyle(SecondaryActionButtonStyle())
+                    TextField("Nodes (comma-separated IDs)", text: $sessionNodesText)
+                        .textFieldStyle(.roundedBorder)
+                    if !entityStore.nodes.isEmpty {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Active Nodes")
+                                .font(.system(size: 11, weight: .semibold))
+                            let aliasOverrides = IdentityResolver.shared.aliasMap()
+                            ForEach(entityStore.nodes) { node in
+                                let alias = aliasOverrides[node.id]
+                                let isOnline = node.presenceState == .connected || node.presenceState == .idle || node.presenceState == .scanning
+                                let presentation = NodePresentation.forNode(
+                                    id: node.id,
+                                    keys: [node.id, "node:\(node.id)"],
+                                    isOnline: isOnline,
+                                    activityScore: 0
+                                )
+                                HStack {
+                                    Circle()
+                                        .fill(Color(presentation.displayColor))
+                                        .frame(width: 7, height: 7)
+                                    if let alias, !alias.isEmpty {
+                                        Text("\(alias) (\(node.label) • \(node.id))")
+                                            .font(.system(size: 11))
+                                            .foregroundColor(presentation.isOffline ? Theme.muted : Theme.textPrimary)
+                                    } else {
+                                        Text("\(node.label) (\(node.id))")
+                                            .font(.system(size: 11))
+                                            .foregroundColor(presentation.isOffline ? Theme.muted : Theme.textPrimary)
                                     }
+                                    Spacer()
+                                    Button("Add") {
+                                        appendNodeID(node.id)
+                                    }
+                                    .buttonStyle(SecondaryActionButtonStyle())
                                 }
                             }
                         }
-                        HStack(spacing: 10) {
-                            Toggle("BLE", isOn: $includeBLE)
-                            Toggle("Wi-Fi", isOn: $includeWiFi)
-                            Toggle("RF", isOn: $includeRF)
-                            Toggle("GPS", isOn: $includeGPS)
-                            Toggle("Net", isOn: $includeNet)
-                        }
-                        .font(.system(size: 11))
-                        .toggleStyle(SwitchToggleStyle(tint: Theme.accent))
-                        HStack {
-                            Button("Start Session") {
-                                let nodes = sessionNodesText.split(separator: ",").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
-                                sessionManager.start(nodes: nodes, sources: selectedSources())
-                            }
-                            .buttonStyle(PrimaryActionButtonStyle())
-                            .disabled(sessionManager.isActive)
-                            Button("Stop Session") {
-                                sessionManager.stop(log: LogStore.shared)
-                            }
-                            .buttonStyle(SecondaryActionButtonStyle())
-                            .disabled(!sessionManager.isActive)
-                        }
                     }
-                    .padding(6)
-                }
-                HStack {
-                    Button("Refresh") { onRefresh() }
-                        .buttonStyle(SecondaryActionButtonStyle())
-                    Button("Clear Selection") {
-                        selectedCase = nil
-                        sessionNodesText = ""
+                    HStack(spacing: 10) {
+                        Toggle("BLE", isOn: $includeBLE)
+                        Toggle("Wi-Fi", isOn: $includeWiFi)
+                        Toggle("RF", isOn: $includeRF)
+                        Toggle("GPS", isOn: $includeGPS)
+                        Toggle("Net", isOn: $includeNet)
                     }
-                    .buttonStyle(SecondaryActionButtonStyle())
-                    Spacer()
-                }
-                if let selectedCase {
-                    let alias = IdentityResolver.shared.resolveLabel(keys: [selectedCase.targetID])
-                    if let alias, !alias.isEmpty {
-                        Text("Target: \(alias) (\(selectedCase.targetID))")
-                            .font(.system(size: 12))
-                    } else {
-                        Text("Target: \(selectedCase.targetID)")
-                            .font(.system(size: 12))
-                    }
-                    Text("Type: \(selectedCase.targetType)")
-                        .font(.system(size: 12))
-                    Text("Confidence: \(selectedCase.confidenceLevel) (\(selectedCase.confidenceScore))")
-                        .font(.system(size: 12))
-                    Text("References: \(selectedCase.references.count)")
-                        .font(.system(size: 12))
-
+                    .font(.system(size: 11))
+                    .toggleStyle(SwitchToggleStyle(tint: Theme.accent))
                     HStack {
-                        Button("Open Case Folder") {
-                            caseManager.openCaseFolder(selectedCase)
-                        }
-                        .buttonStyle(SecondaryActionButtonStyle())
-                        Button("Generate Case Report") {
-                            caseManager.generateCaseReport(selectedCase, log: LogStore.shared)
-                        }
-                        .buttonStyle(SecondaryActionButtonStyle())
-                        Button("Ship Now") {
-                            vaultTransport.shipNow(log: LogStore.shared)
+                        Button("Start Session") {
+                            let nodes = sessionNodesText.split(separator: ",").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
+                            sessionManager.start(nodes: nodes, sources: selectedSources())
                         }
                         .buttonStyle(PrimaryActionButtonStyle())
+                        .disabled(sessionManager.isActive)
+                        Button("Stop Session") {
+                            sessionManager.stop(log: LogStore.shared)
+                        }
+                        .buttonStyle(SecondaryActionButtonStyle())
+                        .disabled(!sessionManager.isActive)
                     }
-                } else {
-                    Text("Select a case to view details.")
-                        .foregroundColor(.secondary)
                 }
+                .padding(6)
+            }
+            HStack {
+                Button("Refresh") { onRefresh() }
+                    .buttonStyle(SecondaryActionButtonStyle())
+                Button("Clear Selection") {
+                    selectedCase = nil
+                    sessionNodesText = ""
+                }
+                .buttonStyle(SecondaryActionButtonStyle())
                 Spacer()
             }
-            .padding(12)
-            .frame(minWidth: 320)
+            if let selectedCase {
+                let alias = IdentityResolver.shared.resolveLabel(keys: [selectedCase.targetID])
+                if let alias, !alias.isEmpty {
+                    Text("Target: \(alias) (\(selectedCase.targetID))")
+                        .font(.system(size: 12))
+                } else {
+                    Text("Target: \(selectedCase.targetID)")
+                        .font(.system(size: 12))
+                }
+                Text("Type: \(selectedCase.targetType)")
+                    .font(.system(size: 12))
+                Text("Confidence: \(selectedCase.confidenceLevel) (\(selectedCase.confidenceScore))")
+                    .font(.system(size: 12))
+                Text("References: \(selectedCase.references.count)")
+                    .font(.system(size: 12))
+
+                HStack {
+                    Button("Open Case Folder") {
+                        caseManager.openCaseFolder(selectedCase)
+                    }
+                    .buttonStyle(SecondaryActionButtonStyle())
+                    Button("Generate Case Report") {
+                        caseManager.generateCaseReport(selectedCase, log: LogStore.shared)
+                    }
+                    .buttonStyle(SecondaryActionButtonStyle())
+                    Button("Ship Now") {
+                        vaultTransport.shipNow(log: LogStore.shared)
+                    }
+                    .buttonStyle(PrimaryActionButtonStyle())
+                }
+            } else {
+                Text("Select a case to view details.")
+                    .foregroundColor(.secondary)
+            }
+            Spacer()
         }
+        .padding(12)
     }
 
     private func selectedSources() -> [String] {
