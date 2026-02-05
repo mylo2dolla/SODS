@@ -4,6 +4,7 @@ Date: 2026-02-04
 
 ## What Changed Today
 
+- 2026-02-04: Staged ESP32-P4 godbutton firmware for ESP Web Tools. Rebuilt and restaged node-agent firmware for ESP32 DevKit v1 (`esp32dev`) and ESP32-C3 (`esp32c3`). Staged ops-portal CYD firmware for ESP Web Tools.
 - Canonical repo structure established under `firmware/`, `apps/`, `cli/`, `tools/`, and `docs/`.
 - `node-agent` + `ops-portal` firmware moved into `firmware/`.
 - Dev Station app moved into `apps/dev-station`.
