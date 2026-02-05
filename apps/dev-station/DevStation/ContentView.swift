@@ -4572,6 +4572,12 @@ struct VaultView: View {
             Text("Status: \(shipper.lastShipResult) • Queued: \(shipper.queuedCount)")
                 .font(.system(size: 11))
                 .foregroundColor(.secondary)
+            if !shipper.lastShipDetail.isEmpty {
+                Text(shipper.lastShipDetail)
+                    .font(.system(size: 11, design: .monospaced))
+                    .foregroundColor(.secondary)
+                    .textSelection(.enabled)
+            }
             if !shipper.lastShipTime.isEmpty {
                 Text("Last Ship: \(shipper.lastShipTime)")
                     .font(.system(size: 11))

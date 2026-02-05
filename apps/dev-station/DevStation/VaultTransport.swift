@@ -19,6 +19,7 @@ final class VaultTransport: ObservableObject {
     @Published var autoShipAfterExport: Bool
     @Published var lastShipTime: String = ""
     @Published var lastShipResult: String = ""
+    @Published var lastShipDetail: String = ""
     @Published var queuedCount: Int = 0
 
     private init() {
@@ -51,6 +52,7 @@ final class VaultTransport: ObservableObject {
         await MainActor.run {
             self.queuedCount = files.count
             self.lastShipResult = "Shipping..."
+            self.lastShipDetail = ""
         }
         log.log(.info, "Vault ship queued: \(files.count) files")
         for file in files {
@@ -64,7 +66,10 @@ final class VaultTransport: ObservableObject {
                 if !(base.success && retry.success) {
                     let detail = [ensure.stderr, base.stderr, retry.stderr].filter { !$0.isEmpty }.joined(separator: " | ")
                     log.log(.error, "Vault ship error: failed to create \(baseDest) \(detail)")
-                    await MainActor.run { self.lastShipResult = "Error creating remote dir: \(detail)" }
+                    await MainActor.run {
+                        self.lastShipResult = "Error creating remote dir: \(baseDest)"
+                        self.lastShipDetail = detail.isEmpty ? "Unknown SSH error." : detail
+                    }
                     continue
                 }
                 await MainActor.run { self.lastShipResult = "" }
@@ -78,12 +83,17 @@ final class VaultTransport: ObservableObject {
                 await MainActor.run {
                     self.lastShipTime = ISO8601DateFormatter().string(from: Date())
                     self.lastShipResult = "OK"
+                    self.lastShipDetail = ""
                 }
             } else {
                 let detail = send.stderr.trimmingCharacters(in: .whitespacesAndNewlines)
-                let message = detail.isEmpty ? "Failed to ship one or more files" : "Ship failed: \(detail)"
+                let message = "Ship failed: \(remotePath)"
+                let hint = "Suggested fix: ensure the directory exists and is writable. Example: ssh \(user)@\(host) \"mkdir -p \\\"\(baseDest)\\\" && chmod u+rwX \\\"\(baseDest)\\\"\""
                 log.log(.error, "Vault ship error: \(file.url.path)\(detail.isEmpty ? "" : " (\(detail))")")
-                await MainActor.run { self.lastShipResult = message }
+                await MainActor.run {
+                    self.lastShipResult = message
+                    self.lastShipDetail = detail.isEmpty ? hint : "\(detail)\n\(hint)"
+                }
             }
         }
     }
