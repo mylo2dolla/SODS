@@ -214,6 +214,87 @@ final class SODSStore: ObservableObject {
         recordingStartedAt = nil
     }
 
+    func saveRecording(to url: URL) -> Bool {
+        let encoder = JSONEncoder()
+        var lines: [String] = []
+        for event in recordedEvents {
+            let payload: [String: Any] = [
+                "recv_ts": Int(event.recvTs?.timeIntervalSince1970 ?? 0) * 1000,
+                "event_ts": isoString(from: event.eventTs),
+                "node_id": event.nodeID,
+                "kind": event.kind,
+                "severity": event.severity,
+                "summary": event.summary,
+                "data": jsonObject(from: event.data)
+            ]
+            if let data = try? JSONSerialization.data(withJSONObject: payload),
+               let line = String(data: data, encoding: .utf8) {
+                lines.append(line)
+            }
+        }
+        do {
+            try lines.joined(separator: "\n").write(to: url, atomically: true, encoding: .utf8)
+            return true
+        } catch {
+            lastError = error.localizedDescription
+            return false
+        }
+    }
+
+    func loadRecording(from url: URL) -> Bool {
+        do {
+            let contents = try String(contentsOf: url, encoding: .utf8)
+            let decoder = JSONDecoder()
+            var loaded: [NormalizedEvent] = []
+            for line in contents.split(separator: "\n") {
+                guard let data = line.data(using: .utf8) else { continue }
+                if let entry = try? decoder.decode(RecordedEventLine.self, from: data) {
+                    let canonical = CanonicalEvent(
+                        id: entry.id,
+                        recvTs: entry.recvTs ?? 0,
+                        eventTs: entry.eventTs ?? "",
+                        nodeID: entry.nodeID,
+                        kind: entry.kind,
+                        severity: entry.severity ?? "info",
+                        summary: entry.summary ?? entry.kind,
+                        data: entry.data ?? [:]
+                    )
+                    loaded.append(NormalizedEvent(from: canonical))
+                }
+            }
+            recordedEvents = loaded
+            recordingStartedAt = Date()
+            return true
+        } catch {
+            lastError = error.localizedDescription
+            return false
+        }
+    }
+
+    private func isoString(from date: Date?) -> String {
+        guard let date else { return ISO8601DateFormatter().string(from: Date()) }
+        return ISO8601DateFormatter().string(from: date)
+    }
+
+    private func jsonObject(from dict: [String: JSONValue]) -> [String: Any] {
+        var out: [String: Any] = [:]
+        for (key, value) in dict {
+            out[key] = jsonObject(from: value)
+        }
+        return out
+    }
+
+    private func jsonObject(from value: JSONValue) -> Any {
+        switch value {
+        case .string(let v): return v
+        case .number(let v): return v
+        case .bool(let v): return v
+        case .object(let v): return jsonObject(from: v)
+        case .array(let v): return v.map { jsonObject(from: $0) }
+        case .null: return NSNull()
+        }
+    }
+
     private func pollStatusAndNodes() async {
         do {
             let statusURL = makeURL(path: "/api/status")
@@ -424,6 +505,28 @@ struct SODSNode: Decodable {
         case hostname
         case lastSeen = "last_seen"
         case lastKind = "last_kind"
+    }
+}
+
+struct RecordedEventLine: Decodable {
+    let id: String?
+    let recvTs: Int?
+    let eventTs: String?
+    let nodeID: String
+    let kind: String
+    let severity: String?
+    let summary: String?
+    let data: [String: JSONValue]?
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case recvTs = "recv_ts"
+        case eventTs = "event_ts"
+        case nodeID = "node_id"
+        case kind
+        case severity
+        case summary
+        case data
     }
 }
 

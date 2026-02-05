@@ -1069,15 +1069,15 @@ struct ContentView: View {
                 items.append(ActionMenuItem(
                     title: bleDiscoveryEnabled ? "Stop BLE Scan" : "Start BLE Scan",
                     systemImage: "antenna.radiowaves.left.and.right",
-                    enabled: bleScanner.isAvailableForScan,
-                    reason: bleScanner.isAvailableForScan ? nil : "Bluetooth unavailable",
+                    enabled: true,
+                    reason: nil,
                     action: { bleDiscoveryEnabled.toggle() }
                 ))
                 items.append(ActionMenuItem(
                     title: "One-shot BLE Scan",
                     systemImage: "scope",
-                    enabled: bleScanner.isAvailableForScan,
-                    reason: bleScanner.isAvailableForScan ? nil : "Bluetooth unavailable",
+                    enabled: true,
+                    reason: nil,
                     action: {
                         bleScanMode = .oneShot
                         bleDiscoveryEnabled = true
@@ -1088,11 +1088,12 @@ struct ContentView: View {
                 items.append(ActionMenuItem(
                     title: "Connect Node",
                     systemImage: "link",
-                    enabled: !connectNodeID.isEmpty,
-                    reason: connectNodeID.isEmpty ? "No node selected" : nil,
+                    enabled: true,
+                    reason: nil,
                     action: {
-                        let target = connectNodeID
+                        let target = connectNodeID.isEmpty ? (connectableNodeIDs.first ?? "") : connectNodeID
                         if !target.isEmpty {
+                            sodsStore.connectNode(target)
                             piAuxStore.connectNode(target)
                             piAuxStore.refreshLocalNodeHeartbeat()
                             if !bleDiscoveryEnabled { bleDiscoveryEnabled = true }
@@ -1131,13 +1132,14 @@ struct ContentView: View {
             ActionMenuItem(title: "Open Tools", systemImage: "wrench", enabled: true, reason: nil, action: { modalCoordinator.present(.toolRegistry) }),
             ActionMenuItem(title: "Inspect Station", systemImage: "info.circle", enabled: true, reason: nil, action: { modalCoordinator.present(.apiInspector(endpoint: .status)) }),
             ActionMenuItem(title: "Inspect Tools JSON", systemImage: "doc.text", enabled: true, reason: nil, action: { modalCoordinator.present(.apiInspector(endpoint: .tools)) }),
-            ActionMenuItem(title: "Open Web UI", systemImage: "globe", enabled: hasHostSelection && bestHTTPURL(for: selectedIP ?? "") != nil, reason: hasHostSelection ? nil : "No host selected", action: { if let ip = selectedIP { openWebUI(for: ip) } })
+            ActionMenuItem(title: "Open Web UI", systemImage: "globe", enabled: true, reason: nil, action: { if let ip = selectedIP { openWebUI(for: ip) } })
         ]
 
         let connectItems: [ActionMenuItem] = [
-            ActionMenuItem(title: "Connect Node", systemImage: "link", enabled: !connectNodeID.isEmpty, reason: connectNodeID.isEmpty ? "No node selected" : nil, action: {
-                let target = connectNodeID
+            ActionMenuItem(title: "Connect Node", systemImage: "link", enabled: true, reason: nil, action: {
+                let target = connectNodeID.isEmpty ? (connectableNodeIDs.first ?? "") : connectNodeID
                 if !target.isEmpty {
+                    sodsStore.connectNode(target)
                     piAuxStore.connectNode(target)
                     piAuxStore.refreshLocalNodeHeartbeat()
                 }
@@ -1155,6 +1157,30 @@ struct ContentView: View {
 
         var sections: [ActionMenuSection] = []
         if !nowItems.isEmpty { sections.append(ActionMenuSection(title: "Now", items: nowItems)) }
+        let toolItems = toolRegistry.tools.map { tool in
+            ActionMenuItem(
+                title: tool.name,
+                systemImage: "wrench.and.screwdriver",
+                enabled: true,
+                reason: nil,
+                action: { modalCoordinator.present(.toolRunner(tool: tool)) }
+            )
+        }
+        if !toolItems.isEmpty {
+            sections.append(ActionMenuSection(title: "Tools", items: toolItems))
+        }
+        let runbookItems = runbookRegistry.runbooks.map { runbook in
+            ActionMenuItem(
+                title: runbook.name,
+                systemImage: "bolt",
+                enabled: true,
+                reason: nil,
+                action: { modalCoordinator.present(.runbookRunner(runbook: runbook)) }
+            )
+        }
+        if !runbookItems.isEmpty {
+            sections.append(ActionMenuSection(title: "Runbooks", items: runbookItems))
+        }
         sections.append(ActionMenuSection(title: "Inspect", items: inspectItems))
         sections.append(ActionMenuSection(title: "Connect / Control", items: connectItems))
         sections.append(ActionMenuSection(title: "Export / Ship", items: exportItems))

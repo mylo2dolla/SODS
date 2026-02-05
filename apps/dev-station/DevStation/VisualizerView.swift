@@ -156,6 +156,14 @@ struct VisualizerView: View {
                         store.clearRecording()
                     }
                     .buttonStyle(SecondaryActionButtonStyle())
+                    Button("Save Recording") {
+                        saveRecording()
+                    }
+                    .buttonStyle(SecondaryActionButtonStyle())
+                    Button("Load Recording") {
+                        loadRecording()
+                    }
+                    .buttonStyle(SecondaryActionButtonStyle())
                     Text("\(store.recordedEvents.count) events")
                         .font(.system(size: 10))
                         .foregroundColor(.secondary)
@@ -172,6 +180,30 @@ struct VisualizerView: View {
                     .font(.system(size: 11))
             }
             .padding(6)
+        }
+    }
+
+    private func saveRecording() {
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [.json]
+        panel.nameFieldStringValue = "sods-recording-\(DateFormatter.recordingStamp.string(from: Date())).ndjson"
+        panel.directoryURL = StoragePaths.recordingsBase()
+        panel.canCreateDirectories = true
+        if panel.runModal() == .OK, let url = panel.url {
+            _ = store.saveRecording(to: url)
+        }
+    }
+
+    private func loadRecording() {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [.json]
+        panel.allowsMultipleSelection = false
+        panel.directoryURL = StoragePaths.recordingsBase()
+        if panel.runModal() == .OK, let url = panel.url {
+            if store.loadRecording(from: url) {
+                replayEnabled = true
+                replayOffset = 0
+            }
         }
     }
 
@@ -394,6 +426,14 @@ struct NodeRow: View {
         .background(selected ? Theme.panelAlt : Theme.panel)
         .cornerRadius(6)
     }
+}
+
+private extension DateFormatter {
+    static let recordingStamp: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyyMMdd-HHmmss"
+        return formatter
+    }()
 }
 
 struct FilterRow: View {
