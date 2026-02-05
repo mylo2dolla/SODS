@@ -39,14 +39,12 @@ final class PiAuxStore: ObservableObject {
     @Published private(set) var lastPingResult: String?
     @Published private(set) var lastPingError: String?
     @Published private(set) var activeNodes: [NodeRecord] = []
-    @Published var plannedNodes: [PlannedNode] = []
     @Published var port: Int
     @Published var token: String
 
     private let maxEvents = 200
     private let tokenKey = "PiAuxToken"
     private let portKey = "PiAuxPort"
-    private let plannedNodesKey = "PlannedNodes"
     private var server: PiAuxServer?
     private var activeByID: [String: NodeRecord] = [:]
     private let localNodeID = "mac-local"
@@ -67,18 +65,6 @@ final class PiAuxStore: ObservableObject {
         }
         let savedPort = defaults.integer(forKey: portKey)
         self.port = savedPort > 0 ? savedPort : 8787
-        if let data = defaults.data(forKey: plannedNodesKey),
-           let decoded = try? JSONDecoder().decode([PlannedNode].self, from: data) {
-            self.plannedNodes = decoded
-        } else {
-            self.plannedNodes = []
-        }
-        if !plannedNodes.contains(where: { $0.id == "pi-aux" }) {
-            plannedNodes.append(PlannedNode(id: "pi-aux", label: "Pi-Aux", type: .piAux, capabilities: ["ble", "wifi", "rf", "gps", "net"]))
-            persistPlannedNodes()
-        }
-        registerLocalNode()
-        mergePlannedIntoActive()
         startHeartbeatTimer()
         start()
     }
@@ -116,38 +102,16 @@ final class PiAuxStore: ObservableObject {
     func connectNode(_ nodeID: String) {
         let trimmed = nodeID.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
-        var record = activeByID[trimmed] ?? NodeRecord(
-            id: trimmed,
-            label: trimmed,
-            type: .unknown,
-            capabilities: [],
-            lastSeen: nil,
-            lastHeartbeat: nil,
-            connectionState: .idle,
-            isScanning: false,
-            lastError: nil,
-            planned: false
-        )
-        record.connectionState = .connected
-        record.lastHeartbeat = Date()
-        if record.lastSeen == nil { record.lastSeen = Date() }
+        guard var record = activeByID[trimmed] else { return }
+        if record.connectionState == .offline {
+            record.connectionState = .idle
+        }
         activeByID[trimmed] = record
         activeNodes = activeByID.values.sorted { ($0.lastSeen ?? .distantPast) > ($1.lastSeen ?? .distantPast) }
     }
 
     func setNodeScanning(nodeID: String, enabled: Bool) {
-        var record = activeByID[nodeID] ?? NodeRecord(
-            id: nodeID,
-            label: nodeID,
-            type: .unknown,
-            capabilities: [],
-            lastSeen: nil,
-            lastHeartbeat: nil,
-            connectionState: .idle,
-            isScanning: false,
-            lastError: nil,
-            planned: false
-        )
+        guard var record = activeByID[nodeID] else { return }
         record.isScanning = enabled
         if enabled, record.connectionState == .offline {
             record.connectionState = .idle
@@ -168,18 +132,7 @@ final class PiAuxStore: ObservableObject {
     }
 
     private func touchHeartbeat(nodeID: String, setConnected: Bool) {
-        var record = activeByID[nodeID] ?? NodeRecord(
-            id: nodeID,
-            label: nodeID,
-            type: .unknown,
-            capabilities: [],
-            lastSeen: nil,
-            lastHeartbeat: nil,
-            connectionState: .idle,
-            isScanning: false,
-            lastError: nil,
-            planned: false
-        )
+        guard var record = activeByID[nodeID] else { return }
         record.lastHeartbeat = Date()
         if setConnected {
             record.connectionState = .connected
@@ -246,30 +199,6 @@ final class PiAuxStore: ObservableObject {
         return false
     }
 
-    func addPlannedNode(id: String, label: String, type: NodeType, capabilities: [String]) {
-        let trimmed = id.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
-        if plannedNodes.contains(where: { $0.id == trimmed }) {
-            return
-        }
-        plannedNodes.append(PlannedNode(id: trimmed, label: label.isEmpty ? trimmed : label, type: type, capabilities: capabilities))
-        persistPlannedNodes()
-        mergePlannedIntoActive()
-    }
-
-    func removePlannedNode(_ node: PlannedNode) {
-        plannedNodes.removeAll { $0.id == node.id }
-        persistPlannedNodes()
-    }
-
-    func updatePlannedNode(_ node: PlannedNode) {
-        if let idx = plannedNodes.firstIndex(where: { $0.id == node.id }) {
-            plannedNodes[idx] = node
-            persistPlannedNodes()
-            mergePlannedIntoActive()
-        }
-    }
-
     func pingNode(_ nodeID: String) {
         let message = "Node does not expose ping endpoint."
         lastError = message
@@ -309,13 +238,6 @@ final class PiAuxStore: ObservableObject {
 
     func refreshLocalNodeHeartbeat() {
         touchHeartbeat(nodeID: localNodeID, setConnected: true)
-        mergePlannedIntoActive()
-    }
-
-    private func persistPlannedNodes() {
-        if let data = try? JSONEncoder().encode(plannedNodes) {
-            UserDefaults.standard.set(data, forKey: plannedNodesKey)
-        }
     }
 
     private func updateActiveNode(from event: PiAuxEvent) {
@@ -330,20 +252,12 @@ final class PiAuxStore: ObservableObject {
             lastHeartbeat: nil,
             connectionState: .idle,
             isScanning: false,
-            lastError: nil,
-            planned: false
+            lastError: nil
         )
-        let planned = plannedNodes.first(where: { $0.id == nodeID })
-        if let planned {
-            record.label = planned.label
-            record.type = planned.type
-            record.capabilities = planned.capabilities
-            record.planned = true
-        }
-        if let label = extractLabel(from: event), planned == nil {
+        if let label = extractLabel(from: event) {
             record.label = label
         }
-        if let type = extractNodeType(from: event), planned == nil || record.type == .unknown {
+        if let type = extractNodeType(from: event), record.type == .unknown {
             record.type = type
         }
         let caps = extractCapabilities(from: event)
@@ -357,51 +271,6 @@ final class PiAuxStore: ObservableObject {
         record.lastHeartbeat = now
         activeByID[nodeID] = record
         activeNodes = activeByID.values.sorted { ($0.lastSeen ?? .distantPast) > ($1.lastSeen ?? .distantPast) }
-    }
-
-    private func mergePlannedIntoActive() {
-        for planned in plannedNodes {
-            if activeByID[planned.id] == nil {
-                activeByID[planned.id] = NodeRecord(
-                    id: planned.id,
-                    label: planned.label,
-                    type: planned.type,
-                    capabilities: planned.capabilities,
-                    lastSeen: nil,
-                    lastHeartbeat: nil,
-                    connectionState: .idle,
-                    isScanning: false,
-                    lastError: nil,
-                    planned: true
-                )
-            } else {
-                var existing = activeByID[planned.id]
-                existing?.label = planned.label
-                existing?.type = planned.type
-                existing?.capabilities = planned.capabilities
-                existing?.planned = true
-                if let updated = existing {
-                    activeByID[planned.id] = updated
-                }
-            }
-        }
-        activeNodes = activeByID.values.sorted { ($0.lastSeen ?? .distantPast) > ($1.lastSeen ?? .distantPast) }
-    }
-
-    private func registerLocalNode() {
-        let record = NodeRecord(
-            id: localNodeID,
-            label: "Dev Station",
-            type: .mac,
-            capabilities: ["net", "ble", "scan", "report"],
-            lastSeen: Date(),
-            lastHeartbeat: Date(),
-            connectionState: .connected,
-            isScanning: false,
-            lastError: nil,
-            planned: true
-        )
-        activeByID[localNodeID] = record
     }
 
     private func extractNodeID(from event: PiAuxEvent) -> String? {

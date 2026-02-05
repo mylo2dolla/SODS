@@ -84,7 +84,7 @@ struct ContentView: View {
     @State private var networkScanMode: ScanMode = .oneShot
     @State private var bleScanMode: ScanMode = .oneShot
     @State private var selectedBleID: UUID?
-    @State private var connectNodeID: String = "pi-aux"
+    @State private var connectNodeID: String = ""
     @State private var showFlashConfirm: Bool = false
     @State private var credentialIP: String?
     @State private var credentialUsername = ""
@@ -318,10 +318,9 @@ struct ContentView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .connectNodeCommand)) { _ in
             viewMode = .nodes
-            let target = connectNodeID.isEmpty ? "pi-aux" : connectNodeID
-            connectNodeID = target
-            piAuxStore.connectNode(target)
-            piAuxStore.refreshLocalNodeHeartbeat()
+            guard !connectNodeID.isEmpty else { return }
+            sodsStore.connectNode(connectNodeID)
+            piAuxStore.connectNode(connectNodeID)
         }
         .onChange(of: selectedIP) { newValue in
             if let ip = newValue {
@@ -1091,13 +1090,9 @@ struct ContentView: View {
 
     private func connectableNodeIDs() -> [String] {
         var ids: Set<String> = []
-        for node in piAuxStore.plannedNodes {
-            ids.insert(node.id)
-        }
         for node in piAuxStore.activeNodes {
             ids.insert(node.id)
         }
-        if ids.isEmpty { return ["pi-aux"] }
         return ids.sorted()
     }
 
@@ -1132,13 +1127,12 @@ struct ContentView: View {
                     enabled: true,
                     reason: nil,
                     action: {
-                        let target = connectNodeID.isEmpty ? (self.connectableNodeIDs().first ?? "") : connectNodeID
-                        if !target.isEmpty {
-                            sodsStore.connectNode(target)
-                            piAuxStore.connectNode(target)
-                            piAuxStore.refreshLocalNodeHeartbeat()
-                            if !bleDiscoveryEnabled { bleDiscoveryEnabled = true }
-                        }
+                        let target = !connectNodeID.isEmpty ? connectNodeID : (self.connectableNodeIDs().first ?? "")
+                        guard !target.isEmpty else { return }
+                        connectNodeID = target
+                        sodsStore.connectNode(target)
+                        piAuxStore.connectNode(target)
+                        if !bleDiscoveryEnabled { bleDiscoveryEnabled = true }
                     }
                 ))
                 items.append(ActionMenuItem(
@@ -1173,12 +1167,11 @@ struct ContentView: View {
 
         let connectItems: [ActionMenuItem] = [
             ActionMenuItem(title: "Connect Node", systemImage: "link", enabled: true, reason: nil, action: {
-                let target = connectNodeID.isEmpty ? (self.connectableNodeIDs().first ?? "") : connectNodeID
-                if !target.isEmpty {
-                    sodsStore.connectNode(target)
-                    piAuxStore.connectNode(target)
-                    piAuxStore.refreshLocalNodeHeartbeat()
-                }
+                let target = !connectNodeID.isEmpty ? connectNodeID : (self.connectableNodeIDs().first ?? "")
+                guard !target.isEmpty else { return }
+                connectNodeID = target
+                sodsStore.connectNode(target)
+                piAuxStore.connectNode(target)
             })
         ]
 
@@ -3880,10 +3873,6 @@ struct NodesView: View {
     let onRevealLatestReport: () -> Void
     let onFindDevice: () -> Void
     @State private var portText: String = ""
-    @State private var plannedID: String = ""
-    @State private var plannedLabel: String = ""
-    @State private var plannedType: NodeType = .esp32
-    @State private var plannedCaps: String = ""
 
     var body: some View {
         HStack(spacing: 12) {
@@ -3936,66 +3925,6 @@ struct NodesView: View {
 
             VStack(alignment: .leading, spacing: 12) {
                 scanControlSection
-                GroupBox("Planned Nodes") {
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack {
-                            TextField("Node ID", text: $plannedID)
-                                .textFieldStyle(.roundedBorder)
-                                .frame(width: 160)
-                            TextField("Label", text: $plannedLabel)
-                                .textFieldStyle(.roundedBorder)
-                                .frame(width: 160)
-                            Picker("Type", selection: $plannedType) {
-                                ForEach(NodeType.allCases, id: \.self) { type in
-                                    Text(type.rawValue)
-                                        .tag(type)
-                                }
-                            }
-                            .frame(width: 120)
-                        }
-                        TextField("Capabilities (comma-separated)", text: $plannedCaps)
-                            .textFieldStyle(.roundedBorder)
-                            .frame(maxWidth: 420)
-                        HStack {
-                            Button("Add Planned Node") {
-                                let caps = plannedCaps.split(separator: ",").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
-                                store.addPlannedNode(id: plannedID, label: plannedLabel, type: plannedType, capabilities: caps)
-                                plannedID = ""
-                                plannedLabel = ""
-                                plannedCaps = ""
-                            }
-                            .buttonStyle(SecondaryActionButtonStyle())
-                            Spacer()
-                        }
-                        if !store.plannedNodes.isEmpty {
-                            VStack(alignment: .leading, spacing: 6) {
-                                ForEach(store.plannedNodes) { node in
-                                    let presentation = NodePresentation.forNode(
-                                        id: node.id,
-                                        keys: [node.id, "node:\(node.id)"],
-                                        isOnline: false,
-                                        activityScore: 0
-                                    )
-                                    HStack {
-                                        Circle()
-                                            .fill(Color(presentation.displayColor))
-                                            .frame(width: 7, height: 7)
-                                        Text("\(node.id) • \(node.label) • \(node.type.rawValue)")
-                                            .font(.system(size: 11))
-                                            .foregroundColor(presentation.isOffline ? Theme.muted : Theme.textPrimary)
-                                        Spacer()
-                                        Button("Remove") {
-                                            store.removePlannedNode(node)
-                                        }
-                                        .buttonStyle(SecondaryActionButtonStyle())
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    .padding(6)
-                }
-
                 GroupBox("Setup") {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Endpoint: \(store.endpointURL)")
@@ -4142,19 +4071,23 @@ struct NodesView: View {
                 HStack(spacing: 10) {
                     Text("Connect")
                         .font(.system(size: 11))
-                    Picker("Node", selection: $connectNodeID) {
-                        ForEach(connectableNodeIDs, id: \.self) { id in
-                            Text(id).tag(id)
+                    if !connectableNodeIDs.isEmpty {
+                        Picker("Node", selection: $connectNodeID) {
+                            ForEach(connectableNodeIDs, id: \.self) { id in
+                                Text(id).tag(id)
+                            }
                         }
+                        .frame(width: 220)
                     }
-                    .frame(width: 220)
+                    TextField("Node ID", text: $connectNodeID)
+                        .textFieldStyle(.roundedBorder)
+                        .frame(width: 180)
                     Button("Connect Node") {
-                        let target = connectableNodeIDs.contains(connectNodeID) ? connectNodeID : (connectableNodeIDs.first ?? connectNodeID)
+                        let target = !connectNodeID.isEmpty ? connectNodeID : (connectableNodeIDs.first ?? "")
                         if !target.isEmpty {
                             connectNodeID = target
                             sodsStore.connectNode(target)
                             store.connectNode(target)
-                            store.refreshLocalNodeHeartbeat()
                             if !bleDiscoveryEnabled {
                                 bleDiscoveryEnabled = true
                             }

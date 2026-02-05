@@ -7,6 +7,10 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 APP_NAME="Dev Station"
 APP_BUNDLE="/Applications/${APP_NAME}.app"
 DERIVED_DATA="${REPO_ROOT}/dist/DerivedData"
+BUILD_DIR="${REPO_ROOT}/dist/build"
+OUT_APP="${REPO_ROOT}/dist/DevStation.app"
+PROJECT="${REPO_ROOT}/apps/dev-station/DevStation.xcodeproj"
+SCHEME="DevStation"
 
 pkill -x "DevStation" >/dev/null 2>&1 || true
 pkill -x "Dev Station" >/dev/null 2>&1 || true
@@ -22,8 +26,25 @@ fi
 if [ -d "${DERIVED_DATA}" ]; then
   rm -rf "${DERIVED_DATA}"
 fi
+if [ -d "${BUILD_DIR}" ]; then
+  rm -rf "${BUILD_DIR}"
+fi
+if [ -d "${OUT_APP}" ]; then
+  rm -rf "${OUT_APP}"
+fi
 
-"${REPO_ROOT}/tools/devstation-build.sh"
+if [ -d "${PROJECT}" ]; then
+  echo "Cleaning Dev Station..."
+  /usr/bin/xcodebuild \
+    -project "${PROJECT}" \
+    -scheme "${SCHEME}" \
+    -configuration Release \
+    -derivedDataPath "${DERIVED_DATA}" \
+    CODE_SIGNING_ALLOWED=NO \
+    clean
+fi
+
+DEVSTATION_CLEAN=1 "${REPO_ROOT}/tools/devstation-build.sh"
 "${REPO_ROOT}/tools/devstation-install.sh"
 
 if [ -d "${APP_BUNDLE}" ]; then

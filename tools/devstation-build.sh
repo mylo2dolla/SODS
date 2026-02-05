@@ -29,6 +29,14 @@ echo "Building Dev Station..."
   -derivedDataPath "$DERIVED" \
   CONFIGURATION_BUILD_DIR="$BUILD_DIR" \
   CODE_SIGNING_ALLOWED=NO \
+  ${DEVSTATION_CLEAN:+clean}
+/usr/bin/xcodebuild \
+  -project "$PROJECT" \
+  -scheme "$SCHEME" \
+  -configuration Release \
+  -derivedDataPath "$DERIVED" \
+  CONFIGURATION_BUILD_DIR="$BUILD_DIR" \
+  CODE_SIGNING_ALLOWED=NO \
   build
 
 BUILD_APP="$BUILD_DIR/$APP_NAME"

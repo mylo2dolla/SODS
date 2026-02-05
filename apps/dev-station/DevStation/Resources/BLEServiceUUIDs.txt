@@ -1,13 +1,67 @@
-# BLE Service UUIDs (subset)
+# BLE Service UUIDs (subset, non-trivial)
 1800 Generic Access
 1801 Generic Attribute
+1802 Immediate Alert
+1803 Link Loss
+1804 Tx Power
+1805 Current Time Service
+1806 Reference Time Update Service
+1807 Next DST Change Service
+1808 Glucose
+1809 Health Thermometer
 180A Device Information
-180F Battery Service
 180D Heart Rate
-181A Environmental Sensing
-181C User Data
-182A Firmware Update
+180E Phone Alert Status Service
+180F Battery Service
+1810 Blood Pressure
+1811 Alert Notification Service
+1812 Human Interface Device
+1813 Scan Parameters
+1814 Running Speed and Cadence
+1815 Automation IO
+1816 Cycling Speed and Cadence
+1817 Cycling Power
+1818 Location and Navigation
+1819 Environmental Sensing
+181A Body Composition
+181B User Data
+181C Weight Scale
+181D Bond Management
+181E Continuous Glucose Monitoring
+181F Internet Protocol Support
+1820 Indoor Positioning
+1821 Pulse Oximeter
+1822 HTTP Proxy
+1823 Transport Discovery
+1824 Object Transfer
+1825 Fitness Machine
+1826 Mesh Provisioning
+1827 Mesh Proxy
+1828 Reconnection Configuration
+1829 Insulin Delivery
+182A Binary Sensor
+182B Emergency Configuration
+182C Authorization Control
+182D Physical Activity Monitor
+182E Elapsed Time
+182F Generic Health Sensor
+1830 Audio Input Control
+1831 Volume Control
+1832 Volume Offset Control
+1833 Coordinated Set Identification Service
+1834 Device Time
+1835 Media Control Service
+1836 Generic Media Control Service
+1837 Constant Tone Extension
+1838 Telephone Bearer Service
+1839 Generic Telephone Bearer Service
+183A Microphone Control
 FEAA Eddystone
-FE9F Fitbit
-0000180A00001000800000805F9B34FB Device Information (128-bit)
-0000180F00001000800000805F9B34FB Battery Service (128-bit)
+FEDA Google Fast Pair
+FEE0 Tile Service
+FEF5 Google Nearby
+FE0F Philips Hue
+FE9F Google Beacon
+FEB3 Apple Media Service
+FEB4 Apple Notification Center Service
+FEB5 Apple Notification Center Service

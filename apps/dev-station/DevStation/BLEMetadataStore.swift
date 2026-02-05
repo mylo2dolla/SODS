@@ -107,8 +107,8 @@ final class BLEMetadataStore {
 
     func tableWarning() -> String? {
         queue.sync {
-            if lastCompanyCount < 500 || lastAssignedCount < 200 {
-                return "BLE tables appear to be sample-sized; decoding coverage will be limited."
+            if lastCompanyCount == 0 || lastAssignedCount == 0 {
+                return "BLE tables are empty; decoding coverage will be limited."
             }
             return nil
         }
@@ -158,40 +158,11 @@ final class BLEMetadataStore {
     }
 
     private func builtInCompanyMap() -> [UInt16: BLECompanyInfo] {
-        [
-            0x004C: .init(name: "Apple, Inc.", assignmentDate: "2011-04-20"),
-            0x0006: .init(name: "Microsoft", assignmentDate: nil),
-            0x000F: .init(name: "Broadcom", assignmentDate: nil),
-            0x0059: .init(name: "Nordic Semiconductor", assignmentDate: nil),
-            0x0131: .init(name: "Google", assignmentDate: nil),
-            0x00E0: .init(name: "Google", assignmentDate: nil),
-            0x0075: .init(name: "Samsung", assignmentDate: nil),
-            0x00D2: .init(name: "Sony", assignmentDate: nil),
-            0x00A0: .init(name: "Cisco", assignmentDate: nil),
-            0x00B0: .init(name: "Seiko Epson", assignmentDate: nil)
-        ]
+        [:]
     }
 
     private func builtInAssignedMap() -> [String: BLEAssignedUUIDInfo] {
-        let samples: [(String, String, String)] = [
-            ("1800", "service", "Generic Access"),
-            ("1801", "service", "Generic Attribute"),
-            ("180A", "service", "Device Information"),
-            ("180D", "service", "Heart Rate"),
-            ("180F", "service", "Battery Service"),
-            ("181A", "service", "Environmental Sensing"),
-            ("2A00", "characteristic", "Device Name"),
-            ("2A19", "characteristic", "Battery Level"),
-            ("2A29", "characteristic", "Manufacturer Name String"),
-            ("2A37", "characteristic", "Heart Rate Measurement"),
-            ("2902", "descriptor", "Client Characteristic Configuration"),
-            ("FEAA", "service", "Eddystone")
-        ]
         var map: [String: BLEAssignedUUIDInfo] = [:]
-        for (uuid, type, name) in samples {
-            let full = normalizeUUIDFull(uuid)
-            map[normalizeUUIDKey(uuid)] = BLEAssignedUUIDInfo(uuidFull: full, uuidShort: uuid.uppercased(), name: name, type: type, source: "bluetooth-sig")
-        }
         return map
     }
 

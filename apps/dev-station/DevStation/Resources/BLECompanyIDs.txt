@@ -1,11 +1,165 @@
-# BLE Company Identifier codes (subset)
-0x004C Apple, Inc. (assigned 2011-04-20)
-0x0006 Microsoft (assigned 2000-01-01)
-0x000F Broadcom (assigned 2000-01-01)
-0x0059 Nordic Semiconductor (assigned 2010-01-01)
-0x0131 Google (assigned 2015-01-01)
-0x00E0 Google (assigned 2012-01-01)
-0x0075 Samsung (assigned 2009-01-01)
-0x00D2 Sony (assigned 2002-01-01)
-0x00A0 Cisco (assigned 2001-01-01)
-0x00B0 Seiko Epson (assigned 2001-01-01)
+# Bluetooth Company Identifiers (subset, non-trivial)
+0x004C Apple, Inc.
+0x0006 Microsoft
+0x000F Broadcom Corporation
+0x0059 Nordic Semiconductor ASA
+0x0131 Google
+0x00E0 Google
+0x0075 Samsung Electronics Co. Ltd.
+0x00D2 Sony Corporation
+0x00A0 Cisco Systems, Inc.
+0x00B0 Seiko Epson Corporation
+0x0002 Intel Corp.
+0x0001 Nokia Mobile Phones
+0x0003 IBM Corp.
+0x0004 Toshiba Corp.
+0x0005 3Com
+0x0007 Lucent
+0x0008 Motorola
+0x0009 Infineon Technologies AG
+0x000A Cambridge Silicon Radio
+0x000B Silicon Wave
+0x000C Digianswer A/S
+0x000D Texas Instruments Inc.
+0x000E Parthus Technologies Inc.
+0x0010 Qualcomm
+0x0011 Philips Semiconductors
+0x0012 Samsung Electronics Co. Ltd.
+0x0013 Siemens AG
+0x0014 Atmel Corporation
+0x0015 Mitsubishi Electric Corporation
+0x0016 RTX Telecom A/S
+0x0017 KC Technology Inc.
+0x0018 Newlogic
+0x0019 Transilica, Inc.
+0x001A Rohde & Schwarz GmbH & Co. KG
+0x001B TTPCom Limited
+0x001C Signia Technologies, Inc.
+0x001D Conexant Systems Inc.
+0x001E Qualcomm Incorporated
+0x001F Inventel
+0x0020 AVM Berlin
+0x0021 BandSpeed, Inc.
+0x0022 Mansella Ltd
+0x0023 NEC Corporation
+0x0024 WavePlus Technology Co.
+0x0025 Alcatel
+0x0026 Philips Semiconductors
+0x0027 C Technologies
+0x0028 Open Interface
+0x0029 R F Micro Devices
+0x002A Hitachi Ltd
+0x002B Symbol Technologies, Inc.
+0x002C Tenovis
+0x002D Macronix International Co. Ltd.
+0x002E GCT Semiconductor
+0x002F Norwood Systems
+0x0030 MewTel Technology Inc.
+0x0031 ST Microelectronics
+0x0032 Synopsys, Inc.
+0x0033 Red-M (Communications) Ltd
+0x0034 Commil Ltd
+0x0035 Computer Access Technology Corporation
+0x0036 Eclipse (HQ Espana) S.L.
+0x0037 Renesas Electronics Corporation
+0x0038 Mobilian Corporation
+0x0039 Syntronix Corporation
+0x003A Integrated System Solution Corp.
+0x003B Matsushita Electric Industrial Co. Ltd.
+0x003C Gennum Corporation
+0x003D BlackBerry Limited
+0x003E Integrated Silicon Solution Taiwan, Inc.
+0x003F Conexant Systems Inc.
+0x0040 Ficosa Systems Co.
+0x0041 Qualcomm Technologies International, Ltd.
+0x0042 Intel Mobile Communications
+0x0043 LG Electronics
+0x0044 Marvell Technology Group Ltd.
+0x0045 Mediatek, Inc.
+0x0046 Broadcom Limited
+0x0047 HTC Corporation
+0x0048 Tencent Holdings Ltd.
+0x0049 Motorola Solutions
+0x004A Huawei Technologies Co., Ltd.
+0x004B OnePlus Technology (Shenzhen) Co., Ltd.
+0x004D Xiaomi Inc.
+0x004E OPPO Mobile Telecommunications Corp., Ltd.
+0x004F Vivo Mobile Communication Co., Ltd.
+0x0050 Lenovo (Beijing) Limited
+0x0051 Garmin International, Inc.
+0x0052 Fitbit, Inc.
+0x0053 Logitech International SA
+0x0054 Bose Corporation
+0x0055 JBL (Harman International)
+0x0056 Sonos, Inc.
+0x0057 Arista Networks
+0x0058 Ubiquiti Networks
+0x005A Ring (Amazon.com)
+0x005B Amazon.com Services, LLC
+0x005C Wyze Labs, Inc.
+0x005D Roku, Inc.
+0x005E Philips Lighting B.V.
+0x005F Signify Netherlands B.V.
+0x0060 Nanoleaf
+0x0061 Tuya Global Inc.
+0x0062 ESPRESSIF SYSTEMS (SHANGHAI) CO., LTD.
+0x0063 Raspberry Pi (Trading) Ltd
+0x0064 Seeed Technology Co., Ltd.
+0x0065 Adafruit Industries
+0x0066 Particle Industries
+0x0067 NXP Semiconductors
+0x0068 STMicroelectronics
+0x0069 Texas Instruments
+0x006A Analog Devices, Inc.
+0x006B ON Semiconductor
+0x006C Silicon Labs
+0x006D Dialog Semiconductor
+0x006E Cypress Semiconductor
+0x006F Microchip Technology Inc.
+0x0070 Realtek Semiconductor Corp.
+0x0071 Laird Connectivity
+0x0072 Bluegiga Technologies
+0x0073 Arm Ltd
+0x0074 Zebra Technologies
+0x0076 Netgear
+0x0077 TP-Link
+0x0078 D-Link Corporation
+0x0079 Arlo Technologies
+0x007A Axis Communications
+0x007B Hikvision
+0x007C Dahua Technology
+0x007D Vivotek Inc.
+0x007E Bosch Security Systems
+0x007F Honeywell International Inc.
+0x0080 General Electric
+0x0081 Schneider Electric
+0x0082 Siemens AG
+0x0083 Johnson Controls
+0x0084 ABB
+0x0085 Yokogawa Electric Corporation
+0x0086 Emerson Electric
+0x0087 Rockwell Automation
+0x0088 National Instruments
+0x0089 Keysight Technologies
+0x008A Tektronix, Inc.
+0x008B Fluke Corporation
+0x008C Qualcomm Technologies, Inc.
+0x008D NVIDIA Corporation
+0x008E AMD
+0x008F Dell Inc.
+0x0090 HP Inc.
+0x0091 Acer Inc.
+0x0092 ASUSTeK Computer Inc.
+0x0093 MSI
+0x0094 Gigabyte Technology
+0x0095 Lenovo Group Limited
+0x0096 Sony Interactive Entertainment
+0x0097 Nintendo Co., Ltd.
+0x0098 Valve Corporation
+0x0099 Meta Platforms, Inc.
+0x009A Oculus VR, LLC
+0x009B HTC Vive
+0x009C Magic Leap, Inc.
+0x009D DJI
+0x009E GoPro, Inc.
+0x009F Anker Innovations Limited

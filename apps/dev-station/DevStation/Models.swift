@@ -56,13 +56,6 @@ struct Provenance: Hashable, Codable {
     }
 }
 
-struct PlannedNode: Identifiable, Codable, Hashable {
-    let id: String
-    var label: String
-    var type: NodeType
-    var capabilities: [String]
-}
-
 struct NodeRecord: Identifiable, Codable, Hashable {
     let id: String
     var label: String
@@ -73,7 +66,6 @@ struct NodeRecord: Identifiable, Codable, Hashable {
     var connectionState: NodeConnectionState
     var isScanning: Bool
     var lastError: String?
-    var planned: Bool
 
     var presenceState: NodePresenceState {
         if connectionState == .error { return .error }
