@@ -841,18 +841,27 @@ struct SignalMeta: Hashable {
 
     static func deviceID(from data: [String: JSONValue], kind: String, nodeID: String) -> String? {
         let lowerKind = kind.lowercased()
-        if lowerKind.contains("tool") || lowerKind.contains("action") || lowerKind.contains("command") || lowerKind.contains("runbook") || lowerKind.contains("cmd") {
-            if nodeID != "unknown" {
-                return "node:\(nodeID)"
-            }
-        }
-        let keys = ["device_id", "deviceId", "device", "addr", "address", "mac", "mac_address", "bssid", "ble_addr"]
+        // Prefer explicit targets when present (especially for tool/action/command events),
+        // so downstream visualizations can show directionality.
+        let keys = [
+            "target_id", "targetId", "target", "target_node", "targetNode", "to",
+            "device_id", "deviceId", "device",
+            "addr", "address",
+            "mac", "mac_address",
+            "bssid",
+            "ble_addr"
+        ]
         for key in keys {
             if let value = data[key]?.stringValue, !value.isEmpty {
                 if kind.contains("ble") {
                     return value.hasPrefix("ble:") ? value : "ble:\(value)"
                 }
                 return value
+            }
+        }
+        if lowerKind.contains("tool") || lowerKind.contains("action") || lowerKind.contains("command") || lowerKind.contains("runbook") || lowerKind.contains("cmd") {
+            if nodeID != "unknown" {
+                return "node:\(nodeID)"
             }
         }
         if nodeID != "unknown" {

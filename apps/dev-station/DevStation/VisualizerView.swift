@@ -1587,8 +1587,9 @@ final class SignalFieldEngine: ObservableObject {
 
     struct EdgePulse: Hashable {
         let id: UUID
-        let sourceID: String
-        let nodeID: String
+        let throttleKey: String
+        let fromID: String
+        let toID: String
         let birth: Date
         let lifespan: TimeInterval
         let strength: Double
@@ -1679,9 +1680,12 @@ final class SignalFieldEngine: ObservableObject {
             if !isBLE || SignalEmitter.isBLEBroadcasting(event: event) {
                 seedPulse(id: key, source: source, event: event, now: now, intensity: intensity)
                 if let nodeID = source.lastNodeID, !nodeID.isEmpty, nodeID != "unknown" {
+                    let fromID = "node:\(nodeID)"
+                    let toID = key
                     seedEdgePulse(
-                        sourceID: key,
-                        nodeID: nodeID,
+                        throttleKey: key,
+                        fromID: fromID,
+                        toID: toID,
                         strength: source.lastStrength ?? -70,
                         color: source.color,
                         renderKind: SignalRenderKind.from(event: event),
@@ -1725,8 +1729,9 @@ final class SignalFieldEngine: ObservableObject {
             seedPulse(id: key, color: style.color, strength: style.glow, source: source, now: now, renderKind: SignalRenderKind.from(source: frame.source), intensity: intensity)
             if let nodeID = source.lastNodeID, !nodeID.isEmpty, nodeID != "unknown" {
                 seedEdgePulse(
-                    sourceID: key,
-                    nodeID: nodeID,
+                    throttleKey: key,
+                    fromID: "node:\(nodeID)",
+                    toID: key,
                     strength: frame.rssi,
                     color: style.color,
                     renderKind: SignalRenderKind.from(source: frame.source),
@@ -2020,10 +2025,10 @@ final class SignalFieldEngine: ObservableObject {
             let strengthNorm = clamp(((-strength) - 30.0) / 70.0)
             let alpha = (0.035 + strengthNorm * 0.07) * activityFade
             let line = CGFloat(0.8 + strengthNorm * 0.8)
-            let gradient = Gradient(colors: [Color(node.color), Color(ent.color)])
+            let gradient = Gradient(colors: [Color(node.color).opacity(alpha), Color(ent.color).opacity(alpha)])
             context.stroke(
                 path,
-                with: .linearGradient(gradient, startPoint: node.point, endPoint: ent.point).opacity(alpha),
+                with: .linearGradient(gradient, startPoint: node.point, endPoint: ent.point),
                 lineWidth: line
             )
 
@@ -2083,20 +2088,28 @@ final class SignalFieldEngine: ObservableObject {
 
         edgePulses = edgePulses.filter { now.timeIntervalSince($0.birth) <= $0.lifespan }
 
+        func resolveProjected(_ id: String) -> ProjectedNode? {
+            if let direct = projectedByID[id] { return direct }
+            if id.hasPrefix("node:") {
+                let raw = String(id.dropFirst("node:".count))
+                return projectedByID[raw] ?? projectedByID["node:\(raw)"]
+            }
+            return projectedByID["node:\(id)"]
+        }
+
         for pulse in edgePulses {
-            let nodeKeyA = "node:\(pulse.nodeID)"
-            let nodeKeyB = pulse.nodeID
-            guard let node = projectedByID[nodeKeyA] ?? projectedByID[nodeKeyB] else { continue }
-            guard let ent = projectedByID[pulse.sourceID] else { continue }
-            if let focusID, focusID != node.id && focusID != ent.id { continue }
+            guard let from = resolveProjected(pulse.fromID) else { continue }
+            guard let to = resolveProjected(pulse.toID) else { continue }
+            if from.id == to.id { continue }
+            if let focusID, focusID != from.id && focusID != to.id { continue }
 
             let age = now.timeIntervalSince(pulse.birth)
             let t = min(1.0, max(0.0, age / max(0.01, pulse.lifespan)))
 
-            // Move from node -> entity with a slight ease-in/out.
+            // Move from from -> to with a slight ease-in/out.
             let eased = t * t * (3 - 2 * t)
-            let x = node.point.x + (ent.point.x - node.point.x) * CGFloat(eased)
-            let y = node.point.y + (ent.point.y - node.point.y) * CGFloat(eased)
+            let x = from.point.x + (to.point.x - from.point.x) * CGFloat(eased)
+            let y = from.point.y + (to.point.y - from.point.y) * CGFloat(eased)
 
             let strengthNorm = clamp(((-pulse.strength) - 30.0) / 70.0)
             let fade = (1.0 - t)
@@ -2105,8 +2118,8 @@ final class SignalFieldEngine: ObservableObject {
             let glowRadius = radius * 3.4
 
             let color = Color(pulse.color)
-            let dx = ent.point.x - node.point.x
-            let dy = ent.point.y - node.point.y
+            let dx = to.point.x - from.point.x
+            let dy = to.point.y - from.point.y
             let len = max(0.001, sqrt(dx * dx + dy * dy))
             let ux = dx / len
             let uy = dy / len
@@ -2145,6 +2158,11 @@ final class SignalFieldEngine: ObservableObject {
                 // Slow thick heartbeat-like blob.
                 let beat = 0.6 + 0.4 * sin(now.timeIntervalSinceReferenceDate * 2.0)
                 drawDot(at: x, y, r: radius * CGFloat(1.25 + beat * 0.35), a: alpha)
+            case .tool:
+                // "Packet" — a bright head + a smaller tail, like command traffic moving with intent.
+                let tail = CGFloat(12 + strengthNorm * 18)
+                drawDot(at: x - ux * tail, y - uy * tail, r: max(1.4, radius * 0.75), a: alpha * 0.75)
+                drawDot(at: x, y, r: radius * 1.05, a: min(1.0, alpha * 1.15))
             case .error:
                 // Hot flare: slightly larger + sharper.
                 drawDot(at: x, y, r: radius * 1.25, a: min(1.0, alpha * 1.2))
@@ -2274,15 +2292,16 @@ final class SignalFieldEngine: ObservableObject {
         }
     }
 
-    private func seedEdgePulse(sourceID: String, nodeID: String, strength: Double, color: NSColor, renderKind: SignalRenderKind, now: Date, intensity: SignalIntensity) {
-        if let last = lastEdgePulseBySource[sourceID], now.timeIntervalSince(last) < intensity.edgePulseMinInterval { return }
-        lastEdgePulseBySource[sourceID] = now
+    private func seedEdgePulse(throttleKey: String, fromID: String, toID: String, strength: Double, color: NSColor, renderKind: SignalRenderKind, now: Date, intensity: SignalIntensity) {
+        if let last = lastEdgePulseBySource[throttleKey], now.timeIntervalSince(last) < intensity.edgePulseMinInterval { return }
+        lastEdgePulseBySource[throttleKey] = now
         // Keep these short and snappy: "activity is flowing along this link".
         edgePulses.append(
             EdgePulse(
                 id: UUID(),
-                sourceID: sourceID,
-                nodeID: nodeID,
+                throttleKey: throttleKey,
+                fromID: fromID,
+                toID: toID,
                 birth: now,
                 lifespan: 0.9,
                 strength: strength,
@@ -2588,6 +2607,7 @@ enum SignalRenderKind: String {
     case ble
     case wifi
     case node
+    case tool
     case error
     case generic
 
@@ -2596,6 +2616,9 @@ enum SignalRenderKind: String {
         if kind.contains("ble") { return .ble }
         if kind.contains("wifi") || kind.contains("net") || kind.contains("host") { return .wifi }
         if kind.contains("node") { return .node }
+        if kind.contains("tool") || kind.contains("action") || kind.contains("command") || kind.contains("runbook") || kind.contains("cmd") || event.signal.tags.contains("tool") {
+            return .tool
+        }
         if kind.contains("error") || event.signal.tags.contains("error") { return .error }
         return .generic
     }
@@ -2605,6 +2628,7 @@ enum SignalRenderKind: String {
         if source.contains("ble") { return .ble }
         if source.contains("wifi") || source.contains("net") || source.contains("host") { return .wifi }
         if source.contains("node") { return .node }
+        if source.contains("tool") || source.contains("action") || source.contains("command") { return .tool }
         if source.contains("error") { return .error }
         return .generic
     }
@@ -2614,6 +2638,7 @@ enum SignalRenderKind: String {
         case .ble: return "BLE"
         case .wifi: return "Wi-Fi"
         case .node: return "Node"
+        case .tool: return "Action"
         case .error: return "Error"
         case .generic: return "Signal"
         }
