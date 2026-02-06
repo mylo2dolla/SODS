@@ -19,7 +19,6 @@ final class VaultTransport: ObservableObject {
     @Published var autoShipAfterExport: Bool
     @Published var lastShipTime: String = ""
     @Published var lastShipResult: String = ""
-    @Published var lastShipDetail: String = ""
     @Published var queuedCount: Int = 0
 
     private init() {
@@ -49,28 +48,23 @@ final class VaultTransport: ObservableObject {
     func shipPending(log: LogStore) async {
         let outbox = ArtifactStore.outboxURL()
         let files = listFiles(in: outbox)
-        let baseDestination = normalizeRemotePath(destinationPath)
         await MainActor.run {
             self.queuedCount = files.count
             self.lastShipResult = "Shipping..."
-            self.lastShipDetail = ""
         }
         log.log(.info, "Vault ship queued: \(files.count) files")
         for file in files {
             let dateFolder = dateFolderFor(file.url)
-            let baseDest = baseDestination.appendingPathComponent(dateFolder, isDirectory: true)
+            let baseDest = destinationPath.appendingPathComponent(dateFolder, isDirectory: true)
             let filename = file.url.lastPathComponent
             let ensure = ensureRemoteDir(path: baseDest)
             if !ensure.success {
-                let base = ensureRemoteDir(path: baseDestination)
+                let base = ensureRemoteDir(path: destinationPath)
                 let retry = ensureRemoteDir(path: baseDest)
                 if !(base.success && retry.success) {
                     let detail = [ensure.stderr, base.stderr, retry.stderr].filter { !$0.isEmpty }.joined(separator: " | ")
                     log.log(.error, "Vault ship error: failed to create \(baseDest) \(detail)")
-                    await MainActor.run {
-                        self.lastShipResult = "Error creating remote dir: \(baseDest)"
-                        self.lastShipDetail = detail.isEmpty ? "Unknown SSH error." : detail
-                    }
+                    await MainActor.run { self.lastShipResult = "Error creating remote dir" }
                     continue
                 }
                 await MainActor.run { self.lastShipResult = "" }
@@ -84,17 +78,11 @@ final class VaultTransport: ObservableObject {
                 await MainActor.run {
                     self.lastShipTime = ISO8601DateFormatter().string(from: Date())
                     self.lastShipResult = "OK"
-                    self.lastShipDetail = ""
                 }
             } else {
-                let detail = send.stderr.trimmingCharacters(in: .whitespacesAndNewlines)
-                let message = "Ship failed: \(remotePath)"
-                let hint = "Suggested fix: ensure the directory exists and is writable. Example: ssh \(user)@\(host) \"mkdir -p \\\"\(baseDest)\\\" && chmod u+rwX \\\"\(baseDest)\\\"\""
-                log.log(.error, "Vault ship error: \(file.url.path)\(detail.isEmpty ? "" : " (\(detail))")")
-                await MainActor.run {
-                    self.lastShipResult = message
-                    self.lastShipDetail = detail.isEmpty ? hint : "\(detail)\n\(hint)"
-                }
+                let detail = send.stderr.isEmpty ? "" : " (\(send.stderr))"
+                log.log(.error, "Vault ship error: \(file.url.path)\(detail)")
+                await MainActor.run { self.lastShipResult = "Failed to ship one or more files" }
             }
         }
     }
@@ -126,26 +114,10 @@ final class VaultTransport: ObservableObject {
         return formatter.string(from: date)
     }
 
-    private func normalizeRemotePath(_ path: String) -> String {
-        let trimmed = path.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return trimmed }
-        if trimmed == "~" {
-            return "$HOME"
-        }
-        if trimmed.hasPrefix("~/") {
-            let suffix = trimmed.dropFirst(2)
-            return "$HOME/\(suffix)"
-        }
-        return trimmed
-    }
-
     private func ensureRemoteDir(path: String) -> (success: Bool, stderr: String) {
-        guard !path.isEmpty else { return (false, "Destination path is empty.") }
-        let remoteCommand = "mkdir -p \"\(path)\" && test -w \"\(path)\""
-        let args = ["-o", "BatchMode=yes", "-o", "ConnectTimeout=5", "\(user)@\(host)", remoteCommand]
+        let args = ["-o", "BatchMode=yes", "-o", "ConnectTimeout=5", "\(user)@\(host)", "mkdir", "-p", path]
         let result = runProcess("/usr/bin/ssh", args: args)
-        let stderr = result.stderr.trimmingCharacters(in: .whitespacesAndNewlines)
-        return (result.success, stderr)
+        return (result.success, result.stderr.trimmingCharacters(in: .whitespacesAndNewlines))
     }
 
     private func uniqueRemoteFilename(dir: String, filename: String) -> String {

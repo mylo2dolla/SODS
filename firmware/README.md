@@ -27,7 +27,7 @@ pio run -e ops-portal
 
 Stage for web flashing:
 ```bash
-/Users/letsdev/sods/SODS/tools/portal-cyd-stage.sh
+./tools/portal-cyd-stage.sh
 ```
 
 Station flash page:

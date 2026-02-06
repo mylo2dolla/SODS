@@ -276,11 +276,7 @@ void PortalCore::drawVisualizer(int x, int y, int w, int h) {
     if (delta > 0.25f) {
       lastPulseMs[i] = nowMs;
     }
-    PortalCore::TrailPoint point;
-    point.x = px;
-    point.y = py;
-    point.age = 0;
-    trails[i].push_back(point);
+    trails[i].push_back({px, py, 0});
     if (trails[i].size() > 12) trails[i].erase(trails[i].begin());
     if (glowStrength > 0.05f) {
       uint16_t gcol = dimColor(color, 0.2f + glowStrength * 0.8f);
@@ -355,12 +351,7 @@ void PortalCore::drawPopup() {
     tft->setTextSize(1);
     tft->setCursor(x + 8, itemY + 8);
     tft->print(action.label.length() ? action.label : action.id);
-    PortalCore::PopupRect rect;
-    rect.x = x + 4;
-    rect.y = itemY;
-    rect.w = w - 8;
-    rect.h = 22;
-    popup.itemRects.push_back(rect);
+    popup.itemRects.push_back({x + 4, itemY, w - 8, 22});
     itemY += 24;
   }
 }

@@ -54,7 +54,7 @@ final class CaseSessionManager: ObservableObject {
             let rawData = try encoder.encode(manifest)
             let rawURL = LogStore.exportURL(subdir: "session-raw", filename: "SODS-SessionRaw-\(iso).json", log: log)
             _ = LogStore.writeDataReturning(rawData, to: rawURL, log: log)
-            let aliasOverrides = IdentityResolver.shared.aliasMap()
+            let aliasOverrides = SODSStore.shared.aliasOverrides
             var aliases: [String: String] = [:]
             for node in selectedNodes {
                 if let alias = aliasOverrides[node] {

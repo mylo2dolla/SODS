@@ -114,7 +114,7 @@ final class CaseManager: ObservableObject {
             Task.detached {
                 _ = await ArtifactStore.shared.enqueueArtifact(rawURL, log: log)
             }
-            let alias = IdentityResolver.shared.resolveLabel(keys: [index.targetID])
+            let alias = SODSStore.shared.aliasOverrides[index.targetID]
             let readable: [String: Any] = [
                 "summary": "Case \(index.targetID) (\(index.targetType)) with \(index.references.count) referenced artifacts.",
                 "target": ["type": index.targetType, "id": index.targetID, "alias": alias as Any],

@@ -14,10 +14,6 @@ enum StoragePaths {
         ensureDir(homeRelative: "SODS/reports")
     }
 
-    static func recordingsBase() -> URL {
-        ensureDir(homeRelative: "SODS/recordings")
-    }
-
     static func shipperBase() -> URL {
         ensureDir(homeRelative: "SODS/.shipper")
     }

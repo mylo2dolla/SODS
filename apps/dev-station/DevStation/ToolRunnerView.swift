@@ -18,7 +18,7 @@ struct ToolRunnerView: View {
         VStack(alignment: .leading, spacing: 12) {
             ModalHeaderView(title: tool.name, onBack: onBack, onClose: onClose)
 
-            Text(tool.description ?? "")
+            Text(tool.description)
                 .font(.system(size: 12))
                 .foregroundColor(Theme.textSecondary)
 
@@ -40,6 +40,8 @@ struct ToolRunnerView: View {
                 Toggle("Advanced JSON input", isOn: $useJsonEditor)
                     .toggleStyle(SwitchToggleStyle(tint: Theme.accent))
                     .font(.system(size: 11))
+            } else {
+                useJsonEditor = true
             }
 
             if useJsonEditor {
@@ -79,18 +81,13 @@ struct ToolRunnerView: View {
         .frame(minWidth: 720, minHeight: 520)
         .background(Theme.background)
         .foregroundColor(Theme.textPrimary)
-        .onAppear {
-            seedDefaultInput()
-            if inputFields.isEmpty {
-                useJsonEditor = true
-            }
-        }
+        .onAppear { seedDefaultInput() }
     }
 
     private var inputFields: [String] {
-        let raw = (tool.input ?? "").lowercased()
+        let raw = tool.input.lowercased()
         if raw == "none" { return [] }
-        let parts = (tool.input ?? "").split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+        let parts = tool.input.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
         let fields = parts.compactMap { part -> String? in
             let key = part.split(separator: " ").first?.replacingOccurrences(of: "(", with: "").replacingOccurrences(of: ")", with: "")
             return key?.isEmpty == false ? String(key!) : nil
