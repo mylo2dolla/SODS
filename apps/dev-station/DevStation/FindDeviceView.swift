@@ -151,20 +151,19 @@ struct FindDeviceView: View {
         statusText = "Scanning wifi + arp + whoami..."
         Task {
             defer { isRunning = false }
-            do {
-                let wifi = try await runTool(name: "net.wifi_scan", input: ["pattern": "esp|portal|sods|ops|c3|esp32"])
-                let arp = try await runTool(name: "net.arp", input: [:])
-                let rollcall = try await runTool(name: "net.whoami_rollcall", input: ["timeout_ms": 1500])
+            let wifi = await safeRunTool(name: "net.wifi_scan", input: ["pattern": "esp|portal|sods|ops|c3|esp32"])
+            let arp = await safeRunTool(name: "net.arp", input: [:])
+            let rollcall = await safeRunTool(name: "net.whoami_rollcall", input: ["timeout_ms": 1500])
 
-                let candidates = CandidateBuilder.build(wifi: wifi, arp: arp, whoami: rollcall)
-                await MainActor.run {
-                    self.candidates = candidates
-                    self.statusText = "Found \(candidates.count) candidates"
-                }
-            } catch {
-                await MainActor.run {
-                    self.lastError = error.localizedDescription
-                    self.statusText = "Scan failed"
+            let candidates = CandidateBuilder.build(wifi: wifi.response, arp: arp.response, whoami: rollcall.response)
+            await MainActor.run {
+                self.candidates = candidates
+                self.statusText = "Found \(candidates.count) candidates"
+                let errors = [wifi, arp, rollcall]
+                    .filter { !$0.response.ok }
+                    .compactMap { $0.errorMessage }
+                if !errors.isEmpty {
+                    self.lastError = errors.joined(separator: " • ")
                 }
             }
         }
@@ -178,9 +177,32 @@ struct FindDeviceView: View {
         request.httpMethod = "POST"
         request.addValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONSerialization.data(withJSONObject: ["name": name, "input": input])
-        let (data, _) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await URLSession.shared.data(for: request)
+        if let http = response as? HTTPURLResponse,
+           !(200...299).contains(http.statusCode) {
+            let body = String(data: data, encoding: .utf8) ?? ""
+            throw ToolRunError.httpFailure(status: http.statusCode, body: body)
+        }
         let decoder = JSONDecoder()
-        return try decoder.decode(ToolRunResponse.self, from: data)
+        if let decoded = try? decoder.decode(ToolRunResponse.self, from: data) {
+            return decoded
+        }
+        return ToolRunResponse.fallback(name: name, data: data)
+    }
+
+    private func safeRunTool(name: String, input: [String: Any]) async -> (response: ToolRunResponse, errorMessage: String?) {
+        do {
+            let response = try await runTool(name: name, input: input)
+            if response.ok {
+                return (response, nil)
+            }
+            let hint = response.stdout?.trimmingCharacters(in: .whitespacesAndNewlines)
+            let message = hint?.isEmpty == false ? hint! : "Tool \(name) returned no results."
+            return (response, message)
+        } catch {
+            let message = "Tool \(name) failed: \(error.localizedDescription)"
+            return (ToolRunResponse(ok: false, name: name, stdout: nil, resultJson: nil), message)
+        }
     }
 }
 
@@ -195,6 +217,47 @@ struct ToolRunResponse: Decodable {
         case name
         case stdout
         case resultJson = "result_json"
+    }
+
+    init(ok: Bool, name: String?, stdout: String?, resultJson: JSONValue?) {
+        self.ok = ok
+        self.name = name
+        self.stdout = stdout
+        self.resultJson = resultJson
+    }
+
+    static func fallback(name: String, data: Data) -> ToolRunResponse {
+        if let json = try? JSONSerialization.jsonObject(with: data, options: []),
+           let object = json as? [String: Any] {
+            let ok = (object["ok"] as? Bool) ?? false
+            let stdout = object["stdout"] as? String
+            let resultJson: JSONValue? = {
+                guard let payload = object["result_json"] else { return nil }
+                if let encoded = try? JSONSerialization.data(withJSONObject: payload, options: []),
+                   let decoded = try? JSONDecoder().decode(JSONValue.self, from: encoded) {
+                    return decoded
+                }
+                return nil
+            }()
+            return ToolRunResponse(ok: ok, name: name, stdout: stdout, resultJson: resultJson)
+        }
+        let text = String(data: data, encoding: .utf8)
+        return ToolRunResponse(ok: false, name: name, stdout: text, resultJson: nil)
+    }
+}
+
+enum ToolRunError: LocalizedError {
+    case httpFailure(status: Int, body: String)
+
+    var errorDescription: String? {
+        switch self {
+        case .httpFailure(let status, let body):
+            let trimmed = body.trimmingCharacters(in: .whitespacesAndNewlines)
+            if trimmed.isEmpty {
+                return "Tool endpoint returned HTTP \(status)."
+            }
+            return "Tool endpoint returned HTTP \(status): \(trimmed)"
+        }
     }
 }
 
