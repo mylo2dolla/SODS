@@ -18,8 +18,8 @@ struct VisualizerView: View {
     // Default to a calmer (less CPU-intensive) baseline; user can turn it up.
     @State private var timeScale: Double = 0.85
     @State private var maxParticles: Double = 900
-    // Default should feel "alive" out of the box; Calm is intended to be dramatically quieter.
-    @State private var intensityMode: SignalIntensity = .storm
+    // Default to Calm for performance; Storm can be enabled when you want density.
+    @State private var intensityMode: SignalIntensity = .calm
     @State private var replayEnabled: Bool = false
     @State private var replayOffset: Double = 0
     @State private var replayAutoPlay: Bool = false
@@ -869,8 +869,7 @@ struct SignalFieldView: View {
 
     var body: some View {
         ZStack {
-            // 60fps looks great when the field is small, but chugs hard under heavy scans.
-            // 30fps keeps motion fluid while cutting draw cost roughly in half.
+            // Single true frame rate for both Calm and Storm; only the effects change.
             TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { timeline in
                 Canvas { context, size in
                     let parallax = Parallax.offset(mousePoint: mousePoint, size: size, now: timeline.date, lastMove: lastMouseMove)
@@ -1649,9 +1648,12 @@ final class SignalFieldEngine: ObservableObject {
         }
 
         let activityFade: CGFloat = isActive ? 1.0 : 0.25
-        drawBins(context: &context, size: size, frames: frames, now: now, focusID: focusID, activityFade: activityFade, intensity: intensity)
+        let lineOnly = (intensity == .calm)
+        if !lineOnly {
+            drawBins(context: &context, size: size, frames: frames, now: now, focusID: focusID, activityFade: activityFade, intensity: intensity)
+        }
         lastProjected = drawSources(context: &context, size: size, now: now, parallax: parallax, selectedID: selectedID, focusID: focusID, nodePresentations: nodePresentations, activityFade: activityFade)
-        if ghostTrails {
+        if ghostTrails && !lineOnly {
             if isActive {
                 updateGhosts(now: now, nodePresentations: nodePresentations, intensity: intensity)
             }
@@ -1659,26 +1661,33 @@ final class SignalFieldEngine: ObservableObject {
         }
         drawConnections(context: &context, focusID: focusID, activityFade: activityFade, intensity: intensity)
         drawEdgePulses(context: &context, now: now, focusID: focusID, activityFade: activityFade, intensity: intensity)
-        drawPulses(context: &context, size: size, now: now, parallax: parallax, focusID: focusID, activityFade: activityFade)
-        drawParticles(context: &context, size: size, now: now, parallax: parallax, focusID: focusID, activityFade: activityFade, budget: particleBudget)
+        if !lineOnly {
+            drawPulses(context: &context, size: size, now: now, parallax: parallax, focusID: focusID, activityFade: activityFade)
+            drawParticles(context: &context, size: size, now: now, parallax: parallax, focusID: focusID, activityFade: activityFade, budget: particleBudget)
+        }
     }
 
     private func ingest(events: [NormalizedEvent], intensity: SignalIntensity, now: Date) {
-	        // Events lists can be long; we only need the tail to catch new arrivals.
-	        for event in events.suffix(intensity.eventTailLimit) {
-	            guard processedIDs.insert(event.id).inserted else { continue }
-	            let key = event.deviceID ?? event.nodeID
-	            let source = sources[key] ?? SignalSource(id: key)
-	            source.update(from: event)
-	            sources[key] = source
-            let emitted = SignalEmitter.emit(from: source, event: event, intensity: intensity, now: now)
-            particles.append(contentsOf: emitted)
+        // Events lists can be long; we only need the tail to catch new arrivals.
+        for event in events.suffix(intensity.eventTailLimit) {
+            guard processedIDs.insert(event.id).inserted else { continue }
+            let key = event.deviceID ?? event.nodeID
+            let source = sources[key] ?? SignalSource(id: key)
+            source.update(from: event)
+            sources[key] = source
+            let lineOnly = (intensity == .calm)
+            if !lineOnly {
+                let emitted = SignalEmitter.emit(from: source, event: event, intensity: intensity, now: now)
+                particles.append(contentsOf: emitted)
+            }
 
             // BLE can be extremely chatty (metadata/enrichment events). Only emit effects when the device
             // is actually "broadcasting" (i.e., we have strength / a real seen-type signal).
             let isBLE = event.kind.lowercased().contains("ble")
             if !isBLE || SignalEmitter.isBLEBroadcasting(event: event) {
-                seedPulse(id: key, source: source, event: event, now: now, intensity: intensity)
+                if !lineOnly {
+                    seedPulse(id: key, source: source, event: event, now: now, intensity: intensity)
+                }
                 if let nodeID = source.lastNodeID, !nodeID.isEmpty, nodeID != "unknown" {
                     let fromID = "node:\(nodeID)"
                     let toID = key
@@ -1707,26 +1716,29 @@ final class SignalFieldEngine: ObservableObject {
             source.update(from: frame)
             sources[key] = source
             let style = SignalFrameStyle.from(frame: frame)
-            particles.append(
-                SignalParticle(
-                    id: UUID(),
-                    kind: .spark,
-                    sourceID: key,
-                    position: source.position,
-                    velocity: SIMD3<Double>(0, 0, 0),
-                    birth: now,
-                    lifespan: 1.2,
-                    baseSize: 10 + style.glow * 12,
-                    color: style.color,
-                    strength: max(0.2, style.confidence * 1.4),
-                    glow: style.glow,
-                    ringRadius: 0,
-                    ringWidth: 1.6,
-                    trail: [],
-                    renderKind: SignalRenderKind.from(source: frame.source)
+            let lineOnly = (intensity == .calm)
+            if !lineOnly {
+                particles.append(
+                    SignalParticle(
+                        id: UUID(),
+                        kind: .spark,
+                        sourceID: key,
+                        position: source.position,
+                        velocity: SIMD3<Double>(0, 0, 0),
+                        birth: now,
+                        lifespan: 1.2,
+                        baseSize: 10 + style.glow * 12,
+                        color: style.color,
+                        strength: max(0.2, style.confidence * 1.4),
+                        glow: style.glow,
+                        ringRadius: 0,
+                        ringWidth: 1.6,
+                        trail: [],
+                        renderKind: SignalRenderKind.from(source: frame.source)
+                    )
                 )
-            )
-            seedPulse(id: key, color: style.color, strength: style.glow, source: source, now: now, renderKind: SignalRenderKind.from(source: frame.source), intensity: intensity)
+                seedPulse(id: key, color: style.color, strength: style.glow, source: source, now: now, renderKind: SignalRenderKind.from(source: frame.source), intensity: intensity)
+            }
             if let nodeID = source.lastNodeID, !nodeID.isEmpty, nodeID != "unknown" {
                 seedEdgePulse(
                     throttleKey: key,
