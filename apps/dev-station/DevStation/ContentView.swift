@@ -3,7 +3,6 @@ import UniformTypeIdentifiers
 import Foundation
 import CoreBluetooth
 import Network
-import WebKit
 import AppKit
 
 struct ContentView: View {
@@ -148,15 +147,12 @@ struct ContentView: View {
     @State private var sodsURLText = ""
     @State private var showFlashPopover = false
     @State private var showGodMenu = false
-    @State private var godMenuContextNodeID: String?
     @State private var baseURLValidationMessage: String?
     @State private var showBaseURLToast = false
     @State private var baseURLToastMessage = ""
     @State private var flashLifecycleStage: DeviceLifecycleStage?
     @State private var flashLifecycleTarget: FlashTarget?
     @State private var flashLifecycleNodeID: String?
-    @State private var autoLinkAttemptedIDs: Set<String> = []
-    @State private var didAutoLinkAtLaunch = false
 
     var body: some View {
         mainContent
@@ -360,10 +356,6 @@ struct ContentView: View {
                 if flashManager.prepStatus.isReady, flashLifecycleStage == nil {
                     flashLifecycleStage = .staged
                 }
-                if !didAutoLinkAtLaunch {
-                    autoLinkNodesIfNeeded(nodeRegistry.nodes)
-                    didAutoLinkAtLaunch = true
-                }
                 Task.detached {
                     await ArtifactStore.shared.runCleanup(log: logStore)
                 }
@@ -414,17 +406,6 @@ struct ContentView: View {
                 piAuxStore.connectNode(connectNodeID)
             }
             .onReceive(NotificationCenter.default.publisher(for: .openGodMenuCommand)) { _ in
-                godMenuContextNodeID = nil
-                toolRegistry.reload()
-                runbookRegistry.reload()
-                showGodMenu = true
-            }
-            .onReceive(NotificationCenter.default.publisher(for: .openGodMenuCommandWithContext)) { notification in
-                if let nodeID = notification.object as? String, !nodeID.isEmpty {
-                    godMenuContextNodeID = nodeID
-                } else {
-                    godMenuContextNodeID = nil
-                }
                 toolRegistry.reload()
                 runbookRegistry.reload()
                 showGodMenu = true
@@ -487,7 +468,6 @@ struct ContentView: View {
                         flashLifecycleStage = .claimed
                     }
                 }
-                autoLinkNodesIfNeeded(nodeRegistry.nodes)
             }
             .onChange(of: scanner.isScanning) { _ in
                 updateLocalScanningState()
@@ -591,44 +571,27 @@ struct ContentView: View {
                     Button("Open Spectrum") { viewMode = .spectral }
                         .buttonStyle(PrimaryActionButtonStyle())
                     Button("God Button") {
-                        godMenuContextNodeID = nil
                         toolRegistry.reload()
                         runbookRegistry.reload()
                         showGodMenu = true
                     }
                         .buttonStyle(SecondaryActionButtonStyle())
                         .popover(isPresented: $showGodMenu, arrowEdge: .bottom) {
-                            VStack(alignment: .leading, spacing: 8) {
-                                HStack(spacing: 8) {
-                                    Button("Back") { showGodMenu = false }
-                                        .buttonStyle(SecondaryActionButtonStyle())
-                                    Button("Close") { showGodMenu = false }
-                                        .buttonStyle(SecondaryActionButtonStyle())
-                                    Button("OK") { showGodMenu = false }
-                                        .buttonStyle(SecondaryActionButtonStyle())
-                                    Spacer()
-                                }
-                                if let context = godMenuContextLabel {
-                                    Text("Context: \(context)")
-                                        .font(.system(size: 11, weight: .semibold))
-                                        .foregroundColor(Theme.textSecondary)
-                                }
-                                ActionMenuView(sections: godButtonSections())
-                            }
-                            .frame(minWidth: 320)
-                            .padding(10)
-                            .background(.ultraThinMaterial)
+                            ActionMenuView(sections: godButtonSections())
+                                .frame(minWidth: 320)
+                                .padding(10)
+                                .background(Theme.background)
                         }
                     Button("Flash") { showFlashPopover = true }
                         .buttonStyle(SecondaryActionButtonStyle())
                         .popover(isPresented: $showFlashPopover, arrowEdge: .bottom) {
                             FlashPopoverView(
                                 status: sodsStore.health,
-                        onFlashEsp32: { openFlashPath("/flash/esp32", showFinder: true) },
-                        onFlashEsp32c3: { openFlashPath("/flash/esp32c3", showFinder: true) },
-                        onFlashPortalCyd: { openFlashPath("/flash/portal-cyd", showFinder: true) },
-                        onFlashP4: { openFlashPath("/flash/p4", showFinder: true) },
-                        onOpenWebTools: { openFlashPath("/flash/") }
+                                onFlashEsp32: { startFlash(target: .esp32dev, autoOpenFlasher: true, autoOpenFindDevice: true) },
+                                onFlashEsp32c3: { startFlash(target: .esp32c3, autoOpenFlasher: true, autoOpenFindDevice: true) },
+                                onFlashPortalCyd: { startFlash(target: .portalCyd, autoOpenFlasher: true, autoOpenFindDevice: true) },
+                                onFlashP4: { startFlash(target: .esp32p4, autoOpenFlasher: true, autoOpenFindDevice: true) },
+                                onOpenWebTools: { openFlashPath("/flash/") }
                             )
                         }
                     Text(sodsStore.health.label)
@@ -768,8 +731,7 @@ struct ContentView: View {
                 onFindDevice: { openFindDevice() },
                 onFlashStarted: { target in markFlashStarted(target: target) },
                 onFlashAwaitingHello: { markFlashAwaitingHello() },
-                onFlashClaimed: { nodeID in markFlashClaimed(nodeID: nodeID) },
-                onToast: { message in showBaseURLToast(message) }
+                onFlashClaimed: { nodeID in markFlashClaimed(nodeID: nodeID) }
             )
         } else if viewMode == .buttons {
             PresetButtonsView(
@@ -1201,10 +1163,10 @@ struct ContentView: View {
                 .popover(isPresented: $showFlashPopover, arrowEdge: .bottom) {
                     FlashPopoverView(
                         status: sodsStore.health,
-                        onFlashEsp32: { openFlashPath("/flash/esp32", showFinder: true) },
-                        onFlashEsp32c3: { openFlashPath("/flash/esp32c3", showFinder: true) },
-                        onFlashPortalCyd: { openFlashPath("/flash/portal-cyd", showFinder: true) },
-                        onFlashP4: { openFlashPath("/flash/p4", showFinder: true) },
+                        onFlashEsp32: { startFlash(target: .esp32dev, autoOpenFlasher: true, autoOpenFindDevice: true) },
+                        onFlashEsp32c3: { startFlash(target: .esp32c3, autoOpenFlasher: true, autoOpenFindDevice: true) },
+                        onFlashPortalCyd: { startFlash(target: .portalCyd, autoOpenFlasher: true, autoOpenFindDevice: true) },
+                        onFlashP4: { startFlash(target: .esp32p4, autoOpenFlasher: true, autoOpenFindDevice: true) },
                         onOpenWebTools: { openFlashPath("/flash/") }
                     )
                 }
@@ -1385,40 +1347,6 @@ struct ContentView: View {
         if connectNodeID.isEmpty || !ids.contains(connectNodeID) {
             connectNodeID = ids[0]
         }
-    }
-
-    private func shouldAutoLink(_ node: NodeRecord) -> Bool {
-        if node.type == .mac { return false }
-        return true
-    }
-
-    private func autoLinkNode(_ node: NodeRecord) {
-        guard shouldAutoLink(node) else { return }
-        let nodeID = node.id
-        guard !nodeID.isEmpty else { return }
-        if autoLinkAttemptedIDs.contains(nodeID) { return }
-        autoLinkAttemptedIDs.insert(nodeID)
-        NodeRegistry.shared.setConnecting(nodeID: nodeID, connecting: true)
-        sodsStore.connectNode(nodeID)
-        sodsStore.identifyNode(nodeID)
-        sodsStore.refreshStatus()
-    }
-
-    private func autoLinkNodesIfNeeded(_ nodes: [NodeRecord]) {
-        for node in nodes {
-            autoLinkNode(node)
-        }
-    }
-
-    private var godMenuContextLabel: String? {
-        guard let id = godMenuContextNodeID, !id.isEmpty else { return nil }
-        if let node = entityStore.nodes.first(where: { $0.id == id }) {
-            if node.label != id {
-                return "\(node.label) (\(id))"
-            }
-            return node.label
-        }
-        return id
     }
 
     private func godButtonSections() -> [ActionMenuSection] {
@@ -1717,7 +1645,6 @@ struct ContentView: View {
         modalCoordinator.present(.findDevice)
     }
 
-
     private var baseURLToastView: some View {
         Text(baseURLToastMessage)
             .font(.system(size: 11, weight: .semibold))
@@ -1765,6 +1692,18 @@ struct ContentView: View {
                     openFindDevice()
                 }
             }
+        }
+    }
+
+    private func startFlash(target: FlashTarget, autoOpenFlasher: Bool, autoOpenFindDevice: Bool) {
+        markFlashStarted(target: target)
+        flashManager.selectedTarget = target
+        if autoOpenFlasher {
+            flashManager.startSelectedTarget()
+        }
+        markFlashAwaitingHello()
+        if autoOpenFindDevice {
+            openFindDevice()
         }
     }
 
@@ -4340,15 +4279,11 @@ struct NodesView: View {
     let onFlashStarted: (FlashTarget) -> Void
     let onFlashAwaitingHello: () -> Void
     let onFlashClaimed: (String) -> Void
-    let onToast: (String) -> Void
     @State private var portText: String = ""
     @State private var manualConnectHost: String = ""
     @State private var manualConnectLabel: String = ""
     @State private var manualConnectError: String?
     @State private var isManualConnecting = false
-    @State private var cliFlashStatus: String?
-    @State private var cliFlashError: String?
-    @State private var showResetNodesConfirm = false
 
     var body: some View {
         ViewThatFits(in: .horizontal) {
@@ -4367,23 +4302,22 @@ struct NodesView: View {
 
     private var nodesColumn: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("Nodes")
-                    .font(.system(size: 16, weight: .semibold))
-                Spacer()
-                Button("Reset Nodes") { showResetNodesConfirm = true }
-                    .buttonStyle(SecondaryActionButtonStyle())
-            }
+            Text("Nodes")
+                .font(.system(size: 16, weight: .semibold))
 
             ScrollView {
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 260), spacing: 12)], alignment: .leading, spacing: 12) {
                     ForEach(nodes) { node in
+                        let presence = nodePresence[node.id]
+                        let isScannerNode = node.capabilities.contains("scan")
+                            || node.presenceState == .scanning
+                            || presence?.state.lowercased() == "scanning"
                         NodeCardView(
                             node: node,
-                            presence: nodePresence[node.id],
+                            presence: presence,
                             eventCount: store.recentEventCount(nodeID: node.id, window: 600),
                             actions: actions(for: node),
-                            isScannerNode: isScannerNode(node: node, presence: nodePresence[node.id]),
+                            isScannerNode: isScannerNode,
                             isConnecting: connectingNodeIDs.contains(node.id),
                             onRefresh: {
                                 NodeRegistry.shared.setConnecting(nodeID: node.id, connecting: true)
@@ -4419,18 +4353,6 @@ struct NodesView: View {
                     }
                 }
             }
-        }
-        .confirmationDialog(
-            "Remove all node cards?",
-            isPresented: $showResetNodesConfirm,
-            titleVisibility: .visible
-        ) {
-            Button("Remove All Nodes", role: .destructive) {
-                NodeRegistry.shared.removeAll()
-            }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("This clears the node registry. Nodes will reappear if discovered again.")
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -4723,30 +4645,14 @@ struct NodesView: View {
                         Text("This will open the station flasher for the selected target. Confirm before continuing.")
                     }
 
-                    Button("Open Flasher (In-App)") {
-                        openFlashInApp(target: flashManager.selectedTarget)
-                    }
-                    .buttonStyle(SecondaryActionButtonStyle())
-
                     Button("Open Station Flasher") {
                         flashManager.openLocalFlasher()
-                    }
-                    .buttonStyle(SecondaryActionButtonStyle())
-                    Button("Clear Flasher Cache") {
-                        clearFlasherCache()
                     }
                     .buttonStyle(SecondaryActionButtonStyle())
 
                     if flashManager.canOpenFlasher {
                         Button("Open Flasher") {
                             flashManager.openFlasher()
-                        }
-                        .buttonStyle(SecondaryActionButtonStyle())
-                    }
-
-                    if canCLIFlash(flashManager.selectedTarget) {
-                        Button("CLI Flash") {
-                            runCLIFlash(flashManager.selectedTarget)
                         }
                         .buttonStyle(SecondaryActionButtonStyle())
                     }
@@ -4791,16 +4697,6 @@ struct NodesView: View {
                         }
                         .buttonStyle(SecondaryActionButtonStyle())
                     }
-                }
-                if let cliFlashStatus, !cliFlashStatus.isEmpty {
-                    Text(cliFlashStatus)
-                        .font(.system(size: 11))
-                        .foregroundColor(Theme.textSecondary)
-                }
-                if let cliFlashError, !cliFlashError.isEmpty {
-                    Text(cliFlashError)
-                        .font(.system(size: 11))
-                        .foregroundColor(.red)
                 }
 
                 flashPrepSection
@@ -4888,110 +4784,6 @@ struct NodesView: View {
         return host == "127.0.0.1" || host == "localhost"
     }
 
-    private func isScannerNode(node: NodeRecord, presence: NodePresence?) -> Bool {
-        if node.capabilities.contains("scan") { return true }
-        if node.presenceState == .scanning { return true }
-        return presence?.state.lowercased() == "scanning"
-    }
-
-    private func flashPath(for target: FlashTarget) -> String {
-        switch target {
-        case .esp32dev:
-            return "/flash/esp32"
-        case .esp32c3:
-            return "/flash/esp32c3"
-        case .portalCyd:
-            return "/flash/portal-cyd"
-        case .esp32p4:
-            return "/flash/p4"
-        }
-    }
-
-    private func openFlashInApp(target: FlashTarget) {
-        let base = sodsStore.baseURL.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let url = URL(string: base + flashPath(for: target)) else {
-            LogStore.shared.log(.warn, "Invalid station URL for flasher: \(base)")
-            return
-        }
-        NotificationCenter.default.post(name: .sodsOpenURLInApp, object: url)
-    }
-
-    private func clearFlasherCache() {
-        guard let host = URL(string: sodsStore.baseURL)?.host, !host.isEmpty else {
-            onToast("Invalid station URL for cache clear.")
-            return
-        }
-        let store = WKWebsiteDataStore.default()
-        let types = WKWebsiteDataStore.allWebsiteDataTypes()
-        store.fetchDataRecords(ofTypes: types) { records in
-            let targets = records.filter { $0.displayName.contains(host) }
-            guard !targets.isEmpty else {
-                onToast("No cached flasher data for \(host).")
-                return
-            }
-            store.removeData(ofTypes: types, for: targets) {
-                onToast("Cleared in-app flasher cache for \(host). Clear browser site data separately if needed.")
-            }
-        }
-    }
-
-    private func canCLIFlash(_ target: FlashTarget) -> Bool {
-        let script = cliFlashScript(for: target)
-        return FileManager.default.fileExists(atPath: script)
-    }
-
-    private func runCLIFlash(_ target: FlashTarget) {
-        guard canCLIFlash(target) else { return }
-        cliFlashStatus = "Running CLI flash..."
-        cliFlashError = nil
-        let root = sodsRootPath()
-        let script = cliFlashScript(for: target)
-        Task.detached {
-            let process = Process()
-            process.executableURL = URL(fileURLWithPath: "/bin/zsh")
-            process.arguments = ["-lc", "cd \(root) && \(script)"]
-            let out = Pipe()
-            let err = Pipe()
-            process.standardOutput = out
-            process.standardError = err
-            do {
-                try process.run()
-                process.waitUntilExit()
-                let stdout = String(data: out.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
-                let stderr = String(data: err.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
-                let success = process.terminationStatus == 0
-                await MainActor.run {
-                    if success {
-                        cliFlashStatus = stdout.isEmpty ? "CLI flash complete." : stdout.trimmingCharacters(in: .whitespacesAndNewlines)
-                        cliFlashError = nil
-                    } else {
-                        cliFlashStatus = nil
-                        cliFlashError = stderr.isEmpty ? "CLI flash failed." : stderr.trimmingCharacters(in: .whitespacesAndNewlines)
-                    }
-                }
-            } catch {
-                await MainActor.run {
-                    cliFlashStatus = nil
-                    cliFlashError = error.localizedDescription
-                }
-            }
-        }
-    }
-
-    private func cliFlashScript(for target: FlashTarget) -> String {
-        let root = sodsRootPath()
-        switch target {
-        case .esp32dev:
-            return "\(root)/tools/flash-esp32dev-cli.sh"
-        case .esp32c3:
-            return "\(root)/tools/flash-esp32c3-cli.sh"
-        case .portalCyd:
-            return "\(root)/tools/flash-portal-cyd-cli.sh"
-        case .esp32p4:
-            return "\(root)/tools/p4-flash.sh"
-        }
-    }
-
     private func connectSelectedNode() {
         let manualHost = manualConnectHost.trimmingCharacters(in: .whitespacesAndNewlines)
         let target = connectNodeID.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -5071,7 +4863,6 @@ struct NodeCardView: View {
     let isConnecting: Bool
     let onRefresh: () -> Void
     @State private var showActions = false
-    @State private var showRemoveConfirm = false
 
     var body: some View {
         TimelineView(.animation(minimumInterval: 1.0 / 6.0)) { timeline in
@@ -5144,11 +4935,9 @@ struct NodeCardView: View {
                         .disabled(isRefreshing)
                     if isScannerNode {
                         Button("God Button") {
-                            NotificationCenter.default.post(name: .openGodMenuCommandWithContext, object: node.id)
+                            NotificationCenter.default.post(name: .openGodMenuCommand, object: nil)
                         }
                         .buttonStyle(SecondaryActionButtonStyle())
-                        Button("Remove") { showRemoveConfirm = true }
-                            .buttonStyle(SecondaryActionButtonStyle())
                     } else {
                         Button("Actions") { showActions.toggle() }
                             .font(.system(size: 12, weight: .semibold))
@@ -5175,8 +4964,6 @@ struct NodeCardView: View {
                                         NotificationCenter.default.post(name: .openGodMenuCommand, object: nil)
                                     }
                                     .buttonStyle(SecondaryActionButtonStyle())
-                                    Button("Remove Node") { showRemoveConfirm = true }
-                                        .buttonStyle(SecondaryActionButtonStyle())
                                 }
                                 .padding(12)
                                 .frame(minWidth: 240)
@@ -5194,26 +4981,6 @@ struct NodeCardView: View {
             )
             .cornerRadius(12)
             .shadow(color: presentation.shouldGlow ? Color(presentation.baseColor).opacity(glowAlpha) : .clear, radius: glowRadius)
-            .contentShape(RoundedRectangle(cornerRadius: 12))
-            .onTapGesture {
-                if isScannerNode {
-                    NotificationCenter.default.post(name: .openGodMenuCommandWithContext, object: node.id)
-                } else {
-                    showActions = true
-                }
-            }
-            .confirmationDialog(
-                "Remove node \(node.label)?",
-                isPresented: $showRemoveConfirm,
-                titleVisibility: .visible
-            ) {
-                Button("Remove Node", role: .destructive) {
-                    NodeRegistry.shared.remove(nodeID: node.id)
-                }
-                Button("Cancel", role: .cancel) {}
-            } message: {
-                Text("This removes the node card from the registry. It will reappear if discovered again.")
-            }
         }
     }
 
@@ -6310,7 +6077,6 @@ extension Notification.Name {
     static let connectNodeCommand = Notification.Name("sods.connectNodeCommand")
     static let sodsOpenURLInApp = Notification.Name("sods.openUrlInApp")
     static let openGodMenuCommand = Notification.Name("sods.openGodMenuCommand")
-    static let openGodMenuCommandWithContext = Notification.Name("sods.openGodMenuCommandWithContext")
 }
 
 private func sodsRootPath() -> String {

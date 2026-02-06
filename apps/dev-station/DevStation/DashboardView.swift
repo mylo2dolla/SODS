@@ -177,7 +177,7 @@ struct DashboardView: View {
                         .foregroundColor(Theme.textSecondary)
                 } else {
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 240), spacing: 10)], alignment: .leading, spacing: 10) {
-                        ForEach(entityStore.nodes) { node in
+                        ForEach(entityStore.nodes, id: \.id) { node in
                             let presence = sodsStore.nodePresence[node.id]
                             let isScannerNode = node.capabilities.contains("scan")
                                 || node.presenceState == .scanning
