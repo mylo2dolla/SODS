@@ -1564,6 +1564,8 @@ final class SignalFieldEngine: ObservableObject {
     private var lastProjected: [ProjectedNode] = []
     private var pulses: [FieldPulse] = []
     private var lastPulseBySource: [String: Date] = [:]
+    private var edgePulses: [EdgePulse] = []
+    private var lastEdgePulseBySource: [String: Date] = [:]
 
     struct ProjectedNode: Hashable {
         let id: String
@@ -1581,6 +1583,17 @@ final class SignalFieldEngine: ObservableObject {
         let birth: Date
         let lifespan: TimeInterval
         let strength: Double
+    }
+
+    struct EdgePulse: Hashable {
+        let id: UUID
+        let sourceID: String
+        let nodeID: String
+        let birth: Date
+        let lifespan: TimeInterval
+        let strength: Double
+        let color: NSColor
+        let renderKind: SignalRenderKind
     }
 
     struct GhostPoint: Hashable {
@@ -1644,20 +1657,39 @@ final class SignalFieldEngine: ObservableObject {
             drawGhosts(context: &context, size: size, parallax: parallax, focusID: focusID, activityFade: activityFade)
         }
         drawConnections(context: &context, focusID: focusID, activityFade: activityFade, intensity: intensity)
+        drawEdgePulses(context: &context, now: now, focusID: focusID, activityFade: activityFade, intensity: intensity)
         drawPulses(context: &context, size: size, now: now, parallax: parallax, focusID: focusID, activityFade: activityFade)
         drawParticles(context: &context, size: size, now: now, parallax: parallax, focusID: focusID, activityFade: activityFade, budget: particleBudget)
     }
 
     private func ingest(events: [NormalizedEvent], intensity: SignalIntensity, now: Date) {
-        // Events lists can be long; we only need the tail to catch new arrivals.
-        for event in events.suffix(intensity.eventTailLimit) {
-            guard processedIDs.insert(event.id).inserted else { continue }
-            let key = event.deviceID ?? event.nodeID
-            let source = sources[key] ?? SignalSource(id: key)
-            source.update(from: event)
-            sources[key] = source
-            particles.append(contentsOf: SignalEmitter.emit(from: source, event: event, intensity: intensity, now: now))
-            seedPulse(id: key, source: source, event: event, now: now, intensity: intensity)
+	        // Events lists can be long; we only need the tail to catch new arrivals.
+	        for event in events.suffix(intensity.eventTailLimit) {
+	            guard processedIDs.insert(event.id).inserted else { continue }
+	            let key = event.deviceID ?? event.nodeID
+	            let source = sources[key] ?? SignalSource(id: key)
+	            source.update(from: event)
+	            sources[key] = source
+            let emitted = SignalEmitter.emit(from: source, event: event, intensity: intensity, now: now)
+            particles.append(contentsOf: emitted)
+
+            // BLE can be extremely chatty (metadata/enrichment events). Only emit effects when the device
+            // is actually "broadcasting" (i.e., we have strength / a real seen-type signal).
+            let isBLE = event.kind.lowercased().contains("ble")
+            if !isBLE || SignalEmitter.isBLEBroadcasting(event: event) {
+                seedPulse(id: key, source: source, event: event, now: now, intensity: intensity)
+                if let nodeID = source.lastNodeID, !nodeID.isEmpty, nodeID != "unknown" {
+                    seedEdgePulse(
+                        sourceID: key,
+                        nodeID: nodeID,
+                        strength: source.lastStrength ?? -70,
+                        color: source.color,
+                        renderKind: SignalRenderKind.from(event: event),
+                        now: now,
+                        intensity: intensity
+                    )
+                }
+            }
         }
         if processedIDs.count > 4000 {
             processedIDs.removeAll(keepingCapacity: true)
@@ -1691,6 +1723,17 @@ final class SignalFieldEngine: ObservableObject {
                 )
             )
             seedPulse(id: key, color: style.color, strength: style.glow, source: source, now: now, renderKind: SignalRenderKind.from(source: frame.source), intensity: intensity)
+            if let nodeID = source.lastNodeID, !nodeID.isEmpty, nodeID != "unknown" {
+                seedEdgePulse(
+                    sourceID: key,
+                    nodeID: nodeID,
+                    strength: frame.rssi,
+                    color: style.color,
+                    renderKind: SignalRenderKind.from(source: frame.source),
+                    now: now,
+                    intensity: intensity
+                )
+            }
         }
     }
 
@@ -1869,7 +1912,10 @@ final class SignalFieldEngine: ObservableObject {
             let basePoint = source.project(in: size, parallax: .zero)
             let point = CGPoint(x: basePoint.x + parallax.x * depth, y: basePoint.y + parallax.y * depth)
             let depthFade = depthFade(for: depth)
-            let glow = CGSize(width: 26 * depth, height: 26 * depth)
+            let strength = source.lastStrength ?? -65
+            let strengthNorm = clamp(((-strength) - 30.0) / 70.0)
+            let glowScale = CGFloat(1.0 + strengthNorm * 0.55)
+            let glow = CGSize(width: 26 * depth * glowScale, height: 26 * depth * glowScale)
             let core = CGSize(width: 10 * depth, height: 10 * depth)
             let dimmed = focusID != nil && focusID != source.id
             let presentation = nodePresentations[source.id] ?? nodePresentations["node:\(source.id)"]
@@ -1884,13 +1930,12 @@ final class SignalFieldEngine: ObservableObject {
             let lastSeen = source.lastSeen ?? now
             let age = max(0.0, now.timeIntervalSince(lastSeen))
             let recency = exp(-age / 6.0)
-            let strength = source.lastStrength ?? -65
-            let strengthNorm = clamp(((-strength) - 30.0) / 70.0)
             let vitality = max(0.12, min(1.0, 0.2 + recency * 0.6 + strengthNorm * 0.35))
             let vitalityScale = CGFloat(vitality)
             let focusScale: CGFloat = dimmed ? 0.45 : 1.0
             let alphaScale = activityFade * depthFade * focusScale * vitalityScale
-            let glowAlpha = presentation?.shouldGlow == false ? 0.0 : (dimmed ? 0.08 : 0.2) * alphaScale
+            let glowBoost = CGFloat(0.55 + strengthNorm * 0.9)
+            let glowAlpha = presentation?.shouldGlow == false ? 0.0 : (dimmed ? 0.08 : 0.2) * alphaScale * glowBoost
             let coreAlpha = presentation?.isOffline == true ? 0.35 * alphaScale : (dimmed ? 0.4 : 0.9) * alphaScale
             let activity = presentation?.activityScore ?? 0.0
             let accentColor = SignalColor.mix(displayColor, NSColor.systemRed, ratio: 0.55)
@@ -1947,6 +1992,45 @@ final class SignalFieldEngine: ObservableObject {
 
     private func drawConnections(context: inout GraphicsContext, focusID: String?, activityFade: CGFloat, intensity: SignalIntensity) {
         guard lastProjected.count > 1 else { return }
+        let projectedByID: [String: ProjectedNode] = Dictionary(uniqueKeysWithValues: lastProjected.map { ($0.id, $0) })
+
+        // Explicit "connected" lines: connect each observed entity to its reporting node (when known).
+        // This makes the field read more like a living graph than a particle cloud.
+        var edgeCount = 0
+        for source in sources.values {
+            guard let nodeID = source.lastNodeID, !nodeID.isEmpty, nodeID != "unknown" else { continue }
+            let nodeKeyA = "node:\(nodeID)"
+            let nodeKeyB = nodeID
+            let node = projectedByID[nodeKeyA] ?? projectedByID[nodeKeyB]
+            guard let node else { continue }
+            guard let ent = projectedByID[source.id] else { continue }
+            if ent.id == node.id { continue }
+            if let focusID, focusID != node.id && focusID != ent.id { continue }
+
+            let dx = node.point.x - ent.point.x
+            let dy = node.point.y - ent.point.y
+            let dist = sqrt(dx * dx + dy * dy)
+            if dist > 520 { continue }
+
+            var path = Path()
+            path.move(to: node.point)
+            path.addLine(to: ent.point)
+
+            let strength = source.lastStrength ?? -70
+            let strengthNorm = clamp(((-strength) - 30.0) / 70.0)
+            let alpha = (0.035 + strengthNorm * 0.07) * activityFade
+            let line = CGFloat(0.8 + strengthNorm * 0.8)
+            let gradient = Gradient(colors: [Color(node.color), Color(ent.color)])
+            context.stroke(
+                path,
+                with: .linearGradient(gradient, startPoint: node.point, endPoint: ent.point).opacity(alpha),
+                lineWidth: line
+            )
+
+            edgeCount += 1
+            if edgeCount >= (intensity.connectionStrokeCap / 3) { break }
+        }
+
         // Connection lines are O(n^2). Keep them when n is modest, but degrade gracefully otherwise.
         if let focusID {
             guard let focus = lastProjected.first(where: { $0.id == focusID }) else { return }
@@ -1989,6 +2073,83 @@ final class SignalFieldEngine: ObservableObject {
                 context.stroke(path, with: .color(Color(a.color).opacity(alpha)), lineWidth: 1.0)
                 total += 1
                 if total >= intensity.connectionStrokeCap { return }
+            }
+        }
+    }
+
+    private func drawEdgePulses(context: inout GraphicsContext, now: Date, focusID: String?, activityFade: CGFloat, intensity: SignalIntensity) {
+        guard !edgePulses.isEmpty else { return }
+        let projectedByID: [String: ProjectedNode] = Dictionary(uniqueKeysWithValues: lastProjected.map { ($0.id, $0) })
+
+        edgePulses = edgePulses.filter { now.timeIntervalSince($0.birth) <= $0.lifespan }
+
+        for pulse in edgePulses {
+            let nodeKeyA = "node:\(pulse.nodeID)"
+            let nodeKeyB = pulse.nodeID
+            guard let node = projectedByID[nodeKeyA] ?? projectedByID[nodeKeyB] else { continue }
+            guard let ent = projectedByID[pulse.sourceID] else { continue }
+            if let focusID, focusID != node.id && focusID != ent.id { continue }
+
+            let age = now.timeIntervalSince(pulse.birth)
+            let t = min(1.0, max(0.0, age / max(0.01, pulse.lifespan)))
+
+            // Move from node -> entity with a slight ease-in/out.
+            let eased = t * t * (3 - 2 * t)
+            let x = node.point.x + (ent.point.x - node.point.x) * CGFloat(eased)
+            let y = node.point.y + (ent.point.y - node.point.y) * CGFloat(eased)
+
+            let strengthNorm = clamp(((-pulse.strength) - 30.0) / 70.0)
+            let fade = (1.0 - t)
+            let alpha = (0.14 + strengthNorm * 0.22) * fade * Double(activityFade)
+            let radius = CGFloat(2.2 + strengthNorm * 4.2)
+            let glowRadius = radius * 3.4
+
+            let color = Color(pulse.color)
+            let dx = ent.point.x - node.point.x
+            let dy = ent.point.y - node.point.y
+            let len = max(0.001, sqrt(dx * dx + dy * dy))
+            let ux = dx / len
+            let uy = dy / len
+
+            func drawDot(at px: CGFloat, _ py: CGFloat, r: CGFloat, a: Double) {
+                let g = r * 3.2
+                context.fill(Path(ellipseIn: CGRect(x: px - g, y: py - g, width: g * 2, height: g * 2)), with: .color(color.opacity(a * 0.22)))
+                context.fill(Path(ellipseIn: CGRect(x: px - r, y: py - r, width: r * 2, height: r * 2)), with: .color(color.opacity(a)))
+            }
+
+            switch pulse.renderKind {
+            case .ble:
+                // Dotted pulse train along the link (head + small trailing dots).
+                let dotCount = 4
+                let spacing = CGFloat(10 + strengthNorm * 10)
+                for i in 0..<dotCount {
+                    let back = CGFloat(i) * spacing
+                    let px = x - ux * back
+                    let py = y - uy * back
+                    let a = alpha * (1.0 - Double(i) * 0.18)
+                    let r = max(1.4, radius * (1.0 - CGFloat(i) * 0.12))
+                    drawDot(at: px, py, r: r, a: a)
+                }
+            case .wifi:
+                // Short waveform-ish segment (a bright moving "slice" of the link).
+                let seg = CGFloat(18 + strengthNorm * 26)
+                let half = seg * 0.5
+                let start = CGPoint(x: x - ux * half, y: y - uy * half)
+                let end = CGPoint(x: x + ux * half, y: y + uy * half)
+                var path = Path()
+                path.move(to: start)
+                path.addLine(to: end)
+                context.stroke(path, with: .color(color.opacity(alpha * 0.55)), lineWidth: max(1.2, radius * 0.75))
+                drawDot(at: x, y, r: radius * 0.8, a: alpha)
+            case .node:
+                // Slow thick heartbeat-like blob.
+                let beat = 0.6 + 0.4 * sin(now.timeIntervalSinceReferenceDate * 2.0)
+                drawDot(at: x, y, r: radius * CGFloat(1.25 + beat * 0.35), a: alpha)
+            case .error:
+                // Hot flare: slightly larger + sharper.
+                drawDot(at: x, y, r: radius * 1.25, a: min(1.0, alpha * 1.2))
+            case .generic:
+                drawDot(at: x, y, r: radius, a: alpha)
             }
         }
     }
@@ -2113,6 +2274,27 @@ final class SignalFieldEngine: ObservableObject {
         }
     }
 
+    private func seedEdgePulse(sourceID: String, nodeID: String, strength: Double, color: NSColor, renderKind: SignalRenderKind, now: Date, intensity: SignalIntensity) {
+        if let last = lastEdgePulseBySource[sourceID], now.timeIntervalSince(last) < intensity.edgePulseMinInterval { return }
+        lastEdgePulseBySource[sourceID] = now
+        // Keep these short and snappy: "activity is flowing along this link".
+        edgePulses.append(
+            EdgePulse(
+                id: UUID(),
+                sourceID: sourceID,
+                nodeID: nodeID,
+                birth: now,
+                lifespan: 0.9,
+                strength: strength,
+                color: color,
+                renderKind: renderKind
+            )
+        )
+        if edgePulses.count > intensity.edgePulseCap {
+            edgePulses.removeFirst(edgePulses.count - intensity.edgePulseCap)
+        }
+    }
+
     func nearestNode(to point: CGPoint) -> ProjectedNode? {
         guard !lastProjected.isEmpty else { return nil }
         var best: ProjectedNode?
@@ -2141,6 +2323,7 @@ final class SignalSource: Hashable {
     var lastStrength: Double?
     var lastKind: String?
     var lastChannel: String?
+    var lastNodeID: String?
     private let targetSmoothing: Double = 0.25
 
     init(id: String) {
@@ -2171,6 +2354,7 @@ final class SignalSource: Hashable {
         lastStrength = strength
         lastKind = frame.source
         lastChannel = "\(frame.channel)"
+        lastNodeID = frame.nodeID
     }
 
     func update(from event: NormalizedEvent) {
@@ -2190,6 +2374,9 @@ final class SignalSource: Hashable {
         lastStrength = event.signal.strength
         lastKind = event.kind
         lastChannel = event.signal.channel
+        if !event.nodeID.isEmpty, event.nodeID != "unknown" {
+            lastNodeID = event.nodeID
+        }
     }
 
     func step(dt: Double, isActive: Bool) {
@@ -2523,6 +2710,20 @@ enum SignalIntensity: String, CaseIterable, Identifiable {
         case .storm: return 520
         }
     }
+
+    var edgePulseMinInterval: TimeInterval {
+        switch self {
+        case .calm: return 0.28
+        case .storm: return 0.14
+        }
+    }
+
+    var edgePulseCap: Int {
+        switch self {
+        case .calm: return 40
+        case .storm: return 120
+        }
+    }
 }
 
 enum SignalKindLegend: CaseIterable, Identifiable {
@@ -2553,6 +2754,16 @@ enum SignalKindLegend: CaseIterable, Identifiable {
 }
 
 enum SignalEmitter {
+    static func isBLEBroadcasting(event: NormalizedEvent) -> Bool {
+        // Heuristic: a "real" BLE seen/broadcast signal should carry strength (RSSI/dbm/etc).
+        if event.signal.strength != nil { return true }
+        // Some payloads may use different keys; fall back to checking the raw event data.
+        if event.data["rssi"]?.doubleValue != nil { return true }
+        if event.data["RSSI"]?.doubleValue != nil { return true }
+        if let level = event.data["level"]?.doubleValue, level != 0 { return true }
+        return false
+    }
+
     static func emit(from source: SignalSource, event: NormalizedEvent, intensity: SignalIntensity, now: Date) -> [SignalParticle] {
         let kind = event.kind.lowercased()
         let strength = event.signal.strength ?? -60
@@ -2568,6 +2779,10 @@ enum SignalEmitter {
 
         let isWifi = kind.contains("wifi") || kind.contains("net") || kind.contains("host")
         if kind.contains("ble") {
+            if !isBLEBroadcasting(event: event) {
+                // Still update the source position + core dot, but skip effect particles.
+                return []
+            }
             particles.append(makeRing(source: source, color: baseColor, now: now, pulse: false, glow: style.glow, renderKind: renderKind))
             for _ in 0..<max(2, count / 2) {
                 particles.append(makeSpark(source: source, color: baseColor, now: now, energy: energy, glow: style.glow, renderKind: renderKind))
