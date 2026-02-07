@@ -71,7 +71,6 @@ Repo integrity:
 
 Dev Station visualizer:
 - Open **Spectrum** view.
-- Toggle **Simulate frames (dev)** if no live frames.
 
 Runbook:
 ```bash

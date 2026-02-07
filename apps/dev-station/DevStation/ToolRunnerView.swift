@@ -18,11 +18,9 @@ struct ToolRunnerView: View {
         VStack(alignment: .leading, spacing: 12) {
             ModalHeaderView(title: tool.name, onBack: onBack, onClose: onClose)
 
-            if let desc = tool.description, !desc.isEmpty {
-                Text(desc)
-                    .font(.system(size: 12))
-                    .foregroundColor(Theme.textSecondary)
-            }
+            Text(tool.description ?? "")
+                .font(.system(size: 12))
+                .foregroundColor(Theme.textSecondary)
 
             if !inputFields.isEmpty {
                 VStack(alignment: .leading, spacing: 8) {
@@ -44,7 +42,7 @@ struct ToolRunnerView: View {
                     .font(.system(size: 11))
             }
 
-            if useJsonEditor || inputFields.isEmpty {
+            if useJsonEditor {
                 TextEditor(text: $jsonInput)
                     .font(.system(size: 11, design: .monospaced))
                     .frame(height: 120)
@@ -81,12 +79,16 @@ struct ToolRunnerView: View {
         .frame(minWidth: 720, minHeight: 520)
         .background(Theme.background)
         .foregroundColor(Theme.textPrimary)
-        .onAppear { seedDefaultInput() }
+        .onAppear {
+            seedDefaultInput()
+            if inputFields.isEmpty {
+                useJsonEditor = true
+            }
+        }
     }
 
     private var inputFields: [String] {
         let raw = (tool.input ?? "").lowercased()
-        if raw.isEmpty { return [] }
         if raw == "none" { return [] }
         let parts = (tool.input ?? "").split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
         let fields = parts.compactMap { part -> String? in

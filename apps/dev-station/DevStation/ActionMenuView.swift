@@ -19,14 +19,15 @@ struct ActionMenuView: View {
     let sections: [ActionMenuSection]
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 10) {
                 Text("Actions")
                     .font(.system(size: 14, weight: .semibold))
-                Menu("Actions…") {
-                    ForEach(Array(sections.enumerated()), id: \.offset) { idx, section in
+                ForEach(sections) { section in
+                    VStack(alignment: .leading, spacing: 6) {
                         Text(section.title)
-                            .font(.system(size: 11, weight: .semibold))
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(Theme.textSecondary)
                         ForEach(section.items) { item in
                             Button {
                                 item.action()
@@ -37,30 +38,18 @@ struct ActionMenuView: View {
                                     Text(item.title)
                                 }
                             }
+                            .buttonStyle(SecondaryActionButtonStyle())
                             .disabled(!item.enabled)
                         }
-                        if idx < sections.count - 1 {
-                            Divider()
-                        }
                     }
+                    .padding(.vertical, 4)
                 }
-                .menuStyle(.borderlessButton)
-                Spacer()
             }
-
-            let reasons = disabledReasons()
-            if !reasons.isEmpty {
-                Text("Disabled: \(reasons.joined(separator: " · "))")
-                    .font(.system(size: 11))
-                    .foregroundColor(Theme.textSecondary)
-            }
+            .padding(10)
         }
-        .padding(8)
-        .background(Theme.panelAlt)
-        .overlay(
-            RoundedRectangle(cornerRadius: 6)
-                .stroke(Theme.border, lineWidth: 1)
-        )
+        .frame(maxHeight: 480)
+        .background(.ultraThinMaterial)
+        .overlay(RoundedRectangle(cornerRadius: 6).stroke(Theme.border, lineWidth: 1))
         .cornerRadius(6)
     }
 

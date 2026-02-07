@@ -1,21 +1,604 @@
-# Bluetooth SIG Assigned Numbers (sample)
-# Format: <uuid> <type> <name>
-1800 service Generic Access
-1801 service Generic Attribute
-180A service Device Information
-180D service Heart Rate
-180F service Battery Service
-181A service Environmental Sensing
-2A00 characteristic Device Name
-2A01 characteristic Appearance
-2A19 characteristic Battery Level
-2A24 characteristic Model Number String
-2A25 characteristic Serial Number String
-2A26 characteristic Firmware Revision String
-2A27 characteristic Hardware Revision String
-2A28 characteristic Software Revision String
-2A29 characteristic Manufacturer Name String
-2A37 characteristic Heart Rate Measurement
-2902 descriptor Client Characteristic Configuration
-FEAA service Eddystone
-0000180D-0000-1000-8000-00805F9B34FB service Heart Rate
+# Bluetooth SIG Assigned Numbers (Services, Characteristics, Descriptors)
+# Source: https://bitbucket.org/bluetooth-SIG/public/raw/HEAD/assigned_numbers/uuids/service_uuids.yaml, https://bitbucket.org/bluetooth-SIG/public/raw/HEAD/assigned_numbers/uuids/characteristic_uuids.yaml, https://bitbucket.org/bluetooth-SIG/public/raw/HEAD/assigned_numbers/uuids/descriptors.yaml
+# Updated: 2026-02-05
+0x1800 service GAP
+0x1801 service GATT
+0x1802 service Immediate Alert
+0x1803 service Link Loss
+0x1804 service Tx Power
+0x1805 service Current Time
+0x1806 service Reference Time Update
+0x1807 service Next DST Change
+0x1808 service Glucose
+0x1809 service Health Thermometer
+0x180A service Device Information
+0x180D service Heart Rate
+0x180E service Phone Alert Status
+0x180F service Battery
+0x1810 service Blood Pressure
+0x1811 service Alert Notification
+0x1812 service Human Interface Device
+0x1813 service Scan Parameters
+0x1814 service Running Speed and Cadence
+0x1815 service Automation IO
+0x1816 service Cycling Speed and Cadence
+0x1818 service Cycling Power
+0x1819 service Location and Navigation
+0x181A service Environmental Sensing
+0x181B service Body Composition
+0x181C service User Data
+0x181D service Weight Scale
+0x181E service Bond Management
+0x181F service Continuous Glucose Monitoring
+0x1820 service Internet Protocol Support
+0x1821 service Indoor Positioning
+0x1822 service Pulse Oximeter
+0x1823 service HTTP Proxy
+0x1824 service Transport Discovery
+0x1825 service Object Transfer
+0x1826 service Fitness Machine
+0x1827 service Mesh Provisioning
+0x1828 service Mesh Proxy
+0x1829 service Reconnection Configuration
+0x183A service Insulin Delivery
+0x183B service Binary Sensor
+0x183C service Emergency Configuration
+0x183D service Authorization Control
+0x183E service Physical Activity Monitor
+0x183F service Elapsed Time
+0x1840 service Generic Health Sensor
+0x1843 service Audio Input Control
+0x1844 service Volume Control
+0x1845 service Volume Offset Control
+0x1846 service Coordinated Set Identification
+0x1847 service Device Time
+0x1848 service Media Control
+0x1849 service Generic Media Control
+0x184A service Constant Tone Extension
+0x184B service Telephone Bearer
+0x184C service Generic Telephone Bearer
+0x184D service Microphone Control
+0x184E service Audio Stream Control
+0x184F service Broadcast Audio Scan
+0x1850 service Published Audio Capabilities
+0x1851 service Basic Audio Announcement
+0x1852 service Broadcast Audio Announcement
+0x1853 service Common Audio
+0x1854 service Hearing Access
+0x1855 service Telephony and Media Audio
+0x1856 service Public Broadcast Announcement
+0x1857 service Electronic Shelf Label
+0x1858 service Gaming Audio
+0x1859 service Mesh Proxy Solicitation
+0x185A service Industrial Measurement Device
+0x185B service Ranging
+0x185C service HID ISO
+0x185D service Cookware
+0x185E service Voice Assistant
+0x185F service Generic Voice Assistant
+0x2A00 characteristic Device Name
+0x2A01 characteristic Appearance
+0x2A02 characteristic Peripheral Privacy Flag
+0x2A03 characteristic Reconnection Address
+0x2A04 characteristic Peripheral Preferred Connection Parameters
+0x2A05 characteristic Service Changed
+0x2A06 characteristic Alert Level
+0x2A07 characteristic Tx Power Level
+0x2A08 characteristic Date Time
+0x2A09 characteristic Day of Week
+0x2A0A characteristic Day Date Time
+0x2A0C characteristic Exact Time 256
+0x2A0D characteristic DST Offset
+0x2A0E characteristic Time Zone
+0x2A0F characteristic Local Time Information
+0x2A11 characteristic Time with DST
+0x2A12 characteristic Time Accuracy
+0x2A13 characteristic Time Source
+0x2A14 characteristic Reference Time Information
+0x2A16 characteristic Time Update Control Point
+0x2A17 characteristic Time Update State
+0x2A18 characteristic Glucose Measurement
+0x2A19 characteristic Battery Level
+0x2A1C characteristic Temperature Measurement
+0x2A1D characteristic Temperature Type
+0x2A1E characteristic Intermediate Temperature
+0x2A21 characteristic Measurement Interval
+0x2A22 characteristic Boot Keyboard Input Report
+0x2A23 characteristic System ID
+0x2A24 characteristic Model Number String
+0x2A25 characteristic Serial Number String
+0x2A26 characteristic Firmware Revision String
+0x2A27 characteristic Hardware Revision String
+0x2A28 characteristic Software Revision String
+0x2A29 characteristic Manufacturer Name String
+0x2A2A characteristic IEEE 11073-20601 Regulatory Certification Data List
+0x2A2B characteristic Current Time
+0x2A2C characteristic Magnetic Declination
+0x2A31 characteristic Scan Refresh
+0x2A32 characteristic Boot Keyboard Output Report
+0x2A33 characteristic Boot Mouse Input Report
+0x2A34 characteristic Glucose Measurement Context
+0x2A35 characteristic Blood Pressure Measurement
+0x2A36 characteristic Intermediate Cuff Pressure
+0x2A37 characteristic Heart Rate Measurement
+0x2A38 characteristic Body Sensor Location
+0x2A39 characteristic Heart Rate Control Point
+0x2A3F characteristic Alert Status
+0x2A40 characteristic Ringer Control Point
+0x2A41 characteristic Ringer Setting
+0x2A42 characteristic Alert Category ID Bit Mask
+0x2A43 characteristic Alert Category ID
+0x2A44 characteristic Alert Notification Control Point
+0x2A45 characteristic Unread Alert Status
+0x2A46 characteristic New Alert
+0x2A47 characteristic Supported New Alert Category
+0x2A48 characteristic Supported Unread Alert Category
+0x2A49 characteristic Blood Pressure Feature
+0x2A4A characteristic HID Information
+0x2A4B characteristic Report Map
+0x2A4C characteristic HID Control Point
+0x2A4D characteristic Report
+0x2A4E characteristic Protocol Mode
+0x2A4F characteristic Scan Interval Window
+0x2A50 characteristic PnP ID
+0x2A51 characteristic Glucose Feature
+0x2A52 characteristic Record Access Control Point
+0x2A53 characteristic RSC Measurement
+0x2A54 characteristic RSC Feature
+0x2A55 characteristic SC Control Point
+0x2A5A characteristic Aggregate
+0x2A5B characteristic CSC Measurement
+0x2A5C characteristic CSC Feature
+0x2A5D characteristic Sensor Location
+0x2A5E characteristic PLX Spot-Check Measurement
+0x2A5F characteristic PLX Continuous Measurement
+0x2A60 characteristic PLX Features
+0x2A63 characteristic Cycling Power Measurement
+0x2A64 characteristic Cycling Power Vector
+0x2A65 characteristic Cycling Power Feature
+0x2A66 characteristic Cycling Power Control Point
+0x2A67 characteristic Location and Speed
+0x2A68 characteristic Navigation
+0x2A69 characteristic Position Quality
+0x2A6A characteristic LN Feature
+0x2A6B characteristic LN Control Point
+0x2A6C characteristic Elevation
+0x2A6D characteristic Pressure
+0x2A6E characteristic Temperature
+0x2A6F characteristic Humidity
+0x2A70 characteristic True Wind Speed
+0x2A71 characteristic True Wind Direction
+0x2A72 characteristic Apparent Wind Speed
+0x2A73 characteristic Apparent Wind Direction
+0x2A74 characteristic Gust Factor
+0x2A75 characteristic Pollen Concentration
+0x2A76 characteristic UV Index
+0x2A77 characteristic Irradiance
+0x2A78 characteristic Rainfall
+0x2A79 characteristic Wind Chill
+0x2A7A characteristic Heat Index
+0x2A7B characteristic Dew Point
+0x2A7D characteristic Descriptor Value Changed
+0x2A7E characteristic Aerobic Heart Rate Lower Limit
+0x2A7F characteristic Aerobic Threshold
+0x2A80 characteristic Age
+0x2A81 characteristic Anaerobic Heart Rate Lower Limit
+0x2A82 characteristic Anaerobic Heart Rate Upper Limit
+0x2A83 characteristic Anaerobic Threshold
+0x2A84 characteristic Aerobic Heart Rate Upper Limit
+0x2A85 characteristic Date of Birth
+0x2A86 characteristic Date of Threshold Assessment
+0x2A87 characteristic Email Address
+0x2A88 characteristic Fat Burn Heart Rate Lower Limit
+0x2A89 characteristic Fat Burn Heart Rate Upper Limit
+0x2A8A characteristic First Name
+0x2A8B characteristic Five Zone Heart Rate Limits
+0x2A8C characteristic Gender
+0x2A8D characteristic Heart Rate Max
+0x2A8E characteristic Height
+0x2A8F characteristic Hip Circumference
+0x2A90 characteristic Last Name
+0x2A91 characteristic Maximum Recommended Heart Rate
+0x2A92 characteristic Resting Heart Rate
+0x2A93 characteristic Sport Type for Aerobic and Anaerobic Thresholds
+0x2A94 characteristic Three Zone Heart Rate Limits
+0x2A95 characteristic Two Zone Heart Rate Limits
+0x2A96 characteristic VO2 Max
+0x2A97 characteristic Waist Circumference
+0x2A98 characteristic Weight
+0x2A99 characteristic Database Change Increment
+0x2A9A characteristic User Index
+0x2A9B characteristic Body Composition Feature
+0x2A9C characteristic Body Composition Measurement
+0x2A9D characteristic Weight Measurement
+0x2A9E characteristic Weight Scale Feature
+0x2A9F characteristic User Control Point
+0x2AA0 characteristic Magnetic Flux Density - 2D
+0x2AA1 characteristic Magnetic Flux Density - 3D
+0x2AA2 characteristic Language
+0x2AA3 characteristic Barometric Pressure Trend
+0x2AA4 characteristic Bond Management Control Point
+0x2AA5 characteristic Bond Management Feature
+0x2AA6 characteristic Central Address Resolution
+0x2AA7 characteristic CGM Measurement
+0x2AA8 characteristic CGM Feature
+0x2AA9 characteristic CGM Status
+0x2AAA characteristic CGM Session Start Time
+0x2AAB characteristic CGM Session Run Time
+0x2AAC characteristic CGM Specific Ops Control Point
+0x2AAD characteristic Indoor Positioning Configuration
+0x2AAE characteristic Latitude
+0x2AAF characteristic Longitude
+0x2AB0 characteristic Local North Coordinate
+0x2AB1 characteristic Local East Coordinate
+0x2AB2 characteristic Floor Number
+0x2AB3 characteristic Altitude
+0x2AB4 characteristic Uncertainty
+0x2AB5 characteristic Location Name
+0x2AB6 characteristic URI
+0x2AB7 characteristic HTTP Headers
+0x2AB8 characteristic HTTP Status Code
+0x2AB9 characteristic HTTP Entity Body
+0x2ABA characteristic HTTP Control Point
+0x2ABB characteristic HTTPS Security
+0x2ABC characteristic TDS Control Point
+0x2ABD characteristic OTS Feature
+0x2ABE characteristic Object Name
+0x2ABF characteristic Object Type
+0x2AC0 characteristic Object Size
+0x2AC1 characteristic Object First-Created
+0x2AC2 characteristic Object Last-Modified
+0x2AC3 characteristic Object ID
+0x2AC4 characteristic Object Properties
+0x2AC5 characteristic Object Action Control Point
+0x2AC6 characteristic Object List Control Point
+0x2AC7 characteristic Object List Filter
+0x2AC8 characteristic Object Changed
+0x2AC9 characteristic Resolvable Private Address Only
+0x2ACC characteristic Fitness Machine Feature
+0x2ACD characteristic Treadmill Data
+0x2ACE characteristic Cross Trainer Data
+0x2ACF characteristic Step Climber Data
+0x2AD0 characteristic Stair Climber Data
+0x2AD1 characteristic Rower Data
+0x2AD2 characteristic Indoor Bike Data
+0x2AD3 characteristic Training Status
+0x2AD4 characteristic Supported Speed Range
+0x2AD5 characteristic Supported Inclination Range
+0x2AD6 characteristic Supported Resistance Level Range
+0x2AD7 characteristic Supported Heart Rate Range
+0x2AD8 characteristic Supported Power Range
+0x2AD9 characteristic Fitness Machine Control Point
+0x2ADA characteristic Fitness Machine Status
+0x2ADB characteristic Mesh Provisioning Data In
+0x2ADC characteristic Mesh Provisioning Data Out
+0x2ADD characteristic Mesh Proxy Data In
+0x2ADE characteristic Mesh Proxy Data Out
+0x2AE0 characteristic Average Current
+0x2AE1 characteristic Average Voltage
+0x2AE2 characteristic Boolean
+0x2AE3 characteristic Chromatic Distance from Planckian
+0x2AE4 characteristic Chromaticity Coordinates
+0x2AE5 characteristic Chromaticity in CCT and Duv Values
+0x2AE6 characteristic Chromaticity Tolerance
+0x2AE7 characteristic CIE 13.3-1995 Color Rendering Index
+0x2AE8 characteristic Coefficient
+0x2AE9 characteristic Correlated Color Temperature
+0x2AEA characteristic Count 16
+0x2AEB characteristic Count 24
+0x2AEC characteristic Country Code
+0x2AED characteristic Date UTC
+0x2AEE characteristic Electric Current
+0x2AEF characteristic Electric Current Range
+0x2AF0 characteristic Electric Current Specification
+0x2AF1 characteristic Electric Current Statistics
+0x2AF2 characteristic Energy
+0x2AF3 characteristic Energy in a Period of Day
+0x2AF4 characteristic Event Statistics
+0x2AF5 characteristic Fixed String 16
+0x2AF6 characteristic Fixed String 24
+0x2AF7 characteristic Fixed String 36
+0x2AF8 characteristic Fixed String 8
+0x2AF9 characteristic Generic Level
+0x2AFA characteristic Global Trade Item Number
+0x2AFB characteristic Illuminance
+0x2AFC characteristic Luminous Efficacy
+0x2AFD characteristic Luminous Energy
+0x2AFE characteristic Luminous Exposure
+0x2AFF characteristic Luminous Flux
+0x2B00 characteristic Luminous Flux Range
+0x2B01 characteristic Luminous Intensity
+0x2B02 characteristic Mass Flow
+0x2B03 characteristic Perceived Lightness
+0x2B04 characteristic Percentage 8
+0x2B05 characteristic Power
+0x2B06 characteristic Power Specification
+0x2B07 characteristic Relative Runtime in a Current Range
+0x2B08 characteristic Relative Runtime in a Generic Level Range
+0x2B09 characteristic Relative Value in a Voltage Range
+0x2B0A characteristic Relative Value in an Illuminance Range
+0x2B0B characteristic Relative Value in a Period of Day
+0x2B0C characteristic Relative Value in a Temperature Range
+0x2B0D characteristic Temperature 8
+0x2B0E characteristic Temperature 8 in a Period of Day
+0x2B0F characteristic Temperature 8 Statistics
+0x2B10 characteristic Temperature Range
+0x2B11 characteristic Temperature Statistics
+0x2B12 characteristic Time Decihour 8
+0x2B13 characteristic Time Exponential 8
+0x2B14 characteristic Time Hour 24
+0x2B15 characteristic Time Millisecond 24
+0x2B16 characteristic Time Second 16
+0x2B17 characteristic Time Second 8
+0x2B18 characteristic Voltage
+0x2B19 characteristic Voltage Specification
+0x2B1A characteristic Voltage Statistics
+0x2B1B characteristic Volume Flow
+0x2B1C characteristic Chromaticity Coordinate
+0x2B1D characteristic RC Feature
+0x2B1E characteristic RC Settings
+0x2B1F characteristic Reconnection Configuration Control Point
+0x2B20 characteristic IDD Status Changed
+0x2B21 characteristic IDD Status
+0x2B22 characteristic IDD Annunciation Status
+0x2B23 characteristic IDD Features
+0x2B24 characteristic IDD Status Reader Control Point
+0x2B25 characteristic IDD Command Control Point
+0x2B26 characteristic IDD Command Data
+0x2B27 characteristic IDD Record Access Control Point
+0x2B28 characteristic IDD History Data
+0x2B29 characteristic Client Supported Features
+0x2B2A characteristic Database Hash
+0x2B2B characteristic BSS Control Point
+0x2B2C characteristic BSS Response
+0x2B2D characteristic Emergency ID
+0x2B2E characteristic Emergency Text
+0x2B2F characteristic ACS Status
+0x2B30 characteristic ACS Data In
+0x2B31 characteristic ACS Data Out Notify
+0x2B32 characteristic ACS Data Out Indicate
+0x2B33 characteristic ACS Control Point
+0x2B34 characteristic Enhanced Blood Pressure Measurement
+0x2B35 characteristic Enhanced Intermediate Cuff Pressure
+0x2B36 characteristic Blood Pressure Record
+0x2B37 characteristic Registered User
+0x2B38 characteristic BR-EDR Handover Data
+0x2B39 characteristic Bluetooth SIG Data
+0x2B3A characteristic Server Supported Features
+0x2B3B characteristic Physical Activity Monitor Features
+0x2B3C characteristic General Activity Instantaneous Data
+0x2B3D characteristic General Activity Summary Data
+0x2B3E characteristic CardioRespiratory Activity Instantaneous Data
+0x2B3F characteristic CardioRespiratory Activity Summary Data
+0x2B40 characteristic Step Counter Activity Summary Data
+0x2B41 characteristic Sleep Activity Instantaneous Data
+0x2B42 characteristic Sleep Activity Summary Data
+0x2B43 characteristic Physical Activity Monitor Control Point
+0x2B44 characteristic Physical Activity Current Session
+0x2B45 characteristic Physical Activity Session Descriptor
+0x2B46 characteristic Preferred Units
+0x2B47 characteristic High Resolution Height
+0x2B48 characteristic Middle Name
+0x2B49 characteristic Stride Length
+0x2B4A characteristic Handedness
+0x2B4B characteristic Device Wearing Position
+0x2B4C characteristic Four Zone Heart Rate Limits
+0x2B4D characteristic High Intensity Exercise Threshold
+0x2B4E characteristic Activity Goal
+0x2B4F characteristic Sedentary Interval Notification
+0x2B50 characteristic Caloric Intake
+0x2B51 characteristic TMAP Role
+0x2B77 characteristic Audio Input State
+0x2B78 characteristic Gain Settings Attribute
+0x2B79 characteristic Audio Input Type
+0x2B7A characteristic Audio Input Status
+0x2B7B characteristic Audio Input Control Point
+0x2B7C characteristic Audio Input Description
+0x2B7D characteristic Volume State
+0x2B7E characteristic Volume Control Point
+0x2B7F characteristic Volume Flags
+0x2B80 characteristic Volume Offset State
+0x2B81 characteristic Audio Location
+0x2B82 characteristic Volume Offset Control Point
+0x2B83 characteristic Audio Output Description
+0x2B84 characteristic Set Identity Resolving Key
+0x2B85 characteristic Coordinated Set Size
+0x2B86 characteristic Set Member Lock
+0x2B87 characteristic Set Member Rank
+0x2B88 characteristic Encrypted Data Key Material
+0x2B89 characteristic Apparent Energy 32
+0x2B8A characteristic Apparent Power
+0x2B8B characteristic Live Health Observations
+0x2B8C characteristic CO\\textsubscript{2} Concentration
+0x2B8D characteristic Cosine of the Angle
+0x2B8E characteristic Device Time Feature
+0x2B8F characteristic Device Time Parameters
+0x2B90 characteristic Device Time
+0x2B91 characteristic Device Time Control Point
+0x2B92 characteristic Time Change Log Data
+0x2B93 characteristic Media Player Name
+0x2B94 characteristic Media Player Icon Object ID
+0x2B95 characteristic Media Player Icon URL
+0x2B96 characteristic Track Changed
+0x2B97 characteristic Track Title
+0x2B98 characteristic Track Duration
+0x2B99 characteristic Track Position
+0x2B9A characteristic Playback Speed
+0x2B9B characteristic Seeking Speed
+0x2B9C characteristic Current Track Segments Object ID
+0x2B9D characteristic Current Track Object ID
+0x2B9E characteristic Next Track Object ID
+0x2B9F characteristic Parent Group Object ID
+0x2BA0 characteristic Current Group Object ID
+0x2BA1 characteristic Playing Order
+0x2BA2 characteristic Playing Orders Supported
+0x2BA3 characteristic Media State
+0x2BA4 characteristic Media Control Point
+0x2BA5 characteristic Media Control Point Opcodes Supported
+0x2BA6 characteristic Search Results Object ID
+0x2BA7 characteristic Search Control Point
+0x2BA8 characteristic Energy 32
+0x2BAD characteristic Constant Tone Extension Enable
+0x2BAE characteristic Advertising Constant Tone Extension Minimum Length
+0x2BAF characteristic Advertising Constant Tone Extension Minimum Transmit Count
+0x2BB0 characteristic Advertising Constant Tone Extension Transmit Duration
+0x2BB1 characteristic Advertising Constant Tone Extension Interval
+0x2BB2 characteristic Advertising Constant Tone Extension PHY
+0x2BB3 characteristic Bearer Provider Name
+0x2BB4 characteristic Bearer UCI
+0x2BB5 characteristic Bearer Technology
+0x2BB6 characteristic Bearer URI Schemes Supported List
+0x2BB7 characteristic Bearer Signal Strength
+0x2BB8 characteristic Bearer Signal Strength Reporting Interval
+0x2BB9 characteristic Bearer List Current Calls
+0x2BBA characteristic Content Control ID
+0x2BBB characteristic Status Flags
+0x2BBC characteristic Incoming Call Target Bearer URI
+0x2BBD characteristic Call State
+0x2BBE characteristic Call Control Point
+0x2BBF characteristic Call Control Point Optional Opcodes
+0x2BC0 characteristic Termination Reason
+0x2BC1 characteristic Incoming Call
+0x2BC2 characteristic Call Friendly Name
+0x2BC3 characteristic Mute
+0x2BC4 characteristic Sink ASE
+0x2BC5 characteristic Source ASE
+0x2BC6 characteristic ASE Control Point
+0x2BC7 characteristic Broadcast Audio Scan Control Point
+0x2BC8 characteristic Broadcast Receive State
+0x2BC9 characteristic Sink PAC
+0x2BCA characteristic Sink Audio Locations
+0x2BCB characteristic Source PAC
+0x2BCC characteristic Source Audio Locations
+0x2BCD characteristic Available Audio Contexts
+0x2BCE characteristic Supported Audio Contexts
+0x2BCF characteristic Ammonia Concentration
+0x2BD0 characteristic Carbon Monoxide Concentration
+0x2BD1 characteristic Methane Concentration
+0x2BD2 characteristic Nitrogen Dioxide Concentration
+0x2BD3 characteristic Non-Methane Volatile Organic Compounds Concentration
+0x2BD4 characteristic Ozone Concentration
+0x2BD5 characteristic Particulate Matter - PM1 Concentration
+0x2BD6 characteristic Particulate Matter - PM2.5 Concentration
+0x2BD7 characteristic Particulate Matter - PM10 Concentration
+0x2BD8 characteristic Sulfur Dioxide Concentration
+0x2BD9 characteristic Sulfur Hexafluoride Concentration
+0x2BDA characteristic Hearing Aid Features
+0x2BDB characteristic Hearing Aid Preset Control Point
+0x2BDC characteristic Active Preset Index
+0x2BDD characteristic Stored Health Observations
+0x2BDE characteristic Fixed String 64
+0x2BDF characteristic High Temperature
+0x2BE0 characteristic High Voltage
+0x2BE1 characteristic Light Distribution
+0x2BE2 characteristic Light Output
+0x2BE3 characteristic Light Source Type
+0x2BE4 characteristic Noise
+0x2BE5 characteristic Relative Runtime in a Correlated Color Temperature Range
+0x2BE6 characteristic Time Second 32
+0x2BE7 characteristic VOC Concentration
+0x2BE8 characteristic Voltage Frequency
+0x2BE9 characteristic Battery Critical Status
+0x2BEA characteristic Battery Health Status
+0x2BEB characteristic Battery Health Information
+0x2BEC characteristic Battery Information
+0x2BED characteristic Battery Level Status
+0x2BEE characteristic Battery Time Status
+0x2BEF characteristic Estimated Service Date
+0x2BF0 characteristic Battery Energy Status
+0x2BF1 characteristic Observation Schedule Changed
+0x2BF2 characteristic Current Elapsed Time
+0x2BF3 characteristic Health Sensor Features
+0x2BF4 characteristic GHS Control Point
+0x2BF5 characteristic LE GATT Security Levels
+0x2BF6 characteristic ESL Address
+0x2BF7 characteristic AP Sync Key Material
+0x2BF8 characteristic ESL Response Key Material
+0x2BF9 characteristic ESL Current Absolute Time
+0x2BFA characteristic ESL Display Information
+0x2BFB characteristic ESL Image Information
+0x2BFC characteristic ESL Sensor Information
+0x2BFD characteristic ESL LED Information
+0x2BFE characteristic ESL Control Point
+0x2BFF characteristic UDI for Medical Devices
+0x2C00 characteristic GMAP Role
+0x2C01 characteristic UGG Features
+0x2C02 characteristic UGT Features
+0x2C03 characteristic BGS Features
+0x2C04 characteristic BGR Features
+0x2C05 characteristic Percentage 8 Steps
+0x2C06 characteristic Acceleration
+0x2C07 characteristic Force
+0x2C08 characteristic Linear Position
+0x2C09 characteristic Rotational Speed
+0x2C0A characteristic Length
+0x2C0B characteristic Torque
+0x2C0C characteristic IMD Status
+0x2C0D characteristic IMDS Descriptor Value Changed
+0x2C0E characteristic First Use Date
+0x2C0F characteristic Life Cycle Data
+0x2C10 characteristic Work Cycle Data
+0x2C11 characteristic Service Cycle Data
+0x2C12 characteristic IMD Control
+0x2C13 characteristic IMD Historical Data
+0x2C14 characteristic RAS Features
+0x2C15 characteristic Real-time Ranging Data
+0x2C16 characteristic On-demand Ranging Data
+0x2C17 characteristic RAS Control Point
+0x2C18 characteristic Ranging Data Ready
+0x2C19 characteristic Ranging Data Overwritten
+0x2C1A characteristic Coordinated Set Name
+0x2C1B characteristic Humidity 8
+0x2C1C characteristic Illuminance 16
+0x2C1D characteristic Acceleration - 3D
+0x2C1E characteristic Precise Acceleration - 3D
+0x2C1F characteristic Acceleration Detection Status
+0x2C20 characteristic Door/Window Status
+0x2C21 characteristic Pushbutton Status 8
+0x2C22 characteristic Contact Status 8
+0x2C23 characteristic HID ISO Properties
+0x2C24 characteristic LE HID Operation Mode
+0x2C25 characteristic Cookware Description
+0x2C26 characteristic Recipe Control
+0x2C27 characteristic Recipe Parameters
+0x2C28 characteristic Cooking Step Status
+0x2C29 characteristic Cooking Zone Capabilities
+0x2C2A characteristic Cooking Zone Desired Cooking Conditions
+0x2C2B characteristic Cooking Zone Actual Cooking Conditions
+0x2C2C characteristic Cookware Sensor Data
+0x2C2D characteristic Cookware Sensor Aggregate
+0x2C2E characteristic Cooking Temperature
+0x2C2F characteristic Cooking Zone Perceived Power
+0x2C30 characteristic Kitchen Appliance Airflow
+0x2C31 characteristic Voice Assistant Name
+0x2C32 characteristic Voice Assistant UUID
+0x2C33 characteristic Voice Assistant Service Control Point
+0x2C34 characteristic Installed Location
+0x2C35 characteristic Voice Assistant Session State
+0x2C36 characteristic Voice Assistant Session Flag
+0x2C37 characteristic Voice Assistant Supported Languages
+0x2C38 characteristic Voice Assistant Supported Features
+0x2900 descriptor Characteristic Extended Properties
+0x2901 descriptor Characteristic User Description
+0x2902 descriptor Client Characteristic Configuration
+0x2903 descriptor Server Characteristic Configuration
+0x2904 descriptor Characteristic Presentation Format
+0x2905 descriptor Characteristic Aggregate Format
+0x2906 descriptor Valid Range
+0x2907 descriptor External Report Reference
+0x2908 descriptor Report Reference
+0x2909 descriptor Number of Digitals
+0x290A descriptor Value Trigger Setting
+0x290B descriptor Environmental Sensing Configuration
+0x290C descriptor Environmental Sensing Measurement
+0x290D descriptor Environmental Sensing Trigger Setting
+0x290E descriptor Time Trigger Setting
+0x290F descriptor Complete BR-EDR Transport Block Data
+0x2910 descriptor Observation Schedule
+0x2911 descriptor Valid Range and Accuracy
+0x2912 descriptor Measurement Description
+0x2913 descriptor Manufacturer Limits
+0x2914 descriptor Process Tolerances
+0x2915 descriptor IMD Trigger Setting
+0x2916 descriptor Cooking Sensor Info
+0x2917 descriptor Cooking Trigger Setting

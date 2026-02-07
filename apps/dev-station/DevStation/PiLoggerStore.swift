@@ -8,52 +8,73 @@ final class SODSStore: ObservableObject {
     @Published private(set) var events: [NormalizedEvent] = []
     @Published private(set) var frames: [SignalFrame] = []
     @Published private(set) var nodes: [SignalNode] = []
+    @Published private(set) var nodePresence: [String: NodePresence] = [:]
     @Published private(set) var health: APIHealth = .offline
     @Published private(set) var lastError: String?
     @Published private(set) var lastPoll: Date?
     @Published private(set) var lastFramesAt: Date?
     @Published private(set) var stationStatus: StationStatus?
     @Published private(set) var loggerStatus: LoggerStatus?
+    @Published private(set) var realFramesActive: Bool = false
     @Published var baseURL: String
-    @Published var simulateFrames: Bool = false {
-        didSet {
-            if simulateFrames {
-                startSimulatedFrames()
-            } else {
-                stopSimulatedFrames()
-            }
-        }
-    }
+    @Published private(set) var baseURLError: String?
+    @Published var isRecording: Bool = false
+    @Published private(set) var recordedEvents: [NormalizedEvent] = []
+    @Published private(set) var recordingStartedAt: Date?
     @Published private(set) var aliasOverrides: [String: String] = [:]
 
     private let baseURLKey = "SODSBaseURL"
+    static let defaultBaseURL = "http://localhost:9123"
+
     private var wsTask: URLSessionWebSocketTask?
     private var wsFramesTask: URLSessionWebSocketTask?
     private var pollTimer: Timer?
     private var maxEvents = 1200
     private let aliasOverridesKey = "SODSAliasOverrides"
-    private var simulatedTimer: Timer?
 
     private init() {
         let defaults = UserDefaults.standard
         if let saved = defaults.string(forKey: baseURLKey), !saved.isEmpty {
-            baseURL = saved
+            let validated = Self.normalizeBaseURL(saved)
+            if let url = validated.url {
+                baseURL = url
+                baseURLError = nil
+            } else {
+                baseURL = Self.defaultBaseURL
+                baseURLError = validated.error
+                defaults.set(baseURL, forKey: baseURLKey)
+            }
         } else {
-            baseURL = "http://localhost:9123"
+            baseURL = Self.defaultBaseURL
             defaults.set(baseURL, forKey: baseURLKey)
         }
         StationProcessManager.shared.ensureRunning(baseURL: baseURL)
         if let saved = defaults.dictionary(forKey: aliasOverridesKey) as? [String: String] {
             aliasOverrides = saved
+            IdentityResolver.shared.updateOverrides(aliasOverrides)
         }
         connect()
     }
 
-    func updateBaseURL(_ value: String) {
-        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
-        baseURL = trimmed
-        UserDefaults.standard.set(trimmed, forKey: baseURLKey)
+    @discardableResult
+    func updateBaseURL(_ value: String) -> Bool {
+        let validated = Self.normalizeBaseURL(value)
+        guard let url = validated.url else {
+            baseURLError = validated.error ?? "Invalid base URL."
+            return false
+        }
+        baseURLError = nil
+        baseURL = url
+        UserDefaults.standard.set(url, forKey: baseURLKey)
+        StationProcessManager.shared.ensureRunning(baseURL: baseURL)
+        connect()
+        return true
+    }
+
+    func resetBaseURL() {
+        baseURLError = nil
+        baseURL = Self.defaultBaseURL
+        UserDefaults.standard.set(baseURL, forKey: baseURLKey)
         StationProcessManager.shared.ensureRunning(baseURL: baseURL)
         connect()
     }
@@ -70,7 +91,6 @@ final class SODSStore: ObservableObject {
         connectWebSocket()
         connectFramesWebSocket()
         schedulePoll()
-        if simulateFrames { startSimulatedFrames() }
     }
 
     private func schedulePoll() {
@@ -81,9 +101,7 @@ final class SODSStore: ObservableObject {
     }
 
     private func connectWebSocket() {
-        guard let url = makeURL(path: "/ws/events") else { return }
-        let wsURL = url.absoluteString.replacingOccurrences(of: "http", with: "ws")
-        guard let finalURL = URL(string: wsURL) else { return }
+        guard let finalURL = makeWebSocketURL(path: "/ws/events") else { return }
         let task = URLSession.shared.webSocketTask(with: finalURL)
         wsTask = task
         task.resume()
@@ -91,9 +109,7 @@ final class SODSStore: ObservableObject {
     }
 
     private func connectFramesWebSocket() {
-        guard let url = makeURL(path: "/ws/frames") else { return }
-        let wsURL = url.absoluteString.replacingOccurrences(of: "http", with: "ws")
-        guard let finalURL = URL(string: wsURL) else { return }
+        guard let finalURL = makeWebSocketURL(path: "/ws/frames") else { return }
         let task = URLSession.shared.webSocketTask(with: finalURL)
         wsFramesTask = task
         task.resume()
@@ -103,27 +119,31 @@ final class SODSStore: ObservableObject {
     private func receiveLoop() {
         wsTask?.receive { [weak self] result in
             guard let self else { return }
-            switch result {
-            case .failure(let error):
-                self.lastError = error.localizedDescription
-                self.health = .offline
-            case .success(let message):
-                self.handle(message: message)
+            Task { @MainActor in
+                switch result {
+                case .failure(let error):
+                    self.lastError = error.localizedDescription
+                    self.health = .offline
+                case .success(let message):
+                    self.handle(message: message)
+                }
+                self.receiveLoop()
             }
-            self.receiveLoop()
         }
     }
 
     private func receiveFramesLoop() {
         wsFramesTask?.receive { [weak self] result in
             guard let self else { return }
-            switch result {
-            case .failure:
-                break
-            case .success(let message):
-                self.handleFrames(message: message)
+            Task { @MainActor in
+                switch result {
+                case .failure:
+                    break
+                case .success(let message):
+                    self.handleFrames(message: message)
+                }
+                self.receiveFramesLoop()
             }
-            self.receiveFramesLoop()
         }
     }
 
@@ -160,6 +180,12 @@ final class SODSStore: ObservableObject {
             let event = try decoder.decode(CanonicalEvent.self, from: data)
             let normalized = NormalizedEvent(from: event)
             events.append(normalized)
+            if isRecording {
+                recordedEvents.append(normalized)
+                if recordedEvents.count > maxEvents * 5 {
+                    recordedEvents.removeFirst(recordedEvents.count - maxEvents * 5)
+                }
+            }
             if events.count > maxEvents {
                 events.removeFirst(events.count - maxEvents)
             }
@@ -175,74 +201,124 @@ final class SODSStore: ObservableObject {
             let payload = try decoder.decode(SignalFrameEnvelope.self, from: data)
             frames = payload.frames
             lastFramesAt = Date()
+            realFramesActive = true
+            scheduleRealFramesDecayCheck()
         } catch {
             // ignore frame decode errors
         }
     }
 
-    private func startSimulatedFrames() {
-        simulatedTimer?.invalidate()
-        simulatedTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / 20.0, repeats: true) { [weak self] _ in
-            self?.emitSimulatedFrames()
+    private func scheduleRealFramesDecayCheck() {
+        let timestamp = lastFramesAt
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
+            guard let self else { return }
+            guard self.lastFramesAt == timestamp else { return }
+            self.realFramesActive = false
         }
     }
 
-    private func stopSimulatedFrames() {
-        simulatedTimer?.invalidate()
-        simulatedTimer = nil
+    func startRecording() {
+        if !isRecording {
+            recordedEvents.removeAll()
+            recordingStartedAt = Date()
+        }
+        isRecording = true
     }
 
-    private func emitSimulatedFrames() {
-        if !simulateFrames { return }
-        if let lastFramesAt, Date().timeIntervalSince(lastFramesAt) < 1.5 {
-            return
-        }
-        frames = makeSimulatedFrames()
-        lastFramesAt = Date()
+    func stopRecording() {
+        isRecording = false
     }
 
-    private func makeSimulatedFrames() -> [SignalFrame] {
-        let nowMs = Int(Date().timeIntervalSince1970 * 1000)
-        var next: [SignalFrame] = []
-        let baseHue: Double = 8
-        let count = 12
-        for idx in 0..<count {
-            let angle = Double(idx) / Double(count) * (Double.pi * 2.0)
-            let drift = sin(Double(nowMs) / 1000.0 + angle) * 0.08
-            let x = 0.5 + cos(angle) * (0.28 + drift)
-            let y = 0.5 + sin(angle) * (0.28 + drift)
-            let hue = fmod(baseHue + Double(idx) * 24.0 + Double(nowMs % 1000) / 1000.0 * 10.0, 360.0)
-            let confidence = 0.4 + 0.6 * abs(sin(Double(nowMs) / 1300.0 + angle))
-            let persistence = 0.35 + 0.5 * abs(cos(Double(nowMs) / 1800.0 + angle))
-            let glow = 0.3 + confidence * 0.6
-            let rssi = -70 + (confidence * 30.0)
-            next.append(
-                SignalFrame(
-                    t: nowMs,
-                    source: "sim",
-                    nodeID: "sim-node-\(idx % 3)",
-                    deviceID: "sim-device-\(idx)",
-                    channel: 0,
-                    frequency: 0,
-                    rssi: rssi,
-                    x: x,
-                    y: y,
-                    z: 0.2 + confidence * 0.6,
-                    color: FrameColor(h: hue, s: 0.7, l: 0.45),
-                    glow: glow,
-                    persistence: persistence,
-                    velocity: 0.4,
-                    confidence: confidence
-                )
-            )
+    func clearRecording() {
+        recordedEvents.removeAll()
+        recordingStartedAt = nil
+    }
+
+    func saveRecording(to url: URL) -> Bool {
+        let encoder = JSONEncoder()
+        var lines: [String] = []
+        for event in recordedEvents {
+            let payload: [String: Any] = [
+                "recv_ts": Int(event.recvTs?.timeIntervalSince1970 ?? 0) * 1000,
+                "event_ts": isoString(from: event.eventTs),
+                "node_id": event.nodeID,
+                "kind": event.kind,
+                "severity": event.severity,
+                "summary": event.summary,
+                "data": jsonObject(from: event.data)
+            ]
+            if let data = try? JSONSerialization.data(withJSONObject: payload),
+               let line = String(data: data, encoding: .utf8) {
+                lines.append(line)
+            }
         }
-        return next
+        do {
+            try lines.joined(separator: "\n").write(to: url, atomically: true, encoding: .utf8)
+            return true
+        } catch {
+            lastError = error.localizedDescription
+            return false
+        }
+    }
+
+    func loadRecording(from url: URL) -> Bool {
+        do {
+            let contents = try String(contentsOf: url, encoding: .utf8)
+            let decoder = JSONDecoder()
+            var loaded: [NormalizedEvent] = []
+            for line in contents.split(separator: "\n") {
+                guard let data = line.data(using: .utf8) else { continue }
+                if let entry = try? decoder.decode(RecordedEventLine.self, from: data) {
+                    let canonical = CanonicalEvent(
+                        id: entry.id,
+                        recvTs: entry.recvTs ?? 0,
+                        eventTs: entry.eventTs ?? "",
+                        nodeID: entry.nodeID,
+                        kind: entry.kind,
+                        severity: entry.severity ?? "info",
+                        summary: entry.summary ?? entry.kind,
+                        data: entry.data ?? [:]
+                    )
+                    loaded.append(NormalizedEvent(from: canonical))
+                }
+            }
+            recordedEvents = loaded
+            recordingStartedAt = Date()
+            return true
+        } catch {
+            lastError = error.localizedDescription
+            return false
+        }
+    }
+
+    private func isoString(from date: Date?) -> String {
+        guard let date else { return ISO8601DateFormatter().string(from: Date()) }
+        return ISO8601DateFormatter().string(from: date)
+    }
+
+    private func jsonObject(from dict: [String: JSONValue]) -> [String: Any] {
+        var out: [String: Any] = [:]
+        for (key, value) in dict {
+            out[key] = jsonObject(from: value)
+        }
+        return out
+    }
+
+    private func jsonObject(from value: JSONValue) -> Any {
+        switch value {
+        case .string(let v): return v
+        case .number(let v): return v
+        case .bool(let v): return v
+        case .object(let v): return jsonObject(from: v)
+        case .array(let v): return v.map { jsonObject(from: $0) }
+        case .null: return NSNull()
+        }
     }
 
     private func pollStatusAndNodes() async {
         do {
             let statusURL = makeURL(path: "/api/status")
-            let nodesURL = makeURL(path: "/nodes")
+            let nodesURL = makeURL(path: "/api/nodes")
             guard let statusURL, let nodesURL else { return }
 
             async let statusReq = URLSession.shared.data(from: statusURL)
@@ -253,12 +329,13 @@ final class SODSStore: ObservableObject {
 
             let decoder = JSONDecoder()
             let statusPayload = try decoder.decode(StationStatusEnvelope.self, from: statusData)
-            let nodesPayload = try decoder.decode(SODSNodesEnvelope.self, from: nodesData)
+            let nodesPayload = try decoder.decode(NodePresenceEnvelope.self, from: nodesData)
 
             health = statusPayload.station.ok ? .connected : .degraded
             lastError = nil
             stationStatus = statusPayload.station
             loggerStatus = statusPayload.logger
+            nodePresence = Dictionary(uniqueKeysWithValues: nodesPayload.items.map { ($0.nodeID, $0) })
             nodes = nodesPayload.items.map {
                 SignalNode(
                     id: $0.nodeID,
@@ -281,6 +358,88 @@ final class SODSStore: ObservableObject {
         NotificationCenter.default.post(name: .sodsOpenURLInApp, object: url)
     }
 
+    func connectNode(_ nodeID: String) {
+        guard let url = makeURL(path: "/api/node/connect") else { return }
+        lastError = nil
+        let payload = ["node_id": nodeID]
+        guard let body = try? JSONSerialization.data(withJSONObject: payload) else { return }
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.httpBody = body
+        URLSession.shared.dataTask(with: req) { [weak self] data, _, error in
+            if let error {
+                DispatchQueue.main.async {
+                    self?.lastError = error.localizedDescription
+                    NodeRegistry.shared.recordLastError(nodeID: nodeID, message: error.localizedDescription)
+                }
+                return
+            }
+            guard let data else {
+                DispatchQueue.main.async {
+                    self?.lastError = "connect failed: no response"
+                    NodeRegistry.shared.recordLastError(nodeID: nodeID, message: "connect failed: no response")
+                }
+                return
+            }
+            if let result = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let ok = result["ok"] as? Bool, !ok {
+                let error = result["error"] as? String ?? "connect failed"
+                DispatchQueue.main.async {
+                    self?.lastError = error
+                    NodeRegistry.shared.recordLastError(nodeID: nodeID, message: error)
+                }
+            } else {
+                DispatchQueue.main.async {
+                    NodeRegistry.shared.clearLastError(nodeID: nodeID)
+                    self?.refreshStatus()
+                }
+            }
+        }.resume()
+    }
+
+    func refreshStatus() {
+        Task { await pollStatusAndNodes() }
+    }
+
+    func identifyNode(_ nodeID: String) {
+        guard let url = makeURL(path: "/api/node/identify") else { return }
+        let payload = ["node_id": nodeID]
+        guard let body = try? JSONSerialization.data(withJSONObject: payload) else { return }
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.httpBody = body
+        URLSession.shared.dataTask(with: req) { [weak self] data, _, error in
+            if let error {
+                DispatchQueue.main.async {
+                    self?.lastError = error.localizedDescription
+                    NodeRegistry.shared.recordLastError(nodeID: nodeID, message: error.localizedDescription)
+                }
+                return
+            }
+            guard let data else {
+                DispatchQueue.main.async {
+                    self?.lastError = "identify failed: no response"
+                    NodeRegistry.shared.recordLastError(nodeID: nodeID, message: "identify failed: no response")
+                }
+                return
+            }
+            if let result = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let ok = result["ok"] as? Bool, !ok {
+                let error = result["error"] as? String ?? "identify failed"
+                DispatchQueue.main.async {
+                    self?.lastError = error
+                    NodeRegistry.shared.recordLastError(nodeID: nodeID, message: error)
+                }
+            } else {
+                DispatchQueue.main.async {
+                    NodeRegistry.shared.clearLastError(nodeID: nodeID)
+                }
+            }
+        }.resume()
+    }
+
     func setAlias(id: String, alias: String) {
         guard let url = makeURL(path: "/api/aliases/user/set") else { return }
         let payload = ["id": id, "alias": alias]
@@ -292,6 +451,7 @@ final class SODSStore: ObservableObject {
         URLSession.shared.dataTask(with: req).resume()
         aliasOverrides[id] = alias
         UserDefaults.standard.set(aliasOverrides, forKey: aliasOverridesKey)
+        IdentityResolver.shared.updateOverrides(aliasOverrides)
     }
 
     func deleteAlias(id: String) {
@@ -305,6 +465,7 @@ final class SODSStore: ObservableObject {
         URLSession.shared.dataTask(with: req).resume()
         aliasOverrides.removeValue(forKey: id)
         UserDefaults.standard.set(aliasOverrides, forKey: aliasOverridesKey)
+        IdentityResolver.shared.updateOverrides(aliasOverrides)
     }
 
     private func makeURL(path: String) -> URL? {
@@ -316,6 +477,60 @@ final class SODSStore: ObservableObject {
             components.path = existingPath + path
         }
         return components.url
+    }
+
+    private static func normalizeBaseURL(_ value: String) -> (url: String?, error: String?) {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            return (nil, "Base URL is required.")
+        }
+        let candidate = trimmed.contains("://") ? trimmed : "http://\(trimmed)"
+        guard var components = URLComponents(string: candidate) else {
+            return (nil, "Base URL is invalid.")
+        }
+        let scheme = components.scheme?.lowercased() ?? ""
+        guard scheme == "http" || scheme == "https" else {
+            return (nil, "Base URL must start with http:// or https://")
+        }
+        guard let host = components.host, !host.isEmpty else {
+            return (nil, "Base URL must include a host.")
+        }
+        if components.path == "/" {
+            components.path = ""
+        }
+        let normalized = components.url?.absoluteString ?? candidate
+        if normalized.contains("rtsp://") || normalized.contains("ws://") || normalized.contains("wss://") {
+            return (nil, "Base URL must use http:// or https:// only.")
+        }
+        return (normalized, nil)
+    }
+
+    private func makeWebSocketURL(path: String) -> URL? {
+        guard let httpURL = makeURL(path: path),
+              var components = URLComponents(url: httpURL, resolvingAgainstBaseURL: false) else {
+            lastError = "Invalid station URL: \(baseURL)"
+            health = .offline
+            return nil
+        }
+        let scheme = components.scheme?.lowercased()
+        switch scheme {
+        case "http":
+            components.scheme = "ws"
+        case "https":
+            components.scheme = "wss"
+        case "ws", "wss":
+            break
+        default:
+            lastError = "Invalid station URL scheme for WebSocket: \(httpURL.absoluteString)"
+            health = .offline
+            return nil
+        }
+        guard let finalURL = components.url else {
+            lastError = "Invalid WebSocket URL: \(httpURL.absoluteString)"
+            health = .offline
+            return nil
+        }
+        return finalURL
     }
 }
 
@@ -407,6 +622,70 @@ struct SODSNode: Decodable {
         case lastSeen = "last_seen"
         case lastKind = "last_kind"
     }
+}
+
+struct RecordedEventLine: Decodable {
+    let id: String?
+    let recvTs: Int?
+    let eventTs: String?
+    let nodeID: String
+    let kind: String
+    let severity: String?
+    let summary: String?
+    let data: [String: JSONValue]?
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case recvTs = "recv_ts"
+        case eventTs = "event_ts"
+        case nodeID = "node_id"
+        case kind
+        case severity
+        case summary
+        case data
+    }
+}
+
+struct NodePresenceEnvelope: Decodable {
+    let items: [NodePresence]
+}
+
+struct NodePresence: Decodable, Hashable {
+    let nodeID: String
+    let state: String
+    let lastSeen: Int
+    let lastSeenAgeMs: Int?
+    let lastError: String?
+    let ip: String?
+    let mac: String?
+    let hostname: String?
+    let confidence: Double?
+    let capabilities: NodeCapabilities
+    let provenanceID: String?
+    let lastKind: String?
+
+    enum CodingKeys: String, CodingKey {
+        case nodeID = "node_id"
+        case state
+        case lastSeen = "last_seen"
+        case lastSeenAgeMs = "last_seen_age_ms"
+        case lastError = "last_error"
+        case ip
+        case mac
+        case hostname
+        case confidence
+        case capabilities
+        case provenanceID = "provenance_id"
+        case lastKind = "last_kind"
+    }
+}
+
+struct NodeCapabilities: Decodable, Hashable {
+    let canScanWifi: Bool?
+    let canScanBle: Bool?
+    let canFrames: Bool?
+    let canFlash: Bool?
+    let canWhoami: Bool?
 }
 
 struct CanonicalEvent: Decodable, Hashable {
@@ -508,10 +787,28 @@ struct NormalizedEvent: Identifiable, Hashable {
         return nil
     }
 
-    private static func deriveID(node: String, kind: String, ts: Date?, data: [String: JSONValue]) -> String {
+    static func deriveID(node: String, kind: String, ts: Date?, data: [String: JSONValue]) -> String {
         let base = "\(node)|\(kind)|\(ts?.timeIntervalSince1970 ?? 0)"
         let hash = data.map { "\($0.key)=\($0.value.stringValue ?? "")" }.joined(separator: "|")
         return "derived-\(base.hashValue)-\(hash.hashValue)"
+    }
+}
+
+extension NormalizedEvent {
+    init(localNodeID: String, kind: String, summary: String, data: [String: JSONValue], deviceID: String?, eventTs: Date = Date()) {
+        self.nodeID = localNodeID
+        self.kind = kind
+        self.severity = "info"
+        self.summary = summary
+        self.data = data
+        self.eventTs = eventTs
+        self.recvTs = eventTs
+        self.deviceID = deviceID
+        let strength = SignalMeta.extractStrength(from: data)
+        let channel = SignalMeta.extractChannel(from: data)
+        let tags = SignalMeta.tags(from: kind)
+        self.signal = SignalMeta(strength: strength, channel: channel, tags: tags)
+        self.id = NormalizedEvent.deriveID(node: localNodeID, kind: kind, ts: eventTs, data: data)
     }
 }
 
@@ -543,13 +840,28 @@ struct SignalMeta: Hashable {
     }
 
     static func deviceID(from data: [String: JSONValue], kind: String, nodeID: String) -> String? {
-        let keys = ["device_id", "deviceId", "device", "addr", "address", "mac", "mac_address", "bssid", "ble_addr"]
+        let lowerKind = kind.lowercased()
+        // Prefer explicit targets when present (especially for tool/action/command events),
+        // so downstream visualizations can show directionality.
+        let keys = [
+            "target_id", "targetId", "target", "target_node", "targetNode", "to",
+            "device_id", "deviceId", "device",
+            "addr", "address",
+            "mac", "mac_address",
+            "bssid",
+            "ble_addr"
+        ]
         for key in keys {
             if let value = data[key]?.stringValue, !value.isEmpty {
                 if kind.contains("ble") {
                     return value.hasPrefix("ble:") ? value : "ble:\(value)"
                 }
                 return value
+            }
+        }
+        if lowerKind.contains("tool") || lowerKind.contains("action") || lowerKind.contains("command") || lowerKind.contains("runbook") || lowerKind.contains("cmd") {
+            if nodeID != "unknown" {
+                return "node:\(nodeID)"
             }
         }
         if nodeID != "unknown" {
@@ -559,11 +871,16 @@ struct SignalMeta: Hashable {
     }
 
     static func tags(from kind: String) -> [String] {
+        let lowerKind = kind.lowercased()
         var tags: [String] = []
-        if kind.contains("ble") { tags.append("ble") }
-        if kind.contains("wifi") { tags.append("wifi") }
-        if kind.contains("node") { tags.append("node") }
-        if kind.contains("error") { tags.append("error") }
+        if lowerKind.contains("ble") { tags.append("ble") }
+        if lowerKind.contains("wifi") { tags.append("wifi") }
+        if lowerKind.contains("node") { tags.append("node") }
+        if lowerKind.contains("rf") || lowerKind.contains("sdr") { tags.append("rf") }
+        if lowerKind.contains("error") { tags.append("error") }
+        if lowerKind.contains("tool") || lowerKind.contains("action") || lowerKind.contains("command") || lowerKind.contains("runbook") || lowerKind.contains("cmd") {
+            tags.append("tool")
+        }
         return tags
     }
 }

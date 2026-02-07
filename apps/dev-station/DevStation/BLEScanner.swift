@@ -15,6 +15,9 @@ final class BLEScanner: NSObject, ObservableObject, @preconcurrency CBCentralMan
     @Published private(set) var lastPermissionMessage: String = ""
 
     private let logStore = LogStore.shared
+    private(set) var scanMode: ScanMode = .oneShot
+    private let oneShotDuration: TimeInterval = 8
+    private var oneShotTask: Task<Void, Never>?
     private var central: CBCentralManager!
     private var shouldScan = false
     private var lastStateDescription: String?
@@ -31,26 +34,39 @@ final class BLEScanner: NSObject, ObservableObject, @preconcurrency CBCentralMan
         logStore.log(.info, "BLE manager init: auth=\(authorizationDescription), state=\(stateDescription)")
     }
 
-    func setScanning(_ enabled: Bool) {
+    func setScanning(_ enabled: Bool, mode: ScanMode = .continuous) {
         if enabled {
-            startScan()
+            startScan(mode: mode)
         } else {
             stopScan()
         }
     }
 
-    func startScan() {
-        logStore.log(.info, "BLE toggle on")
-        shouldScan = true
+    func startScan(mode: ScanMode = .continuous) {
+        logStore.log(.info, "BLE scan requested")
+        scanMode = mode
+        shouldScan = mode == .continuous
+        oneShotTask?.cancel()
         Task { @MainActor in
             await touchForPermissionIfNeeded()
             startScanningIfReady()
+            if mode == .oneShot {
+                oneShotTask = Task { [weak self] in
+                    try? await Task.sleep(nanoseconds: UInt64(self?.oneShotDuration ?? 8) * 1_000_000_000)
+                    await MainActor.run {
+                        self?.stopScan()
+                    }
+                }
+            }
         }
     }
 
     func stopScan() {
         logStore.log(.info, "BLE toggle off")
         shouldScan = false
+        scanMode = .continuous
+        oneShotTask?.cancel()
+        oneShotTask = nil
         stopScanning()
     }
 
@@ -133,7 +149,8 @@ final class BLEScanner: NSObject, ObservableObject, @preconcurrency CBCentralMan
                 fingerprint: fingerprint,
                 fingerprintID: fingerprintID,
                 bleConfidence: bleConfidence,
-                lastSeen: Date()
+                lastSeen: Date(),
+                provenance: Provenance(source: "ble.scan", mode: scanMode, timestamp: Date())
             )
             peripherals.append(item)
             logNewPeripheral(item)
@@ -159,7 +176,7 @@ final class BLEScanner: NSObject, ObservableObject, @preconcurrency CBCentralMan
     }
 
     private func startScanningIfReady() {
-        guard shouldScan else { return }
+        guard shouldScan || scanMode == .oneShot else { return }
         guard central.state == .poweredOn else { return }
         guard !isScanning else { return }
         isScanning = true

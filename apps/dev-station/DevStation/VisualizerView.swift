@@ -7,12 +7,18 @@ extension Notification.Name {
 
 struct VisualizerView: View {
     @ObservedObject var store: SODSStore
+    @ObservedObject var entityStore: EntityStore
     let onOpenTools: () -> Void
     @State private var baseURLText: String = ""
+    @State private var baseURLValidationMessage: String?
+    @State private var showBaseURLToast = false
+    @State private var baseURLToastMessage = ""
     @State private var paused: Bool = false
     @State private var decayRate: Double = 1.0
-    @State private var timeScale: Double = 1.0
-    @State private var maxParticles: Double = 1400
+    // Default to a calmer (less CPU-intensive) baseline; user can turn it up.
+    @State private var timeScale: Double = 0.85
+    @State private var maxParticles: Double = 900
+    // Default to Calm for performance; Storm can be enabled when you want density.
     @State private var intensityMode: SignalIntensity = .calm
     @State private var replayEnabled: Bool = false
     @State private var replayOffset: Double = 0
@@ -22,35 +28,84 @@ struct VisualizerView: View {
     @State private var selectedNodeIDs: Set<String> = []
     @State private var selectedKinds: Set<String> = []
     @State private var selectedDeviceIDs: Set<String> = []
+    @State private var activityTick: Date = Date()
 
     var body: some View {
-        HStack(spacing: 12) {
-            sidebar
-                .frame(minWidth: 320, maxWidth: 360)
-            SignalFieldView(
-                events: filteredEvents,
-                frames: store.frames,
-                paused: paused,
-                decayRate: decayRate,
-                timeScale: timeScale,
-                maxParticles: Int(maxParticles),
-                intensity: intensityMode,
-                replayEnabled: replayEnabled,
-                replayOffset: replayOffset,
-                ghostTrails: ghostTrails,
-                aliases: nodeAliases
-            )
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 12) {
+                sidebar
+                    .frame(minWidth: 320, maxWidth: 360)
+                SignalFieldView(
+                    events: filteredEvents,
+                    frames: displayFrames,
+                    framesAreDerived: framesAreDerived,
+                    paused: paused,
+                    decayRate: decayRate,
+                    timeScale: timeScale,
+                    maxParticles: Int(maxParticles),
+                    intensity: intensityMode,
+                    replayEnabled: replayEnabled,
+                    replayOffset: replayOffset,
+                    ghostTrails: ghostTrails,
+                    aliases: nodeAliases,
+                    nodePresentations: nodePresentationByID,
+                    focusID: entityStore.selectedEntityID,
+                    entityStore: entityStore,
+                    onOpenTools: onOpenTools
+                )
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+            VStack(spacing: 12) {
+                sidebar
+                SignalFieldView(
+                    events: filteredEvents,
+                    frames: displayFrames,
+                    framesAreDerived: framesAreDerived,
+                    paused: paused,
+                    decayRate: decayRate,
+                    timeScale: timeScale,
+                    maxParticles: Int(maxParticles),
+                    intensity: intensityMode,
+                    replayEnabled: replayEnabled,
+                    replayOffset: replayOffset,
+                    ghostTrails: ghostTrails,
+                    aliases: nodeAliases,
+                    nodePresentations: nodePresentationByID,
+                    focusID: entityStore.selectedEntityID,
+                    entityStore: entityStore,
+                    onOpenTools: onOpenTools
+                )
+                .frame(maxWidth: .infinity, minHeight: 420)
+            }
         }
         .padding(12)
         .background(Theme.background)
+        .overlay(alignment: .top) {
+            if showBaseURLToast {
+                baseURLToastView
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
+        }
         .onAppear {
             baseURLText = store.baseURL
+            if let error = store.baseURLError, !error.isEmpty {
+                baseURLValidationMessage = error
+                showBaseURLToast(error)
+            } else {
+                baseURLValidationMessage = nil
+            }
+        }
+        .onChange(of: store.baseURL) { newValue in
+            baseURLText = newValue
+            baseURLValidationMessage = nil
         }
         .onReceive(Timer.publish(every: 0.5, on: .main, in: .common).autoconnect()) { _ in
             guard replayEnabled, replayAutoPlay else { return }
             replayOffset += replaySpeed
             if replayOffset > 60 { replayOffset = 0 }
+        }
+        .onReceive(Timer.publish(every: 0.4, on: .main, in: .common).autoconnect()) { _ in
+            activityTick = Date()
         }
         .onReceive(NotificationCenter.default.publisher(for: .sodsReplaySeek)) { notification in
             if let value = notification.object as? Double {
@@ -60,6 +115,13 @@ struct VisualizerView: View {
     }
 
     private var sidebar: some View {
+        ScrollView {
+            sidebarContent
+        }
+        .modifier(Theme.cardStyle())
+    }
+
+    private var sidebarContent: some View {
         VStack(alignment: .leading, spacing: 10) {
             header
             controls
@@ -69,11 +131,11 @@ struct VisualizerView: View {
             devicesSection
             Spacer()
         }
-        .modifier(Theme.cardStyle())
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        let dataSource = dataSourceStatus
+        return VStack(alignment: .leading, spacing: 6) {
             Text("SODS Spectrum")
                 .font(.system(size: 16, weight: .semibold))
             Text("Strange Ops Dev Station • inferred signal field")
@@ -87,7 +149,43 @@ struct VisualizerView: View {
                     .font(.system(size: 11))
                 Spacer()
             }
+            HStack(spacing: 8) {
+                Circle()
+                    .fill(dataSource.color)
+                    .frame(width: 8, height: 8)
+                Text("Frames: \(dataSource.label)")
+                    .font(.system(size: 11))
+                Spacer()
+            }
+            if store.realFramesActive, let last = store.lastFramesAt {
+                Text("Last frames: \(last.formatted(date: .abbreviated, time: .standard))")
+                    .font(.system(size: 10))
+                    .foregroundColor(.secondary)
+            } else if framesAreDerived, let last = latestFallbackFrameTime {
+                Text("Last activity: \(last.formatted(date: .abbreviated, time: .standard))")
+                    .font(.system(size: 10))
+                    .foregroundColor(.secondary)
+            }
+            if framesAreDerived {
+                Text("Source: events")
+                    .font(.system(size: 10))
+                    .foregroundColor(.secondary)
+            } else if let source = store.frames.first?.source {
+                Text("Source: \(source)")
+                    .font(.system(size: 10))
+                    .foregroundColor(.secondary)
+            }
         }
+    }
+
+    private var dataSourceStatus: (label: String, color: Color) {
+        if replayEnabled {
+            return ("Playback", Color.orange)
+        }
+        if store.realFramesActive || hasRecentLiveEvents {
+            return ("Live", Color.green)
+        }
+        return ("Idle", Color.gray)
     }
 
     private var controls: some View {
@@ -100,9 +198,29 @@ struct VisualizerView: View {
                     TextField("", text: $baseURLText)
                         .textFieldStyle(.roundedBorder)
                     Button("Apply") {
-                        store.updateBaseURL(baseURLText)
+                        if store.updateBaseURL(baseURLText) {
+                            baseURLValidationMessage = nil
+                            baseURLText = store.baseURL
+                        } else {
+                            let message = store.baseURLError ?? "Base URL must start with http:// or https://"
+                            baseURLValidationMessage = message
+                            baseURLText = store.baseURL
+                            showBaseURLToast(message)
+                        }
                     }
                     .buttonStyle(SecondaryActionButtonStyle())
+                    Button("Reset") {
+                        store.resetBaseURL()
+                        baseURLText = store.baseURL
+                        baseURLValidationMessage = nil
+                        showBaseURLToast("Base URL reset to \(store.baseURL)")
+                    }
+                    .buttonStyle(SecondaryActionButtonStyle())
+                }
+                if let message = baseURLValidationMessage {
+                    Text(message)
+                        .font(.system(size: 10))
+                        .foregroundColor(.red)
                 }
                 HStack(spacing: 8) {
                     Button(paused ? "Play" : "Pause") {
@@ -122,7 +240,32 @@ struct VisualizerView: View {
                     sliderRow(title: "Time", value: $timeScale, range: 0.5...2.0, format: "%.2f")
                     sliderRow(title: "Particles", value: $maxParticles, range: 600...2400, format: "%.0f")
                 }
-                Toggle("Replay last 60s", isOn: $replayEnabled)
+                HStack(spacing: 8) {
+                    Button(store.isRecording ? "Stop Recording" : "Start Recording") {
+                        if store.isRecording {
+                            store.stopRecording()
+                        } else {
+                            store.startRecording()
+                        }
+                    }
+                    .buttonStyle(PrimaryActionButtonStyle())
+                    Button("Clear Recording") {
+                        store.clearRecording()
+                    }
+                    .buttonStyle(SecondaryActionButtonStyle())
+                    Button("Save Recording") {
+                        saveRecording()
+                    }
+                    .buttonStyle(SecondaryActionButtonStyle())
+                    Button("Load Recording") {
+                        loadRecording()
+                    }
+                    .buttonStyle(SecondaryActionButtonStyle())
+                    Text("\(store.recordedEvents.count) events")
+                        .font(.system(size: 10))
+                        .foregroundColor(.secondary)
+                }
+                Toggle("Playback", isOn: $replayEnabled)
                     .font(.system(size: 11))
                 if replayEnabled {
                     Toggle("Auto Play", isOn: $replayAutoPlay)
@@ -132,10 +275,32 @@ struct VisualizerView: View {
                 }
                 Toggle("Ghost trails", isOn: $ghostTrails)
                     .font(.system(size: 11))
-                Toggle("Simulate frames (dev)", isOn: $store.simulateFrames)
-                    .font(.system(size: 11))
             }
             .padding(6)
+        }
+    }
+
+    private func saveRecording() {
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [.json]
+        panel.nameFieldStringValue = "sods-recording-\(DateFormatter.recordingStamp.string(from: Date())).ndjson"
+        panel.directoryURL = StoragePaths.recordingsBase()
+        panel.canCreateDirectories = true
+        if panel.runModal() == .OK, let url = panel.url {
+            _ = store.saveRecording(to: url)
+        }
+    }
+
+    private func loadRecording() {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [.json]
+        panel.allowsMultipleSelection = false
+        panel.directoryURL = StoragePaths.recordingsBase()
+        if panel.runModal() == .OK, let url = panel.url {
+            if store.loadRecording(from: url) {
+                replayEnabled = true
+                replayOffset = 0
+            }
         }
     }
 
@@ -152,21 +317,68 @@ struct VisualizerView: View {
         }
     }
 
+    private var baseURLToastView: some View {
+        Text(baseURLToastMessage)
+            .font(.system(size: 11, weight: .semibold))
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+            .background(
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(.ultraThinMaterial)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 10)
+                    .stroke(Theme.border, lineWidth: 1)
+            )
+            .padding(.top, 12)
+    }
+
+    private func showBaseURLToast(_ message: String) {
+        baseURLToastMessage = message
+        withAnimation(.easeInOut(duration: 0.2)) {
+            showBaseURLToast = true
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.8) {
+            withAnimation(.easeInOut(duration: 0.2)) {
+                showBaseURLToast = false
+            }
+        }
+    }
+
     private var legend: some View {
-        GroupBox("Legend") {
-            VStack(alignment: .leading, spacing: 6) {
-                ForEach(SignalKindLegend.allCases) { entry in
-                    HStack(spacing: 8) {
-                        Circle()
-                            .fill(Color(entry.color))
-                            .frame(width: 8, height: 8)
-                        Text(entry.label)
-                            .font(.system(size: 11))
-                        Spacer()
-                    }
+        GroupBox("What you're seeing") {
+            DisclosureGroup {
+                VStack(alignment: .leading, spacing: 6) {
+                    legendRow(color: SignalColor.kindAccent(kind: "ble.seen"), label: "BLE • dot + tight ring")
+                    legendRow(color: SignalColor.kindAccent(kind: "wifi.status", channel: "6"), label: "Wi‑Fi 2.4G • wave ring")
+                    legendRow(color: SignalColor.kindAccent(kind: "wifi.status", channel: "36"), label: "Wi‑Fi 5G • wave ring")
+                    legendRow(color: SignalColor.kindAccent(kind: "rf"), label: "RF • wave burst")
+                    legendRow(color: SignalColor.kindAccent(kind: "node.heartbeat"), label: "Node • diamond halo")
+                    legendRow(color: SignalColor.kindAccent(kind: "tool"), label: "Action • pulse burst")
+                    legendRow(color: SignalColor.kindAccent(kind: "error"), label: "Error • starburst")
+                    Text("Brightness = recency + RSSI strength.")
+                        .font(.system(size: 10))
+                        .foregroundColor(.secondary)
+                    Text("Trails fade with time; depth uses size/blur/alpha.")
+                        .font(.system(size: 10))
+                        .foregroundColor(.secondary)
                 }
+            } label: {
+                Text("Legend + interpretation")
+                    .font(.system(size: 11, weight: .semibold))
             }
             .padding(6)
+        }
+    }
+
+    private func legendRow(color: NSColor, label: String) -> some View {
+        HStack(spacing: 8) {
+            Circle()
+                .fill(Color(color))
+                .frame(width: 8, height: 8)
+            Text(label)
+                .font(.system(size: 11))
+            Spacer()
         }
     }
 
@@ -174,10 +386,13 @@ struct VisualizerView: View {
         GroupBox("Nodes") {
             VStack(alignment: .leading, spacing: 6) {
                 ForEach(store.nodes) { node in
+                    let activity = activityScore(for: node.id)
+                    let presentation = NodePresentation.forSignalNode(node, presence: store.nodePresence[node.id], activityScore: activity)
                     NodeRow(
                         node: node,
                         alias: nodeAliases[node.id] ?? nodeAliases["node:\(node.id)"],
-                        color: SignalColor.deviceColor(id: node.id),
+                        presence: store.nodePresence[node.id],
+                        presentation: presentation,
                         selected: selectedNodeIDs.contains(node.id),
                         onToggle: {
                             toggleFilter(id: node.id, in: &selectedNodeIDs)
@@ -237,12 +452,12 @@ struct VisualizerView: View {
     }
 
     private var availableKinds: [String] {
-        let kinds = Set(store.events.map { $0.kind })
+        let kinds = Set(liveEvents.map { $0.kind })
         return kinds.sorted()
     }
 
     private var availableDevices: [String] {
-        let devices = store.events.compactMap { $0.deviceID }
+        let devices = liveEvents.compactMap { $0.deviceID }
         return Array(Set(devices)).sorted()
     }
 
@@ -253,8 +468,21 @@ struct VisualizerView: View {
         return deviceID
     }
 
+    private var liveEvents: [NormalizedEvent] {
+        let combined = store.events + localEvents
+        if combined.count > 1400 {
+            return Array(combined.suffix(1400))
+        }
+        return combined
+    }
+
+    private var hasRecentLiveEvents: Bool {
+        !fallbackFrames.isEmpty
+    }
+
     private var filteredEvents: [NormalizedEvent] {
-        let base = store.events.filter { event in
+        let sourceEvents = replayEnabled ? store.recordedEvents : liveEvents
+        let base = sourceEvents.filter { event in
             if !selectedNodeIDs.isEmpty && !selectedNodeIDs.contains(event.nodeID) { return false }
             if !selectedKinds.isEmpty && !selectedKinds.contains(event.kind) { return false }
             if !selectedDeviceIDs.isEmpty {
@@ -273,17 +501,69 @@ struct VisualizerView: View {
         }
     }
 
+    private var fallbackFrames: [SignalFrame] {
+        let now = Date()
+        let window: TimeInterval = 4.0
+        let cutoff = now.addingTimeInterval(-window)
+        let recent = filteredEvents.filter { event in
+            let ts = event.eventTs ?? event.recvTs ?? now
+            return ts >= cutoff
+        }
+        guard !recent.isEmpty else { return [] }
+        return recent.suffix(140).compactMap { event in
+            let ts = event.eventTs ?? event.recvTs ?? now
+            let deviceID = event.deviceID ?? event.nodeID
+            let kind = event.kind.lowercased()
+            let source: String = {
+                if kind.contains("ble") { return "ble" }
+                if kind.contains("wifi") { return "wifi" }
+                if kind.contains("rf") { return "rf" }
+                if kind.contains("gps") { return "gps" }
+                if kind.contains("node") { return "node" }
+                return "event"
+            }()
+            let style = SignalVisualStyle.from(event: event, now: now)
+            let (nx, ny, nz) = normalizedFramePosition(for: event)
+            let channel = Int(Double(event.signal.channel ?? "") ?? 0)
+            let strength = event.signal.strength ?? -65
+            return SignalFrame(
+                t: Int(ts.timeIntervalSince1970 * 1000),
+                source: source,
+                nodeID: event.nodeID,
+                deviceID: deviceID,
+                channel: channel,
+                frequency: 0,
+                rssi: strength,
+                x: nx,
+                y: ny,
+                z: nz,
+                color: FrameColor(h: style.hue * 360.0, s: style.saturation, l: style.brightness),
+                glow: style.glow,
+                persistence: 0.45,
+                velocity: nil,
+                confidence: style.confidence
+            )
+        }
+    }
+
+    private var framesAreDerived: Bool {
+        !store.realFramesActive && !fallbackFrames.isEmpty
+    }
+
+    private var displayFrames: [SignalFrame] {
+        store.realFramesActive ? store.frames : fallbackFrames
+    }
+
+    private var latestFallbackFrameTime: Date? {
+        guard !fallbackFrames.isEmpty else { return nil }
+        let latest = fallbackFrames.max(by: { $0.t < $1.t })?.t ?? 0
+        guard latest > 0 else { return nil }
+        return Date(timeIntervalSince1970: TimeInterval(latest) / 1000)
+    }
+
     private var nodeAliases: [String: String] {
-        var out: [String: String] = [:]
-        for node in store.nodes {
-            let alias = node.hostname ?? node.ip ?? node.id
-            out[node.id] = alias
-            out["node:\(node.id)"] = alias
-        }
-        for (id, alias) in store.aliasOverrides {
-            out[id] = alias
-        }
-        for event in store.events {
+        IdentityResolver.shared.updateFromSignals(store.nodes)
+        for event in liveEvents {
             let data = event.data
             let ssid = data["ssid"]?.stringValue ?? ""
             let hostname = data["hostname"]?.stringValue ?? ""
@@ -291,12 +571,144 @@ struct VisualizerView: View {
             let bssid = data["bssid"]?.stringValue ?? data["mac"]?.stringValue ?? ""
             let alias = hostname.isEmpty ? (ssid.isEmpty ? (ip.isEmpty ? "" : ip) : ssid) : hostname
             if let deviceID = event.deviceID, !alias.isEmpty {
-                out[deviceID] = alias
+                IdentityResolver.shared.record(keys: [deviceID], label: alias)
             } else if !bssid.isEmpty, !alias.isEmpty {
-                out[bssid] = alias
+                IdentityResolver.shared.record(keys: [bssid], label: alias)
             }
         }
-        return out
+        return IdentityResolver.shared.aliasMap()
+    }
+
+    private var localEvents: [NormalizedEvent] {
+        let obsByID = latestObservationByID
+        let now = Date()
+        var output: [NormalizedEvent] = []
+
+        for peripheral in entityStore.blePeripherals.prefix(120) {
+            let timestamp = obsByID[peripheral.fingerprintID]?.timestamp ?? peripheral.lastSeen
+            let label = IdentityResolver.shared.resolveLabel(keys: [peripheral.fingerprintID, peripheral.id.uuidString]) ?? peripheral.name ?? peripheral.fingerprintID
+            var data: [String: JSONValue] = [
+                "rssi": .number(Double(peripheral.smoothedRSSI)),
+                "fingerprint": .string(peripheral.fingerprintID),
+                "name": .string(peripheral.name ?? "")
+            ]
+            if !peripheral.serviceUUIDs.isEmpty {
+                data["services"] = .string(peripheral.serviceUUIDs.joined(separator: ","))
+            }
+            if let vendor = peripheral.fingerprint.manufacturerCompanyName, !vendor.isEmpty {
+                data["vendor"] = .string(vendor)
+            }
+            output.append(
+                NormalizedEvent(
+                    localNodeID: "mac-local",
+                    kind: "ble.seen",
+                    summary: "BLE \(label)",
+                    data: data,
+                    deviceID: "ble:\(peripheral.fingerprintID)",
+                    eventTs: timestamp
+                )
+            )
+        }
+
+        for device in entityStore.devices.prefix(120) {
+            let timestamp = obsByID[device.ip]?.timestamp ?? now
+            var data: [String: JSONValue] = [
+                "ip": .string(device.ip),
+                "mac": .string(device.macAddress ?? "")
+            ]
+            if let vendor = device.vendor, !vendor.isEmpty { data["vendor"] = .string(vendor) }
+            if let title = device.httpTitle, !title.isEmpty { data["http_title"] = .string(title) }
+            output.append(
+                NormalizedEvent(
+                    localNodeID: "mac-local",
+                    kind: "net.device",
+                    summary: "Device \(device.ip)",
+                    data: data,
+                    deviceID: device.ip,
+                    eventTs: timestamp
+                )
+            )
+        }
+
+        for host in entityStore.hosts.prefix(120) where host.isAlive {
+            let timestamp = obsByID[host.ip]?.timestamp ?? now
+            var data: [String: JSONValue] = [
+                "ip": .string(host.ip),
+                "mac": .string(host.macAddress ?? "")
+            ]
+            if let vendor = host.vendor, !vendor.isEmpty { data["vendor"] = .string(vendor) }
+            if let hostname = host.hostname, !hostname.isEmpty { data["hostname"] = .string(hostname) }
+            output.append(
+                NormalizedEvent(
+                    localNodeID: "mac-local",
+                    kind: "net.host",
+                    summary: "Host \(host.ip)",
+                    data: data,
+                    deviceID: host.ip,
+                    eventTs: timestamp
+                )
+            )
+        }
+
+        return output
+    }
+
+    private var latestObservationByID: [String: Observation] {
+        var map: [String: Observation] = [:]
+        for obs in entityStore.observations {
+            map[obs.entityID] = obs
+        }
+        return map
+    }
+
+    private func normalizedFramePosition(for event: NormalizedEvent) -> (Double?, Double?, Double?) {
+        let kind = event.kind.lowercased()
+        let kindOffset = kind.contains("wifi") ? 0.08 : kind.contains("ble") ? -0.06 : 0.0
+        let baseHue = Double(SignalColor.stableHue(for: event.deviceID ?? event.nodeID))
+        let channelValue = Double(event.signal.channel ?? "") ?? baseHue * 180
+        let angle = (channelValue.truncatingRemainder(dividingBy: 180) / 180.0) * Double.pi * 2 + kindOffset
+        let radius = kind.contains("ble") ? 0.32 : kind.contains("wifi") ? 0.52 : 0.7
+        let x = cos(angle) * radius
+        let y = sin(angle) * radius
+        let strength = event.signal.strength ?? -60
+        let strengthNorm = clamp(((-strength) - 30.0) / 70.0)
+        let idOffset = stableDepthOffset(for: event.deviceID ?? event.nodeID)
+        let z = clamp(0.25 + strengthNorm * 0.55 + idOffset, min: 0.1, max: 1.0)
+        let nx = clamp(0.5 + (x / 1.2))
+        let ny = clamp(0.5 + (y / 1.2))
+        return (nx, ny, z)
+    }
+
+    private func clamp(_ value: Double, min: Double = 0.0, max: Double = 1.0) -> Double {
+        Swift.max(min, Swift.min(max, value))
+    }
+
+    private var nodePresentationByID: [String: NodePresentation] {
+        var map: [String: NodePresentation] = [:]
+        for node in store.nodes {
+            let presentation = NodePresentation.forSignalNode(node, presence: store.nodePresence[node.id], activityScore: activityScore(for: node.id))
+            map[node.id] = presentation
+            map["node:\(node.id)"] = presentation
+        }
+        return map
+    }
+
+    private func activityScore(for nodeID: String) -> Double {
+        let now = activityTick
+        let window: TimeInterval = 20
+        let recent = liveEvents.suffix(240).filter { event in
+            guard event.nodeID == nodeID else { return false }
+            let ts = event.eventTs ?? event.recvTs ?? now
+            return now.timeIntervalSince(ts) <= window
+        }
+        guard !recent.isEmpty else { return 0.0 }
+        let weighted = recent.reduce(0.0) { partial, event in
+            let strength = event.signal.strength ?? -65
+            let norm = max(0.0, min(1.0, ((-strength) - 30.0) / 70.0))
+            return partial + norm
+        }
+        let base = min(1.0, weighted / Double(max(1, recent.count)))
+        return max(0.2, min(1.0, base))
     }
 
     // persistence handled inside SignalFieldView
@@ -313,7 +725,8 @@ struct VisualizerView: View {
 struct NodeRow: View {
     let node: SignalNode
     let alias: String?
-    let color: NSColor
+    let presence: NodePresence?
+    let presentation: NodePresentation
     let selected: Bool
     let onToggle: () -> Void
     let onOpenWhoami: () -> Void
@@ -325,24 +738,36 @@ struct NodeRow: View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 8) {
                 Circle()
-                    .fill(Color(color))
+                    .fill(Color(presentation.displayColor))
                     .frame(width: 8, height: 8)
+                    .shadow(color: presentation.shouldGlow ? Color(presentation.baseColor).opacity(0.35) : .clear, radius: 6)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(node.id)
                         .font(.system(size: 11, weight: .semibold))
+                        .foregroundColor(presentation.isOffline ? Theme.muted : Theme.textPrimary)
                     if let alias, !alias.isEmpty, alias != node.id {
                         Text(alias)
                             .font(.system(size: 10))
-                            .foregroundColor(.secondary)
+                            .foregroundColor(presentation.isOffline ? Theme.muted : .secondary)
                     }
                     Text(node.hostname ?? node.ip ?? "Unknown host")
                         .font(.system(size: 10))
-                        .foregroundColor(.secondary)
+                        .foregroundColor(presentation.isOffline ? Theme.muted : .secondary)
+                    if let lastSeen = lastSeenLabel() {
+                        Text("Last seen: \(lastSeen)")
+                            .font(.system(size: 10))
+                            .foregroundColor(presentation.isOffline ? Theme.muted : .secondary)
+                    }
+                    if let lastError = lastErrorLabel() {
+                        Text("Last error: \(lastError)")
+                            .font(.system(size: 10))
+                            .foregroundColor(presentation.isOffline ? Theme.muted : .secondary)
+                    }
                 }
                 Spacer()
-                Text(node.isStale ? "Stale" : "Live")
+                Text(presentation.isOffline ? "Offline" : (node.isStale ? "Stale" : "Live"))
                     .font(.system(size: 10))
-                    .foregroundColor(node.isStale ? .orange : .green)
+                    .foregroundColor(presentation.isOffline ? Theme.muted : (node.isStale ? .orange : .green))
             }
             HStack(spacing: 6) {
                 Button(selected ? "Hide" : "Show") { onToggle() }
@@ -364,7 +789,33 @@ struct NodeRow: View {
         .padding(6)
         .background(selected ? Theme.panelAlt : Theme.panel)
         .cornerRadius(6)
+        .shadow(color: presentation.shouldGlow ? Color(presentation.baseColor).opacity(0.25) : .clear, radius: 6)
+        .animation(.easeInOut(duration: 0.25), value: presentation.isOffline)
+        .animation(.easeOut(duration: 0.35), value: presentation.activityScore)
     }
+
+    private func lastSeenLabel() -> String? {
+        if let presence, presence.lastSeen > 0 {
+            return Date(timeIntervalSince1970: TimeInterval(presence.lastSeen) / 1000).formatted(date: .abbreviated, time: .shortened)
+        }
+        if node.lastSeen != .distantPast {
+            return node.lastSeen.formatted(date: .abbreviated, time: .shortened)
+        }
+        return nil
+    }
+
+    private func lastErrorLabel() -> String? {
+        let error = presence?.lastError?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return error.isEmpty ? nil : error
+    }
+}
+
+private extension DateFormatter {
+    static let recordingStamp: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyyMMdd-HHmmss"
+        return formatter
+    }()
 }
 
 struct FilterRow: View {
@@ -392,6 +843,7 @@ struct FilterRow: View {
 struct SignalFieldView: View {
     let events: [NormalizedEvent]
     let frames: [SignalFrame]
+    let framesAreDerived: Bool
     let paused: Bool
     let decayRate: Double
     let timeScale: Double
@@ -401,6 +853,10 @@ struct SignalFieldView: View {
     let replayOffset: Double
     let ghostTrails: Bool
     let aliases: [String: String]
+    let nodePresentations: [String: NodePresentation]
+    let focusID: String?
+    @ObservedObject var entityStore: EntityStore
+    let onOpenTools: () -> Void
 
     @StateObject private var engine = SignalFieldEngine()
     @State private var mousePoint: CGPoint = .zero
@@ -413,9 +869,11 @@ struct SignalFieldView: View {
 
     var body: some View {
         ZStack {
-            TimelineView(.animation(minimumInterval: 1.0 / 60.0)) { timeline in
+            // Single true frame rate for both Calm and Storm; only the effects change.
+            TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { timeline in
                 Canvas { context, size in
                     let parallax = Parallax.offset(mousePoint: mousePoint, size: size, now: timeline.date, lastMove: lastMouseMove)
+                    let isActive = fieldIsActive(now: timeline.date)
                     engine.render(
                         context: &context,
                         size: size,
@@ -429,8 +887,11 @@ struct SignalFieldView: View {
                         intensity: intensity,
                         parallax: parallax,
                         selectedID: selectedNode?.id,
-                        focusID: focusedNodeID,
-                        ghostTrails: ghostTrails
+                        focusID: focusID ?? focusedNodeID,
+                        ghostTrails: ghostTrails,
+                        nodePresentations: nodePresentations,
+                        framesAreDerived: framesAreDerived,
+                        isActive: isActive
                     )
                 }
             }
@@ -438,6 +899,10 @@ struct SignalFieldView: View {
                 mousePoint = location
                 lastMouseMove = Date()
             })
+            .onChange(of: focusID ?? "") { newValue in
+                let trimmed = newValue.trimmingCharacters(in: .whitespacesAndNewlines)
+                focusedNodeID = trimmed.isEmpty ? nil : trimmed
+            }
             .contentShape(Rectangle())
             .gesture(DragGesture(minimumDistance: 0).onEnded { value in
                 if let hit = engine.nearestNode(to: value.location) {
@@ -451,10 +916,12 @@ struct SignalFieldView: View {
             })
 
             if quickOverlayVisible {
+                let now = Date()
+                let isLive = fieldIsActive(now: now)
                 QuickOverlayView(
                     activeCount: max(frames.count, events.count),
                     hottestSource: hottestLabel,
-                    status: frames.isEmpty ? "Idle" : "Live",
+                    status: isLive ? "Live" : "Idle",
                     focused: focusedLabel
                 )
                 .transition(.opacity)
@@ -468,10 +935,20 @@ struct SignalFieldView: View {
             }
 
             if let node = selectedNode {
+                let detail = resolveDetail(for: node)
+                let actions = buildActions(for: detail)
                 NodeInspectorView(
                     node: node,
+                    presentation: nodePresentations[node.id] ?? NodePresentation.forNode(
+                        id: node.id,
+                        keys: [node.id],
+                        isOnline: true,
+                        activityScore: 0
+                    ),
                     alias: aliases[node.id],
                     suggestions: Array(Set(aliases.values)).sorted(),
+                    detail: detail,
+                    actions: actions,
                     focused: focusedNodeID == node.id,
                     pinned: pinnedNodeIDs.contains(node.id),
                     onFocus: {
@@ -496,7 +973,7 @@ struct SignalFieldView: View {
                 .transition(.opacity)
             }
 
-            if frames.isEmpty && events.isEmpty {
+            if !fieldIsActive(now: Date()) {
                 IdleOverlayView()
             }
 
@@ -528,10 +1005,18 @@ struct SignalFieldView: View {
     }
 
     private var hottestLabel: String {
-        guard let hottest = frames.max(by: { ($0.glow ?? 0) < ($1.glow ?? 0) }) else {
-            return "idle"
+        if let hottest = frames.max(by: { ($0.glow ?? 0) < ($1.glow ?? 0) }) {
+            return aliases[hottest.deviceID] ?? hottest.deviceID
         }
-        return aliases[hottest.deviceID] ?? hottest.deviceID
+        if let hottestEvent = events.max(by: { (a, b) in
+            let sa = a.signal.strength ?? -100
+            let sb = b.signal.strength ?? -100
+            return sa < sb
+        }) {
+            let id = hottestEvent.deviceID ?? hottestEvent.nodeID
+            return aliases[id] ?? id
+        }
+        return "idle"
     }
 
     private var focusedLabel: String? {
@@ -554,24 +1039,209 @@ struct SignalFieldView: View {
         defaults.set(focusedNodeID, forKey: "SODSFocusNodeID")
         defaults.set(Array(pinnedNodeIDs), forKey: "SODSPinnedNodeIDs")
     }
+
+    private var activityWindow: TimeInterval { 4.5 }
+
+    private func fieldIsActive(now: Date) -> Bool {
+        if replayEnabled {
+            return !frames.isEmpty || !events.isEmpty
+        }
+        if !frames.isEmpty { return true }
+        return events.contains { event in
+            let ts = event.eventTs ?? event.recvTs ?? now
+            return now.timeIntervalSince(ts) <= activityWindow
+        }
+    }
+
+    private func resolveDetail(for node: SignalFieldEngine.ProjectedNode) -> SignalDetail {
+        let id = node.id
+        let nodeID: String? = {
+            if id.hasPrefix("node:") {
+                return String(id.dropFirst(5))
+            }
+            if entityStore.nodes.contains(where: { $0.id == id }) {
+                return id
+            }
+            return nil
+        }()
+
+        let latestEvent = events.reversed().first { event in
+            if event.deviceID == id { return true }
+            if event.nodeID == id { return true }
+            if let nodeID, event.nodeID == nodeID { return true }
+            if let nodeID, event.deviceID == "node:\(nodeID)" { return true }
+            return false
+        }
+        let latestFrame = frames.reversed().first { frame in
+            if frame.deviceID == id { return true }
+            if let nodeID, frame.deviceID == nodeID { return true }
+            if let nodeID, frame.deviceID == "node:\(nodeID)" { return true }
+            return false
+        }
+
+        let nodeRecord = nodeID.flatMap { lookupNodeRecord($0) }
+        let bleID = id.hasPrefix("ble:") ? String(id.dropFirst(4)) : id
+        let blePeripheral = entityStore.blePeripherals.first { $0.fingerprintID == bleID || $0.fingerprintID == id }
+        let device = entityStore.devices.first { $0.id == id || $0.ip == id }
+        let host = entityStore.hosts.first { $0.ip == id }
+
+        let alias = aliases[id] ?? (nodeID != nil ? aliases["node:\(nodeID!)"] ?? aliases[nodeID!] : nil)
+        let label = nodeRecord?.label
+            ?? alias
+            ?? blePeripheral?.name
+            ?? device?.httpTitle
+            ?? host?.hostname
+            ?? id
+
+        let kindRaw = latestEvent?.kind ?? latestFrame?.source ?? (nodeRecord != nil ? "node" : "signal")
+        let renderKind = latestEvent.map { SignalRenderKind.from(event: $0) } ?? SignalRenderKind.from(source: kindRaw)
+        let kindLabel = renderKind == .generic ? kindRaw : renderKind.label
+
+        let lastSeen: Date? = {
+            if let event = latestEvent {
+                return event.eventTs ?? event.recvTs
+            }
+            if let frame = latestFrame {
+                return Date(timeIntervalSince1970: TimeInterval(frame.t) / 1000)
+            }
+            if let nodeRecord = nodeRecord {
+                return nodeRecord.lastSeen ?? nodeRecord.lastHeartbeat
+            }
+            return blePeripheral?.lastSeen
+        }()
+
+        let rssi: Double? = latestEvent?.signal.strength ?? latestFrame?.rssi ?? blePeripheral?.smoothedRSSI
+        let channel: String? = latestEvent?.signal.channel ?? latestFrame.map { "\($0.channel)" }
+        let lastError = nodeRecord?.lastError
+
+        return SignalDetail(
+            id: id,
+            nodeID: nodeID ?? nodeRecord?.id,
+            label: label,
+            kind: kindRaw,
+            kindLabel: kindLabel,
+            lastSeen: lastSeen,
+            lastError: lastError,
+            rssi: rssi,
+            channel: channel,
+            ip: nodeRecord?.ip ?? device?.ip ?? host?.ip,
+            hostname: nodeRecord?.hostname ?? host?.hostname,
+            mac: nodeRecord?.mac ?? host?.macAddress ?? device?.macAddress,
+            capabilities: nodeRecord?.capabilities ?? []
+        )
+    }
+
+    private func lookupNodeRecord(_ nodeID: String) -> NodeRecord? {
+        entityStore.nodes.first { $0.id == nodeID }
+    }
+
+    private func buildActions(for detail: SignalDetail) -> [SignalAction] {
+        var actions: [SignalAction] = []
+        guard let nodeID = detail.nodeID else {
+            if !ToolRegistry.shared.tools.isEmpty {
+                actions.append(SignalAction(title: "Tools", enabled: true, action: { onOpenTools() }))
+            }
+            return actions
+        }
+
+        let caps = detail.capabilities
+        let canIdentify = caps.isEmpty || caps.contains("identify") || caps.contains("whoami")
+
+        actions.append(
+            SignalAction(title: "Connect", enabled: true, action: {
+                NodeRegistry.shared.setConnecting(nodeID: nodeID, connecting: true)
+                SODSStore.shared.connectNode(nodeID)
+                SODSStore.shared.identifyNode(nodeID)
+                SODSStore.shared.refreshStatus()
+            })
+        )
+
+        if canIdentify {
+            actions.append(
+                SignalAction(title: "Identify", enabled: true, action: {
+                    SODSStore.shared.identifyNode(nodeID)
+                    SODSStore.shared.refreshStatus()
+                })
+            )
+        }
+
+        if let signalNode = signalNode(from: detail) {
+            actions.append(
+                SignalAction(title: "Whoami", enabled: signalNode.ip != nil, action: {
+                    SODSStore.shared.openEndpoint(for: signalNode, path: "/whoami")
+                })
+            )
+            actions.append(
+                SignalAction(title: "Health", enabled: signalNode.ip != nil, action: {
+                    SODSStore.shared.openEndpoint(for: signalNode, path: "/health")
+                })
+            )
+            actions.append(
+                SignalAction(title: "Metrics", enabled: signalNode.ip != nil, action: {
+                    SODSStore.shared.openEndpoint(for: signalNode, path: "/metrics")
+                })
+            )
+        }
+
+        if !ToolRegistry.shared.tools.isEmpty {
+            actions.append(SignalAction(title: "Tools", enabled: true, action: { onOpenTools() }))
+        }
+
+        actions.append(SignalAction(title: "God Button", enabled: true, action: {
+            NotificationCenter.default.post(name: .openGodMenuCommand, object: nil)
+        }))
+
+        return actions
+    }
+
+    private func signalNode(from detail: SignalDetail) -> SignalNode? {
+        guard let nodeID = detail.nodeID else { return nil }
+        return SignalNode(
+            id: nodeID,
+            lastSeen: detail.lastSeen ?? .distantPast,
+            ip: detail.ip,
+            hostname: detail.hostname,
+            mac: detail.mac,
+            lastKind: detail.kind
+        )
+    }
 }
 
 struct LegendOverlayView: View {
+    @State private var expanded = false
+
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("Legend")
-                .font(.system(size: 11, weight: .semibold))
-            legendRow(color: SignalColor.kindAccent(kind: "ble.seen"), label: "BLE")
-            legendRow(color: SignalColor.kindAccent(kind: "wifi.status"), label: "Wi-Fi")
-            legendRow(color: SignalColor.kindAccent(kind: "node.heartbeat"), label: "Node")
+            DisclosureGroup(isExpanded: $expanded) {
+                VStack(alignment: .leading, spacing: 6) {
+                    legendRow(color: SignalColor.kindAccent(kind: "ble.seen"), label: "BLE • dot + tight ring")
+                    legendRow(color: SignalColor.kindAccent(kind: "wifi.status", channel: "6"), label: "Wi‑Fi 2.4G • wave ring")
+                    legendRow(color: SignalColor.kindAccent(kind: "wifi.status", channel: "36"), label: "Wi‑Fi 5G • wave ring")
+                    legendRow(color: SignalColor.kindAccent(kind: "rf"), label: "RF • wave burst")
+                    legendRow(color: SignalColor.kindAccent(kind: "node.heartbeat"), label: "Node • diamond halo")
+                    legendRow(color: SignalColor.kindAccent(kind: "tool"), label: "Action • pulse burst")
+                    legendRow(color: SignalColor.kindAccent(kind: "error"), label: "Error • starburst")
+                    Text("Brightness = recency + strength. Trails fade with time.")
+                        .font(.system(size: 9))
+                        .foregroundColor(.secondary)
+                    Text("Depth = size/blur/alpha/parallax cues.")
+                        .font(.system(size: 9))
+                        .foregroundColor(.secondary)
+                }
+            } label: {
+                Text("What you're seeing")
+                    .font(.system(size: 11, weight: .semibold))
+            }
         }
         .padding(10)
-        .background(Theme.panelAlt)
-        .overlay(
+        .background(
             RoundedRectangle(cornerRadius: 10)
-                .stroke(Theme.border, lineWidth: 1)
+                .fill(.ultraThinMaterial)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10)
+                        .stroke(Theme.border, lineWidth: 1)
+                )
         )
-        .cornerRadius(10)
         .padding(16)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
     }
@@ -696,10 +1366,36 @@ struct ReplayBarView: View {
     }
 }
 
+struct SignalDetail: Hashable {
+    let id: String
+    let nodeID: String?
+    let label: String
+    let kind: String
+    let kindLabel: String
+    let lastSeen: Date?
+    let lastError: String?
+    let rssi: Double?
+    let channel: String?
+    let ip: String?
+    let hostname: String?
+    let mac: String?
+    let capabilities: [String]
+}
+
+struct SignalAction: Identifiable {
+    let id = UUID()
+    let title: String
+    let enabled: Bool
+    let action: () -> Void
+}
+
 struct NodeInspectorView: View {
     let node: SignalFieldEngine.ProjectedNode
+    let presentation: NodePresentation
     let alias: String?
     let suggestions: [String]
+    let detail: SignalDetail
+    let actions: [SignalAction]
     let focused: Bool
     let pinned: Bool
     let onFocus: () -> Void
@@ -720,10 +1416,59 @@ struct NodeInspectorView: View {
             }
             HStack(spacing: 8) {
                 Circle()
-                    .fill(Color(node.color))
+                    .fill(Color(presentation.displayColor))
                     .frame(width: 10, height: 10)
-                Text(node.id)
+                    .shadow(color: presentation.shouldGlow ? Color(presentation.baseColor).opacity(0.35) : .clear, radius: 6)
+                Text(detail.label)
                     .font(.system(size: 11, weight: .semibold))
+                Text("(\(detail.id))")
+                    .font(.system(size: 10, design: .monospaced))
+                    .foregroundColor(.secondary)
+            }
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Kind: \(detail.kindLabel)")
+                    .font(.system(size: 10))
+                    .foregroundColor(.secondary)
+                if let lastSeen = detail.lastSeen {
+                    Text("Last seen: \(lastSeen.formatted(date: .abbreviated, time: .standard))")
+                        .font(.system(size: 10))
+                        .foregroundColor(.secondary)
+                }
+                if let lastError = detail.lastError, !lastError.isEmpty {
+                    Text("Last error: \(lastError)")
+                        .font(.system(size: 10))
+                        .foregroundColor(.secondary)
+                }
+                if let rssi = detail.rssi {
+                    Text("RSSI: \(String(format: "%.0f", rssi)) dBm")
+                        .font(.system(size: 10))
+                        .foregroundColor(.secondary)
+                }
+                if let channel = detail.channel, !channel.isEmpty {
+                    Text("Channel: \(channel)")
+                        .font(.system(size: 10))
+                        .foregroundColor(.secondary)
+                }
+                if let host = detail.hostname, !host.isEmpty {
+                    Text("Host: \(host)")
+                        .font(.system(size: 10))
+                        .foregroundColor(.secondary)
+                }
+                if let ip = detail.ip, !ip.isEmpty {
+                    Text("IP: \(ip)")
+                        .font(.system(size: 10))
+                        .foregroundColor(.secondary)
+                }
+                if let mac = detail.mac, !mac.isEmpty {
+                    Text("MAC: \(mac)")
+                        .font(.system(size: 10))
+                        .foregroundColor(.secondary)
+                }
+                if !detail.capabilities.isEmpty {
+                    Text("Capabilities: \(detail.capabilities.joined(separator: ", "))")
+                        .font(.system(size: 10))
+                        .foregroundColor(.secondary)
+                }
             }
             VStack(alignment: .leading, spacing: 6) {
                 Text("Alias")
@@ -746,23 +1491,39 @@ struct NodeInspectorView: View {
                 Button("Save Alias") { onSaveAlias(aliasText) }
                     .buttonStyle(SecondaryActionButtonStyle())
             }
+            if !actions.isEmpty {
+                let columns = [GridItem(.adaptive(minimum: 120), spacing: 8)]
+                LazyVGrid(columns: columns, alignment: .leading, spacing: 8) {
+                    ForEach(actions) { action in
+                        Button(action.title) { action.action() }
+                            .buttonStyle(SecondaryActionButtonStyle())
+                            .disabled(!action.enabled)
+                    }
+                }
+            } else {
+                Text("No actions available.")
+                    .font(.system(size: 10))
+                    .foregroundColor(.secondary)
+            }
             Text("Depth: \(String(format: "%.2f", node.depth))")
                 .font(.system(size: 10, design: .monospaced))
                 .foregroundColor(.secondary)
             HStack(spacing: 8) {
-                Button(focused ? "Clear Focus" : "Focus") { onFocus() }
+                Button(focused ? "Unfocus" : "Focus") { onFocus() }
                     .buttonStyle(PrimaryActionButtonStyle())
                 Button(pinned ? "Unpin" : "Pin") { onPin() }
                     .buttonStyle(SecondaryActionButtonStyle())
             }
         }
         .padding(12)
-        .background(Theme.panelAlt)
-        .overlay(
-            RoundedRectangle(cornerRadius: 10)
-                .stroke(Theme.border, lineWidth: 1)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(.ultraThinMaterial)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(Theme.border, lineWidth: 1)
+                )
         )
-        .cornerRadius(10)
         .padding(20)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
     }
@@ -781,12 +1542,14 @@ struct IdleOverlayView: View {
                 .foregroundColor(.secondary)
         }
         .padding(14)
-        .background(Theme.panel)
-        .overlay(
+        .background(
             RoundedRectangle(cornerRadius: 12)
-                .stroke(Theme.border, lineWidth: 1)
+                .fill(.ultraThinMaterial)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(Theme.border, lineWidth: 1)
+                )
         )
-        .cornerRadius(12)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
     }
 }
@@ -800,6 +1563,8 @@ final class SignalFieldEngine: ObservableObject {
     private var lastProjected: [ProjectedNode] = []
     private var pulses: [FieldPulse] = []
     private var lastPulseBySource: [String: Date] = [:]
+    private var edgePulses: [EdgePulse] = []
+    private var lastEdgePulseBySource: [String: Date] = [:]
 
     struct ProjectedNode: Hashable {
         let id: String
@@ -810,14 +1575,29 @@ final class SignalFieldEngine: ObservableObject {
 
     struct FieldPulse: Hashable {
         let id: UUID
+        let sourceID: String
         let position: SIMD3<Double>
         let color: NSColor
+        let renderKind: SignalRenderKind
         let birth: Date
         let lifespan: TimeInterval
         let strength: Double
     }
 
+    struct EdgePulse: Hashable {
+        let id: UUID
+        let throttleKey: String
+        let fromID: String
+        let toID: String
+        let birth: Date
+        let lifespan: TimeInterval
+        let strength: Double
+        let color: NSColor
+        let renderKind: SignalRenderKind
+    }
+
     struct GhostPoint: Hashable {
+        let sourceID: String
         let position: SIMD3<Double>
         let color: NSColor
         let ts: Date
@@ -837,93 +1617,158 @@ final class SignalFieldEngine: ObservableObject {
         parallax: CGPoint,
         selectedID: String?,
         focusID: String?,
-        ghostTrails: Bool
+        ghostTrails: Bool,
+        nodePresentations: [String: NodePresentation],
+        framesAreDerived: Bool,
+        isActive: Bool
     ) {
-        drawBackground(context: &context, size: size, now: now)
+        drawBackground(context: &context, size: size, now: now, isActive: isActive)
 
         if !paused {
-            if !frames.isEmpty {
-                ingest(frames: frames, now: now)
-            } else {
-                ingest(events: events, intensity: intensity, now: now)
+            if isActive {
+                if !frames.isEmpty {
+                    ingest(frames: frames, now: now, intensity: intensity)
+                    if framesAreDerived {
+                        ingest(events: events, intensity: intensity, now: now)
+                    }
+                } else {
+                    ingest(events: events, intensity: intensity, now: now)
+                }
             }
-            step(now: now, timeScale: timeScale, decayRate: decayRate)
+            step(now: now, timeScale: timeScale, decayRate: decayRate, isActive: isActive)
         } else {
             lastUpdate = now
         }
 
-        drawBins(context: &context, size: size, frames: frames, now: now, focusID: focusID)
-        lastProjected = drawSources(context: &context, size: size, parallax: parallax, selectedID: selectedID, focusID: focusID)
-        if ghostTrails {
-            updateGhosts(now: now)
-            drawGhosts(context: &context, size: size, parallax: parallax, focusID: focusID)
+        // Enforce particle budget *before* drawing so rendering cost doesn't spike.
+        // Calm should be dramatically quieter; Storm can be dense but still bounded.
+        let particleBudget = max(200, min(maxParticles, intensity.particleCap))
+        if particles.count > particleBudget {
+            particles = Array(particles.suffix(particleBudget))
         }
-        drawConnections(context: &context, focusID: focusID)
-        drawPulses(context: &context, size: size, now: now, parallax: parallax, focusID: focusID)
-        drawParticles(context: &context, size: size, now: now, parallax: parallax, focusID: focusID)
 
-        if particles.count > maxParticles {
-            particles.removeFirst(particles.count - maxParticles)
+        let activityFade: CGFloat = isActive ? 1.0 : 0.25
+        let lineOnly = (intensity == .calm)
+        if !lineOnly {
+            drawBins(context: &context, size: size, frames: frames, now: now, focusID: focusID, activityFade: activityFade, intensity: intensity)
+        }
+        lastProjected = drawSources(context: &context, size: size, now: now, parallax: parallax, selectedID: selectedID, focusID: focusID, nodePresentations: nodePresentations, activityFade: activityFade)
+        if ghostTrails && !lineOnly {
+            if isActive {
+                updateGhosts(now: now, nodePresentations: nodePresentations, intensity: intensity)
+            }
+            drawGhosts(context: &context, size: size, parallax: parallax, focusID: focusID, activityFade: activityFade)
+        }
+        drawConnections(context: &context, focusID: focusID, activityFade: activityFade, intensity: intensity)
+        drawEdgePulses(context: &context, now: now, focusID: focusID, activityFade: activityFade, intensity: intensity)
+        if !lineOnly {
+            drawPulses(context: &context, size: size, now: now, parallax: parallax, focusID: focusID, activityFade: activityFade)
+            drawParticles(context: &context, size: size, now: now, parallax: parallax, focusID: focusID, activityFade: activityFade, budget: particleBudget)
         }
     }
 
     private func ingest(events: [NormalizedEvent], intensity: SignalIntensity, now: Date) {
-        for event in events {
+        // Events lists can be long; we only need the tail to catch new arrivals.
+        for event in events.suffix(intensity.eventTailLimit) {
             guard processedIDs.insert(event.id).inserted else { continue }
             let key = event.deviceID ?? event.nodeID
             let source = sources[key] ?? SignalSource(id: key)
             source.update(from: event)
             sources[key] = source
-            particles.append(contentsOf: SignalEmitter.emit(from: source, event: event, intensity: intensity, now: now))
-            seedPulse(id: key, source: source, event: event, now: now)
+            let lineOnly = (intensity == .calm)
+            if !lineOnly {
+                let emitted = SignalEmitter.emit(from: source, event: event, intensity: intensity, now: now)
+                particles.append(contentsOf: emitted)
+            }
+
+            // BLE can be extremely chatty (metadata/enrichment events). Only emit effects when the device
+            // is actually "broadcasting" (i.e., we have strength / a real seen-type signal).
+            let isBLE = event.kind.lowercased().contains("ble")
+            if !isBLE || SignalEmitter.isBLEBroadcasting(event: event) {
+                if !lineOnly {
+                    seedPulse(id: key, source: source, event: event, now: now, intensity: intensity)
+                }
+                if let nodeID = source.lastNodeID, !nodeID.isEmpty, nodeID != "unknown" {
+                    let fromID = "node:\(nodeID)"
+                    let toID = key
+                    seedEdgePulse(
+                        throttleKey: key,
+                        fromID: fromID,
+                        toID: toID,
+                        strength: source.lastStrength ?? -70,
+                        color: source.color,
+                        renderKind: SignalRenderKind.from(event: event),
+                        now: now,
+                        intensity: intensity
+                    )
+                }
+            }
         }
         if processedIDs.count > 4000 {
             processedIDs.removeAll(keepingCapacity: true)
         }
     }
 
-    private func ingest(frames: [SignalFrame], now: Date) {
+    private func ingest(frames: [SignalFrame], now: Date, intensity: SignalIntensity) {
         for frame in frames {
             let key = frame.deviceID
             let source = sources[key] ?? SignalSource(id: key)
             source.update(from: frame)
             sources[key] = source
             let style = SignalFrameStyle.from(frame: frame)
-            particles.append(
-                SignalParticle(
-                    id: UUID(),
-                    kind: .spark,
-                    sourceID: key,
-                    position: source.position,
-                    velocity: SIMD3<Double>(0, 0, 0),
-                    birth: now,
-                    lifespan: 1.2,
-                    baseSize: 10 + style.glow * 12,
-                    color: style.color,
-                    strength: max(0.2, style.confidence * 1.4),
-                    glow: style.glow,
-                    ringRadius: 0,
-                    ringWidth: 1.6,
-                    trail: []
+            let lineOnly = (intensity == .calm)
+            if !lineOnly {
+                particles.append(
+                    SignalParticle(
+                        id: UUID(),
+                        kind: .spark,
+                        sourceID: key,
+                        position: source.position,
+                        velocity: SIMD3<Double>(0, 0, 0),
+                        birth: now,
+                        lifespan: 1.2,
+                        baseSize: 10 + style.glow * 12,
+                        color: style.color,
+                        strength: max(0.2, style.confidence * 1.4),
+                        glow: style.glow,
+                        ringRadius: 0,
+                        ringWidth: 1.6,
+                        trail: [],
+                        renderKind: SignalRenderKind.from(source: frame.source)
+                    )
                 )
-            )
-            seedPulse(id: key, color: style.color, strength: style.glow, source: source, now: now)
+                seedPulse(id: key, color: style.color, strength: style.glow, source: source, now: now, renderKind: SignalRenderKind.from(source: frame.source), intensity: intensity)
+            }
+            if let nodeID = source.lastNodeID, !nodeID.isEmpty, nodeID != "unknown" {
+                seedEdgePulse(
+                    throttleKey: key,
+                    fromID: "node:\(nodeID)",
+                    toID: key,
+                    strength: frame.rssi,
+                    color: style.color,
+                    renderKind: SignalRenderKind.from(source: frame.source),
+                    now: now,
+                    intensity: intensity
+                )
+            }
         }
     }
 
-    private func step(now: Date, timeScale: Double, decayRate: Double) {
+    private func step(now: Date, timeScale: Double, decayRate: Double, isActive: Bool) {
         let dt: Double
         if let last = lastUpdate {
-            dt = min(0.05, now.timeIntervalSince(last)) * timeScale
+            dt = min(0.033, now.timeIntervalSince(last)) * timeScale
         } else {
             dt = 0.016 * timeScale
         }
         lastUpdate = now
         let decay = max(0.2, min(2.2, decayRate))
-        applyAttraction()
-        applyRepulsion()
+        if isActive {
+            applyAttraction()
+            applyRepulsion()
+        }
         for source in sources.values {
-            source.step(dt: dt)
+            source.step(dt: dt, isActive: isActive)
         }
         particles = particles.compactMap { particle in
             var particle = particle
@@ -938,7 +1783,7 @@ final class SignalFieldEngine: ObservableObject {
 
     private func applyAttraction() {
         let nodes = Array(sources.values)
-        guard nodes.count > 1 else { return }
+        guard nodes.count > 1, nodes.count <= 120 else { return }
         for i in 0..<(nodes.count - 1) {
             for j in (i + 1)..<nodes.count {
                 let a = nodes[i]
@@ -958,7 +1803,7 @@ final class SignalFieldEngine: ObservableObject {
 
     private func applyRepulsion() {
         let nodes = Array(sources.values)
-        guard nodes.count > 1 else { return }
+        guard nodes.count > 1, nodes.count <= 120 else { return }
         for i in 0..<(nodes.count - 1) {
             for j in (i + 1)..<nodes.count {
                 let a = nodes[i]
@@ -975,44 +1820,72 @@ final class SignalFieldEngine: ObservableObject {
         }
     }
 
-    private func drawBackground(context: inout GraphicsContext, size: CGSize, now: Date) {
+    private func drawBackground(context: inout GraphicsContext, size: CGSize, now: Date, isActive: Bool) {
         let rect = CGRect(origin: .zero, size: size)
+        let idleTone: Double = isActive ? 0.0 : 0.12
         let gradient = Gradient(colors: [
-            Color(red: 0.05, green: 0.05, blue: 0.08),
-            Color(red: 0.06, green: 0.06, blue: 0.11),
-            Color(red: 0.03, green: 0.03, blue: 0.06)
+            Color(red: 0.05 + idleTone, green: 0.05 + idleTone, blue: 0.08 + idleTone),
+            Color(red: 0.06 + idleTone, green: 0.06 + idleTone, blue: 0.11 + idleTone),
+            Color(red: 0.03 + idleTone, green: 0.03 + idleTone, blue: 0.06 + idleTone)
         ])
         context.fill(Path(rect), with: .linearGradient(gradient, startPoint: .zero, endPoint: CGPoint(x: size.width, y: size.height)))
 
         let center = CGPoint(x: size.width * 0.5, y: size.height * 0.5)
         let hazeGradient = Gradient(colors: [
-            Color(red: 0.18, green: 0.06, blue: 0.08, opacity: 0.22),
-            Color(red: 0.05, green: 0.02, blue: 0.04, opacity: 0.0)
+            Color(red: 0.16, green: 0.06, blue: 0.12, opacity: 0.12),
+            Color(red: 0.02, green: 0.02, blue: 0.05, opacity: 0.0)
         ])
-        context.fill(Path(ellipseIn: CGRect(x: center.x - size.width * 0.45, y: center.y - size.height * 0.45, width: size.width * 0.9, height: size.height * 0.9)),
-                     with: .radialGradient(hazeGradient, center: center, startRadius: 0, endRadius: min(size.width, size.height) * 0.55))
-        for ring in 1...4 {
+        context.fill(
+            Path(ellipseIn: CGRect(x: center.x - size.width * 0.46, y: center.y - size.height * 0.46, width: size.width * 0.92, height: size.height * 0.92)),
+            with: .radialGradient(hazeGradient, center: center, startRadius: 0, endRadius: min(size.width, size.height) * 0.58)
+        )
+
+        // Darken the core so live signals "sit" in the field instead of on a grey plate.
+        let coreVignette = Gradient(colors: [
+            Color.black.opacity(isActive ? 0.34 : 0.46),
+            Color.black.opacity(0.0)
+        ])
+        context.fill(
+            Path(ellipseIn: CGRect(x: center.x - size.width * 0.28, y: center.y - size.height * 0.28, width: size.width * 0.56, height: size.height * 0.56)),
+            with: .radialGradient(coreVignette, center: center, startRadius: 0, endRadius: min(size.width, size.height) * 0.38)
+        )
+
+        for ring in 1...3 {
             let radius = min(size.width, size.height) * 0.12 * CGFloat(ring)
             let ringRect = CGRect(x: center.x - radius, y: center.y - radius, width: radius * 2, height: radius * 2)
-            context.stroke(Path(ellipseIn: ringRect), with: .color(Color.white.opacity(0.04)), lineWidth: 1)
+            context.stroke(Path(ellipseIn: ringRect), with: .color(Color.white.opacity(0.02)), lineWidth: 1)
         }
 
-        let starCount = 60
+        let starCount = 42
         for i in 0..<starCount {
             let seed = Double(i) * 0.31
             let x = (sin(seed * 12.1) * 0.5 + 0.5) * size.width
             let y = (cos(seed * 9.7) * 0.5 + 0.5) * size.height
-            let alpha = 0.08 + 0.06 * (sin(now.timeIntervalSince1970 * 0.2 + seed) * 0.5 + 0.5)
+            let twinkle = sin(now.timeIntervalSince1970 * 0.2 + seed) * 0.5 + 0.5
+            let alpha = (isActive ? 0.06 : 0.03) + (isActive ? 0.05 : 0.02) * twinkle
             let rect = CGRect(x: x, y: y, width: 1.2, height: 1.2)
             context.fill(Path(ellipseIn: rect), with: .color(Color.white.opacity(alpha)))
         }
+
+        if !isActive {
+            let pulse = 0.5 + 0.5 * sin(now.timeIntervalSinceReferenceDate * 0.6)
+            let idleGradient = Gradient(colors: [
+                Color(red: 0.2, green: 0.2, blue: 0.25, opacity: 0.08 + 0.06 * pulse),
+                Color(red: 0.05, green: 0.05, blue: 0.08, opacity: 0.0)
+            ])
+            context.fill(
+                Path(ellipseIn: CGRect(x: center.x - size.width * 0.35, y: center.y - size.height * 0.35, width: size.width * 0.7, height: size.height * 0.7)),
+                with: .radialGradient(idleGradient, center: center, startRadius: 0, endRadius: min(size.width, size.height) * 0.5)
+            )
+            context.fill(Path(rect), with: .color(Color.black.opacity(0.28)))
+        }
     }
 
-    private func drawBins(context: inout GraphicsContext, size: CGSize, frames: [SignalFrame], now: Date, focusID: String?) {
+    private func drawBins(context: inout GraphicsContext, size: CGSize, frames: [SignalFrame], now: Date, focusID: String?, activityFade: CGFloat, intensity: SignalIntensity) {
         guard !frames.isEmpty else { return }
         let center = CGPoint(x: size.width * 0.5, y: size.height * 0.5)
         let minDim = min(size.width, size.height)
-        for frame in frames.prefix(90) {
+        for frame in frames.prefix(intensity.frameBinLimit) {
             let channelMax: Double
             if frame.source == "ble" { channelMax = 39 }
             else if frame.source == "wifi" { channelMax = 165 }
@@ -1035,48 +1908,177 @@ final class SignalFieldEngine: ObservableObject {
             )
             var path = Path()
             path.addArc(center: center, radius: radius, startAngle: start, endAngle: end, clockwise: false)
-            context.stroke(path, with: .color(color.opacity(dimmed ? 0.08 : 0.18)), lineWidth: arcWidth)
+            let alpha = (dimmed ? 0.08 : 0.18) * activityFade
+            context.stroke(path, with: .color(color.opacity(alpha)), lineWidth: arcWidth)
         }
     }
 
-    private func drawSources(context: inout GraphicsContext, size: CGSize, parallax: CGPoint, selectedID: String?, focusID: String?) -> [ProjectedNode] {
+    private func drawSources(
+        context: inout GraphicsContext,
+        size: CGSize,
+        now: Date,
+        parallax: CGPoint,
+        selectedID: String?,
+        focusID: String?,
+        nodePresentations: [String: NodePresentation],
+        activityFade: CGFloat
+    ) -> [ProjectedNode] {
         var projected: [ProjectedNode] = []
         for source in sources.values {
-            let point = source.project(in: size, parallax: parallax)
-            let depth = source.depth
-            let glow = CGSize(width: 26 * depth, height: 26 * depth)
+            let depth = depthScalar(id: source.id, z: source.position.z, now: now)
+            let basePoint = source.project(in: size, parallax: .zero)
+            let point = CGPoint(x: basePoint.x + parallax.x * depth, y: basePoint.y + parallax.y * depth)
+            let depthFade = depthFade(for: depth)
+            let strength = source.lastStrength ?? -65
+            let strengthNorm = clamp(((-strength) - 30.0) / 70.0)
+            let glowScale = CGFloat(1.0 + strengthNorm * 0.55)
+            let glow = CGSize(width: 26 * depth * glowScale, height: 26 * depth * glowScale)
             let core = CGSize(width: 10 * depth, height: 10 * depth)
             let dimmed = focusID != nil && focusID != source.id
-            let color = Color(source.color).opacity(dimmed ? 0.25 : 1.0)
+            let presentation = nodePresentations[source.id] ?? nodePresentations["node:\(source.id)"]
+            let displayColor = presentation?.displayColor ?? source.color
+            let isNodeSource = nodePresentations[source.id] != nil || nodePresentations["node:\(source.id)"] != nil || source.id.hasPrefix("node:")
+            let coreTint: NSColor = {
+                if presentation?.isOffline == true { return displayColor }
+                if isNodeSource { return SignalColor.mix(displayColor, NSColor.systemRed, ratio: 0.55) }
+                return displayColor
+            }()
+            let color = Color(displayColor).opacity(dimmed ? 0.25 : 1.0)
+            let lastSeen = source.lastSeen ?? now
+            let age = max(0.0, now.timeIntervalSince(lastSeen))
+            let recency = exp(-age / 6.0)
+            let vitality = max(0.12, min(1.0, 0.2 + recency * 0.6 + strengthNorm * 0.35))
+            let vitalityScale = CGFloat(vitality)
+            let focusScale: CGFloat = dimmed ? 0.45 : 1.0
+            let alphaScale = activityFade * depthFade * focusScale * vitalityScale
+            let glowBoost = CGFloat(0.55 + strengthNorm * 0.9)
+            let glowAlpha = presentation?.shouldGlow == false ? 0.0 : (dimmed ? 0.08 : 0.2) * alphaScale * glowBoost
+            let coreAlpha = presentation?.isOffline == true ? 0.35 * alphaScale : (dimmed ? 0.4 : 0.9) * alphaScale
+            let activity = presentation?.activityScore ?? 0.0
+            let accentColor = SignalColor.mix(displayColor, NSColor.systemRed, ratio: 0.55)
+            let blurStrength = max(0.0, (0.95 - depth) * 0.7)
 
             let glowRect = CGRect(x: point.x - glow.width / 2, y: point.y - glow.height / 2, width: glow.width, height: glow.height)
-            context.fill(Path(ellipseIn: glowRect), with: .color(color.opacity(dimmed ? 0.08 : 0.2)))
+            if glowAlpha > 0 {
+                context.fill(Path(ellipseIn: glowRect), with: .color(color.opacity(glowAlpha)))
+            }
 
             let coreRect = CGRect(x: point.x - core.width / 2, y: point.y - core.height / 2, width: core.width, height: core.height)
-            context.fill(Path(ellipseIn: coreRect), with: .color(color.opacity(dimmed ? 0.4 : 0.9)))
+            if blurStrength > 0.01 {
+                let blurRect = coreRect.insetBy(dx: -core.width * 0.6, dy: -core.height * 0.6)
+                context.fill(Path(ellipseIn: blurRect), with: .color(color.opacity(blurStrength * 0.12)))
+            }
+            let coreDrawColor = Color(coreTint).opacity(coreAlpha)
+            if isNodeSource {
+                context.fill(diamondPath(in: coreRect), with: .color(coreDrawColor))
+            } else {
+                context.fill(Path(ellipseIn: coreRect), with: .color(coreDrawColor))
+            }
+            if activity > 0.01, presentation?.isOffline == false {
+                let pulse = NodePresentation.pulse(now: now, seed: source.id)
+                let ringScale = CGFloat((1.4 + activity * 2.2) * pulse) * depth
+                let ringSize = CGSize(width: core.width * ringScale, height: core.height * ringScale)
+                let ringRect = CGRect(
+                    x: point.x - ringSize.width / 2,
+                    y: point.y - ringSize.height / 2,
+                    width: ringSize.width,
+                    height: ringSize.height
+                )
+                let ringAlpha = min(0.22, 0.08 + activity * 0.18) * (dimmed ? 0.5 : 1.0) * Double(alphaScale)
+                context.stroke(Path(ellipseIn: ringRect), with: .color(color.opacity(ringAlpha)), lineWidth: 1.2)
+            }
+            if isNodeSource {
+                let ringRect = coreRect.insetBy(dx: -4 * depth, dy: -4 * depth)
+                let ringAlpha = (presentation?.isOffline == true ? 0.15 : 0.35) * alphaScale
+                context.stroke(Path(ellipseIn: ringRect), with: .color(Color(accentColor).opacity(ringAlpha)), lineWidth: 1.2)
+            }
             if let selectedID, selectedID == source.id {
                 context.stroke(Path(ellipseIn: glowRect), with: .color(color.opacity(0.9)), lineWidth: 2.0)
             }
-            projected.append(ProjectedNode(id: source.id, point: point, color: source.color, depth: depth))
+            projected.append(ProjectedNode(id: source.id, point: point, color: displayColor, depth: depth))
         }
         return projected
     }
 
-    private func drawParticles(context: inout GraphicsContext, size: CGSize, now: Date, parallax: CGPoint, focusID: String?) {
-        for particle in particles {
+    private func drawParticles(context: inout GraphicsContext, size: CGSize, now: Date, parallax: CGPoint, focusID: String?, activityFade: CGFloat, budget: Int) {
+        for particle in particles.suffix(budget) {
             let dimmed = focusID != nil && focusID != particle.sourceID
-            particle.draw(context: &context, size: size, now: now, parallax: parallax, dimmed: dimmed)
+            particle.draw(context: &context, size: size, now: now, parallax: parallax, dimmed: dimmed, activityFade: activityFade)
         }
     }
 
-    private func drawConnections(context: inout GraphicsContext, focusID: String?) {
+    private func drawConnections(context: inout GraphicsContext, focusID: String?, activityFade: CGFloat, intensity: SignalIntensity) {
         guard lastProjected.count > 1 else { return }
+        let projectedByID: [String: ProjectedNode] = Dictionary(uniqueKeysWithValues: lastProjected.map { ($0.id, $0) })
+
+        // Explicit "connected" lines: connect each observed entity to its reporting node (when known).
+        // This makes the field read more like a living graph than a particle cloud.
+        var edgeCount = 0
+        for source in sources.values {
+            guard let nodeID = source.lastNodeID, !nodeID.isEmpty, nodeID != "unknown" else { continue }
+            let nodeKeyA = "node:\(nodeID)"
+            let nodeKeyB = nodeID
+            let node = projectedByID[nodeKeyA] ?? projectedByID[nodeKeyB]
+            guard let node else { continue }
+            guard let ent = projectedByID[source.id] else { continue }
+            if ent.id == node.id { continue }
+            if let focusID, focusID != node.id && focusID != ent.id { continue }
+
+            let dx = node.point.x - ent.point.x
+            let dy = node.point.y - ent.point.y
+            let dist = sqrt(dx * dx + dy * dy)
+            if dist > 520 { continue }
+
+            var path = Path()
+            path.move(to: node.point)
+            path.addLine(to: ent.point)
+
+            let strength = source.lastStrength ?? -70
+            let strengthNorm = clamp(((-strength) - 30.0) / 70.0)
+            let alpha = (0.035 + strengthNorm * 0.07) * activityFade
+            let line = CGFloat(0.8 + strengthNorm * 0.8)
+            let gradient = Gradient(colors: [Color(node.color).opacity(alpha), Color(ent.color).opacity(alpha)])
+            context.stroke(
+                path,
+                with: .linearGradient(gradient, startPoint: node.point, endPoint: ent.point),
+                lineWidth: line
+            )
+
+            edgeCount += 1
+            if edgeCount >= (intensity.connectionStrokeCap / 3) { break }
+        }
+
+        // Connection lines are O(n^2). Keep them when n is modest, but degrade gracefully otherwise.
+        if let focusID {
+            guard let focus = lastProjected.first(where: { $0.id == focusID }) else { return }
+            let group = groupFor(id: focus.id)
+            var drawn = 0
+            for other in lastProjected {
+                if other.id == focus.id { continue }
+                if groupFor(id: other.id) != group { continue }
+                let dx = focus.point.x - other.point.x
+                let dy = focus.point.y - other.point.y
+                let dist = sqrt(dx * dx + dy * dy)
+                if dist > 260 { continue }
+                var path = Path()
+                path.move(to: focus.point)
+                path.addLine(to: other.point)
+                let alpha = (0.08 + (1.0 - min(1.0, dist / 260)) * 0.18) * activityFade
+                context.stroke(path, with: .color(Color(focus.color).opacity(alpha)), lineWidth: 1.0)
+                drawn += 1
+                if drawn >= intensity.focusConnectionCap { break }
+            }
+            return
+        }
+
+        if lastProjected.count > intensity.connectionNodeHardCap { return }
+
+        var total = 0
         for i in 0..<(lastProjected.count - 1) {
             for j in (i + 1)..<lastProjected.count {
                 let a = lastProjected[i]
                 let b = lastProjected[j]
                 if groupFor(id: a.id) != groupFor(id: b.id) { continue }
-                if focusID != nil && focusID != a.id && focusID != b.id { continue }
                 let dx = a.point.x - b.point.x
                 let dy = a.point.y - b.point.y
                 let dist = sqrt(dx * dx + dy * dy)
@@ -1084,8 +2086,100 @@ final class SignalFieldEngine: ObservableObject {
                 var path = Path()
                 path.move(to: a.point)
                 path.addLine(to: b.point)
-                let alpha = 0.08 + (1.0 - min(1.0, dist / 220)) * 0.18
+                let alpha = (0.08 + (1.0 - min(1.0, dist / 220)) * 0.18) * activityFade
                 context.stroke(path, with: .color(Color(a.color).opacity(alpha)), lineWidth: 1.0)
+                total += 1
+                if total >= intensity.connectionStrokeCap { return }
+            }
+        }
+    }
+
+    private func drawEdgePulses(context: inout GraphicsContext, now: Date, focusID: String?, activityFade: CGFloat, intensity: SignalIntensity) {
+        guard !edgePulses.isEmpty else { return }
+        let projectedByID: [String: ProjectedNode] = Dictionary(uniqueKeysWithValues: lastProjected.map { ($0.id, $0) })
+
+        edgePulses = edgePulses.filter { now.timeIntervalSince($0.birth) <= $0.lifespan }
+
+        func resolveProjected(_ id: String) -> ProjectedNode? {
+            if let direct = projectedByID[id] { return direct }
+            if id.hasPrefix("node:") {
+                let raw = String(id.dropFirst("node:".count))
+                return projectedByID[raw] ?? projectedByID["node:\(raw)"]
+            }
+            return projectedByID["node:\(id)"]
+        }
+
+        for pulse in edgePulses {
+            guard let from = resolveProjected(pulse.fromID) else { continue }
+            guard let to = resolveProjected(pulse.toID) else { continue }
+            if from.id == to.id { continue }
+            if let focusID, focusID != from.id && focusID != to.id { continue }
+
+            let age = now.timeIntervalSince(pulse.birth)
+            let t = min(1.0, max(0.0, age / max(0.01, pulse.lifespan)))
+
+            // Move from from -> to with a slight ease-in/out.
+            let eased = t * t * (3 - 2 * t)
+            let x = from.point.x + (to.point.x - from.point.x) * CGFloat(eased)
+            let y = from.point.y + (to.point.y - from.point.y) * CGFloat(eased)
+
+            let strengthNorm = clamp(((-pulse.strength) - 30.0) / 70.0)
+            let fade = (1.0 - t)
+            let alpha = (0.14 + strengthNorm * 0.22) * fade * Double(activityFade)
+            let radius = CGFloat(2.2 + strengthNorm * 4.2)
+            let glowRadius = radius * 3.4
+
+            let color = Color(pulse.color)
+            let dx = to.point.x - from.point.x
+            let dy = to.point.y - from.point.y
+            let len = max(0.001, sqrt(dx * dx + dy * dy))
+            let ux = dx / len
+            let uy = dy / len
+
+            func drawDot(at px: CGFloat, _ py: CGFloat, r: CGFloat, a: Double) {
+                let g = r * 3.2
+                context.fill(Path(ellipseIn: CGRect(x: px - g, y: py - g, width: g * 2, height: g * 2)), with: .color(color.opacity(a * 0.22)))
+                context.fill(Path(ellipseIn: CGRect(x: px - r, y: py - r, width: r * 2, height: r * 2)), with: .color(color.opacity(a)))
+            }
+
+            switch pulse.renderKind {
+            case .ble:
+                // Dotted pulse train along the link (head + small trailing dots).
+                let dotCount = 4
+                let spacing = CGFloat(10 + strengthNorm * 10)
+                for i in 0..<dotCount {
+                    let back = CGFloat(i) * spacing
+                    let px = x - ux * back
+                    let py = y - uy * back
+                    let a = alpha * (1.0 - Double(i) * 0.18)
+                    let r = max(1.4, radius * (1.0 - CGFloat(i) * 0.12))
+                    drawDot(at: px, py, r: r, a: a)
+                }
+            case .wifi:
+                // Short waveform-ish segment (a bright moving "slice" of the link).
+                let seg = CGFloat(18 + strengthNorm * 26)
+                let half = seg * 0.5
+                let start = CGPoint(x: x - ux * half, y: y - uy * half)
+                let end = CGPoint(x: x + ux * half, y: y + uy * half)
+                var path = Path()
+                path.move(to: start)
+                path.addLine(to: end)
+                context.stroke(path, with: .color(color.opacity(alpha * 0.55)), lineWidth: max(1.2, radius * 0.75))
+                drawDot(at: x, y, r: radius * 0.8, a: alpha)
+            case .node:
+                // Slow thick heartbeat-like blob.
+                let beat = 0.6 + 0.4 * sin(now.timeIntervalSinceReferenceDate * 2.0)
+                drawDot(at: x, y, r: radius * CGFloat(1.25 + beat * 0.35), a: alpha)
+            case .tool:
+                // "Packet" — a bright head + a smaller tail, like command traffic moving with intent.
+                let tail = CGFloat(12 + strengthNorm * 18)
+                drawDot(at: x - ux * tail, y - uy * tail, r: max(1.4, radius * 0.75), a: alpha * 0.75)
+                drawDot(at: x, y, r: radius * 1.05, a: min(1.0, alpha * 1.15))
+            case .error:
+                // Hot flare: slightly larger + sharper.
+                drawDot(at: x, y, r: radius * 1.25, a: min(1.0, alpha * 1.2))
+            case .generic:
+                drawDot(at: x, y, r: radius, a: alpha)
             }
         }
     }
@@ -1094,66 +2188,141 @@ final class SignalFieldEngine: ObservableObject {
         String(id.split(separator: ":").first ?? Substring(id))
     }
 
-    private func updateGhosts(now: Date) {
-        if now.timeIntervalSince(ghostLastFlush) > 0.12 {
+    private func updateGhosts(now: Date, nodePresentations: [String: NodePresentation], intensity: SignalIntensity) {
+        if now.timeIntervalSince(ghostLastFlush) > intensity.ghostFlushInterval {
             ghostLastFlush = now
             for source in sources.values {
-                ghostAccumulator.append(GhostPoint(position: source.position, color: source.color, ts: now))
+                let color = nodePresentations[source.id]?.displayColor ?? source.color
+                ghostAccumulator.append(GhostPoint(sourceID: source.id, position: source.position, color: color, ts: now))
             }
-            if ghostAccumulator.count > 180 {
-                ghostAccumulator.removeFirst(ghostAccumulator.count - 180)
+            if ghostAccumulator.count > intensity.ghostCap {
+                ghostAccumulator.removeFirst(ghostAccumulator.count - intensity.ghostCap)
             }
         }
     }
 
-    private func drawGhosts(context: inout GraphicsContext, size: CGSize, parallax: CGPoint, focusID: String?) {
+    private func drawGhosts(context: inout GraphicsContext, size: CGSize, parallax: CGPoint, focusID: String?, activityFade: CGFloat) {
         guard !ghostAccumulator.isEmpty else { return }
         let now = Date()
         for ghost in ghostAccumulator {
+            if let focusID, focusID != ghost.sourceID { continue }
             let ageSeconds = max(0.0, now.timeIntervalSince(ghost.ts))
             let alpha = max(0.02, 0.18 * exp(-ageSeconds / 4.5))
-            let depth = CGFloat(0.6 + ghost.position.z * 0.7)
+            let depth = depthScalar(id: ghost.sourceID, z: ghost.position.z, now: now)
+            let depthScale = depthFade(for: depth)
             let basePoint = CGPoint(
                 x: CGFloat(ghost.position.x) * size.width * 0.45 + size.width * 0.5 + parallax.x * depth,
                 y: CGFloat(ghost.position.y) * size.height * 0.45 + size.height * 0.5 + parallax.y * depth
             )
             let radius = CGFloat(1.0 + alpha * 10.0) * depth
             context.fill(Path(ellipseIn: CGRect(x: basePoint.x - radius, y: basePoint.y - radius, width: radius * 2, height: radius * 2)),
-                         with: .color(Color(ghost.color).opacity(alpha)))
+                         with: .color(Color(ghost.color).opacity(alpha * Double(activityFade) * Double(depthScale))))
         }
     }
 
-    private func drawPulses(context: inout GraphicsContext, size: CGSize, now: Date, parallax: CGPoint, focusID: String?) {
+    private func drawPulses(context: inout GraphicsContext, size: CGSize, now: Date, parallax: CGPoint, focusID: String?, activityFade: CGFloat) {
         for pulse in pulses {
+            let focusScale: CGFloat = (focusID == nil || focusID == pulse.sourceID) ? 1.0 : 0.2
             let age = now.timeIntervalSince(pulse.birth)
             let progress = min(1.0, age / max(0.01, pulse.lifespan))
             let alpha = (1.0 - progress) * pulse.strength
-            let depth = CGFloat(0.6 + pulse.position.z * 0.7)
+            let depth = depthScalar(id: pulse.sourceID, z: pulse.position.z, now: now)
             let center = CGPoint(
                 x: CGFloat(pulse.position.x) * size.width * 0.45 + size.width * 0.5 + parallax.x * depth,
                 y: CGFloat(pulse.position.y) * size.height * 0.45 + size.height * 0.5 + parallax.y * depth
             )
             let radius = CGFloat(18 + progress * 140) * depth
             let rect = CGRect(x: center.x - radius, y: center.y - radius, width: radius * 2, height: radius * 2)
-            let color = Color(pulse.color).opacity(alpha * (focusID == nil ? 0.6 : 0.25))
-            context.stroke(Path(ellipseIn: rect), with: .color(color), lineWidth: CGFloat(1.4 + pulse.strength * 2))
+            let accentColor: NSColor = {
+                switch pulse.renderKind {
+                case .node:
+                    return SignalColor.mix(pulse.color, NSColor.systemRed, ratio: 0.55)
+                case .error:
+                    return SignalColor.mix(pulse.color, NSColor.systemRed, ratio: 0.75)
+                default:
+                    return pulse.color
+                }
+            }()
+            let strokeAlpha = alpha * Double(activityFade) * Double(focusScale) * Double(depthFade(for: depth))
+            let color = Color(accentColor).opacity(strokeAlpha)
+            let lineWidth = CGFloat(1.2 + pulse.strength * 2) * depth
+
+            switch pulse.renderKind {
+            case .ble:
+                let dots = 10
+                for i in 0..<dots {
+                    let angle = Double(i) / Double(dots) * Double.pi * 2
+                    let dx = cos(angle) * Double(radius)
+                    let dy = sin(angle) * Double(radius)
+                    let dotRadius = max(1.2, 2.4 * depth)
+                    let dotRect = CGRect(
+                        x: center.x + CGFloat(dx) - dotRadius,
+                        y: center.y + CGFloat(dy) - dotRadius,
+                        width: dotRadius * 2,
+                        height: dotRadius * 2
+                    )
+                    context.fill(Path(ellipseIn: dotRect), with: .color(color.opacity(0.8)))
+                }
+            case .wifi:
+                context.stroke(Path(ellipseIn: rect), with: .color(color.opacity(0.85)), lineWidth: lineWidth)
+            case .node:
+                context.stroke(diamondPath(in: rect), with: .color(color.opacity(0.85)), lineWidth: lineWidth)
+            case .error:
+                var path = Path()
+                let points = 10
+                for i in 0..<points {
+                    let angle = Double(i) / Double(points) * Double.pi * 2
+                    let spike = (i % 2 == 0) ? 1.0 : 0.6
+                    let r = Double(radius) * spike
+                    let x = center.x + CGFloat(cos(angle) * r)
+                    let y = center.y + CGFloat(sin(angle) * r)
+                    if i == 0 { path.move(to: CGPoint(x: x, y: y)) } else { path.addLine(to: CGPoint(x: x, y: y)) }
+                }
+                path.closeSubpath()
+                context.stroke(path, with: .color(color), lineWidth: lineWidth)
+            default:
+                context.stroke(Path(ellipseIn: rect), with: .color(color), lineWidth: lineWidth)
+            }
         }
     }
 
     private var ghostAccumulator: [GhostPoint] = []
     private var ghostLastFlush: Date = .distantPast
 
-    private func seedPulse(id: String, source: SignalSource, event: NormalizedEvent, now: Date) {
+    private func seedPulse(id: String, source: SignalSource, event: NormalizedEvent, now: Date, intensity: SignalIntensity) {
         let color = SignalColor.deviceColor(id: id)
-        seedPulse(id: id, color: color, strength: event.signal.strength == nil ? 0.5 : 0.8, source: source, now: now)
+        let renderKind = SignalRenderKind.from(event: event)
+        seedPulse(id: id, color: color, strength: event.signal.strength == nil ? 0.5 : 0.8, source: source, now: now, renderKind: renderKind, intensity: intensity)
     }
 
-    private func seedPulse(id: String, color: NSColor, strength: Double, source: SignalSource, now: Date) {
-        if let last = lastPulseBySource[id], now.timeIntervalSince(last) < 0.2 { return }
+    private func seedPulse(id: String, color: NSColor, strength: Double, source: SignalSource, now: Date, renderKind: SignalRenderKind, intensity: SignalIntensity) {
+        if let last = lastPulseBySource[id], now.timeIntervalSince(last) < intensity.pulseMinInterval { return }
         lastPulseBySource[id] = now
-        pulses.append(FieldPulse(id: UUID(), position: source.position, color: color, birth: now, lifespan: 1.3, strength: strength))
-        if pulses.count > 80 {
-            pulses.removeFirst(pulses.count - 80)
+        pulses.append(FieldPulse(id: UUID(), sourceID: id, position: source.position, color: color, renderKind: renderKind, birth: now, lifespan: 1.3, strength: strength))
+        if pulses.count > intensity.pulseCap {
+            pulses.removeFirst(pulses.count - intensity.pulseCap)
+        }
+    }
+
+    private func seedEdgePulse(throttleKey: String, fromID: String, toID: String, strength: Double, color: NSColor, renderKind: SignalRenderKind, now: Date, intensity: SignalIntensity) {
+        if let last = lastEdgePulseBySource[throttleKey], now.timeIntervalSince(last) < intensity.edgePulseMinInterval { return }
+        lastEdgePulseBySource[throttleKey] = now
+        // Keep these short and snappy: "activity is flowing along this link".
+        edgePulses.append(
+            EdgePulse(
+                id: UUID(),
+                throttleKey: throttleKey,
+                fromID: fromID,
+                toID: toID,
+                birth: now,
+                lifespan: 0.9,
+                strength: strength,
+                color: color,
+                renderKind: renderKind
+            )
+        )
+        if edgePulses.count > intensity.edgePulseCap {
+            edgePulses.removeFirst(edgePulses.count - intensity.edgePulseCap)
         }
     }
 
@@ -1181,6 +2350,12 @@ final class SignalSource: Hashable {
     var velocity: SIMD3<Double> = .zero
     var target: SIMD3<Double>
     let color: NSColor
+    var lastSeen: Date?
+    var lastStrength: Double?
+    var lastKind: String?
+    var lastChannel: String?
+    var lastNodeID: String?
+    private let targetSmoothing: Double = 0.25
 
     init(id: String) {
         self.id = id
@@ -1200,8 +2375,17 @@ final class SignalSource: Hashable {
     func update(from frame: SignalFrame) {
         let nx = frame.x ?? 0.5
         let ny = frame.y ?? 0.5
-        let nz = frame.z ?? 0.6
-        target = SIMD3<Double>((nx - 0.5) * 2.0 * 0.6, (ny - 0.5) * 2.0 * 0.6, nz)
+        let strength = frame.rssi
+        let strengthNorm = clamp(((-strength) - 30.0) / 70.0)
+        let idOffset = stableDepthOffset(for: id)
+        let baseZ = frame.z ?? 0.6
+        let z = clamp(0.25 + strengthNorm * 0.55 + idOffset + (baseZ - 0.5) * 0.3, min: 0.1, max: 1.0)
+        applyTarget(SIMD3<Double>((nx - 0.5) * 2.0 * 0.6, (ny - 0.5) * 2.0 * 0.6, z))
+        lastSeen = Date()
+        lastStrength = strength
+        lastKind = frame.source
+        lastChannel = "\(frame.channel)"
+        lastNodeID = frame.nodeID
     }
 
     func update(from event: NormalizedEvent) {
@@ -1212,16 +2396,31 @@ final class SignalSource: Hashable {
         let radius = event.kind.contains("ble") ? 0.32 : event.kind.contains("wifi") ? 0.52 : 0.7
         let x = cos(angle) * radius
         let y = sin(angle) * radius
-        let z = max(0.2, min(1.0, 0.45 + (event.signal.strength ?? -60) / -120))
-        target = SIMD3<Double>(x, y, z)
+        let strength = event.signal.strength ?? -60
+        let strengthNorm = clamp(((-strength) - 30.0) / 70.0)
+        let idOffset = stableDepthOffset(for: id)
+        let z = clamp(0.25 + strengthNorm * 0.55 + idOffset, min: 0.1, max: 1.0)
+        applyTarget(SIMD3<Double>(x, y, z))
+        lastSeen = event.eventTs ?? event.recvTs ?? Date()
+        lastStrength = event.signal.strength
+        lastKind = event.kind
+        lastChannel = event.signal.channel
+        if !event.nodeID.isEmpty, event.nodeID != "unknown" {
+            lastNodeID = event.nodeID
+        }
     }
 
-    func step(dt: Double) {
-        let swirl = SIMD3<Double>(-position.y, position.x, 0) * 0.12
-        let spring = SIMD3<Double>(repeating: 1.6)
-        let damping: Double = 0.82
-        let delta = target - position
-        velocity += (delta * spring + swirl) * dt
+    func step(dt: Double, isActive: Bool) {
+        let damping: Double = isActive ? 0.82 : 0.9
+        if isActive {
+            let swirl = SIMD3<Double>(-position.y, position.x, 0) * 0.12
+            let spring = SIMD3<Double>(repeating: 1.6)
+            let delta = target - position
+            velocity += (delta * spring + swirl) * dt
+        } else {
+            let delta = target - position
+            velocity += delta * dt * 0.3
+        }
         velocity *= SIMD3<Double>(repeating: damping)
         position += velocity * dt
         position.z = max(0.1, min(1.0, position.z))
@@ -1235,6 +2434,10 @@ final class SignalSource: Hashable {
         let px = CGFloat(position.x) * size.width * 0.45 + size.width * 0.5
         let py = CGFloat(position.y) * size.height * 0.45 + size.height * 0.5
         return CGPoint(x: px + parallax.x * depth, y: py + parallax.y * depth)
+    }
+
+    private func applyTarget(_ next: SIMD3<Double>) {
+        target = target + (next - target) * targetSmoothing
     }
 
     static func == (lhs: SignalSource, rhs: SignalSource) -> Bool {
@@ -1261,6 +2464,7 @@ struct SignalParticle: Hashable {
     var ringRadius: Double
     var ringWidth: Double
     var trail: [SIMD3<Double>]
+    var renderKind: SignalRenderKind
 
     mutating func update(dt: Double, decay: Double) {
         switch kind {
@@ -1287,17 +2491,29 @@ struct SignalParticle: Hashable {
         now.timeIntervalSince(birth) > lifespan
     }
 
-    func draw(context: inout GraphicsContext, size: CGSize, now: Date, parallax: CGPoint, dimmed: Bool) {
+    func draw(context: inout GraphicsContext, size: CGSize, now: Date, parallax: CGPoint, dimmed: Bool, activityFade: CGFloat) {
         let age = now.timeIntervalSince(birth)
         let progress = min(1.0, age / max(0.01, lifespan))
         let alpha = 1.0 - progress
-        let depth = CGFloat(0.6 + position.z * 0.7)
+        let depth = depthScalar(id: sourceID, z: position.z, now: now)
         let basePoint = CGPoint(
             x: CGFloat(position.x) * size.width * 0.45 + size.width * 0.5 + parallax.x * depth,
             y: CGFloat(position.y) * size.height * 0.45 + size.height * 0.5 + parallax.y * depth
         )
         let glowStrength = max(0.0, min(1.0, glow))
-        let color = Color(color).opacity(alpha * (dimmed ? 0.25 : 0.9))
+        let accentColor: NSColor = {
+            switch renderKind {
+            case .node:
+                return SignalColor.mix(color, NSColor.systemRed, ratio: 0.55)
+            case .error:
+                return SignalColor.mix(color, NSColor.systemRed, ratio: 0.75)
+            default:
+                return color
+            }
+        }()
+        let depthFadeValue = depthFade(for: depth)
+        let alphaScale = CGFloat(alpha) * (dimmed ? 0.25 : 0.9) * activityFade * depthFadeValue
+        let drawColor = Color(accentColor).opacity(Double(alphaScale))
 
         switch kind {
         case .spark:
@@ -1306,29 +2522,74 @@ struct SignalParticle: Hashable {
             if glowStrength > 0.05 {
                 let glowRadius = radius * (1.6 + CGFloat(glowStrength) * 2.4)
                 let glowRect = CGRect(x: basePoint.x - glowRadius / 2, y: basePoint.y - glowRadius / 2, width: glowRadius, height: glowRadius)
-                context.fill(Path(ellipseIn: glowRect), with: .color(color.opacity((dimmed ? 0.06 : 0.18) + CGFloat(glowStrength) * 0.35)))
+                context.fill(Path(ellipseIn: glowRect), with: .color(drawColor.opacity((dimmed ? 0.06 : 0.18) + CGFloat(glowStrength) * 0.35)))
             }
-            context.fill(Path(ellipseIn: rect), with: .color(color))
-            drawTrail(context: &context, size: size, parallax: parallax, alpha: alpha, dimmed: dimmed)
+            if renderKind == .node {
+                context.fill(diamondPath(in: rect), with: .color(drawColor))
+            } else {
+                context.fill(Path(ellipseIn: rect), with: .color(drawColor))
+            }
+            drawTrail(context: &context, size: size, parallax: parallax, alpha: alpha, dimmed: dimmed, activityFade: activityFade)
         case .ring:
             let radius = CGFloat(ringRadius) * depth
             let rect = CGRect(x: basePoint.x - radius, y: basePoint.y - radius, width: radius * 2, height: radius * 2)
-            context.stroke(Path(ellipseIn: rect), with: .color(color.opacity(0.6 + CGFloat(glowStrength) * 0.2)), lineWidth: CGFloat(ringWidth) * depth)
+            let lineWidth = CGFloat(ringWidth) * depth
+            switch renderKind {
+            case .ble:
+                let dots = 8
+                for i in 0..<dots {
+                    let angle = Double(i) / Double(dots) * Double.pi * 2
+                    let dx = cos(angle) * Double(radius)
+                    let dy = sin(angle) * Double(radius)
+                    let dotRadius = max(1.0, 2.2 * depth)
+                    let dotRect = CGRect(
+                        x: basePoint.x + CGFloat(dx) - dotRadius,
+                        y: basePoint.y + CGFloat(dy) - dotRadius,
+                        width: dotRadius * 2,
+                        height: dotRadius * 2
+                    )
+                    context.fill(Path(ellipseIn: dotRect), with: .color(drawColor.opacity(0.8)))
+                }
+            case .wifi:
+                context.stroke(Path(ellipseIn: rect), with: .color(drawColor.opacity(0.7 + CGFloat(glowStrength) * 0.2)), lineWidth: lineWidth)
+            default:
+                context.stroke(Path(ellipseIn: rect), with: .color(drawColor.opacity(0.6 + CGFloat(glowStrength) * 0.2)), lineWidth: lineWidth)
+            }
         case .pulse:
             let radius = CGFloat(ringRadius) * depth
             let rect = CGRect(x: basePoint.x - radius, y: basePoint.y - radius, width: radius * 2, height: radius * 2)
-            context.stroke(Path(ellipseIn: rect), with: .color(color.opacity(0.8 + CGFloat(glowStrength) * 0.15)), lineWidth: CGFloat(ringWidth) * depth)
+            let strokeColor = drawColor.opacity(0.8 + CGFloat(glowStrength) * 0.15)
+            if renderKind == .node {
+                context.stroke(diamondPath(in: rect), with: .color(strokeColor), lineWidth: CGFloat(ringWidth) * depth)
+            } else {
+                context.stroke(Path(ellipseIn: rect), with: .color(strokeColor), lineWidth: CGFloat(ringWidth) * depth)
+            }
         case .burst:
             let radius = CGFloat(ringRadius) * depth
             let rect = CGRect(x: basePoint.x - radius, y: basePoint.y - radius, width: radius * 2, height: radius * 2)
-            context.stroke(Path(ellipseIn: rect), with: .color(color.opacity(0.8 + CGFloat(glowStrength) * 0.2)), lineWidth: CGFloat(ringWidth) * depth)
-            drawTrail(context: &context, size: size, parallax: parallax, alpha: alpha, dimmed: dimmed)
+            if renderKind == .error {
+                var path = Path()
+                let spikes = 8
+                for i in 0..<spikes {
+                    let angle = Double(i) / Double(spikes) * Double.pi * 2
+                    let spike = (i % 2 == 0) ? 1.0 : 0.6
+                    let r = Double(radius) * spike
+                    let x = basePoint.x + CGFloat(cos(angle) * r)
+                    let y = basePoint.y + CGFloat(sin(angle) * r)
+                    if i == 0 { path.move(to: CGPoint(x: x, y: y)) } else { path.addLine(to: CGPoint(x: x, y: y)) }
+                }
+                path.closeSubpath()
+                context.stroke(path, with: .color(drawColor.opacity(0.85 + CGFloat(glowStrength) * 0.2)), lineWidth: CGFloat(ringWidth) * depth)
+            } else {
+                context.stroke(Path(ellipseIn: rect), with: .color(drawColor.opacity(0.8 + CGFloat(glowStrength) * 0.2)), lineWidth: CGFloat(ringWidth) * depth)
+            }
+            drawTrail(context: &context, size: size, parallax: parallax, alpha: alpha, dimmed: dimmed, activityFade: activityFade)
         }
     }
 
-    private func drawTrail(context: inout GraphicsContext, size: CGSize, parallax: CGPoint, alpha: Double, dimmed: Bool) {
+    private func drawTrail(context: inout GraphicsContext, size: CGSize, parallax: CGPoint, alpha: Double, dimmed: Bool, activityFade: CGFloat) {
         guard trail.count > 1 else { return }
-        let depth = CGFloat(0.6 + position.z * 0.7)
+        let depth = depthScalar(id: sourceID, z: position.z, now: Date())
         var path = Path()
         for (index, point) in trail.enumerated() {
             let px = CGFloat(point.x) * size.width * 0.45 + size.width * 0.5 + parallax.x * depth
@@ -1341,7 +2602,9 @@ struct SignalParticle: Hashable {
             }
         }
         let baseAlpha = dimmed ? 0.18 : 0.45
-        context.stroke(path, with: .color(Color(color).opacity(alpha * baseAlpha)), lineWidth: 1.2 * depth)
+        let lineWidth = max(0.6, 1.2 * depth * CGFloat(alpha))
+        let depthScale = depthFade(for: depth)
+        context.stroke(path, with: .color(Color(color).opacity(alpha * baseAlpha * Double(activityFade) * Double(depthScale))), lineWidth: lineWidth)
     }
 }
 
@@ -1350,6 +2613,48 @@ enum ParticleKind {
     case ring
     case pulse
     case burst
+}
+
+enum SignalRenderKind: String {
+    case ble
+    case wifi
+    case node
+    case tool
+    case error
+    case generic
+
+    static func from(event: NormalizedEvent) -> SignalRenderKind {
+        let kind = event.kind.lowercased()
+        if kind.contains("ble") { return .ble }
+        if kind.contains("wifi") || kind.contains("net") || kind.contains("host") { return .wifi }
+        if kind.contains("node") { return .node }
+        if kind.contains("tool") || kind.contains("action") || kind.contains("command") || kind.contains("runbook") || kind.contains("cmd") || event.signal.tags.contains("tool") {
+            return .tool
+        }
+        if kind.contains("error") || event.signal.tags.contains("error") { return .error }
+        return .generic
+    }
+
+    static func from(source: String) -> SignalRenderKind {
+        let source = source.lowercased()
+        if source.contains("ble") { return .ble }
+        if source.contains("wifi") || source.contains("net") || source.contains("host") { return .wifi }
+        if source.contains("node") { return .node }
+        if source.contains("tool") || source.contains("action") || source.contains("command") { return .tool }
+        if source.contains("error") { return .error }
+        return .generic
+    }
+
+    var label: String {
+        switch self {
+        case .ble: return "BLE"
+        case .wifi: return "Wi-Fi"
+        case .node: return "Node"
+        case .tool: return "Action"
+        case .error: return "Error"
+        case .generic: return "Signal"
+        }
+    }
 }
 
 enum SignalIntensity: String, CaseIterable, Identifiable {
@@ -1367,8 +2672,93 @@ enum SignalIntensity: String, CaseIterable, Identifiable {
 
     var multiplier: Double {
         switch self {
-        case .calm: return 0.7
-        case .storm: return 1.4
+        case .calm: return 0.35
+        case .storm: return 1.1
+        }
+    }
+
+    // Performance/clarity budgets. These intentionally make Calm *much* calmer.
+    var particleCap: Int {
+        switch self {
+        case .calm: return 520
+        case .storm: return 1700
+        }
+    }
+
+    var eventTailLimit: Int {
+        switch self {
+        case .calm: return 600
+        case .storm: return 1600
+        }
+    }
+
+    var frameBinLimit: Int {
+        switch self {
+        case .calm: return 60
+        case .storm: return 100
+        }
+    }
+
+    var pulseMinInterval: TimeInterval {
+        switch self {
+        case .calm: return 0.36
+        case .storm: return 0.18
+        }
+    }
+
+    var pulseCap: Int {
+        switch self {
+        case .calm: return 44
+        case .storm: return 110
+        }
+    }
+
+    var ghostFlushInterval: TimeInterval {
+        switch self {
+        case .calm: return 0.2
+        case .storm: return 0.12
+        }
+    }
+
+    var ghostCap: Int {
+        switch self {
+        case .calm: return 120
+        case .storm: return 220
+        }
+    }
+
+    var focusConnectionCap: Int {
+        switch self {
+        case .calm: return 14
+        case .storm: return 28
+        }
+    }
+
+    var connectionNodeHardCap: Int {
+        switch self {
+        case .calm: return 100
+        case .storm: return 160
+        }
+    }
+
+    var connectionStrokeCap: Int {
+        switch self {
+        case .calm: return 220
+        case .storm: return 520
+        }
+    }
+
+    var edgePulseMinInterval: TimeInterval {
+        switch self {
+        case .calm: return 0.28
+        case .storm: return 0.14
+        }
+    }
+
+    var edgePulseCap: Int {
+        switch self {
+        case .calm: return 40
+        case .storm: return 120
         }
     }
 }
@@ -1401,6 +2791,16 @@ enum SignalKindLegend: CaseIterable, Identifiable {
 }
 
 enum SignalEmitter {
+    static func isBLEBroadcasting(event: NormalizedEvent) -> Bool {
+        // Heuristic: a "real" BLE seen/broadcast signal should carry strength (RSSI/dbm/etc).
+        if event.signal.strength != nil { return true }
+        // Some payloads may use different keys; fall back to checking the raw event data.
+        if event.data["rssi"]?.doubleValue != nil { return true }
+        if event.data["RSSI"]?.doubleValue != nil { return true }
+        if let level = event.data["level"]?.doubleValue, level != 0 { return true }
+        return false
+    }
+
     static func emit(from source: SignalSource, event: NormalizedEvent, intensity: SignalIntensity, now: Date) -> [SignalParticle] {
         let kind = event.kind.lowercased()
         let strength = event.signal.strength ?? -60
@@ -1408,31 +2808,42 @@ enum SignalEmitter {
         let style = SignalVisualStyle.from(event: event, now: now)
         let deviceID = event.deviceID ?? event.nodeID
         let baseColor = SignalColor.deviceColor(id: deviceID, saturation: style.saturation, brightness: style.brightness)
-        let count = Int(ceil(6 * intensity.multiplier * energy))
+        // Particle density is a primary driver of perf *and* visual readability.
+        // Keep it bounded; rely on glow/size for "strength" instead of sheer count.
+        let count = min(9, Int(ceil(4.8 * intensity.multiplier * energy)))
         var particles: [SignalParticle] = []
+        let renderKind = SignalRenderKind.from(event: event)
 
+        let isWifi = kind.contains("wifi") || kind.contains("net") || kind.contains("host")
         if kind.contains("ble") {
-            for _ in 0..<count {
-                particles.append(makeSpark(source: source, color: baseColor, now: now, energy: energy, glow: style.glow))
+            if !isBLEBroadcasting(event: event) {
+                // Still update the source position + core dot, but skip effect particles.
+                return []
             }
-        } else if kind.contains("wifi") {
-            particles.append(makeRing(source: source, color: baseColor, now: now, pulse: false, glow: style.glow))
+            particles.append(makeRing(source: source, color: baseColor, now: now, pulse: false, glow: style.glow, renderKind: renderKind))
+            for _ in 0..<max(2, count / 2) {
+                particles.append(makeSpark(source: source, color: baseColor, now: now, energy: energy, glow: style.glow, renderKind: renderKind))
+            }
+        } else if isWifi {
+            particles.append(makeRing(source: source, color: baseColor, now: now, pulse: false, glow: style.glow, renderKind: renderKind))
+            particles.append(makeSpark(source: source, color: baseColor, now: now, energy: max(0.3, energy * 0.6), glow: style.glow, renderKind: renderKind))
         } else if kind.contains("node") {
-            particles.append(makeRing(source: source, color: baseColor, now: now, pulse: true, glow: style.glow))
+            particles.append(makeRing(source: source, color: baseColor, now: now, pulse: true, glow: style.glow, renderKind: renderKind, lifespan: 2.6))
+            particles.append(makeSpark(source: source, color: baseColor, now: now, energy: max(0.25, energy * 0.5), glow: style.glow, renderKind: renderKind))
         } else if kind.contains("tool") {
-            particles.append(makeBurst(source: source, color: baseColor, now: now, energy: energy, glow: min(1.0, style.glow + 0.25)))
+            particles.append(makeBurst(source: source, color: baseColor, now: now, energy: energy, glow: min(1.0, style.glow + 0.25), renderKind: renderKind))
         } else if kind.contains("error") || event.signal.tags.contains("error") {
             for _ in 0..<(max(2, count / 2)) {
-                particles.append(makeBurst(source: source, color: baseColor, now: now, energy: energy, glow: min(1.0, style.glow + 0.2)))
+                particles.append(makeBurst(source: source, color: baseColor, now: now, energy: energy, glow: min(1.0, style.glow + 0.2), renderKind: renderKind))
             }
         } else {
-            particles.append(makeSpark(source: source, color: baseColor, now: now, energy: energy, glow: style.glow))
+            particles.append(makeSpark(source: source, color: baseColor, now: now, energy: energy, glow: style.glow, renderKind: renderKind))
         }
 
         return particles
     }
 
-    private static func makeSpark(source: SignalSource, color: NSColor, now: Date, energy: Double, glow: Double) -> SignalParticle {
+    private static func makeSpark(source: SignalSource, color: NSColor, now: Date, energy: Double, glow: Double, renderKind: SignalRenderKind) -> SignalParticle {
         let jitter = SignalEmitter.randomVector(scale: 0.02)
         let velocity = SignalEmitter.randomVector(scale: 0.16 * energy)
         return SignalParticle(
@@ -1449,30 +2860,33 @@ enum SignalEmitter {
             glow: glow,
             ringRadius: 0,
             ringWidth: 1.6,
-            trail: []
+            trail: [],
+            renderKind: renderKind
         )
     }
 
-    private static func makeRing(source: SignalSource, color: NSColor, now: Date, pulse: Bool, glow: Double) -> SignalParticle {
-        SignalParticle(
+    private static func makeRing(source: SignalSource, color: NSColor, now: Date, pulse: Bool, glow: Double, renderKind: SignalRenderKind, lifespan: TimeInterval? = nil) -> SignalParticle {
+        let life = lifespan ?? (pulse ? 1.8 : 2.6)
+        return SignalParticle(
             id: UUID(),
             kind: pulse ? .pulse : .ring,
             sourceID: source.id,
             position: source.position,
             velocity: SIMD3<Double>(0, 0, 0),
             birth: now,
-            lifespan: pulse ? 1.8 : 2.6,
+            lifespan: life,
             baseSize: 10,
             color: color,
             strength: 1.0,
             glow: glow,
             ringRadius: 10,
             ringWidth: pulse ? 2.2 : 1.6,
-            trail: []
+            trail: [],
+            renderKind: renderKind
         )
     }
 
-    private static func makeBurst(source: SignalSource, color: NSColor, now: Date, energy: Double, glow: Double) -> SignalParticle {
+    private static func makeBurst(source: SignalSource, color: NSColor, now: Date, energy: Double, glow: Double, renderKind: SignalRenderKind) -> SignalParticle {
         let velocity = SignalEmitter.randomVector(scale: 0.12 * energy)
         return SignalParticle(
             id: UUID(),
@@ -1488,7 +2902,8 @@ enum SignalEmitter {
             glow: glow,
             ringRadius: 6,
             ringWidth: 2.6,
-            trail: []
+            trail: [],
+            renderKind: renderKind
         )
     }
 
@@ -1508,21 +2923,29 @@ struct SignalVisualStyle: Hashable {
     let confidence: Double
 
     static func from(event: NormalizedEvent, now: Date) -> SignalVisualStyle {
-        let deviceID = event.deviceID ?? event.nodeID
-        let hue = SignalColor.stableHue(for: deviceID)
+        let baseColor = SignalColor.kindAccent(kind: event.kind, channel: event.signal.channel)
+        let base = baseColor.usingColorSpace(.deviceRGB) ?? baseColor
+        var hueValue: CGFloat = 0
+        var satValue: CGFloat = 0
+        var brightValue: CGFloat = 0
+        var alphaValue: CGFloat = 1
+        base.getHue(&hueValue, saturation: &satValue, brightness: &brightValue, alpha: &alphaValue)
+        let hue = Double(hueValue)
 
         let timestamp = event.eventTs ?? event.recvTs ?? now
         let age = max(0.0, now.timeIntervalSince(timestamp))
         let recency = exp(-age / 6.0)
-        let brightness = clamp(0.22 + recency * 0.72)
 
         let strength = event.signal.strength ?? -65
         let strengthNorm = clamp(((-strength) - 30.0) / 70.0)
+        let brightness = clamp(0.32 + recency * 0.6 + strengthNorm * 0.45)
         let confidence = clamp(0.2 + strengthNorm * 0.8)
-        let saturation = clamp(0.25 + confidence * 0.7)
+        let saturation = clamp(0.35 + confidence * 0.85)
 
-        var glow = 0.2 + confidence * 0.6 + recency * 0.25
+        var glow = 0.25 + confidence * 0.65 + recency * 0.3
         if event.kind.lowercased().contains("node") { glow += 0.1 }
+        if event.kind.lowercased().contains("rf") || event.signal.tags.contains("rf") { glow += 0.18 }
+        if event.signal.tags.contains("tool") { glow += 0.12 }
         if event.kind.lowercased().contains("error") { glow += 0.2 }
         glow = clamp(glow)
 
@@ -1541,8 +2964,8 @@ struct SignalFrameStyle: Hashable {
 
     static func from(frame: SignalFrame) -> SignalFrameStyle {
         let hue = frame.color.h / 360.0
-        let saturation = clamp(frame.color.s)
-        let brightness = clamp(frame.color.l)
+        let saturation = clamp(0.35 + frame.color.s * 0.8)
+        let brightness = clamp(0.35 + frame.color.l * 0.75)
         let color = NSColor(calibratedHue: hue, saturation: saturation, brightness: brightness, alpha: 1.0)
         let glow = clamp(frame.glow ?? (0.2 + frame.confidence * 0.6))
         return SignalFrameStyle(color: color, glow: glow, confidence: clamp(frame.confidence))
@@ -1561,21 +2984,37 @@ enum SignalColor {
         return NSColor(calibratedHue: hue, saturation: s, brightness: b, alpha: 1.0)
     }
 
-    static func kindAccent(kind: String) -> NSColor {
+    static func kindAccent(kind: String, channel: String? = nil) -> NSColor {
         let kind = kind.lowercased()
+        let channelNumber = Int(channel ?? "")
         if kind.contains("ble") {
-            return NSColor(calibratedHue: 0.52, saturation: 0.7, brightness: 0.95, alpha: 1.0)
+            // Electric cyan
+            return NSColor(calibratedHue: 0.54, saturation: 0.9, brightness: 1.0, alpha: 1.0)
         }
-        if kind.contains("wifi") {
-            return NSColor(calibratedHue: 0.33, saturation: 0.7, brightness: 0.9, alpha: 1.0)
+        if kind.contains("wifi") || kind.contains("net") || kind.contains("host") {
+            // 2.4G = neon green, 5G = violet/blue
+            if let channelNumber, channelNumber > 0, channelNumber <= 14 {
+                return NSColor(calibratedHue: 0.32, saturation: 0.9, brightness: 0.98, alpha: 1.0)
+            }
+            return NSColor(calibratedHue: 0.64, saturation: 0.85, brightness: 0.98, alpha: 1.0)
+        }
+        if kind.contains("rf") || kind.contains("sdr") {
+            // Magenta
+            return NSColor(calibratedHue: 0.9, saturation: 0.85, brightness: 0.98, alpha: 1.0)
         }
         if kind.contains("node") {
-            return NSColor(calibratedHue: 0.62, saturation: 0.6, brightness: 0.92, alpha: 1.0)
+            // My nodes: red/orange
+            return NSColor(calibratedHue: 0.03, saturation: 0.9, brightness: 0.98, alpha: 1.0)
+        }
+        if kind.contains("tool") || kind.contains("action") || kind.contains("command") || kind.contains("runbook") || kind.contains("cmd") {
+            // Purple
+            return NSColor(calibratedHue: 0.78, saturation: 0.85, brightness: 0.95, alpha: 1.0)
         }
         if kind.contains("error") {
-            return NSColor(calibratedHue: 0.02, saturation: 0.85, brightness: 0.95, alpha: 1.0)
+            // Hot red
+            return NSColor(calibratedHue: 0.0, saturation: 0.95, brightness: 1.0, alpha: 1.0)
         }
-        return NSColor(calibratedHue: 0.08, saturation: 0.6, brightness: 0.9, alpha: 1.0)
+        return NSColor(calibratedHue: 0.1, saturation: 0.75, brightness: 0.95, alpha: 1.0)
     }
 
     static func mix(_ base: NSColor, _ accent: NSColor, ratio: Double) -> NSColor {
@@ -1596,6 +3035,39 @@ enum SignalColor {
         }
         return CGFloat(hash % 360) / 360.0
     }
+}
+
+private func clamp(_ value: Double, min: Double = 0.0, max: Double = 1.0) -> Double {
+    Swift.max(min, Swift.min(max, value))
+}
+
+private func stableDepthOffset(for id: String) -> Double {
+    let seed = Double(SignalColor.stableHue(for: id))
+    return (seed - 0.5) * 0.24
+}
+
+private func diamondPath(in rect: CGRect) -> Path {
+    var path = Path()
+    let center = CGPoint(x: rect.midX, y: rect.midY)
+    path.move(to: CGPoint(x: center.x, y: rect.minY))
+    path.addLine(to: CGPoint(x: rect.maxX, y: center.y))
+    path.addLine(to: CGPoint(x: center.x, y: rect.maxY))
+    path.addLine(to: CGPoint(x: rect.minX, y: center.y))
+    path.closeSubpath()
+    return path
+}
+
+private func depthScalar(id: String, z: Double, now: Date) -> CGFloat {
+    let base = 0.52 + z * 0.85 + stableDepthOffset(for: id)
+    let seed = Double(SignalColor.stableHue(for: id)) * Double.pi * 2
+    let jitter = sin(now.timeIntervalSinceReferenceDate * 0.7 + seed) * 0.05
+    let value = max(0.35, min(1.35, base + jitter))
+    return CGFloat(value)
+}
+
+private func depthFade(for depth: CGFloat) -> CGFloat {
+    let value = 0.45 + depth * 0.45
+    return max(0.3, min(1.1, value))
 }
 
 struct SeededRandom {

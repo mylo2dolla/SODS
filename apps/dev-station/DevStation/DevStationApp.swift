@@ -14,12 +14,14 @@ struct SODSApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
-                .frame(minWidth: 1200, minHeight: 760)
         }
-        .windowResizability(.contentMinSize)
         .commands {
             CommandMenu("Nodes") {
-                Button("Connect / Flash Node") {
+                Button("Connect Node") {
+                    NotificationCenter.default.post(name: .connectNodeCommand, object: nil)
+                }
+                .keyboardShortcut("c", modifiers: [.command, .shift])
+                Button("Flash Firmware") {
                     NotificationCenter.default.post(name: .flashNodeCommand, object: nil)
                 }
                 .keyboardShortcut("f", modifiers: [.command, .shift])

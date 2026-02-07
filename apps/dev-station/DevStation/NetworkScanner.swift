@@ -13,6 +13,8 @@ final class NetworkScanner: ObservableObject {
     @Published var allHosts: [HostEntry] = []
     @Published var safeModeEnabled = true
 
+    @Published private(set) var scanMode: ScanMode = .oneShot
+
     private let ports = [80, 443, 554, 8000, 8080, 8443, 1935, 3702, 8554]
     private let maxConcurrentHosts = 64
     private let maxConcurrentPortProbes = 128
@@ -63,8 +65,9 @@ final class NetworkScanner: ObservableObject {
         )
     }
 
-    func startScan(enableOnvifDiscovery: Bool, enableServiceDiscovery: Bool, enableArpWarmup: Bool, scope: ScanScope) {
+    func startScan(enableOnvifDiscovery: Bool, enableServiceDiscovery: Bool, enableArpWarmup: Bool, scope: ScanScope, mode: ScanMode) {
         guard !isScanning else { return }
+        scanMode = mode
         isScanning = true
         devices = []
         allHosts = []
@@ -78,7 +81,7 @@ final class NetworkScanner: ObservableObject {
         logStore.log(.info, "Scan started (ONVIF discovery \(enableOnvifDiscovery ? "enabled" : "disabled"), service discovery \(enableServiceDiscovery ? "enabled" : "disabled"), ARP warmup \(enableArpWarmup ? "enabled" : "disabled"), safe mode \(safeModeEnabled ? "on" : "off"))")
         scanTask?.cancel()
         scanTask = Task {
-            await runScan(enableOnvifDiscovery: enableOnvifDiscovery, enableServiceDiscovery: enableServiceDiscovery, enableArpWarmup: enableArpWarmup, scope: scope)
+            await runScanLoop(enableOnvifDiscovery: enableOnvifDiscovery, enableServiceDiscovery: enableServiceDiscovery, enableArpWarmup: enableArpWarmup, scope: scope)
         }
     }
 
@@ -89,6 +92,15 @@ final class NetworkScanner: ObservableObject {
         scanTask = nil
         isScanning = false
         statusMessage = "Scan stopped."
+    }
+
+    private func runScanLoop(enableOnvifDiscovery: Bool, enableServiceDiscovery: Bool, enableArpWarmup: Bool, scope: ScanScope) async {
+        repeat {
+            await MainActor.run { self.isScanning = true }
+            await runScan(enableOnvifDiscovery: enableOnvifDiscovery, enableServiceDiscovery: enableServiceDiscovery, enableArpWarmup: enableArpWarmup, scope: scope)
+            if Task.isCancelled { break }
+            if scanMode != .continuous { break }
+        } while true
     }
 
     private func startOUIWatcher() {
@@ -106,6 +118,13 @@ final class NetworkScanner: ObservableObject {
     }
 
     private func runScan(enableOnvifDiscovery: Bool, enableServiceDiscovery: Bool, enableArpWarmup: Bool, scope: ScanScope) async {
+        if Task.isCancelled {
+            await MainActor.run {
+                statusMessage = "Scan stopped."
+                isScanning = false
+            }
+            return
+        }
         guard let activeSubnet = IPv4Subnet.active() else {
             await MainActor.run {
                 statusMessage = "No active IPv4 interface found."
@@ -125,6 +144,7 @@ final class NetworkScanner: ObservableObject {
             progress = ScanProgress(scannedHosts: 0, totalHosts: hostIPs.count)
         }
         let localIP = activeSubnet.addressString
+        let provenance = Provenance(source: "net.scan", mode: scanMode, timestamp: Date())
         allHosts = hostIPs.map { ip in
             HostEntry(
                 id: ip,
@@ -145,7 +165,8 @@ final class NetworkScanner: ObservableObject {
                 httpStatus: nil,
                 httpServer: nil,
                 httpAuth: nil,
-                httpTitle: nil
+                httpTitle: nil,
+                provenance: provenance
             )
         }
         if !allHosts.contains(where: { $0.ip == localIP }) {
@@ -169,7 +190,8 @@ final class NetworkScanner: ObservableObject {
                     httpStatus: nil,
                     httpServer: nil,
                     httpAuth: nil,
-                    httpTitle: nil
+                    httpTitle: nil,
+                    provenance: provenance
                 )
             )
         }
@@ -188,11 +210,16 @@ final class NetworkScanner: ObservableObject {
 
         if enableArpWarmup {
             logStore.log(.info, "ARP warmup started: \(hostIPs.count) IPs")
-            await Task.detached {
-                await NetworkScanner.runArpWarmup(hostIPs: hostIPs)
-            }.value
+            await NetworkScanner.runArpWarmup(hostIPs: hostIPs)
             logStore.log(.info, "ARP warmup finished")
             await refreshARPInternal()
+        }
+        if Task.isCancelled {
+            await MainActor.run {
+                statusMessage = "Scan stopped."
+                isScanning = false
+            }
+            return
         }
 
         let onvifTask: Task<Void, Never>?
@@ -237,21 +264,35 @@ final class NetworkScanner: ObservableObject {
             ssdpTask = nil
             bonjourTask = nil
         }
+        if Task.isCancelled {
+            onvifTask?.cancel()
+            ssdpTask?.cancel()
+            bonjourTask?.cancel()
+            await MainActor.run {
+                statusMessage = "Scan stopped."
+                isScanning = false
+            }
+            return
+        }
 
         let hostSemaphore = AsyncSemaphore(value: maxConcurrentHosts)
         let portSemaphore = AsyncSemaphore(value: maxConcurrentPortProbes)
 
         await withTaskGroup(of: Device?.self) { group in
             for ip in hostIPs {
+                if Task.isCancelled { break }
                 await hostSemaphore.wait()
                 group.addTask {
                     defer { Task { await hostSemaphore.signal() } }
+                    if Task.isCancelled { return nil }
                     let result = await self.scanHost(ip: ip, portSemaphore: portSemaphore)
-                    await MainActor.run {
-                        self.recordHostResult(result)
-                        if var current = self.progress {
-                            current.scannedHosts += 1
-                            self.progress = current
+                    if !Task.isCancelled {
+                        await MainActor.run {
+                            self.recordHostResult(result)
+                            if var current = self.progress {
+                                current.scannedHosts += 1
+                                self.progress = current
+                            }
                         }
                     }
                     return result.device
@@ -259,6 +300,7 @@ final class NetworkScanner: ObservableObject {
             }
 
             for await device in group {
+                if Task.isCancelled { break }
                 if let device = device {
                     await MainActor.run {
                         self.mergeScannedDevice(device)
@@ -276,6 +318,16 @@ final class NetworkScanner: ObservableObject {
         if let bonjourTask = bonjourTask {
             await bonjourTask.value
         }
+        if Task.isCancelled {
+            onvifTask?.cancel()
+            ssdpTask?.cancel()
+            bonjourTask?.cancel()
+            await MainActor.run {
+                statusMessage = "Scan stopped."
+                isScanning = false
+            }
+            return
+        }
 
         if !enableServiceDiscovery {
             logHostConfidenceSummaryIfNeeded()
@@ -286,6 +338,7 @@ final class NetworkScanner: ObservableObject {
         lastInterestingCount = devices.count
         logStore.log(.info, "Scan finished: alive \(aliveCount) / \(allHosts.count)")
         Task {
+            guard !Task.isCancelled else { return }
             await self.resolveHostnames()
             await self.refreshARPInternal()
             if enableServiceDiscovery {
@@ -471,12 +524,16 @@ final class NetworkScanner: ObservableObject {
     private func scanHost(ip: String, portSemaphore: AsyncSemaphore) async -> HostScanResult {
         var openPorts: [Int] = []
         for port in ports {
+            if Task.isCancelled { break }
             let isOpen = await probePort(ip: ip, port: port, timeout: portTimeout, semaphore: portSemaphore)
             if isOpen {
                 openPorts.append(port)
             }
         }
 
+        if Task.isCancelled {
+            return HostScanResult(ip: ip, openPorts: [], httpTitle: nil, device: nil)
+        }
         let title = openPorts.isEmpty ? nil : await fetchHTTPTitle(ip: ip, openPorts: openPorts)
         let device = openPorts.isEmpty ? nil : makeDevice(ip: ip, openPorts: openPorts, httpTitle: title)
         return HostScanResult(ip: ip, openPorts: openPorts, httpTitle: title, device: device)
@@ -603,20 +660,24 @@ final class NetworkScanner: ObservableObject {
     }
 
     private func resolveHostnames() async {
+        guard !Task.isCancelled else { return }
         guard !allHosts.isEmpty else { return }
         await OUIStore.shared.loadPreferredIfNeeded(log: logStore)
         logStore.log(.info, "Hostname lookups started")
         await withTaskGroup(of: (String, String?).self) { group in
             for host in allHosts {
+                if Task.isCancelled { break }
                 await hostnameSemaphore.wait()
                 group.addTask {
                     defer { Task { await self.hostnameSemaphore.signal() } }
+                    if Task.isCancelled { return (host.ip, nil) }
                     let name = await self.reverseDNS(ip: host.ip, timeout: self.hostnameTimeout)
                     return (host.ip, name)
                 }
             }
 
             for await (ip, name) in group {
+                if Task.isCancelled { break }
                 if let name = name, !name.isEmpty {
                     await MainActor.run {
                         if let index = self.allHosts.firstIndex(where: { $0.ip == ip }) {
@@ -640,6 +701,7 @@ final class NetworkScanner: ObservableObject {
     }
 
     private func refreshARPInternal() async {
+        guard !Task.isCancelled else { return }
         let output = await runARP()
         let parsed = parseARP(output)
         logStore.log(.info, "ARP parsed entries: \(parsed.count)")
@@ -1242,6 +1304,7 @@ private func reverseDNS(ip: String, timeout: TimeInterval) async -> String? {
     }
 
     private func runHTTPFingerprinting() async {
+        if Task.isCancelled { return }
         let eligibleHosts = allHosts.filter { $0.isAlive || $0.macAddress != nil }
         guard !eligibleHosts.isEmpty else { return }
 
@@ -1265,16 +1328,19 @@ private func reverseDNS(ip: String, timeout: TimeInterval) async -> String? {
 
         await withTaskGroup(of: (String, HTTPFingerprint?).self) { group in
             for (ip, port, isHTTPS) in targets {
+                if Task.isCancelled { break }
                 attempted += 1
                 group.addTask {
                     await self.httpFingerprintSemaphore.wait()
                     defer { Task { await self.httpFingerprintSemaphore.signal() } }
+                    if Task.isCancelled { return (ip, nil) }
                     let fingerprint = await self.fetchHTTPFingerprint(ip: ip, port: port, isHTTPS: isHTTPS)
                     return (ip, fingerprint)
                 }
             }
 
             for await (ip, fingerprint) in group {
+                if Task.isCancelled { break }
                 guard let fingerprint = fingerprint else { continue }
                 succeeded += 1
                 if let index = allHosts.firstIndex(where: { $0.ip == ip }) {
@@ -1412,9 +1478,11 @@ private func reverseDNS(ip: String, timeout: TimeInterval) async -> String? {
         let semaphore = AsyncSemaphore(value: 64)
         await withTaskGroup(of: Void.self) { group in
             for ip in hostIPs {
+                if Task.isCancelled { break }
                 group.addTask {
                     await semaphore.wait()
                     defer { Task { await semaphore.signal() } }
+                    if Task.isCancelled { return }
                     await warmupConnect(ip: ip, timeout: 0.2)
                 }
             }
@@ -1422,6 +1490,7 @@ private func reverseDNS(ip: String, timeout: TimeInterval) async -> String? {
     }
 
     nonisolated private static func warmupConnect(ip: String, timeout: TimeInterval) async {
+        if Task.isCancelled { return }
         guard let port = NWEndpoint.Port(rawValue: 80) else { return }
         let connection = NWConnection(host: NWEndpoint.Host(ip), port: port, using: .tcp)
         let finishState = FinishState()
