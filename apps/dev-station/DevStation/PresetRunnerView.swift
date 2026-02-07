@@ -4,9 +4,6 @@ struct PresetRunResult: Decodable, Identifiable {
     let id: String
     let ok: Bool
     let results: [String: ToolRunResult]
-
-    var identifier: String { id }
-    var id: String { identifier }
 }
 
 struct ToolRunResult: Decodable {

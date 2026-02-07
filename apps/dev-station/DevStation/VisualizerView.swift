@@ -176,7 +176,7 @@ struct VisualizerView: View {
                 ForEach(store.nodes) { node in
                     NodeRow(
                         node: node,
-                        alias: aliases[node.id] ?? aliases["node:\(node.id)"],
+                        alias: nodeAliases[node.id] ?? nodeAliases["node:\(node.id)"],
                         color: SignalColor.deviceColor(id: node.id),
                         selected: selectedNodeIDs.contains(node.id),
                         onToggle: {
