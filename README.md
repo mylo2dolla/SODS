@@ -21,11 +21,11 @@ npm run dev -- --pi-logger http://pi-logger.local:8088 --port 9123
 
 Optional local capture (append-only NDJSON):
 ```bash
-SODS_LOCAL_LOG_PATH="/Users/letsdev/sods/SODS/data/local-events.ndjson" ./tools/sods start --pi-logger http://pi-logger.local:8088 --port 9123
+SODS_LOCAL_LOG_PATH="./data/logs/local-events.ndjson" ./tools/sods start --pi-logger http://pi-logger.local:8088 --port 9123
 ```
 
 Tools are runnable from any working directory. Use an absolute path or `cd` to the repo root before running `./tools/...`.
-If executables lose their permissions, run `/Users/letsdev/sods/SODS/tools/permfix.sh`.
+If executables lose their permissions, run `./tools/permfix.sh`.
 
 Build + run:
 ```bash
@@ -43,19 +43,18 @@ Open spectrum:
 **Dev Station (macOS app)**
 Build:
 ```bash
-/Users/letsdev/sods/SODS/tools/devstation-build.sh
+./tools/devstation-build.sh
 ```
 
 Run (starts station if needed and launches the app):
 ```bash
-/Users/letsdev/sods/SODS/tools/devstation-run.sh
+./tools/devstation-run.sh
 ```
 
 Install:
 ```bash
-/Users/letsdev/sods/SODS/tools/devstation-install.sh
+./tools/devstation-install.sh
 ```
-Fast rebuild: tools/devstation-rebuild.sh
 
 **Ops Portal (CYD)**
 ```bash
@@ -78,7 +77,7 @@ Launch local ESP Web Tools:
 
 Stage Ops Portal CYD for station flashing:
 ```bash
-/Users/letsdev/sods/SODS/tools/portal-cyd-stage.sh
+./tools/portal-cyd-stage.sh
 ```
 Docs:
 - `docs/ops-portal.md`
@@ -113,28 +112,28 @@ Examples:
 
 Enable on login:
 ```bash
-/Users/letsdev/sods/SODS/tools/launchagent-install.sh
+./tools/launchagent-install.sh
 ```
 
 Disable:
 ```bash
-/Users/letsdev/sods/SODS/tools/launchagent-uninstall.sh
+./tools/launchagent-uninstall.sh
 ```
 
 Status:
 ```bash
-/Users/letsdev/sods/SODS/tools/launchagent-status.sh
+./tools/launchagent-status.sh
 ```
 
 Logs:
-- `/Users/letsdev/sods/SODS/data/logs/station.launchd.log`
+- `./data/logs/station.launchd.log`
 
 ## Wi-Fi Scan (macOS)
 
 Scan nearby SSIDs (uses `airport` when present, falls back to `wdutil`):
 ```bash
-/Users/letsdev/sods/SODS/tools/sods wifi-scan
-/Users/letsdev/sods/SODS/tools/sods wifi-scan --pattern 'esp|espgo|c3|sods|portal|ops'
+./tools/sods wifi-scan
+./tools/sods wifi-scan --pattern 'esp|espgo|c3|sods|portal|ops'
 ```
 
 ## Tool Registry

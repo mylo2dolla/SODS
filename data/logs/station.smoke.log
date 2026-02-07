@@ -1,6 +1,0 @@
-sods running on http://localhost:9123
-
-> sods@0.1.0 build
-> tsc -p tsconfig.json
-
-sods running on http://localhost:9123

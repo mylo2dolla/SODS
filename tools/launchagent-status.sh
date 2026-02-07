@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 LABEL="io.strangemythic.sods.station"
 PLIST_DST="$HOME/Library/LaunchAgents/${LABEL}.plist"
-LOG_PATH="/Users/letsdev/sods/SODS/data/logs/station.launchd.log"
+LOG_PATH="$REPO_ROOT/data/logs/station.launchd.log"
 UID="$(id -u)"
 
 echo "LaunchAgent: $LABEL"

@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "builds": [
     {
-      "chipFamily": "ESP32-S3",
+      "chipFamily": "ESP32",
       "parts": [
         { "path": "firmware/portal-cyd/bootloader.bin", "offset": 4096 },
         { "path": "firmware/portal-cyd/partitions.bin", "offset": 32768 },

@@ -4,8 +4,6 @@ Date: 2026-02-04
 
 ## What Changed Today
 
-- 2026-02-04: Staged ESP32-P4 godbutton firmware for ESP Web Tools. Rebuilt and restaged node-agent firmware for ESP32 DevKit v1 (`esp32dev`) and ESP32-C3 (`esp32c3`). Staged ops-portal CYD firmware for ESP Web Tools.
-- 2026-02-04: DevStation UI now enforces a single global node presentation (identity color + faint glow for active, grey/no glow for offline) across node cards and visualizer, with per-node Refresh wired to existing status/connect codepaths.
 - Canonical repo structure established under `firmware/`, `apps/`, `cli/`, `tools/`, and `docs/`.
 - `node-agent` + `ops-portal` firmware moved into `firmware/`.
 - Dev Station app moved into `apps/dev-station`.
@@ -85,7 +83,7 @@ pio run -e ops-portal
 ```
 
 Tools are runnable from any working directory. Use an absolute path or `cd` to the repo root before running `./tools/...`.
-If executables lose permissions, run `/Users/letsdev/sods/SODS/tools/permfix.sh`.
+If executables lose permissions, run `./tools/permfix.sh`.
 
 ## Notes
 
@@ -105,21 +103,21 @@ If executables lose permissions, run `/Users/letsdev/sods/SODS/tools/permfix.sh`
 
 Install:
 ```bash
-/Users/letsdev/sods/SODS/tools/launchagent-install.sh
+./tools/launchagent-install.sh
 ```
 
 Uninstall:
 ```bash
-/Users/letsdev/sods/SODS/tools/launchagent-uninstall.sh
+./tools/launchagent-uninstall.sh
 ```
 
 Status:
 ```bash
-/Users/letsdev/sods/SODS/tools/launchagent-status.sh
+./tools/launchagent-status.sh
 ```
 
 Logs:
-- `/Users/letsdev/sods/SODS/data/logs/station.launchd.log`
+- `./data/logs/station.launchd.log`
 
 ## Flash Button
 
@@ -128,98 +126,12 @@ Logs:
   - `http://localhost:9123/flash/esp32c3`
 - If station is not running, Dev Station starts it and opens the URL once healthy.
 
-## Dev Station Build Log (First 50 Lines)
+## Dev Station Build (Canonical)
 
-```
-Building Dev Station...
-Command line invocation:
-    /Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild -project /Users/letsdev/sods/SODS/apps/dev-station/DevStation.xcodeproj -scheme DevStation -configuration Release -derivedDataPath /Users/letsdev/sods/SODS/dist/DerivedData CODE_SIGNING_ALLOWED=NO build
-
-Build settings from command line:
-    CODE_SIGNING_ALLOWED = NO
-
-ComputePackagePrebuildTargetDependencyGraph
-
-Prepare packages
-
-CreateBuildRequest
-
-SendProjectDescription
-
-CreateBuildOperation
-
-ComputeTargetDependencyGraph
-note: Building targets in dependency order
-note: Target dependency graph (1 target)
-    Target 'DevStation' in project 'DevStation' (no dependencies)
-
-GatherProvisioningInputs
-
-CreateBuildDescription
-
-ClangStatCache /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.2.sdk /Users/letsdev/sods/SODS/dist/DerivedData/SDKStatCaches.noindex/macosx26.2-25C57-00fa09913b459cbbc988d1f6730289ae.sdkstatcache
-    cd /Users/letsdev/sods/SODS/apps/dev-station/DevStation.xcodeproj
-    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.2.sdk -o /Users/letsdev/sods/SODS/dist/DerivedData/SDKStatCaches.noindex/macosx26.2-25C57-00fa09913b459cbbc988d1f6730289ae.sdkstatcache
-
-SwiftDriver DevStation normal arm64 com.apple.xcode.tools.swift.compiler (in target 'DevStation' from project 'DevStation')
-    cd /Users/letsdev/sods/SODS/apps/dev-station
-    builtin-SwiftDriver -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name DevStation -O -enforce-exclusivity\=checked @/Users/letsdev/sods/SODS/dist/DerivedData/Build/Intermediates.noindex/DevStation.build/Release/DevStation.build/Objects-normal/arm64/DevStation.SwiftFileList -enable-bare-slash-regex -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.2.sdk -target arm64-apple-macos13.0 -g -module-cache-path /Users/letsdev/sods/SODS/dist/DerivedData/ModuleCache.noindex -Xfrontend -serialize-debugging-options -swift-version 5 -I /Users/letsdev/sods/SODS/dist/DerivedData/Build/Products/Release -F /Users/letsdev/sods/SODS/dist/DerivedData/Build/Products/Release -c -j8 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /Users/letsdev/sods/SODS/dist/DerivedData/SDKStatCaches.noindex/macosx26.2-25C57-00fa09913b459cbbc988d1f6730289ae.sdkstatcache -output-file-map /Users/letsdev/sods/SODS/dist/DerivedData/Build/Intermediates.noindex/DevStation.build/Release/DevStation.build/Objects-normal/arm64/DevStation-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /Users/letsdev/sods/SODS/dist/DerivedData/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /Users/letsdev/sods/SODS/dist/DerivedData/ModuleCache.noindex -sdk-module-cache-path /Users/letsdev/sods/SODS/dist/DerivedData/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /Users/letsdev/sods/SODS/dist/DerivedData/Build/Intermediates.noindex/DevStation.build/Release/DevStation.build/Objects-normal/arm64/DevStation.swiftmodule -validate-clang-modules-once -clang-build-session-file /Users/letsdev/sods/SODS/dist/DerivedData/ModuleCache.noindex/Session.modulevalidation -Xcc -I/Users/letsdev/sods/SODS/dist/DerivedData/Build/Intermediates.noindex/DevStation.build/Release/DevStation.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /Users/letsdev/sods/SODS/dist/DerivedData/Build/Intermediates.noindex/DevStation.build/Release/DevStation.build/Objects-normal/arm64/DevStation_const_extract_protocols.json -Xcc -iquote -Xcc /Users/letsdev/sods/SODS/dist/DerivedData/Build/Intermediates.noindex/DevStation.build/Release/DevStation.build/DevStation-generated-files.hmap -Xcc -I/Users/letsdev/sods/SODS/dist/DerivedData/Build/Intermediates.noindex/DevStation.build/Release/DevStation.build/DevStation-own-target-headers.hmap -Xcc -I/Users/letsdev/sods/SODS/dist/DerivedData/Build/Intermediates.noindex/DevStation.build/Release/DevStation.build/DevStation-all-target-headers.hmap -Xcc -iquote -Xcc /Users/letsdev/sods/SODS/dist/DerivedData/Build/Intermediates.noindex/DevStation.build/Release/DevStation.build/DevStation-project-headers.hmap -Xcc -I/Users/letsdev/sods/SODS/dist/DerivedData/Build/Products/Release/include -Xcc -I/Users/letsdev/sods/SODS/dist/DerivedData/Build/Intermediates.noindex/DevStation.build/Release/DevStation.build/DerivedSources-normal/arm64 -Xcc -I/Users/letsdev/sods/SODS/dist/DerivedData/Build/Intermediates.noindex/DevStation.build/Release/DevStation.build/DerivedSources/arm64 -Xcc -I/Users/letsdev/sods/SODS/dist/DerivedData/Build/Intermediates.noindex/DevStation.build/Release/DevStation.build/DerivedSources -emit-objc-header -emit-objc-header-path /Users/letsdev/sods/SODS/dist/DerivedData/Build/Intermediates.noindex/DevStation.build/Release/DevStation.build/Objects-normal/arm64/DevStation-Swift.h -working-directory /Users/letsdev/sods/SODS/apps/dev-station -experimental-emit-module-separately -disable-cmo
-
-SwiftCompile normal arm64 Compiling\ BLEScanner.swift,\ BLEProber.swift /Users/letsdev/sods/SODS/apps/dev-station/DevStation/BLEScanner.swift /Users/letsdev/sods/SODS/apps/dev-station/DevStation/BLEProber.swift (in target 'DevStation' from project 'DevStation')
+Build:
+```bash
+./tools/devstation-build.sh
 ```
 
-## Dev Station Build Log (Last 50 Lines)
-
-```
-    
-
-SwiftDriverJobDiscovery normal arm64 Compiling Payloads.swift (in target 'DevStation' from project 'DevStation')
-
-SwiftDriverJobDiscovery normal arm64 Compiling BonjourDiscovery.swift (in target 'DevStation' from project 'DevStation')
-
-SwiftDriverJobDiscovery normal arm64 Compiling RTSPHardProbe.swift (in target 'DevStation' from project 'DevStation')
-
-SwiftDriverJobDiscovery normal arm64 Compiling ONVIFDiscovery.swift (in target 'DevStation' from project 'DevStation')
-
-SwiftDriverJobDiscovery normal arm64 Compiling DevStationApp.swift, ContentView.swift, ToolRegistry.swift (in target 'DevStation' from project 'DevStation')
-
-SwiftDriver\ Compilation DevStation normal arm64 com.apple.xcode.tools.swift.compiler (in target 'DevStation' from project 'DevStation')
-    cd /Users/letsdev/sods/SODS/apps/dev-station
-    builtin-Swift-Compilation -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name DevStation -O -enforce-exclusivity\=checked @/Users/letsdev/sods/SODS/dist/DerivedData/Build/Intermediates.noindex/DevStation.build/Release/DevStation.build/Objects-normal/arm64/DevStation.SwiftFileList -enable-bare-slash-regex -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.2.sdk -target arm64-apple-macos13.0 -g -module-cache-path /Users/letsdev/sods/SODS/dist/DerivedData/ModuleCache.noindex -Xfrontend -serialize-debugging-options -swift-version 5 -I /Users/letsdev/sods/SODS/dist/DerivedData/Build/Products/Release -F /Users/letsdev/sods/SODS/dist/DerivedData/Build/Products/Release -c -j8 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /Users/letsdev/sods/SODS/dist/DerivedData/SDKStatCaches.noindex/macosx26.2-25C57-00fa09913b459cbbc988d1f6730289ae.sdkstatcache -output-file-map /Users/letsdev/sods/SODS/dist/DerivedData/Build/Intermediates.noindex/DevStation.build/Release/DevStation.build/Objects-normal/arm64/DevStation-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /Users/letsdev/sods/SODS/dist/DerivedData/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /Users/letsdev/sods/SODS/dist/DerivedData/ModuleCache.noindex -sdk-module-cache-path /Users/letsdev/sods/SODS/dist/DerivedData/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /Users/letsdev/sods/SODS/dist/DerivedData/Build/Intermediates.noindex/DevStation.build/Release/DevStation.build/Objects-normal/arm64/DevStation.swiftmodule -validate-clang-modules-once -clang-build-session-file /Users/letsdev/sods/SODS/dist/DerivedData/ModuleCache.noindex/Session.modulevalidation -Xcc -I/Users/letsdev/sods/SODS/dist/DerivedData/Build/Intermediates.noindex/DevStation.build/Release/DevStation.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /Users/letsdev/sods/SODS/dist/DerivedData/Build/Intermediates.noindex/DevStation.build/Release/DevStation.build/Objects-normal/arm64/DevStation_const_extract_protocols.json -Xcc -iquote -Xcc /Users/letsdev/sods/SODS/dist/DerivedData/Build/Intermediates.noindex/DevStation.build/Release/DevStation.build/DevStation-generated-files.hmap -Xcc -I/Users/letsdev/sods/SODS/dist/DerivedData/Build/Intermediates.noindex/DevStation.build/Release/DevStation.build/DevStation-own-target-headers.hmap -Xcc -I/Users/letsdev/sods/SODS/dist/DerivedData/Build/Intermediates.noindex/DevStation.build/Release/DevStation.build/DevStation-all-target-headers.hmap -Xcc -iquote -Xcc /Users/letsdev/sods/SODS/dist/DerivedData/Build/Intermediates.noindex/DevStation.build/Release/DevStation.build/DevStation-project-headers.hmap -Xcc -I/Users/letsdev/sods/SODS/dist/DerivedData/Build/Products/Release/include -Xcc -I/Users/letsdev/sods/SODS/dist/DerivedData/Build/Intermediates.noindex/DevStation.build/Release/DevStation.build/DerivedSources-normal/arm64 -Xcc -I/Users/letsdev/sods/SODS/dist/DerivedData/Build/Intermediates.noindex/DevStation.build/Release/DevStation.build/DerivedSources/arm64 -Xcc -I/Users/letsdev/sods/SODS/dist/DerivedData/Build/Intermediates.noindex/DevStation.build/Release/DevStation.build/DerivedSources -emit-objc-header -emit-objc-header-path /Users/letsdev/sods/SODS/dist/DerivedData/Build/Intermediates.noindex/DevStation.build/Release/DevStation.build/Objects-normal/arm64/DevStation-Swift.h -working-directory /Users/letsdev/sods/SODS/apps/dev-station -experimental-emit-module-separately -disable-cmo
-
-Ld /Users/letsdev/sods/SODS/dist/DerivedData/Build/Products/Release/DevStation.app/Contents/MacOS/DevStation normal (in target 'DevStation' from project 'DevStation')
-    cd /Users/letsdev/sods/SODS/apps/dev-station
-    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -Xlinker -reproducible -target arm64-apple-macos13.0 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.2.sdk -Os -L/Users/letsdev/sods/SODS/dist/DerivedData/Build/Intermediates.noindex/EagerLinkingTBDs/Release -L/Users/letsdev/sods/SODS/dist/DerivedData/Build/Products/Release -F/Users/letsdev/sods/SODS/dist/DerivedData/Build/Intermediates.noindex/EagerLinkingTBDs/Release -F/Users/letsdev/sods/SODS/dist/DerivedData/Build/Products/Release -filelist /Users/letsdev/sods/SODS/dist/DerivedData/Build/Intermediates.noindex/DevStation.build/Release/DevStation.build/Objects-normal/arm64/DevStation.LinkFileList -Xlinker -rpath -Xlinker /usr/lib/swift -Xlinker -rpath -Xlinker @executable_path/../Frameworks -Xlinker -object_path_lto -Xlinker /Users/letsdev/sods/SODS/dist/DerivedData/Build/Intermediates.noindex/DevStation.build/Release/DevStation.build/Objects-normal/arm64/DevStation_lto.o -Xlinker -dependency_info -Xlinker /Users/letsdev/sods/SODS/dist/DerivedData/Build/Intermediates.noindex/DevStation.build/Release/DevStation.build/Objects-normal/arm64/DevStation_dependency_info.dat -fobjc-link-runtime -L/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx -L/usr/lib/swift -Xlinker -add_ast_path -Xlinker /Users/letsdev/sods/SODS/dist/DerivedData/Build/Intermediates.noindex/DevStation.build/Release/DevStation.build/Objects-normal/arm64/DevStation.swiftmodule @/Users/letsdev/sods/SODS/dist/DerivedData/Build/Intermediates.noindex/DevStation.build/Release/DevStation.build/Objects-normal/arm64/DevStation-linker-args.resp -o /Users/letsdev/sods/SODS/dist/DerivedData/Build/Products/Release/DevStation.app/Contents/MacOS/DevStation
-
-CopySwiftLibs /Users/letsdev/sods/SODS/dist/DerivedData/Build/Products/Release/DevStation.app (in target 'DevStation' from project 'DevStation')
-    cd /Users/letsdev/sods/SODS/apps/dev-station
-    builtin-swiftStdLibTool --copy --verbose --scan-executable /Users/letsdev/sods/SODS/dist/DerivedData/Build/Products/Release/DevStation.app/Contents/MacOS/DevStation --scan-folder /Users/letsdev/sods/SODS/dist/DerivedData/Build/Products/Release/DevStation.app/Contents/Frameworks --scan-folder /Users/letsdev/sods/SODS/dist/DerivedData/Build/Products/Release/DevStation.app/Contents/PlugIns --scan-folder /Users/letsdev/sods/SODS/dist/DerivedData/Build/Products/Release/DevStation.app/Contents/Library/SystemExtensions --scan-folder /Users/letsdev/sods/SODS/dist/DerivedData/Build/Products/Release/DevStation.app/Contents/Extensions --platform macosx --toolchain /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --destination /Users/letsdev/sods/SODS/dist/DerivedData/Build/Products/Release/DevStation.app/Contents/Frameworks --strip-bitcode --strip-bitcode-tool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/bitcode_strip --emit-dependency-info /Users/letsdev/sods/SODS/dist/DerivedData/Build/Intermediates.noindex/DevStation.build/Release/DevStation.build/SwiftStdLibToolInputDependencies.dep --filter-for-swift-os --back-deploy-swift-span
-Ignoring --strip-bitcode because --sign was not passed
-
-ExtractAppIntentsMetadata (in target 'DevStation' from project 'DevStation')
-    cd /Users/letsdev/sods/SODS/apps/dev-station
-    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/appintentsmetadataprocessor --toolchain-dir /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --module-name DevStation --sdk-root /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.2.sdk --xcode-version 17C52 --platform-family macOS --deployment-target 13.0 --bundle-identifier com.example.DevStation --output /Users/letsdev/sods/SODS/dist/DerivedData/Build/Products/Release/DevStation.app/Contents/Resources --target-triple arm64-apple-macos13.0 --binary-file /Users/letsdev/sods/SODS/dist/DerivedData/Build/Products/Release/DevStation.app/Contents/MacOS/DevStation --dependency-file /Users/letsdev/sods/SODS/dist/DerivedData/Build/Intermediates.noindex/DevStation.build/Release/DevStation.build/Objects-normal/arm64/DevStation_dependency_info.dat --stringsdata-file /Users/letsdev/sods/SODS/dist/DerivedData/Build/Intermediates.noindex/DevStation.build/Release/DevStation.build/Objects-normal/arm64/ExtractedAppShortcutsMetadata.stringsdata --source-file-list /Users/letsdev/sods/SODS/dist/DerivedData/Build/Intermediates.noindex/DevStation.build/Release/DevStation.build/Objects-normal/arm64/DevStation.SwiftFileList --metadata-file-list /Users/letsdev/sods/SODS/dist/DerivedData/Build/Intermediates.noindex/DevStation.build/Release/DevStation.build/DevStation.DependencyMetadataFileList --static-metadata-file-list /Users/letsdev/sods/SODS/dist/DerivedData/Build/Intermediates.noindex/DevStation.build/Release/DevStation.build/DevStation.DependencyStaticMetadataFileList --swift-const-vals-list /Users/letsdev/sods/SODS/dist/DerivedData/Build/Intermediates.noindex/DevStation.build/Release/DevStation.build/Objects-normal/arm64/DevStation.SwiftConstValuesFileList --compile-time-extraction --deployment-aware-processing --validate-assistant-intents --no-app-shortcuts-localization
-2026-02-04 00:29:31.075 appintentsmetadataprocessor[47829:5687169] Starting appintentsmetadataprocessor export
-2026-02-04 00:29:31.078 appintentsmetadataprocessor[47829:5687169] warning: Metadata extraction skipped. No AppIntents.framework dependency found.
-
-RegisterExecutionPolicyException /Users/letsdev/sods/SODS/dist/DerivedData/Build/Products/Release/DevStation.app (in target 'DevStation' from project 'DevStation')
-    cd /Users/letsdev/sods/SODS/apps/dev-station
-    builtin-RegisterExecutionPolicyException /Users/letsdev/sods/SODS/dist/DerivedData/Build/Products/Release/DevStation.app
-
-Validate /Users/letsdev/sods/SODS/dist/DerivedData/Build/Products/Release/DevStation.app (in target 'DevStation' from project 'DevStation')
-    cd /Users/letsdev/sods/SODS/apps/dev-station
-    builtin-validationUtility /Users/letsdev/sods/SODS/dist/DerivedData/Build/Products/Release/DevStation.app -no-validate-extension -infoplist-subpath Contents/Info.plist
-
-Touch /Users/letsdev/sods/SODS/dist/DerivedData/Build/Products/Release/DevStation.app (in target 'DevStation' from project 'DevStation')
-    cd /Users/letsdev/sods/SODS/apps/dev-station
-    /usr/bin/touch -c /Users/letsdev/sods/SODS/dist/DerivedData/Build/Products/Release/DevStation.app
-
-RegisterWithLaunchServices /Users/letsdev/sods/SODS/dist/DerivedData/Build/Products/Release/DevStation.app (in target 'DevStation' from project 'DevStation')
-    cd /Users/letsdev/sods/SODS/apps/dev-station
-    /System/Library/Frameworks/CoreServices.framework/Versions/Current/Frameworks/LaunchServices.framework/Versions/Current/Support/lsregister -f -R -trusted /Users/letsdev/sods/SODS/dist/DerivedData/Build/Products/Release/DevStation.app
-
-** BUILD SUCCEEDED **
-
-Built: /Users/letsdev/sods/SODS/dist/DevStation.app
-```
-- Dev Station app bundling: fixed Info.plist validation to prevent “executable is missing” after install, added bundle validation in build/install/smoke, and forced CFBundleExecutable/CFBundleName to match the binary.
+Output:
+- `./dist/DevStation.app`

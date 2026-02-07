@@ -61,17 +61,16 @@ open http://localhost:9123/flash/esp32c3
 
 Tool coverage:
 ```bash
-/Users/letsdev/sods/SODS/tools/audit-tools.sh
+./tools/audit-tools.sh
 ```
 
 Repo integrity:
 ```bash
-/Users/letsdev/sods/SODS/tools/audit-repo.sh
+./tools/audit-repo.sh
 ```
 
 Dev Station visualizer:
 - Open **Spectrum** view.
-- Toggle **Simulate frames (dev)** if no live frames.
 
 Runbook:
 ```bash
