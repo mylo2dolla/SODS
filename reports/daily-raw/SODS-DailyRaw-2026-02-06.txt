@@ -1,0 +1,1245 @@
+17:16:03 [INFO] BLE manager init: auth=notDetermined, state=unknown
+17:16:03 [ERROR] OUI watcher failed to open directory: /Users/letsdev/SODS/oui
+17:16:03 [INFO] Pi-Aux server listening on 127.0.0.1:8787
+17:16:03 [INFO] BLE company map entries: 3941
+17:16:03 [INFO] BLE assigned numbers entries: 601
+17:16:03 [INFO] OUI import loaded 38842 entries
+17:16:06 [INFO] BLE state: poweredOn
+17:16:06 [INFO] CBCentralManager didUpdateState: poweredOn, auth=allowedAlways
+17:16:06 [INFO] BLE scan started
+17:16:06 [INFO] BLE first device discovered
+17:16:06 [INFO] BLE device D6F40FC2-76BF-A21D-FE26-82338DDA284B name=Pod company=Apple, Inc. beacon= services=0
+17:16:06 [INFO] BLE device E193BCC6-2EDC-4BEE-0750-AEEC60F2B7E3 name=Mini7 company=Apple, Inc. beacon= services=0
+17:16:06 [INFO] BLE device E1CBBBD9-051A-CB3A-A176-AB62414949BB name= company=Microsoft beacon= services=0
+17:16:07 [INFO] BLE device B724139F-517D-1D99-B4DF-3A5B9690CA21 name= company=Apple, Inc. beacon= services=0
+17:16:07 [INFO] BLE device 3CE66F91-F236-7AA4-A0A8-412EC92C35B3 name=PHONE company=Apple, Inc. beacon= services=0
+17:16:07 [INFO] BLE device 53097977-ADC1-DE50-252D-F03B757E822A name= company=Apple, Inc. beacon= services=0
+17:16:08 [INFO] BLE device 643F3866-8EB5-9388-13C0-E15A132251BA name= company=Apple, Inc. beacon= services=0
+17:16:08 [INFO] BLE device 0F786E01-3C43-6D3E-8424-275F9490A8A0 name=macgr3y company=Apple, Inc. beacon= services=0
+17:16:08 [INFO] BLE device BF7D71E9-0C30-9F37-6B7B-C2B48CFFA5A4 name= company=Apple, Inc. beacon= services=0
+17:16:08 [INFO] BLE device A6C9839A-ECA0-3F20-158F-E86A31CFFBA5 name=Base company=Apple, Inc. beacon= services=0
+17:16:09 [INFO] BLE device 74267CB0-7E16-8FA1-7880-8C0828FD5EBD name= company=Apple, Inc. beacon= services=0
+17:16:09 [INFO] BLE device E70ABBF9-A4FC-FF40-FBE0-5EE9FC9C49B8 name=SYLVANIA BR30 C-M942A company= beacon= services=1
+17:16:09 [INFO] BLE device 725D0909-1A43-FF30-3829-FFF70E9B387F name= company=Apple, Inc. beacon= services=0
+17:16:10 [INFO] BLE device 35D446EC-EBA3-68CA-D069-52D1AA827918 name= company=Apple, Inc. beacon= services=0
+17:16:10 [INFO] BLE device F2463AAF-6EDB-9538-D62A-736814EB1404 name= company=Apple, Inc. beacon= services=0
+17:16:12 [INFO] BLE device CF0E9F85-77F3-611E-F8A6-4016EFEC6686 name=Quest 3S company= beacon= services=1
+17:16:12 [INFO] BLE device C7D42C0B-8555-382D-4081-F0701A6BC061 name= company=Apple, Inc. beacon= services=0
+17:16:14 [INFO] BLE device 5228ADE7-8C72-C1FA-3004-A3BD429263C2 name= company=Apple, Inc. beacon= services=0
+17:16:33 [INFO] Flasher targets: ESP32 DevKit v1, ESP32-C3 DevKitM-1, Ops Portal (CYD), ESP32-P4 God Button
+17:17:00 [INFO] BLE device 4389F3E9-2054-7712-5A64-749FF0BBDB76 name= company=Microsoft beacon= services=0
+17:18:46 [WARN] No scan snapshot available for scan report
+17:18:47 [INFO] Scan started (ONVIF discovery enabled, service discovery enabled, ARP warmup enabled, safe mode on)
+17:18:48 [INFO] Scan scope: 192.168.8.217/24
+17:18:48 [INFO] Total IPs to scan: 254
+17:18:48 [INFO] ARP warmup started: 254 IPs
+17:18:48 [INFO] ARP warmup finished
+17:18:49 [INFO] ARP parsed entries: 12
+17:18:51 [INFO] ARP hosts with MAC: 8
+17:18:51 [INFO] ARP marked alive: 7
+17:18:51 [INFO] OUI vendor hits: 3, misses: 5
+17:18:51 [INFO] ARP vendor scoring: hosts scored 3, high-confidence 0; devices scored 0, high-confidence 0
+17:18:51 [INFO] SSDP discovery started
+17:18:51 [INFO] Bonjour discovery started
+17:18:51 [INFO] WS-Discovery started (timeout 3.0s)
+17:18:54 [INFO] WS-Discovery finished: found 0 device(s)
+17:18:54 [INFO] SSDP responses: 0
+17:18:55 [INFO] Bonjour services: 5
+17:20:15 [INFO] BLE device A3738192-0D29-8A0C-B882-0AF4DDBB55CF name= company=Apple, Inc. beacon= services=0
+17:20:19 [INFO] BLE device B9B22CBB-BE9F-6EE6-4A4C-28A708861A8B name= company=Apple, Inc. beacon= services=0
+17:20:40 [INFO] Scan finished: alive 9 / 255
+17:20:40 [INFO] Scan complete
+17:20:40 [INFO] Hostname lookups started
+17:20:47 [INFO] BLE device 1B59E8F7-C28B-CBF4-1626-2C7348975EB9 name=Crusher Evo company=Skullcandy, Inc. beacon= services=3
+17:21:20 [INFO] Hostname lookups finished
+17:21:20 [INFO] ARP parsed entries: 12
+17:21:22 [INFO] ARP hosts with MAC: 8
+17:21:22 [INFO] ARP marked alive: 0
+17:21:22 [INFO] OUI vendor hits: 3, misses: 5
+17:21:22 [INFO] ARP vendor scoring: hosts scored 3, high-confidence 0; devices scored 1, high-confidence 0
+17:21:22 [INFO] HTTP fingerprinting started (2 requests)
+17:21:24 [INFO] HTTP fingerprinting attempted 2, succeeded 2
+17:21:24 [INFO] HTTP vendor scoring: hosts scored 3, high-confidence 0; devices scored 1, high-confidence 0
+17:21:24 [INFO] Scored hosts: 255 (high: 0, med: 0, low: 255)
+17:23:53 [INFO] BLE device CECBA6E5-2143-D6E9-4507-AEC1827E39A1 name= company=Apple, Inc. beacon= services=0
+17:24:39 [INFO] BLE device 1CF6FEA3-D580-3667-95F2-11FA36D66CB0 name= company=Apple, Inc. beacon= services=0
+17:24:59 [INFO] BLE device 3E55F6F6-BB42-58A0-46B9-07479F332CF8 name= company=Apple, Inc. beacon= services=0
+17:25:24 [INFO] BLE scan requested
+17:25:32 [INFO] BLE toggle off
+17:25:32 [INFO] BLE scan stopped
+17:25:32 [INFO] BLE peripherals discovered: 25
+17:25:32 [INFO] Scored BLE: 25 (high: 0, med: 2, low: 23)
+17:25:33 [INFO] BLE toggle off
+00:22:59 [INFO] BLE manager init: auth=notDetermined, state=unknown
+00:22:59 [ERROR] OUI watcher failed to open directory: /Users/letsdev/SODS/oui
+00:22:59 [INFO] Pi-Aux server listening on 127.0.0.1:8787
+00:22:59 [INFO] BLE company map entries: 3941
+00:22:59 [INFO] BLE assigned numbers entries: 601
+00:22:59 [INFO] OUI import loaded 38842 entries
+00:23:03 [INFO] BLE state: poweredOn
+00:23:03 [INFO] CBCentralManager didUpdateState: poweredOn, auth=allowedAlways
+00:23:03 [INFO] BLE scan started
+00:23:03 [INFO] BLE first device discovered
+00:23:03 [INFO] BLE device E193BCC6-2EDC-4BEE-0750-AEEC60F2B7E3 name=Mini7 company=Apple, Inc. beacon= services=0
+00:23:03 [INFO] BLE device 81705368-6B84-D9F5-D244-182A267F4191 name= company=Microsoft beacon= services=0
+00:23:03 [INFO] BLE device FCBB59D1-5209-D854-4245-26C94B177D46 name= company=Apple, Inc. beacon= services=0
+00:23:03 [INFO] BLE device 39892FB9-F295-3F00-2025-BCA668CF4231 name= company=Apple, Inc. beacon= services=0
+00:23:03 [INFO] BLE device A6C9839A-ECA0-3F20-158F-E86A31CFFBA5 name=Base company=Apple, Inc. beacon= services=0
+00:23:03 [INFO] BLE device D6F40FC2-76BF-A21D-FE26-82338DDA284B name=Pod company=Apple, Inc. beacon= services=0
+00:23:04 [INFO] BLE device 0F786E01-3C43-6D3E-8424-275F9490A8A0 name=macgr3y company=Apple, Inc. beacon= services=0
+00:23:04 [INFO] BLE device F9B9C522-29E4-CA6D-C3D9-5D46929508C0 name= company=Apple, Inc. beacon= services=0
+00:23:04 [INFO] BLE device 4FB2623D-C796-C6CA-907C-4D3C24DEC635 name= company=Apple, Inc. beacon= services=0
+00:23:04 [INFO] BLE device 8904448C-E306-679E-074E-76A7AE1BB670 name= company=Apple, Inc. beacon= services=0
+00:23:04 [INFO] BLE device 39426EF4-6FEA-7670-6160-E0A30A226CB8 name= company=Apple, Inc. beacon= services=0
+00:23:04 [INFO] BLE device 6C3FBE5B-3AE4-B95A-F576-E8917A53115A name= company=Apple, Inc. beacon= services=0
+00:23:04 [INFO] BLE device E70ABBF9-A4FC-FF40-FBE0-5EE9FC9C49B8 name=SYLVANIA BR30 C-M942A company= beacon= services=1
+00:23:04 [INFO] BLE device 3CE66F91-F236-7AA4-A0A8-412EC92C35B3 name=PHONE company=Apple, Inc. beacon= services=0
+00:23:04 [INFO] BLE device 81BD7D33-02F3-649A-156E-FF5551960C9D name= company=Apple, Inc. beacon= services=0
+00:23:05 [INFO] BLE device C98B20AE-208D-AFD2-C34F-1B3D511C19C9 name= company=Apple, Inc. beacon= services=0
+00:23:12 [INFO] BLE device 884B3466-09EC-05F8-B711-97E70FA54AAF name= company=Apple, Inc. beacon= services=0
+00:23:13 [INFO] BLE device 71B71C51-7A48-2DCA-A1E4-CD10D3558FD4 name=Quest 3S company= beacon= services=1
+00:23:50 [INFO] Flasher targets: ESP32 DevKit v1, ESP32-C3 DevKitM-1, Ops Portal (CYD), ESP32-P4 God Button
+00:24:19 [INFO] BLE device F535762E-C8AE-936D-8542-2D3C33BEBF25 name= company=Apple, Inc. beacon= services=0
+00:30:04 [INFO] BLE manager init: auth=allowedAlways, state=unknown
+00:30:04 [ERROR] OUI watcher failed to open directory: /Users/letsdev/SODS/oui
+00:30:04 [INFO] Pi-Aux server listening on 127.0.0.1:8787
+00:30:04 [INFO] BLE company map entries: 3941
+00:30:04 [INFO] BLE assigned numbers entries: 601
+00:30:04 [INFO] BLE state: poweredOn
+00:30:04 [INFO] CBCentralManager didUpdateState: poweredOn, auth=allowedAlways
+00:30:04 [INFO] BLE scan started
+00:30:04 [INFO] BLE first device discovered
+00:30:04 [INFO] BLE device F535762E-C8AE-936D-8542-2D3C33BEBF25 name= company=Apple, Inc. beacon= services=0
+00:30:04 [INFO] BLE device E193BCC6-2EDC-4BEE-0750-AEEC60F2B7E3 name=Mini7 company=Apple, Inc. beacon= services=0
+00:30:04 [INFO] BLE device B1C6FB4B-C231-7A46-807E-9849202CC54A name= company=Microsoft beacon= services=0
+00:30:04 [INFO] BLE device D6F40FC2-76BF-A21D-FE26-82338DDA284B name=Pod company=Apple, Inc. beacon= services=0
+00:30:04 [INFO] BLE device 9A7B1187-C7B5-83F1-E155-954ADA9E9248 name= company=Apple, Inc. beacon= services=0
+00:30:04 [INFO] OUI import loaded 38842 entries
+00:30:04 [INFO] BLE device 4FB2623D-C796-C6CA-907C-4D3C24DEC635 name= company=Apple, Inc. beacon= services=0
+00:30:06 [INFO] BLE device 3CE66F91-F236-7AA4-A0A8-412EC92C35B3 name=PHONE company=Apple, Inc. beacon= services=0
+00:30:06 [INFO] BLE device A03C8E47-3C08-0F8F-3026-4E75E3D3F03B name= company=Apple, Inc. beacon= services=0
+00:30:06 [INFO] BLE device E70ABBF9-A4FC-FF40-FBE0-5EE9FC9C49B8 name=SYLVANIA BR30 C-M942A company= beacon= services=1
+00:30:06 [INFO] BLE device A6C9839A-ECA0-3F20-158F-E86A31CFFBA5 name=Base company=Apple, Inc. beacon= services=0
+00:30:06 [INFO] BLE device 0F786E01-3C43-6D3E-8424-275F9490A8A0 name=macgr3y company=Apple, Inc. beacon= services=0
+00:30:07 [INFO] BLE device 39426EF4-6FEA-7670-6160-E0A30A226CB8 name= company=Apple, Inc. beacon= services=0
+00:30:09 [INFO] BLE device 71B71C51-7A48-2DCA-A1E4-CD10D3558FD4 name=Quest 3S company= beacon= services=1
+00:30:10 [INFO] BLE device 6C3FBE5B-3AE4-B95A-F576-E8917A53115A name= company=Apple, Inc. beacon= services=0
+00:30:11 [INFO] BLE device 6CC75AD3-61C3-0569-9B56-E4B507C60D67 name= company=Apple, Inc. beacon= services=0
+00:30:16 [INFO] BLE device 81BD7D33-02F3-649A-156E-FF5551960C9D name= company=Apple, Inc. beacon= services=0
+00:30:20 [INFO] BLE device 8FACACD4-0EB4-8839-3320-3DA2E95D5CAD name= company=Apple, Inc. beacon= services=0
+00:30:29 [INFO] BLE device 838DFD32-9117-890E-06B9-FED8E2674F14 name= company=Apple, Inc. beacon= services=0
+00:32:38 [INFO] BLE device 1B59E8F7-C28B-CBF4-1626-2C7348975EB9 name=Crusher Evo company=Skullcandy, Inc. beacon= services=3
+00:33:33 [INFO] BLE device D5F49AE2-1298-795E-E46B-4826E6377D03 name= company=Apple, Inc. beacon= services=0
+00:33:35 [INFO] BLE device 2DDACF1F-DAE8-05C3-5374-EF5DC928F3CB name= company=Apple, Inc. beacon= services=0
+00:34:29 [INFO] Flasher targets: ESP32 DevKit v1, ESP32-C3 DevKitM-1, Ops Portal (CYD), ESP32-P4 God Button
+00:34:33 [INFO] Scan started (ONVIF discovery enabled, service discovery enabled, ARP warmup enabled, safe mode off)
+00:34:34 [INFO] Scan scope: 192.168.8.217/24
+00:34:34 [INFO] Total IPs to scan: 254
+00:34:34 [INFO] ARP warmup started: 254 IPs
+00:34:35 [INFO] ARP warmup finished
+00:34:35 [INFO] ARP parsed entries: 13
+00:34:37 [INFO] ARP hosts with MAC: 9
+00:34:37 [INFO] ARP marked alive: 8
+00:34:37 [INFO] OUI vendor hits: 4, misses: 5
+00:34:37 [INFO] ARP vendor scoring: hosts scored 4, high-confidence 0; devices scored 0, high-confidence 0
+00:34:37 [INFO] SSDP discovery started
+00:34:37 [INFO] Bonjour discovery started
+00:34:37 [INFO] WS-Discovery started (timeout 3.0s)
+00:34:40 [INFO] WS-Discovery finished: found 0 device(s)
+00:34:40 [INFO] SSDP responses: 0
+00:34:40 [INFO] Bonjour services: 6
+00:36:35 [INFO] Scan finished: alive 10 / 255
+00:36:35 [INFO] Scan complete
+00:36:35 [INFO] Hostname lookups started
+00:36:36 [INFO] Scan scope: 192.168.8.217/24
+00:36:36 [INFO] Total IPs to scan: 254
+00:36:36 [INFO] ARP warmup started: 254 IPs
+00:36:37 [INFO] ARP warmup finished
+00:36:37 [INFO] ARP parsed entries: 14
+00:36:39 [INFO] ARP hosts with MAC: 10
+00:36:39 [INFO] ARP marked alive: 9
+00:36:39 [INFO] OUI vendor hits: 4, misses: 6
+00:36:39 [INFO] ARP vendor scoring: hosts scored 4, high-confidence 0; devices scored 1, high-confidence 0
+00:36:40 [INFO] SSDP discovery started
+00:36:40 [INFO] Bonjour discovery started
+00:36:40 [INFO] WS-Discovery started (timeout 3.0s)
+00:36:42 [INFO] WS-Discovery finished: found 0 device(s)
+00:36:43 [INFO] SSDP responses: 0
+00:36:43 [INFO] Bonjour services: 5
+00:36:47 [INFO] BLE device 00326F85-E4F3-44C7-D6F4-8D7584B7D50E name= company=Apple, Inc. beacon= services=0
+00:36:55 [INFO] BLE device 0B9AEC06-3C67-622E-F986-0C34872C6F66 name= company=Microsoft beacon= services=0
+00:37:00 [INFO] Hostname lookups finished
+00:37:01 [INFO] ARP parsed entries: 14
+00:37:03 [INFO] ARP hosts with MAC: 10
+00:37:03 [INFO] ARP marked alive: 0
+00:37:03 [INFO] OUI vendor hits: 4, misses: 6
+00:37:03 [INFO] ARP vendor scoring: hosts scored 4, high-confidence 0; devices scored 1, high-confidence 0
+00:37:03 [INFO] HTTP fingerprinting started (2 requests)
+00:37:05 [INFO] HTTP fingerprinting attempted 2, succeeded 2
+00:37:05 [INFO] HTTP vendor scoring: hosts scored 4, high-confidence 0; devices scored 1, high-confidence 0
+00:37:05 [INFO] Scored hosts: 255 (high: 0, med: 0, low: 255)
+00:38:01 [INFO] Scan finished: alive 11 / 255
+00:38:01 [INFO] Scan complete
+00:38:01 [INFO] Hostname lookups started
+00:38:02 [INFO] Scan scope: 192.168.8.217/24
+00:38:02 [INFO] Total IPs to scan: 254
+00:38:02 [INFO] ARP warmup started: 254 IPs
+00:38:03 [INFO] ARP warmup finished
+00:38:03 [INFO] ARP parsed entries: 14
+00:38:06 [INFO] ARP hosts with MAC: 10
+00:38:06 [INFO] ARP marked alive: 9
+00:38:06 [INFO] OUI vendor hits: 4, misses: 6
+00:38:06 [INFO] ARP vendor scoring: hosts scored 4, high-confidence 0; devices scored 1, high-confidence 0
+00:38:06 [INFO] SSDP discovery started
+00:38:06 [INFO] Bonjour discovery started
+00:38:06 [INFO] WS-Discovery started (timeout 3.0s)
+00:38:09 [INFO] WS-Discovery finished: found 0 device(s)
+00:38:09 [INFO] SSDP responses: 0
+00:38:10 [INFO] Bonjour services: 5
+00:38:33 [INFO] Hostname lookups finished
+00:38:33 [INFO] ARP parsed entries: 14
+00:38:36 [INFO] ARP hosts with MAC: 10
+00:38:36 [INFO] ARP marked alive: 0
+00:38:36 [INFO] OUI vendor hits: 4, misses: 6
+00:38:36 [INFO] ARP vendor scoring: hosts scored 4, high-confidence 0; devices scored 1, high-confidence 0
+00:38:36 [INFO] HTTP fingerprinting started (2 requests)
+00:38:36 [INFO] BLE device F9D112A7-0172-43F3-5A73-A02EAA077CA4 name= company=Apple, Inc. beacon= services=0
+00:38:37 [INFO] HTTP fingerprinting attempted 2, succeeded 2
+00:38:37 [INFO] HTTP vendor scoring: hosts scored 4, high-confidence 0; devices scored 1, high-confidence 0
+00:39:12 [INFO] Scan stopped by operator
+00:39:12 [INFO] BLE toggle off
+00:39:12 [INFO] BLE scan stopped
+00:39:12 [INFO] BLE peripherals discovered: 24
+00:39:12 [INFO] Scored BLE: 24 (high: 0, med: 2, low: 22)
+00:59:09 [INFO] BLE manager init: auth=notDetermined, state=unknown
+00:59:09 [ERROR] OUI watcher failed to open directory: /Users/letsdev/SODS/oui
+00:59:09 [INFO] Pi-Aux server listening on 127.0.0.1:8787
+00:59:09 [INFO] BLE company map entries: 3941
+00:59:09 [INFO] BLE assigned numbers entries: 601
+00:59:09 [INFO] OUI import loaded 38842 entries
+00:59:14 [INFO] BLE state: poweredOn
+00:59:14 [INFO] CBCentralManager didUpdateState: poweredOn, auth=allowedAlways
+00:59:14 [INFO] BLE scan started
+00:59:14 [INFO] BLE first device discovered
+00:59:14 [INFO] BLE device 2F2F240E-2FED-6820-D346-C8F85E4B3EA0 name= company=Apple, Inc. beacon= services=0
+00:59:14 [INFO] BLE device 3CE66F91-F236-7AA4-A0A8-412EC92C35B3 name=PHONE company=Apple, Inc. beacon= services=0
+00:59:14 [INFO] BLE device E193BCC6-2EDC-4BEE-0750-AEEC60F2B7E3 name=Mini7 company=Apple, Inc. beacon= services=0
+00:59:14 [INFO] BLE device D6F40FC2-76BF-A21D-FE26-82338DDA284B name=Pod company=Apple, Inc. beacon= services=0
+00:59:14 [INFO] BLE device E70ABBF9-A4FC-FF40-FBE0-5EE9FC9C49B8 name=SYLVANIA BR30 C-M942A company= beacon= services=1
+00:59:14 [INFO] BLE device E828C7DB-F4F2-8AFE-3267-2BE12468A698 name= company=Apple, Inc. beacon= services=0
+00:59:14 [INFO] BLE device 44A06724-E45D-7ECE-4ADC-E9287D789610 name= company=Apple, Inc. beacon= services=0
+00:59:14 [INFO] BLE device 71B71C51-7A48-2DCA-A1E4-CD10D3558FD4 name=Quest 3S company= beacon= services=1
+00:59:14 [INFO] BLE device 7134E0EE-3D4E-FCD2-8577-5D1552FA2341 name= company=Apple, Inc. beacon= services=0
+00:59:14 [INFO] BLE device A6C9839A-ECA0-3F20-158F-E86A31CFFBA5 name=Base company=Apple, Inc. beacon= services=0
+00:59:15 [INFO] BLE device 4ADE4258-DC9B-EBA5-2670-F7F7E1768F04 name= company=Apple, Inc. beacon= services=0
+00:59:15 [INFO] BLE device 9ED8DD88-4DD2-8CAA-64D4-EAC17AE4ADA6 name= company=Microsoft beacon= services=0
+00:59:15 [INFO] BLE device 42F321E8-DD20-080A-0D36-9700248A8BE8 name= company=Apple, Inc. beacon= services=0
+00:59:15 [INFO] BLE device 8CC38978-9E6C-548C-C485-975A0BC062E6 name= company=Apple, Inc. beacon= services=0
+00:59:15 [INFO] BLE device 0F786E01-3C43-6D3E-8424-275F9490A8A0 name=macgr3y company=Apple, Inc. beacon= services=0
+00:59:15 [INFO] BLE device F32DEC61-B3F1-7AB2-E74D-3EB8E661DEE2 name= company=Apple, Inc. beacon= services=0
+00:59:15 [INFO] BLE device 17619635-F6E6-CA68-46C2-6D80C3B2564B name= company=Apple, Inc. beacon= services=0
+00:59:19 [INFO] BLE device 036F64F0-D776-0517-FA25-26C879BC40DB name= company=Apple, Inc. beacon= services=0
+00:59:20 [INFO] BLE device 0A8BE7F3-50AE-5E3A-2F81-7BA7EA4CCAF2 name= company=Apple, Inc. beacon= services=0
+00:59:29 [INFO] Flasher targets: ESP32 DevKit v1, ESP32-C3 DevKitM-1, Ops Portal (CYD), ESP32-P4 God Button
+00:59:40 [INFO] Scan started (ONVIF discovery enabled, service discovery enabled, ARP warmup enabled, safe mode on)
+00:59:40 [INFO] Scan scope: 192.168.8.217/24
+00:59:40 [INFO] Total IPs to scan: 254
+00:59:40 [INFO] ARP warmup started: 254 IPs
+00:59:41 [INFO] ARP warmup finished
+00:59:41 [INFO] ARP parsed entries: 14
+00:59:43 [INFO] ARP hosts with MAC: 10
+00:59:43 [INFO] ARP marked alive: 9
+00:59:43 [INFO] ARP vendor scoring: hosts scored 4, high-confidence 0; devices scored 0, high-confidence 0
+00:59:43 [INFO] OUI vendor hits: 4, misses: 6
+00:59:43 [INFO] SSDP discovery started
+00:59:43 [INFO] Bonjour discovery started
+00:59:43 [INFO] WS-Discovery started (timeout 3.0s)
+00:59:46 [INFO] WS-Discovery finished: found 0 device(s)
+00:59:46 [INFO] SSDP responses: 0
+00:59:46 [INFO] Bonjour services: 5
+00:59:49 [INFO] Scan stopped by operator
+00:59:49 [INFO] BLE toggle off
+00:59:49 [INFO] BLE scan stopped
+00:59:49 [INFO] BLE peripherals discovered: 19
+00:59:49 [INFO] Scored BLE: 19 (high: 0, med: 1, low: 18)
+00:59:50 [INFO] Scan started (ONVIF discovery enabled, service discovery enabled, ARP warmup enabled, safe mode on)
+00:59:50 [INFO] Scan scope: 192.168.8.217/24
+00:59:50 [INFO] Total IPs to scan: 254
+00:59:50 [INFO] ARP warmup started: 254 IPs
+00:59:51 [INFO] ARP warmup finished
+00:59:51 [INFO] ARP parsed entries: 14
+00:59:53 [INFO] ARP hosts with MAC: 10
+00:59:53 [INFO] ARP marked alive: 9
+00:59:53 [INFO] ARP vendor scoring: hosts scored 4, high-confidence 0; devices scored 0, high-confidence 0
+00:59:53 [INFO] OUI vendor hits: 4, misses: 6
+00:59:53 [INFO] SSDP discovery started
+00:59:53 [INFO] Bonjour discovery started
+00:59:53 [INFO] WS-Discovery started (timeout 3.0s)
+00:59:56 [INFO] WS-Discovery finished: found 0 device(s)
+00:59:56 [INFO] SSDP responses: 0
+00:59:56 [INFO] Bonjour services: 5
+00:59:58 [INFO] BLE scan requested
+00:59:58 [INFO] BLE scan started
+00:59:59 [INFO] Scan started (ONVIF discovery enabled, service discovery enabled, ARP warmup enabled, safe mode on)
+01:00:00 [INFO] Scan scope: 192.168.8.217/24
+01:00:00 [INFO] Total IPs to scan: 254
+01:00:00 [INFO] ARP warmup started: 254 IPs
+01:00:01 [INFO] ARP warmup finished
+01:00:01 [INFO] ARP parsed entries: 14
+01:00:02 [INFO] ARP hosts with MAC: 10
+01:00:02 [INFO] ARP marked alive: 9
+01:00:02 [INFO] OUI vendor hits: 4, misses: 6
+01:00:02 [INFO] ARP vendor scoring: hosts scored 4, high-confidence 0; devices scored 0, high-confidence 0
+01:00:03 [INFO] SSDP discovery started
+01:00:03 [INFO] Bonjour discovery started
+01:00:03 [INFO] WS-Discovery started (timeout 3.0s)
+01:00:05 [INFO] WS-Discovery finished: found 0 device(s)
+01:00:06 [INFO] SSDP responses: 0
+01:00:06 [INFO] Bonjour services: 5
+01:00:07 [INFO] BLE first device discovered
+01:00:07 [INFO] BLE device DBD752BE-92CE-13E1-C5C1-5261E1981C49 name= company=Apple, Inc. beacon= services=0
+01:00:10 [INFO] BLE device 54146361-E420-E4A3-1B2A-894F2D499CAF name= company=Apple, Inc. beacon= services=0
+01:01:02 [INFO] BLE device 1B59E8F7-C28B-CBF4-1626-2C7348975EB9 name=Crusher Evo company=Skullcandy, Inc. beacon= services=3
+01:01:11 [INFO] BLE device 654ED7B1-59FA-DE83-599D-CA8D72F58906 name= company=Apple, Inc. beacon= services=0
+01:01:21 [INFO] Scan finished: alive 11 / 255
+01:01:21 [INFO] Scan complete
+01:01:21 [INFO] Hostname lookups started
+01:01:22 [INFO] Scan scope: 192.168.8.217/24
+01:01:22 [INFO] Total IPs to scan: 254
+01:01:22 [INFO] ARP warmup started: 254 IPs
+01:01:23 [INFO] ARP warmup finished
+01:01:23 [INFO] ARP parsed entries: 14
+01:01:26 [INFO] ARP hosts with MAC: 10
+01:01:26 [INFO] ARP marked alive: 9
+01:01:26 [INFO] OUI vendor hits: 4, misses: 6
+01:01:26 [INFO] ARP vendor scoring: hosts scored 4, high-confidence 0; devices scored 1, high-confidence 0
+01:01:26 [INFO] SSDP discovery started
+01:01:26 [INFO] Bonjour discovery started
+01:01:26 [INFO] WS-Discovery started (timeout 3.0s)
+01:01:29 [INFO] WS-Discovery finished: found 0 device(s)
+01:01:29 [INFO] SSDP responses: 0
+01:01:30 [INFO] Bonjour services: 5
+01:01:56 [INFO] Hostname lookups finished
+01:01:56 [INFO] ARP parsed entries: 13
+01:01:59 [INFO] ARP hosts with MAC: 9
+01:01:59 [INFO] ARP marked alive: 0
+01:01:59 [INFO] OUI vendor hits: 4, misses: 5
+01:01:59 [INFO] ARP vendor scoring: hosts scored 4, high-confidence 0; devices scored 1, high-confidence 0
+01:01:59 [INFO] HTTP fingerprinting started (2 requests)
+01:02:00 [INFO] HTTP fingerprinting attempted 2, succeeded 2
+01:02:00 [INFO] HTTP vendor scoring: hosts scored 4, high-confidence 0; devices scored 1, high-confidence 0
+01:02:00 [INFO] Scored hosts: 255 (high: 0, med: 0, low: 255)
+01:02:55 [INFO] Scan finished: alive 11 / 255
+01:02:56 [INFO] Scan complete
+01:02:56 [INFO] Hostname lookups started
+01:02:56 [INFO] Scan scope: 192.168.8.217/24
+01:02:56 [INFO] Total IPs to scan: 254
+01:02:56 [INFO] ARP warmup started: 254 IPs
+01:02:57 [INFO] ARP warmup finished
+01:02:57 [INFO] ARP parsed entries: 13
+01:03:00 [INFO] ARP hosts with MAC: 9
+01:03:00 [INFO] ARP marked alive: 8
+01:03:00 [INFO] OUI vendor hits: 4, misses: 5
+01:03:00 [INFO] ARP vendor scoring: hosts scored 4, high-confidence 0; devices scored 1, high-confidence 0
+01:03:00 [INFO] SSDP discovery started
+01:03:00 [INFO] Bonjour discovery started
+01:03:00 [INFO] WS-Discovery started (timeout 3.0s)
+01:03:03 [INFO] WS-Discovery finished: found 0 device(s)
+01:03:03 [INFO] SSDP responses: 0
+01:03:04 [INFO] Bonjour services: 5
+01:03:35 [INFO] Hostname lookups finished
+01:03:35 [INFO] ARP parsed entries: 13
+01:03:38 [INFO] ARP hosts with MAC: 9
+01:03:38 [INFO] ARP marked alive: 0
+01:03:38 [INFO] OUI vendor hits: 4, misses: 5
+01:03:38 [INFO] ARP vendor scoring: hosts scored 4, high-confidence 0; devices scored 1, high-confidence 0
+01:03:38 [INFO] HTTP fingerprinting started (2 requests)
+01:03:39 [INFO] HTTP fingerprinting attempted 2, succeeded 2
+01:03:39 [INFO] HTTP vendor scoring: hosts scored 4, high-confidence 0; devices scored 1, high-confidence 0
+01:04:05 [INFO] BLE device 89A3DBD5-C06B-4044-F86F-35F95E272AF8 name= company=Apple, Inc. beacon= services=0
+01:04:06 [INFO] Scan stopped by operator
+01:04:06 [INFO] BLE toggle off
+01:04:06 [INFO] BLE scan stopped
+01:04:06 [INFO] BLE peripherals discovered: 24
+01:04:06 [INFO] Scored BLE: 24 (high: 0, med: 1, low: 23)
+01:04:06 [INFO] BLE toggle off
+11:01:43 [INFO] BLE manager init: auth=notDetermined, state=unknown
+11:01:43 [ERROR] OUI watcher failed to open directory: /Users/letsdev/SODS/oui
+11:01:43 [INFO] Pi-Aux server listening on 127.0.0.1:8787
+11:01:43 [INFO] BLE company map entries: 3941
+11:01:43 [INFO] BLE assigned numbers entries: 601
+11:01:43 [INFO] OUI import loaded 38842 entries
+11:01:47 [INFO] BLE state: poweredOn
+11:01:47 [INFO] CBCentralManager didUpdateState: poweredOn, auth=allowedAlways
+11:01:47 [INFO] BLE scan started
+11:01:48 [INFO] BLE first device discovered
+11:01:48 [INFO] BLE device 3CE66F91-F236-7AA4-A0A8-412EC92C35B3 name=PHONE company=Apple, Inc. beacon= services=0
+11:01:48 [INFO] BLE device D6F40FC2-76BF-A21D-FE26-82338DDA284B name=Pod company=Apple, Inc. beacon= services=0
+11:01:48 [INFO] BLE device E193BCC6-2EDC-4BEE-0750-AEEC60F2B7E3 name=Mini7 company=Apple, Inc. beacon= services=0
+11:01:48 [INFO] BLE device 92BFBA0F-109B-E43B-694E-AF5E738382DD name= company=Apple, Inc. beacon= services=0
+11:01:48 [INFO] BLE device 0F786E01-3C43-6D3E-8424-275F9490A8A0 name=macgr3y company=Apple, Inc. beacon= services=0
+11:01:48 [INFO] BLE device A8A3A1B3-32BA-8C9C-00E3-1E6F1662567A name= company=Apple, Inc. beacon= services=0
+11:01:48 [INFO] BLE device 6E160F41-D74C-0956-C584-8287B4196C73 name= company=Apple, Inc. beacon= services=0
+11:01:48 [INFO] BLE device 2FE12FEB-35F2-C55C-2D83-457294C4AB44 name= company=Microsoft beacon= services=0
+11:01:48 [INFO] BLE device 762F85CF-F390-98E8-DBCB-2B13DA60CBE8 name= company=Apple, Inc. beacon= services=0
+11:01:48 [INFO] BLE device A6C9839A-ECA0-3F20-158F-E86A31CFFBA5 name=Base company=Apple, Inc. beacon= services=0
+11:01:48 [INFO] BLE device 69448BEC-A4E7-2B4C-2D64-CF5ED0E90C77 name= company=Apple, Inc. beacon= services=0
+11:01:49 [INFO] BLE device 40B0F00F-C30E-C48A-86DE-D0941BB5222A name= company=Apple, Inc. beacon= services=0
+11:01:49 [INFO] BLE device E70ABBF9-A4FC-FF40-FBE0-5EE9FC9C49B8 name=SYLVANIA BR30 C-M942A company= beacon= services=1
+11:01:51 [INFO] BLE device 909FE4A0-BD31-9492-0979-D6BFC97722D2 name= company=Apple, Inc. beacon= services=0
+11:01:54 [INFO] BLE device AC473069-FB12-FF20-656A-AB877335ED2C name= company=Apple, Inc. beacon= services=0
+11:01:54 [INFO] BLE device BA6CD12B-676B-B6F2-7A6A-07A72485220A name= company=Apple, Inc. beacon= services=0
+11:01:54 [INFO] BLE device 6AB0D3AC-57DD-4E94-3DBA-0C2D173CE775 name= company=Apple, Inc. beacon= services=0
+11:02:00 [INFO] BLE device 819EEBCE-39AC-60E9-1FD6-687D305C3587 name= company=Apple, Inc. beacon= services=0
+11:02:04 [INFO] Flasher targets: ESP32 DevKit v1, ESP32-C3 DevKitM-1, Ops Portal (CYD), ESP32-P4 God Button
+11:02:26 [INFO] BLE scan requested
+11:02:35 [INFO] BLE toggle off
+11:02:35 [INFO] BLE scan stopped
+11:02:35 [INFO] BLE peripherals discovered: 18
+11:02:35 [INFO] Scored BLE: 18 (high: 0, med: 0, low: 18)
+11:02:35 [INFO] BLE toggle off
+11:10:20 [INFO] BLE scan requested
+11:10:20 [INFO] BLE scan started
+11:10:20 [INFO] BLE first device discovered
+11:10:20 [INFO] BLE device 0F1A62C4-5558-08E4-0230-27536E4B9DD3 name= company=Apple, Inc. beacon= services=0
+11:10:20 [INFO] BLE device 41B87999-5228-F918-21CD-A1F7876A8F0C name=Quest 3S company= beacon= services=1
+11:10:20 [INFO] BLE device F623572D-59ED-469C-2249-63279E10DADA name= company=Apple, Inc. beacon= services=0
+11:10:21 [INFO] BLE device B28CDA04-4620-ACD0-3AB7-79C81E4DDD37 name= company=Microsoft beacon= services=0
+11:10:22 [INFO] BLE device 86136A55-F5AC-8100-9976-E66F41714891 name= company=Apple, Inc. beacon= services=0
+11:10:29 [INFO] BLE toggle off
+11:10:29 [INFO] BLE scan stopped
+11:10:29 [INFO] BLE peripherals discovered: 23
+11:10:29 [INFO] Scored BLE: 23 (high: 0, med: 0, low: 23)
+11:10:49 [INFO] BLE scan requested
+11:10:50 [INFO] BLE scan started
+11:11:32 [INFO] BLE first device discovered
+11:11:32 [INFO] BLE device 86C1F12C-CF02-7082-6EA5-3AC3D9DA6431 name= company=Apple, Inc. beacon= services=0
+11:11:32 [INFO] BLE device CA391C98-030C-FCE2-BB8D-F7013D1C847F name= company=Apple, Inc. beacon= services=0
+11:11:58 [INFO] Scan started (ONVIF discovery enabled, service discovery enabled, ARP warmup enabled, safe mode off)
+11:11:58 [INFO] Scan scope: 192.168.8.217/24
+11:11:58 [INFO] Total IPs to scan: 254
+11:11:58 [INFO] ARP warmup started: 254 IPs
+11:11:59 [INFO] ARP warmup finished
+11:11:59 [INFO] ARP parsed entries: 12
+11:12:00 [INFO] ARP hosts with MAC: 8
+11:12:00 [INFO] ARP marked alive: 7
+11:12:00 [INFO] OUI vendor hits: 4, misses: 4
+11:12:00 [INFO] ARP vendor scoring: hosts scored 4, high-confidence 0; devices scored 0, high-confidence 0
+11:12:00 [INFO] SSDP discovery started
+11:12:00 [INFO] Bonjour discovery started
+11:12:00 [INFO] WS-Discovery started (timeout 3.0s)
+11:12:03 [INFO] WS-Discovery finished: found 0 device(s)
+11:12:03 [INFO] SSDP responses: 0
+11:12:03 [INFO] Bonjour services: 5
+11:12:26 [INFO] BLE device 1B59E8F7-C28B-CBF4-1626-2C7348975EB9 name=Crusher Evo company=Skullcandy, Inc. beacon= services=3
+11:13:43 [INFO] Scan finished: alive 9 / 255
+11:13:44 [INFO] Scan complete
+11:13:44 [INFO] Hostname lookups started
+11:13:45 [INFO] Scan scope: 192.168.8.217/24
+11:13:45 [INFO] Total IPs to scan: 254
+11:13:45 [INFO] ARP warmup started: 254 IPs
+11:13:46 [INFO] ARP warmup finished
+11:13:46 [INFO] ARP parsed entries: 12
+11:13:50 [INFO] ARP hosts with MAC: 8
+11:13:50 [INFO] ARP marked alive: 7
+11:13:50 [INFO] OUI vendor hits: 4, misses: 4
+11:13:50 [INFO] ARP vendor scoring: hosts scored 4, high-confidence 0; devices scored 1, high-confidence 0
+11:13:50 [INFO] SSDP discovery started
+11:13:50 [INFO] Bonjour discovery started
+11:13:50 [INFO] WS-Discovery started (timeout 3.0s)
+11:13:53 [INFO] WS-Discovery finished: found 0 device(s)
+11:13:54 [INFO] SSDP responses: 0
+11:13:55 [INFO] Bonjour services: 6
+11:15:00 [INFO] BLE device C477F62A-BEF0-0379-6646-B675438E54C1 name= company=Apple, Inc. beacon= services=0
+11:15:06 [INFO] BLE device 1D63817A-D62F-AE6E-1D45-D8116FC17712 name= company=Apple, Inc. beacon= services=0
+11:15:27 [INFO] BLE device FB829B8F-0847-2E31-C26E-1E20DC94C9B8 name= company=Apple, Inc. beacon= services=0
+11:15:29 [INFO] BLE device 2814FA93-FE16-4CF1-FFB0-5D2FB6FE53B8 name= company=Apple, Inc. beacon= services=0
+11:15:38 [INFO] BLE device A824CE32-4A7F-FC49-A422-B1BF256B4A6B name= company=Apple, Inc. beacon= services=0
+11:15:59 [INFO] BLE device 37379AF7-F366-6C59-76E2-B0C1EBF62903 name= company=Samsung Electronics Co. Ltd. beacon= services=0
+11:16:23 [INFO] BLE device 90E75A87-4304-ADF4-29DC-228529BCD2DA name= company=Apple, Inc. beacon= services=0
+11:18:12 [INFO] Hostname lookups finished
+11:18:12 [INFO] ARP parsed entries: 12
+11:18:16 [INFO] ARP hosts with MAC: 8
+11:18:16 [INFO] ARP marked alive: 0
+11:18:16 [INFO] OUI vendor hits: 4, misses: 4
+11:18:16 [INFO] ARP vendor scoring: hosts scored 4, high-confidence 0; devices scored 1, high-confidence 0
+11:18:16 [INFO] HTTP fingerprinting started (2 requests)
+11:18:18 [INFO] HTTP fingerprinting attempted 2, succeeded 2
+11:18:18 [INFO] HTTP vendor scoring: hosts scored 4, high-confidence 0; devices scored 1, high-confidence 0
+11:18:18 [INFO] Scored hosts: 255 (high: 0, med: 0, low: 255)
+11:18:26 [INFO] Scan finished: alive 9 / 255
+11:18:27 [INFO] Scan complete
+11:18:27 [INFO] Hostname lookups started
+11:18:28 [INFO] Scan scope: 192.168.8.217/24
+11:18:28 [INFO] Total IPs to scan: 254
+11:18:28 [INFO] ARP warmup started: 254 IPs
+11:18:29 [INFO] ARP warmup finished
+11:18:29 [INFO] ARP parsed entries: 12
+11:18:32 [INFO] ARP hosts with MAC: 8
+11:18:32 [INFO] ARP marked alive: 7
+11:18:32 [INFO] OUI vendor hits: 4, misses: 4
+11:18:32 [INFO] ARP vendor scoring: hosts scored 4, high-confidence 0; devices scored 1, high-confidence 0
+11:18:33 [INFO] SSDP discovery started
+11:18:33 [INFO] Bonjour discovery started
+11:18:33 [INFO] WS-Discovery started (timeout 3.0s)
+11:18:36 [INFO] WS-Discovery finished: found 0 device(s)
+11:18:36 [INFO] SSDP responses: 0
+11:18:38 [INFO] Bonjour services: 6
+11:19:22 [INFO] BLE device 13BCCBE5-5713-472E-A6DF-8B5294CF733F name= company=Microsoft beacon= services=0
+11:22:15 [INFO] BLE device 34D328B8-61A8-381A-A5E3-0A96305EDD96 name= company=Apple, Inc. beacon= services=0
+11:23:08 [INFO] Hostname lookups finished
+11:23:08 [INFO] ARP parsed entries: 12
+11:23:15 [INFO] ARP hosts with MAC: 8
+11:23:15 [INFO] ARP marked alive: 0
+11:23:15 [INFO] OUI vendor hits: 4, misses: 4
+11:23:15 [INFO] ARP vendor scoring: hosts scored 4, high-confidence 0; devices scored 1, high-confidence 0
+11:23:15 [INFO] HTTP fingerprinting started (2 requests)
+11:23:19 [INFO] Scan finished: alive 9 / 255
+11:23:19 [INFO] HTTP fingerprinting attempted 2, succeeded 2
+11:23:19 [INFO] HTTP vendor scoring: hosts scored 4, high-confidence 0; devices scored 1, high-confidence 0
+11:23:19 [INFO] Scan complete
+11:23:20 [INFO] Hostname lookups started
+11:23:21 [INFO] Scan scope: 192.168.8.217/24
+11:23:21 [INFO] Total IPs to scan: 254
+11:23:21 [INFO] ARP warmup started: 254 IPs
+11:23:23 [INFO] ARP warmup finished
+11:23:23 [INFO] ARP parsed entries: 12
+11:23:30 [INFO] ARP hosts with MAC: 8
+11:23:30 [INFO] ARP marked alive: 7
+11:23:30 [INFO] OUI vendor hits: 4, misses: 4
+11:23:30 [INFO] ARP vendor scoring: hosts scored 4, high-confidence 0; devices scored 1, high-confidence 0
+11:23:31 [INFO] SSDP discovery started
+11:23:31 [INFO] Bonjour discovery started
+11:23:31 [INFO] WS-Discovery started (timeout 3.0s)
+11:23:34 [INFO] WS-Discovery finished: found 0 device(s)
+11:23:36 [INFO] SSDP responses: 0
+11:23:39 [INFO] Bonjour services: 6
+11:24:19 [INFO] BLE device 2E2440A2-BFA8-AFD0-33C0-C6E099E01046 name= company=Apple, Inc. beacon= services=0
+11:24:23 [INFO] BLE device 7EB1A022-AD4C-0D48-B9FE-24D61A18BDC3 name= company=Apple, Inc. beacon= services=0
+11:24:44 [INFO] BLE device BA70FD72-99A7-1D94-E860-65557EDC1DFB name= company=Apple, Inc. beacon= services=0
+11:24:47 [INFO] BLE device 92F7B196-0900-5320-CF19-CBDB95F85456 name= company=Apple, Inc. beacon= services=0
+11:26:22 [INFO] BLE device 24DD325C-589E-92E9-D3B3-C5A5F9E4E005 name= company=Apple, Inc. beacon= services=0
+11:42:52 [INFO] BLE manager init: auth=notDetermined, state=unknown
+11:42:52 [ERROR] OUI watcher failed to open directory: /Users/letsdev/SODS/oui
+11:42:52 [INFO] BLE company map entries: 3941
+11:42:52 [INFO] BLE assigned numbers entries: 601
+11:42:52 [INFO] Pi-Aux server listening on 127.0.0.1:8787
+11:42:52 [INFO] OUI import loaded 38842 entries
+11:42:57 [INFO] BLE state: poweredOn
+11:42:57 [INFO] CBCentralManager didUpdateState: poweredOn, auth=allowedAlways
+11:42:57 [INFO] BLE scan started
+11:42:57 [INFO] BLE first device discovered
+11:42:57 [INFO] BLE device 1119868A-1561-8869-9DBF-FBE2871CAC5A name= company=Apple, Inc. beacon= services=0
+11:42:57 [INFO] BLE device 97C14775-A6AB-BB8F-EEC4-030178FB470A name= company=Apple, Inc. beacon= services=0
+11:42:57 [INFO] BLE device A824CE32-4A7F-FC49-A422-B1BF256B4A6B name= company=Apple, Inc. beacon= services=0
+11:42:57 [INFO] BLE device 640575F2-24B0-747F-3B75-177CA7B1BC28 name= company=Apple, Inc. beacon= services=0
+11:42:57 [INFO] BLE device D6F40FC2-76BF-A21D-FE26-82338DDA284B name=Pod company=Apple, Inc. beacon= services=0
+11:42:58 [INFO] BLE device E193BCC6-2EDC-4BEE-0750-AEEC60F2B7E3 name=Mini7 company=Apple, Inc. beacon= services=0
+11:42:58 [INFO] BLE device E7C7EE75-D5B7-8DC7-2706-119857EED1D2 name= company=Microsoft beacon= services=0
+11:42:58 [INFO] BLE device 0F786E01-3C43-6D3E-8424-275F9490A8A0 name=macgr3y company=Apple, Inc. beacon= services=0
+11:42:58 [INFO] BLE device A6C9839A-ECA0-3F20-158F-E86A31CFFBA5 name=Base company=Apple, Inc. beacon= services=0
+11:42:58 [INFO] BLE device 24DD325C-589E-92E9-D3B3-C5A5F9E4E005 name= company=Apple, Inc. beacon= services=0
+11:42:59 [INFO] BLE device 3CE66F91-F236-7AA4-A0A8-412EC92C35B3 name=PHONE company=Apple, Inc. beacon= services=0
+11:42:59 [INFO] BLE device 0357482A-1921-B341-C158-21B6107D1FBF name= company=Apple, Inc. beacon= services=0
+11:43:00 [INFO] BLE device E50D162A-52A6-402B-5C34-83712F582256 name= company=Apple, Inc. beacon= services=0
+11:43:00 [INFO] BLE device E70ABBF9-A4FC-FF40-FBE0-5EE9FC9C49B8 name=SYLVANIA BR30 C-M942A company= beacon= services=1
+11:43:03 [INFO] BLE device 60FC424B-4E5F-6145-557B-F8660BE74E16 name= company=Apple, Inc. beacon= services=0
+11:43:04 [INFO] BLE device A48D79AA-CA15-9ADF-413E-113607425ABE name= company=Apple, Inc. beacon= services=0
+11:43:05 [INFO] BLE device 1AA2A089-F32C-92D7-9A03-65381528A71B name= company=Apple, Inc. beacon= services=0
+11:43:09 [INFO] BLE device 41B87999-5228-F918-21CD-A1F7876A8F0C name=Quest 3S company= beacon= services=1
+11:43:11 [INFO] BLE device 9072AE0C-CD19-9FF0-1115-687540BAD5CF name= company=Samsung Electronics Co. Ltd. beacon= services=0
+11:44:08 [INFO] BLE device 13C117FB-20A8-315E-7EF6-133E9BEFBF11 name= company=Apple, Inc. beacon= services=0
+11:44:16 [INFO] Flasher targets: ESP32 DevKit v1, ESP32-C3 DevKitM-1, Ops Portal (CYD), ESP32-P4 God Button
+11:44:24 [INFO] Scan started (ONVIF discovery enabled, service discovery enabled, ARP warmup enabled, safe mode on)
+11:44:24 [INFO] Scan scope: 192.168.8.217/24
+11:44:24 [INFO] Total IPs to scan: 254
+11:44:24 [INFO] ARP warmup started: 254 IPs
+11:44:25 [INFO] ARP warmup finished
+11:44:25 [INFO] ARP parsed entries: 12
+11:44:26 [INFO] ARP hosts with MAC: 8
+11:44:26 [INFO] ARP marked alive: 7
+11:44:26 [INFO] OUI vendor hits: 4, misses: 4
+11:44:26 [INFO] ARP vendor scoring: hosts scored 4, high-confidence 0; devices scored 0, high-confidence 0
+11:44:26 [INFO] SSDP discovery started
+11:44:26 [INFO] Bonjour discovery started
+11:44:26 [INFO] WS-Discovery started (timeout 3.0s)
+11:44:29 [INFO] WS-Discovery finished: found 0 device(s)
+11:44:29 [INFO] SSDP responses: 0
+11:44:30 [INFO] Bonjour services: 5
+11:44:31 [INFO] Scan stopped by operator
+11:44:31 [INFO] BLE toggle off
+11:44:31 [INFO] BLE scan stopped
+11:44:31 [INFO] BLE peripherals discovered: 20
+11:44:31 [INFO] Scored BLE: 20 (high: 0, med: 0, low: 20)
+11:44:33 [INFO] BLE scan requested
+11:44:33 [INFO] BLE scan started
+11:44:35 [INFO] Scan started (ONVIF discovery enabled, service discovery enabled, ARP warmup enabled, safe mode on)
+11:44:36 [INFO] Scan scope: 192.168.8.217/24
+11:44:36 [INFO] Total IPs to scan: 254
+11:44:36 [INFO] ARP warmup started: 254 IPs
+11:44:36 [INFO] ARP warmup finished
+11:44:37 [INFO] ARP parsed entries: 12
+11:44:38 [INFO] ARP hosts with MAC: 8
+11:44:38 [INFO] ARP marked alive: 7
+11:44:38 [INFO] OUI vendor hits: 4, misses: 4
+11:44:38 [INFO] ARP vendor scoring: hosts scored 4, high-confidence 0; devices scored 0, high-confidence 0
+11:44:38 [INFO] SSDP discovery started
+11:44:38 [INFO] Bonjour discovery started
+11:44:38 [INFO] WS-Discovery started (timeout 3.0s)
+11:44:42 [INFO] WS-Discovery finished: found 0 device(s)
+11:44:42 [INFO] SSDP responses: 0
+11:44:43 [INFO] Bonjour services: 5
+11:45:04 [INFO] BLE first device discovered
+11:45:04 [INFO] BLE device C43C9FEE-2A46-563E-B028-E6E964B255F9 name= company=Apple, Inc. beacon= services=0
+11:45:08 [INFO] BLE device B210E5D5-48E9-34F3-4924-4353192FC565 name= company=Apple, Inc. beacon= services=0
+11:45:12 [INFO] BLE device E3134232-5E98-01BB-F4DE-D5D0157567CA name= company=Apple, Inc. beacon= services=0
+11:45:51 [INFO] BLE device D507CDCF-BD2A-6904-E0CF-EF1F3EE1C155 name= company=Apple, Inc. beacon= services=0
+11:46:40 [INFO] Scan finished: alive 9 / 255
+11:46:41 [INFO] Scan complete
+11:46:41 [INFO] Hostname lookups started
+11:46:42 [INFO] Scan scope: 192.168.8.217/24
+11:46:42 [INFO] Total IPs to scan: 254
+11:46:42 [INFO] ARP warmup started: 254 IPs
+11:46:42 [INFO] ARP warmup finished
+11:46:43 [INFO] ARP parsed entries: 12
+11:46:48 [INFO] ARP hosts with MAC: 8
+11:46:48 [INFO] ARP marked alive: 7
+11:46:48 [INFO] OUI vendor hits: 4, misses: 4
+11:46:48 [INFO] ARP vendor scoring: hosts scored 4, high-confidence 0; devices scored 1, high-confidence 0
+11:46:48 [INFO] SSDP discovery started
+11:46:48 [INFO] Bonjour discovery started
+11:46:48 [INFO] WS-Discovery started (timeout 3.0s)
+11:46:51 [INFO] WS-Discovery finished: found 0 device(s)
+11:46:51 [INFO] SSDP responses: 0
+11:46:52 [INFO] Bonjour services: 6
+11:47:33 [INFO] BLE device 85ADDC30-C03E-6D4E-2AD2-04EF2FC539D1 name= company=Samsung Electronics Co. Ltd. beacon= services=0
+11:49:28 [INFO] BLE device F7EDA5FE-7901-D021-1E7B-082341A19510 name= company=Microsoft beacon= services=0
+11:50:39 [INFO] BLE device DC5A381E-9095-02D7-DC6D-30C3F0A8777A name= company=Apple, Inc. beacon= services=0
+11:50:39 [INFO] BLE device B6B54F20-7FC3-5BB0-9F7E-02FE94C1FDC1 name= company=Apple, Inc. beacon= services=0
+11:52:30 [INFO] BLE device 7C918F4D-8AB6-FA13-3B43-8C445F11F28C name= company=Apple, Inc. beacon= services=0
+11:52:30 [INFO] BLE device 2B575792-00B9-35A0-1D81-41CB817C85AA name= company=Apple, Inc. beacon= services=0
+11:52:46 [INFO] BLE device 1B59E8F7-C28B-CBF4-1626-2C7348975EB9 name=Crusher Evo company=Skullcandy, Inc. beacon= services=3
+11:53:25 [INFO] BLE device 83157939-CEBA-EC04-BA37-364B83E03520 name= company= beacon= services=0
+11:54:09 [INFO] BLE device 4DA752F2-305E-38D7-5F7F-3D68EB780DAC name= company=Apple, Inc. beacon= services=0
+11:54:09 [INFO] BLE device 1A821876-E104-3CCE-87CC-2086F8B83C5D name= company=Apple, Inc. beacon= services=0
+11:54:58 [INFO] BLE device 02882519-97C6-165B-FBB5-74DE773A4AC3 name= company=Samsung Electronics Co. Ltd. beacon= services=0
+11:56:53 [INFO] Hostname lookups finished
+11:56:55 [INFO] ARP parsed entries: 12
+11:57:26 [INFO] ARP hosts with MAC: 8
+11:57:26 [INFO] ARP marked alive: 0
+11:57:26 [INFO] OUI vendor hits: 4, misses: 4
+11:57:26 [INFO] ARP vendor scoring: hosts scored 4, high-confidence 0; devices scored 1, high-confidence 0
+11:57:26 [INFO] HTTP fingerprinting started (2 requests)
+11:57:48 [INFO] HTTP fingerprinting attempted 2, succeeded 2
+11:57:48 [INFO] Scored hosts: 255 (high: 0, med: 0, low: 255)
+11:57:48 [INFO] HTTP vendor scoring: hosts scored 4, high-confidence 0; devices scored 1, high-confidence 0
+11:58:00 [INFO] BLE device 6D865F3B-5608-58FE-70C8-40C2CFDE1C6A name=Quest 3S company= beacon= services=1
+12:10:21 [INFO] BLE manager init: auth=notDetermined, state=unknown
+12:10:21 [ERROR] OUI watcher failed to open directory: /Users/letsdev/SODS/oui
+12:10:21 [INFO] Pi-Aux server listening on 127.0.0.1:8787
+12:10:21 [INFO] BLE company map entries: 3941
+12:10:21 [INFO] BLE assigned numbers entries: 601
+12:10:21 [INFO] OUI import loaded 38842 entries
+12:10:25 [INFO] BLE state: poweredOn
+12:10:25 [INFO] CBCentralManager didUpdateState: poweredOn, auth=allowedAlways
+12:10:25 [INFO] BLE scan started
+12:10:25 [INFO] BLE first device discovered
+12:10:25 [INFO] BLE device A6C9839A-ECA0-3F20-158F-E86A31CFFBA5 name=Base company=Apple, Inc. beacon= services=0
+12:10:25 [INFO] BLE device D6F40FC2-76BF-A21D-FE26-82338DDA284B name=Pod company=Apple, Inc. beacon= services=0
+12:10:25 [INFO] BLE device 3CE66F91-F236-7AA4-A0A8-412EC92C35B3 name=PHONE company=Apple, Inc. beacon= services=0
+12:10:25 [INFO] BLE device E193BCC6-2EDC-4BEE-0750-AEEC60F2B7E3 name=Mini7 company=Apple, Inc. beacon= services=0
+12:10:25 [INFO] BLE device 519E593B-093E-BA53-E29E-7BC566E22095 name= company=Microsoft beacon= services=0
+12:10:26 [INFO] BLE device 4A9A25B2-702A-90D8-CD9C-2EEC5BFECE1E name= company=Apple, Inc. beacon= services=0
+12:10:26 [INFO] BLE device 4755ACF8-7F37-4174-2868-4F8B8E6BF011 name= company=Apple, Inc. beacon= services=0
+12:10:27 [INFO] BLE device A168F0AB-AA55-A0D9-827E-C9C209B93211 name= company=Apple, Inc. beacon= services=0
+12:10:28 [INFO] BLE device D7FCF7ED-8272-87D8-4A59-4C5420E7F64C name= company=Apple, Inc. beacon= services=0
+12:10:28 [INFO] BLE device 0F786E01-3C43-6D3E-8424-275F9490A8A0 name=macgr3y company=Apple, Inc. beacon= services=0
+12:10:28 [INFO] BLE device 62110F29-EDBF-8705-B385-B8A1EE537D5B name= company=Apple, Inc. beacon= services=0
+12:10:28 [INFO] BLE device E70ABBF9-A4FC-FF40-FBE0-5EE9FC9C49B8 name=SYLVANIA BR30 C-M942A company= beacon= services=1
+12:10:28 [INFO] BLE device 0DA05A3B-14CC-9485-FC61-90C2BAB9E98C name= company=Apple, Inc. beacon= services=0
+12:10:28 [INFO] BLE device 692A1308-2D76-2C2D-0D7A-5F0334374213 name= company=Apple, Inc. beacon= services=0
+12:10:30 [INFO] BLE device 9FEB158F-E75A-0CDD-F90B-C355BD54304E name= company=Apple, Inc. beacon= services=0
+12:10:32 [INFO] BLE device B6B54F20-7FC3-5BB0-9F7E-02FE94C1FDC1 name= company=Apple, Inc. beacon= services=0
+12:10:34 [INFO] BLE device 6D865F3B-5608-58FE-70C8-40C2CFDE1C6A name=Quest 3S company= beacon= services=1
+12:10:36 [INFO] Flasher targets: ESP32 DevKit v1, ESP32-C3 DevKitM-1, Ops Portal (CYD), ESP32-P4 God Button
+12:10:49 [INFO] Scan started (ONVIF discovery enabled, service discovery enabled, ARP warmup enabled, safe mode on)
+12:10:50 [INFO] Scan scope: 192.168.8.217/24
+12:10:50 [INFO] Total IPs to scan: 254
+12:10:50 [INFO] ARP warmup started: 254 IPs
+12:10:50 [INFO] ARP warmup finished
+12:10:50 [INFO] ARP parsed entries: 12
+12:10:53 [INFO] ARP hosts with MAC: 8
+12:10:53 [INFO] ARP marked alive: 7
+12:10:53 [INFO] OUI vendor hits: 4, misses: 4
+12:10:53 [INFO] ARP vendor scoring: hosts scored 4, high-confidence 0; devices scored 0, high-confidence 0
+12:10:53 [INFO] SSDP discovery started
+12:10:53 [INFO] Bonjour discovery started
+12:10:53 [INFO] WS-Discovery started (timeout 3.0s)
+12:10:56 [INFO] WS-Discovery finished: found 0 device(s)
+12:10:56 [INFO] SSDP responses: 0
+12:10:58 [INFO] Bonjour services: 5
+12:12:35 [INFO] BLE device 1E5D24BD-63FC-1B4D-E8D3-3B8DD78B0E3F name= company=Apple, Inc. beacon= services=0
+12:13:41 [INFO] Scan finished: alive 9 / 255
+12:13:42 [INFO] Scan complete
+12:13:42 [INFO] Hostname lookups started
+12:13:43 [INFO] Scan scope: 192.168.8.217/24
+12:13:43 [INFO] Total IPs to scan: 254
+12:13:43 [INFO] ARP warmup started: 254 IPs
+12:13:44 [INFO] ARP warmup finished
+12:13:44 [INFO] ARP parsed entries: 12
+12:13:47 [INFO] ARP hosts with MAC: 8
+12:13:47 [INFO] ARP marked alive: 7
+12:13:47 [INFO] OUI vendor hits: 4, misses: 4
+12:13:47 [INFO] ARP vendor scoring: hosts scored 4, high-confidence 0; devices scored 1, high-confidence 0
+12:13:48 [INFO] SSDP discovery started
+12:13:48 [INFO] Bonjour discovery started
+12:13:48 [INFO] WS-Discovery started (timeout 3.0s)
+12:13:50 [INFO] WS-Discovery finished: found 0 device(s)
+12:13:51 [INFO] SSDP responses: 0
+12:13:52 [INFO] Bonjour services: 5
+12:14:25 [INFO] Hostname lookups finished
+12:14:25 [INFO] ARP parsed entries: 12
+12:14:27 [INFO] ARP hosts with MAC: 8
+12:14:27 [INFO] ARP marked alive: 0
+12:14:27 [INFO] OUI vendor hits: 4, misses: 4
+12:14:27 [INFO] ARP vendor scoring: hosts scored 4, high-confidence 0; devices scored 1, high-confidence 0
+12:14:27 [INFO] HTTP fingerprinting started (2 requests)
+12:14:29 [INFO] HTTP fingerprinting attempted 2, succeeded 2
+12:14:29 [INFO] HTTP vendor scoring: hosts scored 4, high-confidence 0; devices scored 1, high-confidence 0
+12:14:29 [INFO] Scored hosts: 255 (high: 0, med: 0, low: 255)
+12:14:43 [INFO] BLE device 1B59E8F7-C28B-CBF4-1626-2C7348975EB9 name=Crusher Evo company=Skullcandy, Inc. beacon= services=3
+12:27:04 [INFO] BLE manager init: auth=notDetermined, state=unknown
+12:27:04 [INFO] Pi-Aux server listening on 127.0.0.1:8787
+12:27:04 [INFO] BLE company map entries: 3941
+12:27:04 [INFO] BLE assigned numbers entries: 601
+12:27:04 [ERROR] OUI watcher failed to open directory: /Users/letsdev/SODS/oui
+12:27:05 [INFO] OUI import loaded 38842 entries
+12:27:14 [INFO] BLE state: poweredOn
+12:27:14 [INFO] CBCentralManager didUpdateState: poweredOn, auth=allowedAlways
+12:27:14 [INFO] BLE scan started
+12:27:14 [INFO] BLE first device discovered
+12:27:14 [INFO] BLE device D6F40FC2-76BF-A21D-FE26-82338DDA284B name=Pod company=Apple, Inc. beacon= services=0
+12:27:14 [INFO] BLE device 287A4A6A-7EFC-FA98-BC5A-97261E506FB7 name= company=Apple, Inc. beacon= services=0
+12:27:15 [INFO] BLE device 3CE66F91-F236-7AA4-A0A8-412EC92C35B3 name=PHONE company=Apple, Inc. beacon= services=0
+12:27:15 [INFO] BLE device 904D0923-2ADD-10C5-3D9A-39EA1D2ED446 name= company=Microsoft beacon= services=0
+12:27:15 [INFO] BLE device E4B54C64-DDD7-8AC6-8FC1-0D67D8AC49F9 name= company=Apple, Inc. beacon= services=0
+12:27:15 [INFO] BLE device 0F786E01-3C43-6D3E-8424-275F9490A8A0 name=macgr3y company=Apple, Inc. beacon= services=0
+12:27:16 [INFO] BLE device B61B1889-E9EC-8B1E-5A13-856B920AA327 name= company=Apple, Inc. beacon= services=0
+12:27:16 [INFO] BLE device FF15F0DF-1E65-F64B-5D6E-F33B33B8C61D name= company=Apple, Inc. beacon= services=0
+12:27:16 [INFO] BLE device E193BCC6-2EDC-4BEE-0750-AEEC60F2B7E3 name=Mini7 company=Apple, Inc. beacon= services=0
+12:27:16 [INFO] BLE device A6C9839A-ECA0-3F20-158F-E86A31CFFBA5 name=Base company=Apple, Inc. beacon= services=0
+12:27:16 [INFO] BLE device E70ABBF9-A4FC-FF40-FBE0-5EE9FC9C49B8 name=SYLVANIA BR30 C-M942A company= beacon= services=1
+12:27:18 [INFO] BLE device 258AE3B4-7D1F-22E1-EDB1-F0BB9965327E name= company=Apple, Inc. beacon= services=0
+12:27:18 [INFO] BLE device 79D4A4F2-E3F5-9974-A148-21B19E637030 name= company=Apple, Inc. beacon= services=0
+12:27:19 [INFO] BLE device 6D865F3B-5608-58FE-70C8-40C2CFDE1C6A name=Quest 3S company= beacon= services=1
+12:27:19 [INFO] BLE device 6614859A-A4C4-DD15-5949-BCD92202946B name= company=Apple, Inc. beacon= services=0
+12:27:19 [INFO] BLE device 11D713CB-3300-DC82-ECBD-B605EB1ECDEE name= company=Apple, Inc. beacon= services=0
+12:27:21 [INFO] BLE device BC25092A-BA9A-DD26-9536-DE7716E986A8 name= company=Apple, Inc. beacon= services=0
+12:27:24 [INFO] BLE device 1B59E8F7-C28B-CBF4-1626-2C7348975EB9 name=Crusher Evo company=Skullcandy, Inc. beacon= services=3
+12:27:46 [INFO] Flasher targets: ESP32 DevKit v1, ESP32-C3 DevKitM-1, Ops Portal (CYD), ESP32-P4 God Button
+12:28:18 [INFO] Scan started (ONVIF discovery enabled, service discovery enabled, ARP warmup enabled, safe mode on)
+12:28:19 [INFO] Scan scope: 192.168.8.217/24
+12:28:19 [INFO] Total IPs to scan: 254
+12:28:19 [INFO] ARP warmup started: 254 IPs
+12:28:19 [INFO] ARP warmup finished
+12:28:20 [INFO] ARP parsed entries: 12
+12:28:22 [INFO] ARP hosts with MAC: 8
+12:28:22 [INFO] ARP marked alive: 7
+12:28:22 [INFO] OUI vendor hits: 4, misses: 4
+12:28:22 [INFO] ARP vendor scoring: hosts scored 4, high-confidence 0; devices scored 0, high-confidence 0
+12:28:22 [INFO] SSDP discovery started
+12:28:22 [INFO] Bonjour discovery started
+12:28:22 [INFO] WS-Discovery started (timeout 3.0s)
+12:28:25 [INFO] WS-Discovery finished: found 0 device(s)
+12:28:25 [INFO] SSDP responses: 0
+12:28:26 [INFO] Bonjour services: 5
+12:29:20 [INFO] BLE device DA0540F9-20BF-B09F-B6A0-75D206D3C56B name= company=Microsoft beacon= services=0
+12:30:02 [INFO] BLE device 1D01F06D-F768-55F6-8B7C-79AD34B2651D name= company=Apple, Inc. beacon= services=0
+12:30:03 [INFO] Scan finished: alive 9 / 255
+12:30:03 [INFO] Scan complete
+12:30:03 [INFO] Hostname lookups started
+12:30:04 [INFO] Scan scope: 192.168.8.217/24
+12:30:04 [INFO] Total IPs to scan: 254
+12:30:04 [INFO] ARP warmup started: 254 IPs
+12:30:04 [INFO] ARP warmup finished
+12:30:05 [INFO] ARP parsed entries: 12
+12:30:07 [INFO] ARP hosts with MAC: 8
+12:30:07 [INFO] ARP marked alive: 7
+12:30:07 [INFO] OUI vendor hits: 4, misses: 4
+12:30:07 [INFO] ARP vendor scoring: hosts scored 4, high-confidence 0; devices scored 1, high-confidence 0
+12:30:07 [INFO] SSDP discovery started
+12:30:07 [INFO] Bonjour discovery started
+12:30:07 [INFO] WS-Discovery started (timeout 3.0s)
+12:30:10 [INFO] WS-Discovery finished: found 0 device(s)
+12:30:10 [INFO] SSDP responses: 0
+12:30:11 [INFO] Bonjour services: 6
+12:30:25 [INFO] BLE device C3C6841E-A8C4-6023-5274-C26F42D5B5C3 name= company=Apple, Inc. beacon= services=0
+12:30:27 [INFO] BLE device ED881E72-8D40-DEB1-2E38-8139B18E5635 name= company=Apple, Inc. beacon= services=0
+12:32:12 [INFO] Hostname lookups finished
+12:32:12 [INFO] ARP parsed entries: 12
+12:32:15 [INFO] ARP hosts with MAC: 8
+12:32:15 [INFO] ARP marked alive: 0
+12:32:15 [INFO] OUI vendor hits: 4, misses: 4
+12:32:15 [INFO] ARP vendor scoring: hosts scored 4, high-confidence 0; devices scored 1, high-confidence 0
+12:32:15 [INFO] HTTP fingerprinting started (2 requests)
+12:32:17 [INFO] HTTP fingerprinting attempted 2, succeeded 2
+12:32:17 [INFO] HTTP vendor scoring: hosts scored 4, high-confidence 0; devices scored 1, high-confidence 0
+12:32:17 [INFO] Scored hosts: 255 (high: 0, med: 0, low: 255)
+12:32:57 [INFO] BLE device 35042A0F-E580-EDCA-9EA4-62F8A0316EBA name= company=Apple, Inc. beacon= services=0
+12:33:41 [INFO] BLE device 468C84B9-B5C2-AB86-4C7F-BFE9024672E2 name= company=Apple, Inc. beacon= services=0
+12:36:01 [INFO] BLE device F91716B0-F6B6-EF4B-1883-84C0485758BD name= company=Apple, Inc. beacon= services=0
+12:36:01 [INFO] BLE device 8C901C92-36AC-5412-80DF-53F7CF24A2A4 name= company=Apple, Inc. beacon= services=0
+12:36:14 [INFO] Scan finished: alive 9 / 255
+12:36:14 [INFO] Scan complete
+12:36:15 [INFO] Hostname lookups started
+12:36:16 [INFO] Scan scope: 192.168.8.217/24
+12:36:16 [INFO] Total IPs to scan: 254
+12:36:16 [INFO] ARP warmup started: 254 IPs
+12:36:22 [INFO] ARP warmup finished
+12:36:22 [INFO] ARP parsed entries: 13
+12:36:36 [INFO] ARP hosts with MAC: 9
+12:36:36 [INFO] ARP marked alive: 8
+12:36:36 [INFO] OUI vendor hits: 4, misses: 5
+12:36:36 [INFO] ARP vendor scoring: hosts scored 4, high-confidence 0; devices scored 1, high-confidence 0
+12:36:36 [INFO] SSDP discovery started
+12:36:36 [INFO] Bonjour discovery started
+12:36:37 [INFO] WS-Discovery started (timeout 3.0s)
+12:36:41 [INFO] WS-Discovery finished: found 0 device(s)
+12:36:43 [INFO] SSDP responses: 0
+12:36:43 [INFO] Bonjour services: 5
+12:37:09 [INFO] BLE device 3E409EEB-09E0-0CD2-D212-D9FF3BCE30C2 name= company=Apple, Inc. beacon= services=0
+12:39:21 [INFO] BLE device 78B556C3-C3CC-27AF-E6B7-9D903D286317 name= company=Microsoft beacon= services=0
+12:40:08 [INFO] BLE device 02F273D8-2AF7-FC81-8CBE-4FA9C68CEA19 name= company=Apple, Inc. beacon= services=0
+12:40:08 [INFO] BLE device 5C0ED5F9-3877-5BA3-CDA5-521E3E1B9FC3 name= company=Apple, Inc. beacon= services=0
+12:41:21 [INFO] BLE device 917A1BA7-C93E-32BD-425D-D611F5195F30 name= company=Apple, Inc. beacon= services=0
+12:45:34 [INFO] BLE device 820C26C2-B368-C50C-97D1-30BDF49B59C3 name= company=Apple, Inc. beacon= services=0
+12:45:34 [INFO] BLE device B37F0716-188A-8435-A5EA-5BC4573FD10D name= company=Apple, Inc. beacon= services=0
+12:46:48 [INFO] BLE device B27FB7F0-ECA5-48D9-D696-78BB23B62945 name= company=Apple, Inc. beacon= services=0
+12:47:12 [INFO] BLE device 8F61847C-C5C1-38B3-D075-0122DDAB2E21 name= company=Apple, Inc. beacon= services=0
+12:48:47 [INFO] BLE device 18923233-FF64-6EF8-C0E3-5DE0F1C8136F name= company=Apple, Inc. beacon= services=0
+12:48:48 [INFO] BLE device B7E62A6A-3F34-738F-D9D5-1ACE08E662B3 name= company=Apple, Inc. beacon= services=0
+12:49:20 [INFO] BLE device AC4CA141-1600-7314-6D79-B6C5EEF7AD65 name= company=Microsoft beacon= services=0
+12:50:37 [INFO] BLE device DC5A381E-9095-02D7-DC6D-30C3F0A8777A name= company=Apple, Inc. beacon= services=0
+12:50:50 [INFO] Hostname lookups finished
+12:50:59 [INFO] BLE device 823078EC-EA80-BEF4-E84E-D2A72F0AE2A9 name= company=Apple, Inc. beacon= services=0
+12:50:59 [INFO] BLE device 72D05B9E-A4BA-17D0-39B6-6D301A1DBDE1 name= company=Apple, Inc. beacon= services=0
+12:50:59 [INFO] ARP parsed entries: 12
+12:51:45 [INFO] ARP hosts with MAC: 8
+12:51:45 [INFO] ARP marked alive: 0
+12:51:45 [INFO] OUI vendor hits: 4, misses: 4
+12:51:45 [INFO] ARP vendor scoring: hosts scored 4, high-confidence 0; devices scored 1, high-confidence 0
+12:51:45 [INFO] HTTP fingerprinting started (2 requests)
+12:51:57 [INFO] Scan finished: alive 10 / 255
+12:51:57 [INFO] Scan complete
+12:52:03 [INFO] Hostname lookups started
+12:52:11 [INFO] HTTP fingerprinting attempted 2, succeeded 2
+12:52:11 [INFO] HTTP vendor scoring: hosts scored 4, high-confidence 0; devices scored 1, high-confidence 0
+12:52:22 [INFO] Scan scope: 192.168.8.217/24
+12:52:22 [INFO] Total IPs to scan: 254
+12:52:22 [INFO] ARP warmup started: 254 IPs
+12:52:23 [INFO] ARP warmup finished
+13:09:20 [INFO] BLE manager init: auth=notDetermined, state=unknown
+13:09:20 [ERROR] OUI watcher failed to open directory: /Users/letsdev/SODS/oui
+13:09:20 [INFO] Pi-Aux server listening on 127.0.0.1:8787
+13:09:20 [INFO] BLE company map entries: 3941
+13:09:20 [INFO] BLE assigned numbers entries: 601
+13:09:20 [INFO] OUI import loaded 38842 entries
+13:09:26 [INFO] BLE state: poweredOn
+13:09:26 [INFO] CBCentralManager didUpdateState: poweredOn, auth=allowedAlways
+13:09:26 [INFO] BLE scan started
+13:09:26 [INFO] BLE first device discovered
+13:09:26 [INFO] BLE device D6F40FC2-76BF-A21D-FE26-82338DDA284B name=Pod company=Apple, Inc. beacon= services=0
+13:09:26 [INFO] BLE device 733D842C-92D1-BDF5-AFA2-323AB9820941 name= company=Apple, Inc. beacon= services=0
+13:09:26 [INFO] BLE device ABCC39CF-1AE8-0670-1408-E860C7F17784 name= company=Apple, Inc. beacon= services=0
+13:09:26 [INFO] BLE device 76708BCE-1357-3B5F-FB21-8F986B07CA5F name= company=Microsoft beacon= services=0
+13:09:26 [INFO] BLE device E193BCC6-2EDC-4BEE-0750-AEEC60F2B7E3 name=Mini7 company=Apple, Inc. beacon= services=0
+13:09:26 [INFO] BLE device 0F786E01-3C43-6D3E-8424-275F9490A8A0 name=macgr3y company=Apple, Inc. beacon= services=0
+13:09:26 [INFO] BLE device 3CE66F91-F236-7AA4-A0A8-412EC92C35B3 name=PHONE company=Apple, Inc. beacon= services=0
+13:09:27 [INFO] BLE device 9A5F2660-D4AD-40C1-3E07-35246CAE1C5D name= company=Apple, Inc. beacon= services=0
+13:09:28 [INFO] BLE device A6C9839A-ECA0-3F20-158F-E86A31CFFBA5 name=Base company=Apple, Inc. beacon= services=0
+13:09:28 [INFO] BLE device FCE61920-D705-BAF5-4A98-15632C935E55 name= company=Apple, Inc. beacon= services=0
+13:09:28 [INFO] BLE device 6A4A5743-FAB1-88D6-B5C0-990FB2A1432A name= company=Apple, Inc. beacon= services=0
+13:09:28 [INFO] BLE device 272883EB-423F-B62E-62FA-D1EF23BCC0B3 name= company=Apple, Inc. beacon= services=0
+13:09:28 [INFO] BLE device E70ABBF9-A4FC-FF40-FBE0-5EE9FC9C49B8 name=SYLVANIA BR30 C-M942A company= beacon= services=1
+13:09:30 [INFO] BLE device E7693E5F-35E3-214B-6408-ED244AB96FE3 name= company=Apple, Inc. beacon= services=0
+13:09:30 [INFO] BLE device D5CEE71D-9C50-15E2-54A3-A19D58CFF7E6 name= company=Apple, Inc. beacon= services=0
+13:09:34 [INFO] BLE device 3E4915A3-161C-6976-55A0-9827367ECC2A name=Quest 3S company= beacon= services=1
+13:09:35 [INFO] BLE device 12D149B1-0320-357B-A66F-1606053D399D name= company=Apple, Inc. beacon= services=0
+13:09:46 [INFO] Flasher targets: ESP32 DevKit v1, ESP32-C3 DevKitM-1, Ops Portal (CYD), ESP32-P4 God Button
+13:09:58 [INFO] Scan started (ONVIF discovery enabled, service discovery enabled, ARP warmup enabled, safe mode on)
+13:10:05 [INFO] Scan scope: 192.168.8.217/24
+13:10:05 [INFO] Total IPs to scan: 254
+13:10:05 [INFO] ARP warmup started: 254 IPs
+13:10:06 [INFO] ARP warmup finished
+13:10:14 [INFO] ARP parsed entries: 12
+13:10:59 [INFO] ARP hosts with MAC: 8
+13:10:59 [INFO] ARP marked alive: 7
+13:10:59 [INFO] OUI vendor hits: 4, misses: 4
+13:10:59 [INFO] ARP vendor scoring: hosts scored 4, high-confidence 0; devices scored 0, high-confidence 0
+13:10:59 [INFO] SSDP discovery started
+13:10:59 [INFO] Bonjour discovery started
+13:11:01 [INFO] WS-Discovery started (timeout 3.0s)
+13:11:04 [INFO] WS-Discovery finished: found 0 device(s)
+13:11:08 [INFO] SSDP responses: 0
+13:11:20 [INFO] Bonjour services: 0
+13:29:28 [INFO] BLE manager init: auth=notDetermined, state=unknown
+13:29:28 [ERROR] OUI watcher failed to open directory: /Users/letsdev/SODS/oui
+13:29:28 [INFO] Pi-Aux server listening on 127.0.0.1:8787
+13:29:28 [INFO] BLE assigned numbers entries: 601
+13:29:28 [INFO] BLE company map entries: 3941
+13:29:29 [INFO] OUI import loaded 38842 entries
+13:29:32 [INFO] BLE state: poweredOn
+13:29:32 [INFO] CBCentralManager didUpdateState: poweredOn, auth=allowedAlways
+13:29:32 [INFO] BLE scan started
+13:29:32 [INFO] BLE first device discovered
+13:29:32 [INFO] BLE device D6F40FC2-76BF-A21D-FE26-82338DDA284B name=Pod company=Apple, Inc. beacon= services=0
+13:29:32 [INFO] BLE device 5EBDC4C3-7B86-D611-D136-9C14A0DD5799 name= company=Apple, Inc. beacon= services=0
+13:29:32 [INFO] BLE device B925D2B2-ED77-DE41-3FB0-343D7A910CBA name= company=Apple, Inc. beacon= services=0
+13:29:32 [INFO] BLE device 76FBBCCB-45F2-1D50-CC4A-D78E5BE3B933 name= company=Apple, Inc. beacon= services=0
+13:29:32 [INFO] BLE device 3CE66F91-F236-7AA4-A0A8-412EC92C35B3 name=PHONE company=Apple, Inc. beacon= services=0
+13:29:32 [INFO] BLE device 1A3B5742-D778-ABE2-D9D7-30BE7BA859E3 name= company=Apple, Inc. beacon= services=0
+13:29:32 [INFO] BLE device 7CA54D23-A075-9E7B-6AE7-7425193D6D79 name= company=Microsoft beacon= services=0
+13:29:33 [INFO] BLE device D0DD1467-869F-D7AC-FF6C-AD1FB6D59C5C name= company=Apple, Inc. beacon= services=0
+13:29:33 [INFO] BLE device 3A0F9578-5424-D2ED-6F8C-5D18AA2FFDDD name= company=Apple, Inc. beacon= services=0
+13:29:33 [INFO] BLE device 0F786E01-3C43-6D3E-8424-275F9490A8A0 name=macgr3y company=Apple, Inc. beacon= services=0
+13:29:34 [INFO] BLE device E70ABBF9-A4FC-FF40-FBE0-5EE9FC9C49B8 name=SYLVANIA BR30 C-M942A company= beacon= services=1
+13:29:34 [INFO] BLE device E193BCC6-2EDC-4BEE-0750-AEEC60F2B7E3 name=Mini7 company=Apple, Inc. beacon= services=0
+13:29:35 [INFO] BLE device 3E4915A3-161C-6976-55A0-9827367ECC2A name=Quest 3S company= beacon= services=1
+13:29:35 [INFO] BLE device A6C9839A-ECA0-3F20-158F-E86A31CFFBA5 name=Base company=Apple, Inc. beacon= services=0
+13:29:36 [INFO] BLE device 5733C9A1-E642-0877-7906-8C941729B1C2 name= company=Apple, Inc. beacon= services=0
+13:29:37 [INFO] Flasher targets: ESP32 DevKit v1, ESP32-C3 DevKitM-1, Ops Portal (CYD), ESP32-P4 God Button
+13:29:40 [INFO] BLE device 37BC5E5E-06F5-1609-71BD-E2AD305395CA name= company=Apple, Inc. beacon= services=0
+13:29:40 [INFO] BLE device 220AA164-F095-E030-E590-BD323096F046 name= company=Apple, Inc. beacon= services=0
+13:29:47 [INFO] Scan started (ONVIF discovery enabled, service discovery enabled, ARP warmup enabled, safe mode on)
+13:29:47 [INFO] BLE device 1B59E8F7-C28B-CBF4-1626-2C7348975EB9 name=Crusher Evo company=Skullcandy, Inc. beacon= services=3
+13:29:48 [INFO] Scan scope: 192.168.8.217/24
+13:29:48 [INFO] Total IPs to scan: 254
+13:29:48 [INFO] ARP warmup started: 254 IPs
+13:29:49 [INFO] ARP warmup finished
+13:29:49 [INFO] ARP parsed entries: 11
+13:29:50 [INFO] ARP hosts with MAC: 8
+13:29:50 [INFO] ARP marked alive: 7
+13:29:50 [INFO] OUI vendor hits: 4, misses: 4
+13:29:50 [INFO] ARP vendor scoring: hosts scored 4, high-confidence 0; devices scored 0, high-confidence 0
+13:29:50 [INFO] SSDP discovery started
+13:29:50 [INFO] Bonjour discovery started
+13:29:50 [INFO] WS-Discovery started (timeout 3.0s)
+13:29:54 [INFO] WS-Discovery finished: found 0 device(s)
+13:29:54 [INFO] SSDP responses: 0
+13:29:54 [INFO] Bonjour services: 5
+13:30:00 [INFO] BLE device 5B6D5E43-B4B5-4F6B-CB95-EAF268A95775 name= company=Apple, Inc. beacon= services=0
+13:30:00 [INFO] BLE device 85DD65F6-6628-92E7-12ED-6B69E3C632FA name= company=Apple, Inc. beacon= services=0
+13:30:36 [INFO] BLE device A58DFC0F-A118-B063-DB81-CB7F53A7D9DB name=BLE_Joy_L company= beacon= services=0
+13:30:36 [INFO] BLE device 0D9E431B-4FDE-19BB-4045-4CD09229B42B name=BLE_Joy_R company= beacon= services=0
+13:31:22 [INFO] Scan finished: alive 9 / 255
+13:31:23 [INFO] Scan complete
+13:31:23 [INFO] Hostname lookups started
+13:31:23 [INFO] BLE device 8B7A0B4B-3132-F286-944D-9F82AF4FA39D name= company=Apple, Inc. beacon= services=0
+13:31:23 [INFO] Scan scope: 192.168.8.217/24
+13:31:23 [INFO] Total IPs to scan: 254
+13:31:23 [INFO] ARP warmup started: 254 IPs
+13:31:24 [INFO] ARP warmup finished
+13:31:24 [INFO] ARP parsed entries: 12
+13:31:26 [INFO] ARP hosts with MAC: 8
+13:31:26 [INFO] ARP marked alive: 7
+13:31:26 [INFO] OUI vendor hits: 4, misses: 4
+13:31:26 [INFO] ARP vendor scoring: hosts scored 4, high-confidence 0; devices scored 1, high-confidence 0
+13:31:27 [INFO] SSDP discovery started
+13:31:27 [INFO] Bonjour discovery started
+13:31:27 [INFO] WS-Discovery started (timeout 3.0s)
+13:31:29 [INFO] WS-Discovery finished: found 0 device(s)
+13:31:30 [INFO] SSDP responses: 0
+13:31:30 [INFO] Bonjour services: 7
+13:32:49 [INFO] BLE device 65952872-3F49-FD0D-6667-13D1C632ED55 name= company=Apple, Inc. beacon= services=0
+13:32:58 [INFO] BLE device DDC5EE83-5A04-BB47-E887-9762BAE1031B name= company=Apple, Inc. beacon= services=0
+13:32:58 [INFO] BLE device 6572E55E-1E7C-01E7-5445-75642E9CD6CD name= company=Apple, Inc. beacon= services=0
+13:33:02 [INFO] Hostname lookups finished
+13:33:03 [INFO] ARP parsed entries: 12
+13:33:05 [INFO] ARP hosts with MAC: 8
+13:33:05 [INFO] ARP marked alive: 0
+13:33:05 [INFO] OUI vendor hits: 4, misses: 4
+13:33:05 [INFO] ARP vendor scoring: hosts scored 4, high-confidence 0; devices scored 1, high-confidence 0
+13:33:05 [INFO] HTTP fingerprinting started (2 requests)
+13:33:06 [INFO] HTTP fingerprinting attempted 2, succeeded 2
+13:33:06 [INFO] HTTP vendor scoring: hosts scored 4, high-confidence 0; devices scored 1, high-confidence 0
+13:33:06 [INFO] Scored hosts: 255 (high: 0, med: 0, low: 255)
+13:33:20 [INFO] BLE device 1D8768F8-12D0-AD81-AADD-739CE041D360 name= company=Apple, Inc. beacon= services=0
+13:33:23 [INFO] Scan finished: alive 9 / 255
+13:33:24 [INFO] Scan complete
+13:33:26 [INFO] Hostname lookups started
+13:33:28 [INFO] Scan scope: 192.168.8.217/24
+13:33:28 [INFO] Total IPs to scan: 254
+13:33:28 [INFO] ARP warmup started: 254 IPs
+13:33:28 [INFO] ARP warmup finished
+13:33:30 [INFO] ARP parsed entries: 12
+13:33:35 [INFO] ARP hosts with MAC: 8
+13:33:35 [INFO] ARP marked alive: 7
+13:33:35 [INFO] OUI vendor hits: 4, misses: 4
+13:33:35 [INFO] ARP vendor scoring: hosts scored 4, high-confidence 0; devices scored 1, high-confidence 0
+13:33:35 [INFO] SSDP discovery started
+13:33:35 [INFO] Bonjour discovery started
+13:33:35 [INFO] WS-Discovery started (timeout 3.0s)
+13:33:38 [INFO] WS-Discovery finished: found 0 device(s)
+13:33:39 [INFO] SSDP responses: 0
+13:33:42 [INFO] Bonjour services: 5
+13:35:43 [INFO] BLE device 07A9EFDC-0D74-ED40-4607-E693EABDE9B0 name= company=Apple, Inc. beacon= services=0
+13:35:49 [INFO] Scan stopped by operator
+13:35:49 [INFO] BLE toggle off
+13:35:49 [INFO] BLE scan stopped
+13:35:49 [INFO] BLE peripherals discovered: 28
+13:35:49 [INFO] Scored BLE: 28 (high: 0, med: 2, low: 26)
+13:35:51 [INFO] Hostname lookups finished
+13:35:51 [INFO] ARP parsed entries: 12
+13:35:53 [INFO] ARP hosts with MAC: 8
+13:35:53 [INFO] ARP marked alive: 0
+13:35:53 [INFO] OUI vendor hits: 4, misses: 4
+13:35:53 [INFO] ARP vendor scoring: hosts scored 4, high-confidence 0; devices scored 1, high-confidence 0
+13:35:53 [INFO] HTTP fingerprinting started (2 requests)
+13:35:55 [INFO] HTTP fingerprinting attempted 2, succeeded 2
+13:35:55 [INFO] HTTP vendor scoring: hosts scored 4, high-confidence 0; devices scored 1, high-confidence 0
+13:50:47 [INFO] BLE manager init: auth=notDetermined, state=unknown
+13:50:47 [INFO] BLE company map entries: 3941
+13:50:47 [INFO] BLE assigned numbers entries: 601
+13:50:47 [ERROR] OUI watcher failed to open directory: /Users/letsdev/SODS/oui
+13:50:47 [INFO] Pi-Aux server listening on 127.0.0.1:8787
+13:50:47 [INFO] OUI import loaded 38842 entries
+13:54:35 [INFO] BLE state: poweredOn
+13:54:35 [INFO] CBCentralManager didUpdateState: poweredOn, auth=allowedAlways
+13:54:35 [INFO] BLE scan started
+13:54:35 [INFO] BLE first device discovered
+13:54:35 [INFO] BLE device A46D50D7-A26A-553B-D7D6-FF0099D27FBC name= company=Apple, Inc. beacon= services=0
+13:54:35 [INFO] BLE device 2C2C481B-5705-612C-04B6-6F567D2323C8 name= company=Apple, Inc. beacon= services=0
+13:54:35 [INFO] BLE device 02D10FD9-305F-7153-0E4E-E2DC038ACB66 name= company=Apple, Inc. beacon= services=0
+13:54:35 [INFO] BLE device 3CE66F91-F236-7AA4-A0A8-412EC92C35B3 name=PHONE company=Apple, Inc. beacon= services=0
+13:54:35 [INFO] BLE device 0E21C82D-3325-61C5-DA42-7896F204BC19 name= company=Apple, Inc. beacon= services=0
+13:54:35 [INFO] BLE device 0F786E01-3C43-6D3E-8424-275F9490A8A0 name=macgr3y company=Apple, Inc. beacon= services=0
+13:54:36 [INFO] BLE device E70ABBF9-A4FC-FF40-FBE0-5EE9FC9C49B8 name=SYLVANIA BR30 C-M942A company= beacon= services=1
+13:54:36 [INFO] BLE device 1C181320-7F31-D896-7377-E9FC20A88C7F name= company=Microsoft beacon= services=0
+13:54:36 [INFO] BLE device D6F40FC2-76BF-A21D-FE26-82338DDA284B name=Pod company=Apple, Inc. beacon= services=0
+13:54:36 [INFO] BLE device 3E4915A3-161C-6976-55A0-9827367ECC2A name=Quest 3S company= beacon= services=1
+13:54:36 [INFO] BLE device E193BCC6-2EDC-4BEE-0750-AEEC60F2B7E3 name=Mini7 company=Apple, Inc. beacon= services=0
+13:54:36 [INFO] BLE device 1076B250-B0C8-F0EA-619A-E7E57A6108A7 name= company=Apple, Inc. beacon= services=0
+13:54:36 [INFO] BLE device A6C9839A-ECA0-3F20-158F-E86A31CFFBA5 name=Base company=Apple, Inc. beacon= services=0
+13:54:38 [INFO] BLE device 582AEF6E-D184-6D5D-88F3-16E5D53BEFA1 name= company=Apple, Inc. beacon= services=0
+13:54:41 [INFO] Flasher targets: ESP32 DevKit v1, ESP32-C3 DevKitM-1, Ops Portal (CYD), ESP32-P4 God Button
+13:54:41 [INFO] BLE device 1B59E8F7-C28B-CBF4-1626-2C7348975EB9 name=Crusher Evo company=Skullcandy, Inc. beacon= services=3
+13:54:42 [INFO] BLE device A121B6B0-83C3-0B84-847A-50031B4F8392 name= company=Apple, Inc. beacon= services=0
+13:54:42 [INFO] BLE device A1C63234-817A-9A7A-B42E-839EE3B5954A name= company=Apple, Inc. beacon= services=0
+13:54:46 [INFO] BLE device 78E79C6D-3C07-E9F6-BD6C-7AC1C83956DF name= company=Apple, Inc. beacon= services=0
+13:54:48 [INFO] Scan started (ONVIF discovery enabled, service discovery enabled, ARP warmup enabled, safe mode on)
+13:54:49 [INFO] Scan scope: 192.168.8.217/24
+13:54:49 [INFO] ARP warmup started: 254 IPs
+13:54:49 [INFO] Total IPs to scan: 254
+13:54:49 [INFO] ARP warmup finished
+13:54:50 [INFO] ARP parsed entries: 12
+13:54:51 [INFO] ARP hosts with MAC: 8
+13:54:51 [INFO] ARP marked alive: 7
+13:54:51 [INFO] OUI vendor hits: 4, misses: 4
+13:54:51 [INFO] ARP vendor scoring: hosts scored 4, high-confidence 0; devices scored 0, high-confidence 0
+13:54:51 [INFO] SSDP discovery started
+13:54:51 [INFO] Bonjour discovery started
+13:54:51 [INFO] WS-Discovery started (timeout 3.0s)
+13:54:54 [INFO] WS-Discovery finished: found 0 device(s)
+13:54:54 [INFO] SSDP responses: 0
+13:54:54 [INFO] Bonjour services: 5
+13:55:14 [INFO] BLE device 0815DCE3-3F59-4145-A966-E79870BB8F47 name= company=Apple, Inc. beacon= services=0
+13:56:03 [INFO] Scan finished: alive 9 / 255
+13:56:03 [INFO] Scan complete
+13:56:03 [INFO] Hostname lookups started
+13:56:04 [INFO] Scan scope: 192.168.8.217/24
+13:56:04 [INFO] Total IPs to scan: 254
+13:56:04 [INFO] ARP warmup started: 254 IPs
+13:56:04 [INFO] ARP warmup finished
+13:56:05 [INFO] ARP parsed entries: 12
+13:56:06 [INFO] ARP hosts with MAC: 8
+13:56:06 [INFO] ARP marked alive: 7
+13:56:06 [INFO] OUI vendor hits: 4, misses: 4
+13:56:06 [INFO] ARP vendor scoring: hosts scored 4, high-confidence 0; devices scored 1, high-confidence 0
+13:56:06 [INFO] SSDP discovery started
+13:56:06 [INFO] Bonjour discovery started
+13:56:06 [INFO] WS-Discovery started (timeout 3.0s)
+13:56:09 [INFO] WS-Discovery finished: found 0 device(s)
+13:56:09 [INFO] SSDP responses: 0
+13:56:10 [INFO] Bonjour services: 5
+13:56:13 [INFO] Hostname lookups finished
+13:56:13 [INFO] ARP parsed entries: 12
+13:56:14 [INFO] ARP hosts with MAC: 8
+13:56:14 [INFO] ARP marked alive: 0
+13:56:14 [INFO] OUI vendor hits: 4, misses: 4
+13:56:14 [INFO] ARP vendor scoring: hosts scored 4, high-confidence 0; devices scored 1, high-confidence 0
+14:34:18 [INFO] BLE manager init: auth=notDetermined, state=unknown
+14:34:18 [ERROR] OUI watcher failed to open directory: /Users/letsdev/SODS/oui
+14:34:18 [INFO] Pi-Aux server listening on 127.0.0.1:8787
+14:34:18 [INFO] BLE company map entries: 3941
+14:34:18 [INFO] BLE assigned numbers entries: 601
+14:34:18 [INFO] OUI import loaded 38842 entries
+14:36:40 [INFO] BLE state: poweredOn
+14:36:40 [INFO] CBCentralManager didUpdateState: poweredOn, auth=allowedAlways
+14:36:40 [INFO] BLE scan started
+14:36:40 [INFO] BLE first device discovered
+14:36:40 [INFO] BLE device 0F786E01-3C43-6D3E-8424-275F9490A8A0 name=macgr3y company=Apple, Inc. beacon= services=0
+14:36:40 [INFO] BLE device 3C1B0F57-4225-7AE3-62CF-AC229C3F2AD5 name= company=Apple, Inc. beacon= services=0
+14:36:40 [INFO] BLE device D6F40FC2-76BF-A21D-FE26-82338DDA284B name=Pod company=Apple, Inc. beacon= services=0
+14:36:40 [INFO] BLE device 94DFAF9B-75AC-4D28-AC08-AA9F4093F4EB name= company=Apple, Inc. beacon= services=0
+14:36:40 [INFO] BLE device 0B7CFCCB-A3E4-937D-A9E4-06B5D09D42D6 name= company=Apple, Inc. beacon= services=0
+14:36:40 [INFO] BLE device E70ABBF9-A4FC-FF40-FBE0-5EE9FC9C49B8 name=SYLVANIA BR30 C-M942A company= beacon= services=1
+14:36:40 [INFO] BLE device 83BBE600-9094-B020-BB9A-7270DEDBE515 name= company=Microsoft beacon= services=0
+14:36:40 [INFO] BLE device E193BCC6-2EDC-4BEE-0750-AEEC60F2B7E3 name=Mini7 company=Apple, Inc. beacon= services=0
+14:36:40 [INFO] BLE device 9239398A-0FA6-E0A1-7A7E-B3EB71A5EC7C name= company=Apple, Inc. beacon= services=0
+14:36:41 [INFO] BLE device 9ADCCF4E-A0EC-6EDE-208F-7F9058BA25C7 name= company=Apple, Inc. beacon= services=0
+14:36:41 [INFO] BLE device 317D8765-D008-6BF6-5B73-AF6478AEB3C5 name= company=Apple, Inc. beacon= services=0
+14:36:41 [INFO] BLE device A6C9839A-ECA0-3F20-158F-E86A31CFFBA5 name=Base company=Apple, Inc. beacon= services=0
+14:36:42 [INFO] BLE device 3CE66F91-F236-7AA4-A0A8-412EC92C35B3 name=PHONE company=Apple, Inc. beacon= services=0
+14:36:50 [INFO] Flasher targets: ESP32 DevKit v1, ESP32-C3 DevKitM-1, Ops Portal (CYD), ESP32-P4 God Button
+14:36:51 [INFO] BLE device D8411009-683E-AEA4-EC8D-A2C34072B303 name= company=Apple, Inc. beacon= services=0
+14:36:56 [INFO] BLE device 210A190B-8162-1CED-B642-8A7C208C6446 name= company=Apple, Inc. beacon= services=0
+14:36:57 [INFO] BLE device 48520778-A5CA-AD0D-ACDC-A2DE84D2345E name=Quest 3S company= beacon= services=1
+14:37:07 [INFO] BLE device 6E7903E4-CB3C-15C6-B0D6-D08568CBE15F name= company=Apple, Inc. beacon= services=0
+14:37:12 [INFO] BLE device F67BE247-A267-6BAF-AAED-453790A4E884 name= company=Apple, Inc. beacon= services=0
+14:37:41 [INFO] BLE device 9D932145-DCCC-DD34-7F46-8ED63BEAB7BA name= company=Apple, Inc. beacon= services=0
+14:37:53 [INFO] BLE device 1B59E8F7-C28B-CBF4-1626-2C7348975EB9 name=Crusher Evo company=Skullcandy, Inc. beacon= services=3
+14:39:20 [INFO] BLE device 750DA84E-5744-0682-C667-6E2C06B057D1 name= company=Microsoft beacon= services=0
+14:40:29 [INFO] BLE device 7622C257-F642-51A2-4642-5CB3EC0B8BA8 name= company=Apple, Inc. beacon= services=0
+14:40:30 [INFO] BLE device 809AE3DB-5CFA-330F-7861-C6300A9DB76F name= company=Apple, Inc. beacon= services=0
+14:41:10 [INFO] BLE device AB0F6C6A-C937-1C02-411B-1079903A881B name= company=Apple, Inc. beacon= services=0
+14:44:32 [INFO] BLE device 6836EB66-9371-8CF4-663F-980E8CA15E29 name= company=Apple, Inc. beacon= services=0
+14:45:02 [INFO] BLE device 38144AD8-4774-B35A-8F49-1A81E1120BB0 name= company=Apple, Inc. beacon= services=0
+14:45:02 [INFO] BLE device 121ECE7F-5369-1B55-AB61-99A8B18D25AC name= company=Apple, Inc. beacon= services=0
+14:45:14 [INFO] BLE device 2BE522A3-E298-5A20-9B3D-8EAF352DA487 name= company=Apple, Inc. beacon= services=0
+14:45:24 [INFO] BLE device 51CA1B62-DB9F-0D26-DB28-FA4B7D964315 name= company=Apple, Inc. beacon= services=0
+14:46:24 [INFO] BLE device 9353C31A-E5FB-FC1E-1C35-9BF30137C54A name= company=Apple, Inc. beacon= services=0
+14:47:35 [INFO] BLE device D6825A44-A5D1-C1E4-A881-FC324C6E9F9B name= company=Apple, Inc. beacon= services=0
+14:47:37 [INFO] BLE device 085D3750-2279-E488-EB67-0AAB7C9C8140 name= company=Apple, Inc. beacon= services=0
+14:49:20 [INFO] BLE device 346EF17B-F984-020D-DA6F-B85F00D3B99C name= company=Microsoft beacon= services=0
+14:49:25 [INFO] BLE device A6F2517F-5E4D-C0E3-F27D-510934CB06E0 name= company=Apple, Inc. beacon= services=0
+14:49:41 [INFO] BLE device 9D4551F8-17A2-DE86-0406-AA971AB4DB32 name= company=Apple, Inc. beacon= services=0
+14:50:28 [INFO] BLE device DC5A381E-9095-02D7-DC6D-30C3F0A8777A name= company=Apple, Inc. beacon= services=0
+14:52:02 [INFO] Scan started (ONVIF discovery enabled, service discovery enabled, ARP warmup enabled, safe mode on)
+14:52:03 [INFO] Scan scope: 192.168.8.217/24
+14:52:03 [INFO] Total IPs to scan: 254
+14:52:03 [INFO] ARP warmup started: 254 IPs
+14:52:04 [INFO] ARP warmup finished
+14:52:05 [INFO] ARP parsed entries: 18
+14:52:10 [INFO] ARP hosts with MAC: 14
+14:52:10 [INFO] ARP marked alive: 13
+14:52:10 [INFO] OUI vendor hits: 6, misses: 8
+14:52:10 [INFO] ARP vendor scoring: hosts scored 6, high-confidence 0; devices scored 0, high-confidence 0
+14:52:10 [INFO] SSDP discovery started
+14:52:10 [INFO] Bonjour discovery started
+14:52:10 [INFO] WS-Discovery started (timeout 3.0s)
+14:52:13 [INFO] WS-Discovery finished: found 0 device(s)
+14:52:13 [INFO] SSDP responses: 0
+14:52:14 [INFO] Bonjour services: 5
+14:52:34 [WARN] Ping failed: The request timed out.
+14:52:37 [WARN] Ping failed: The request timed out.
+14:52:38 [WARN] Ping failed: The request timed out.
+14:53:39 [INFO] BLE device 982E3E64-4CF5-0287-1CCA-C8D48CE012DA name= company=Apple, Inc. beacon= services=0
+14:55:59 [INFO] Scan finished: alive 15 / 255
+14:55:59 [INFO] Scan complete
+14:55:59 [INFO] Hostname lookups started
+14:56:00 [INFO] Scan scope: 192.168.8.217/24
+14:56:00 [INFO] Total IPs to scan: 254
+14:56:00 [INFO] ARP warmup started: 254 IPs
+14:56:01 [INFO] ARP warmup finished
+14:56:01 [INFO] ARP parsed entries: 18
+14:56:05 [INFO] ARP hosts with MAC: 14
+14:56:05 [INFO] ARP marked alive: 13
+14:56:05 [INFO] OUI vendor hits: 6, misses: 8
+14:56:05 [INFO] ARP vendor scoring: hosts scored 6, high-confidence 0; devices scored 1, high-confidence 0
+14:56:05 [INFO] SSDP discovery started
+14:56:05 [INFO] Bonjour discovery started
+14:56:05 [INFO] WS-Discovery started (timeout 3.0s)
+14:56:08 [INFO] WS-Discovery finished: found 0 device(s)
+14:56:08 [INFO] SSDP responses: 0
+14:56:09 [INFO] Bonjour services: 5
+14:58:28 [INFO] Hostname lookups finished
+14:58:28 [INFO] ARP parsed entries: 16
+14:58:31 [INFO] ARP hosts with MAC: 12
+14:58:31 [INFO] ARP marked alive: 0
+14:58:31 [INFO] OUI vendor hits: 5, misses: 7
+14:58:31 [INFO] ARP vendor scoring: hosts scored 6, high-confidence 0; devices scored 1, high-confidence 0
+14:58:31 [INFO] HTTP fingerprinting started (2 requests)
+14:58:32 [INFO] HTTP fingerprinting attempted 2, succeeded 2
+14:58:32 [INFO] HTTP vendor scoring: hosts scored 6, high-confidence 0; devices scored 1, high-confidence 0
+14:58:32 [INFO] Scored hosts: 255 (high: 0, med: 0, low: 255)
+14:58:50 [INFO] Scan finished: alive 15 / 255
+14:58:51 [INFO] Scan complete
+14:58:51 [INFO] Hostname lookups started
+14:58:51 [INFO] Scan scope: 192.168.8.217/24
+14:58:51 [INFO] Total IPs to scan: 254
+14:58:51 [INFO] ARP warmup started: 254 IPs
+14:58:52 [INFO] ARP warmup finished
+14:58:53 [INFO] ARP parsed entries: 16
+14:58:56 [INFO] ARP hosts with MAC: 12
+14:58:56 [INFO] ARP marked alive: 11
+14:58:56 [INFO] OUI vendor hits: 5, misses: 7
+14:58:56 [INFO] ARP vendor scoring: hosts scored 5, high-confidence 0; devices scored 1, high-confidence 0
+14:58:56 [INFO] SSDP discovery started
+14:58:56 [INFO] Bonjour discovery started
+14:58:56 [INFO] WS-Discovery started (timeout 3.0s)
+14:59:00 [INFO] WS-Discovery finished: found 0 device(s)
+14:59:00 [INFO] SSDP responses: 0
+14:59:01 [INFO] Bonjour services: 5
+14:59:20 [INFO] BLE device FACC4893-C26C-D10F-6885-1D0E4413C3D3 name= company=Microsoft beacon= services=0
+15:00:00 [INFO] BLE device 81076BE1-56C9-6257-4AA1-220A8152517F name= company=Apple, Inc. beacon= services=0
+15:00:01 [INFO] BLE device 37C87337-BF68-1D79-56E4-A1BAD983CBB1 name= company=Apple, Inc. beacon= services=0
+15:00:02 [INFO] BLE device 82746C06-DF30-D662-A13D-4AC58F70B5B2 name= company=Apple, Inc. beacon= services=0
+15:00:06 [INFO] BLE device 1CEA7738-2559-1682-5396-AD01944FE906 name= company=Apple, Inc. beacon= services=0
+15:00:10 [INFO] BLE device FB744172-13B6-2DE6-680D-26E9CFDC6818 name= company=Apple, Inc. beacon= services=0
+15:00:12 [INFO] BLE device 4FE63161-AFC4-0C44-69E6-2C5FACD12F5C name= company=Apple, Inc. beacon= services=0
+15:01:59 [INFO] Hostname lookups finished
+15:02:00 [INFO] ARP parsed entries: 16
+15:02:05 [INFO] ARP hosts with MAC: 12
+15:02:05 [INFO] ARP marked alive: 0
+15:02:05 [INFO] OUI vendor hits: 5, misses: 7
+15:02:05 [INFO] ARP vendor scoring: hosts scored 5, high-confidence 0; devices scored 1, high-confidence 0
+15:02:05 [INFO] HTTP fingerprinting started (2 requests)
+15:02:07 [INFO] HTTP fingerprinting attempted 2, succeeded 2
+15:02:07 [INFO] HTTP vendor scoring: hosts scored 5, high-confidence 0; devices scored 1, high-confidence 0
+15:02:17 [INFO] Scan finished: alive 13 / 255
+15:02:17 [INFO] Scan complete
+15:02:18 [INFO] Hostname lookups started
+15:02:18 [INFO] Scan scope: 192.168.8.217/24
+15:02:18 [INFO] Total IPs to scan: 254
+15:02:18 [INFO] ARP warmup started: 254 IPs
+15:02:19 [INFO] ARP warmup finished
+15:02:20 [INFO] ARP parsed entries: 16
+15:02:20 [INFO] BLE device 5EFFAB8B-D0F5-F0F1-4873-651CEBE58351 name= company=Apple, Inc. beacon= services=0
+15:02:20 [INFO] BLE device 574C071E-25F3-9072-3BEA-D65F50DFAA85 name= company=Apple, Inc. beacon= services=0
+15:02:24 [INFO] ARP hosts with MAC: 12
+15:02:24 [INFO] ARP marked alive: 11
+15:02:24 [INFO] OUI vendor hits: 5, misses: 7
+15:02:24 [INFO] ARP vendor scoring: hosts scored 5, high-confidence 0; devices scored 1, high-confidence 0
+15:02:24 [INFO] SSDP discovery started
+15:02:24 [INFO] Bonjour discovery started
+15:02:24 [INFO] WS-Discovery started (timeout 3.0s)
+15:02:27 [INFO] WS-Discovery finished: found 0 device(s)
+15:02:28 [INFO] SSDP responses: 0
+15:02:28 [INFO] Bonjour services: 6
+15:04:41 [INFO] Hostname lookups finished
+15:04:41 [INFO] Scan finished: alive 13 / 255
+15:04:41 [INFO] Scan complete
+15:04:41 [INFO] Hostname lookups started
+15:04:41 [INFO] Scan scope: 192.168.8.217/24
+15:04:41 [INFO] Total IPs to scan: 254
+15:04:41 [INFO] ARP warmup started: 254 IPs
+15:04:41 [INFO] ARP parsed entries: 16
+15:04:41 [INFO] ARP hosts with MAC: 12
+15:04:41 [INFO] ARP marked alive: 11
+15:04:41 [INFO] OUI vendor hits: 5, misses: 7
+15:04:41 [INFO] ARP vendor scoring: hosts scored 5, high-confidence 0; devices scored 1, high-confidence 0
+15:04:42 [INFO] ARP warmup finished
+15:04:42 [INFO] ARP parsed entries: 16
+15:04:42 [INFO] ARP hosts with MAC: 12
+15:04:42 [INFO] ARP marked alive: 0
+15:04:42 [INFO] OUI vendor hits: 5, misses: 7
+15:04:42 [INFO] ARP vendor scoring: hosts scored 5, high-confidence 0; devices scored 1, high-confidence 0
+15:04:42 [INFO] SSDP discovery started
+15:04:42 [INFO] Bonjour discovery started
+15:04:42 [INFO] WS-Discovery started (timeout 3.0s)
+15:04:42 [INFO] Hostname lookups finished
+15:04:42 [INFO] ARP parsed entries: 16
+15:04:42 [INFO] ARP hosts with MAC: 12
+15:04:42 [INFO] ARP marked alive: 0
+15:04:42 [INFO] OUI vendor hits: 5, misses: 7
+15:04:42 [INFO] ARP vendor scoring: hosts scored 5, high-confidence 0; devices scored 1, high-confidence 0

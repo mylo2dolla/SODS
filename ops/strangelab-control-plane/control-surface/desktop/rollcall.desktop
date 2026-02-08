@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Rollcall (Who is Alive)
+Exec=/opt/strangelab/bin/sl-god rollcall
+Icon=/opt/strangelab/icons/rollcall.svg
+Terminal=true
+Categories=System;

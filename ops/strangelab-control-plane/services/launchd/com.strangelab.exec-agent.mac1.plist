@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.strangelab.exec-agent.mac1</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/opt/homebrew/bin/node</string>
+    <string>/opt/strangelab/exec-agent.mjs</string>
+  </array>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>LIVEKIT_URL</key>
+    <string>ws://192.168.8.114:7880</string>
+    <key>TOKEN_ENDPOINT</key>
+    <string>http://192.168.8.114:9123/token</string>
+    <key>ROOM_NAME</key>
+    <string>strangelab</string>
+    <key>VAULT_INGEST_URL</key>
+    <string>http://192.168.8.160:8088/v1/ingest</string>
+    <key>IDENTITY</key>
+    <string>exec-mac-1</string>
+    <key>NODE_ID</key>
+    <string>exec-mac-1</string>
+    <key>NODE_ROLE</key>
+    <string>cockpit</string>
+    <key>HEALTH_INTERVAL_MS</key>
+    <string>60000</string>
+  </dict>
+  <key>StandardOutPath</key>
+  <string>/var/log/strangelab-exec-mac1.out.log</string>
+  <key>StandardErrorPath</key>
+  <string>/var/log/strangelab-exec-mac1.err.log</string>
+</dict>
+</plist>

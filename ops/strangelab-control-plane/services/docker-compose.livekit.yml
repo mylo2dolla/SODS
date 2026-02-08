@@ -1,0 +1,10 @@
+services:
+  livekit:
+    image: livekit/livekit-server:latest
+    command: ["--dev", "--bind", "0.0.0.0", "--keys", "devkey: secret"]
+    ports:
+      - "7880:7880"
+      - "7881:7881"
+      - "5349:5349/udp"
+      - "3478:3478/udp"
+    restart: unless-stopped

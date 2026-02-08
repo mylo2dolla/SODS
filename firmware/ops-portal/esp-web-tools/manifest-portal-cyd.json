@@ -1,15 +1,35 @@
 {
   "name": "SODS Ops Portal CYD",
-  "version": "0.1.0",
+  "version": "devstation",
+  "chipFamily": "ESP32",
   "builds": [
     {
       "chipFamily": "ESP32",
       "parts": [
-        { "path": "firmware/portal-cyd/bootloader.bin", "offset": 4096 },
-        { "path": "firmware/portal-cyd/partitions.bin", "offset": 32768 },
-        { "path": "firmware/portal-cyd/boot_app0.bin", "offset": 57344 },
-        { "path": "firmware/portal-cyd/firmware.bin", "offset": 65536 }
+        {
+          "path": "firmware/cyd-2432s028/devstation/bootloader.bin",
+          "offset": 4096
+        },
+        {
+          "path": "firmware/cyd-2432s028/devstation/partition-table.bin",
+          "offset": 32768
+        },
+        {
+          "path": "firmware/cyd-2432s028/devstation/boot_app0.bin",
+          "offset": 57344
+        },
+        {
+          "path": "firmware/cyd-2432s028/devstation/firmware.bin",
+          "offset": 65536
+        }
       ]
     }
-  ]
+  ],
+  "metadata": {
+    "app": "ops-portal",
+    "board_id": "cyd-2432s028",
+    "buildinfo_path": "firmware/cyd-2432s028/devstation/buildinfo.json",
+    "sha256sums_path": "firmware/cyd-2432s028/devstation/sha256sums.txt",
+    "generated_ts_ms": 1770567979817
+  }
 }

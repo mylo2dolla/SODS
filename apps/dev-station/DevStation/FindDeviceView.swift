@@ -4,6 +4,7 @@ struct FindDeviceView: View {
     let baseURL: String
     let onBindAlias: (String, String) -> Void
     let onRegisterNode: (WhoamiPayload, DeviceCandidate, String?) -> Void
+    let onRegisterFallback: (DeviceCandidate, String?) -> Void
     let onClose: () -> Void
 
     @State private var nodeID: String = ""
@@ -120,12 +121,16 @@ struct FindDeviceView: View {
                     }
                 } else {
                     await MainActor.run {
-                        lastError = "Unable to verify device identity via /whoami."
+                        onRegisterFallback(candidate, aliasLabel)
+                        lastError = "Registered without /whoami verification."
                     }
                 }
             }
         } else if let aliasLabel {
             onBindAlias("node:\(aliasLabel)", aliasLabel)
+            onRegisterFallback(candidate, aliasLabel)
+        } else {
+            onRegisterFallback(candidate, nil)
         }
     }
 
@@ -282,37 +287,67 @@ enum CandidateBuilder {
         let arpLines = extractLines(from: arp)
         let whoamiMap = extractWhoami(from: whoami)
 
-        var byMac: [String: DeviceCandidate] = [:]
+        var byKey: [String: DeviceCandidate] = [:]
+
+        func mergeCandidate(_ current: DeviceCandidate?, with incoming: DeviceCandidate) -> DeviceCandidate {
+            guard let current else { return incoming }
+            return DeviceCandidate(
+                ip: current.ip ?? incoming.ip,
+                mac: current.mac ?? incoming.mac,
+                ssid: current.ssid ?? incoming.ssid,
+                whoami: current.whoami ?? incoming.whoami,
+                confidence: max(current.confidence, incoming.confidence)
+            )
+        }
+
+        func upsert(_ candidate: DeviceCandidate) {
+            let macKey = candidate.mac?.lowercased()
+            let key: String = {
+                if let macKey, !macKey.isEmpty { return "mac:\(macKey)" }
+                if let ip = candidate.ip, !ip.isEmpty { return "ip:\(ip)" }
+                if let ssid = candidate.ssid, !ssid.isEmpty { return "ssid:\(ssid.lowercased())" }
+                return "unknown:\(UUID().uuidString)"
+            }()
+            byKey[key] = mergeCandidate(byKey[key], with: candidate)
+        }
+
         for line in wifiLines {
             if let mac = matchMac(line) {
                 let ssid = line.split(separator: mac).first.map { String($0).trimmingCharacters(in: .whitespaces) }
-                byMac[mac] = DeviceCandidate(ip: nil, mac: mac, ssid: ssid, whoami: nil, confidence: 55)
+                upsert(DeviceCandidate(ip: nil, mac: mac, ssid: ssid, whoami: nil, confidence: 55))
             }
         }
 
-        var byIP: [String: DeviceCandidate] = [:]
         for line in arpLines {
             guard let ip = matchIP(line), let mac = matchMac(line) else { continue }
-            let existing = byMac[mac]
-            byIP[ip] = DeviceCandidate(ip: ip, mac: mac, ssid: existing?.ssid, whoami: nil, confidence: 70)
-            if existing == nil {
-                byMac[mac] = DeviceCandidate(ip: ip, mac: mac, ssid: nil, whoami: nil, confidence: 65)
+            upsert(DeviceCandidate(ip: ip, mac: mac, ssid: nil, whoami: nil, confidence: 70))
+        }
+
+        for (ip, who) in whoamiMap {
+            let keys = byKey.filter { $0.value.ip == ip }.map(\.key)
+            if keys.isEmpty {
+                upsert(DeviceCandidate(ip: ip, mac: nil, ssid: nil, whoami: who, confidence: 80))
+            } else {
+                for key in keys {
+                    if let existing = byKey[key] {
+                        byKey[key] = DeviceCandidate(
+                            ip: existing.ip,
+                            mac: existing.mac,
+                            ssid: existing.ssid,
+                            whoami: who,
+                            confidence: min(95, existing.confidence + 20)
+                        )
+                    }
+                }
             }
         }
 
-        var results: [DeviceCandidate] = []
-        for (ip, who) in whoamiMap {
-            var entry = byIP[ip] ?? DeviceCandidate(ip: ip, mac: nil, ssid: nil, whoami: nil, confidence: 60)
-            entry = DeviceCandidate(ip: entry.ip, mac: entry.mac, ssid: entry.ssid, whoami: who, confidence: min(95, entry.confidence + 20))
-            results.append(entry)
+        return byKey.values.sorted { lhs, rhs in
+            if lhs.confidence != rhs.confidence { return lhs.confidence > rhs.confidence }
+            let l = (lhs.ssid ?? lhs.mac ?? lhs.ip ?? "")
+            let r = (rhs.ssid ?? rhs.mac ?? rhs.ip ?? "")
+            return l < r
         }
-        for entry in byIP.values where !results.contains(where: { $0.ip == entry.ip }) {
-            results.append(entry)
-        }
-        for entry in byMac.values where entry.ip == nil {
-            results.append(entry)
-        }
-        return results.sorted { $0.confidence > $1.confidence }
     }
 
     private static func extractLines(from response: ToolRunResponse) -> [String] {

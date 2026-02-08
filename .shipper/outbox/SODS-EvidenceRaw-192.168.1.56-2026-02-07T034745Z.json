@@ -1,0 +1,21 @@
+{
+  "bonjourServices" : [
+
+  ],
+  "hostConfidence" : {
+    "level" : "Low",
+    "reasons" : [
+
+    ],
+    "score" : 0
+  },
+  "ip" : "192.168.1.56",
+  "mac" : "22:ba:8f:4f:1a:96",
+  "openPorts" : [
+
+  ],
+  "vendorConfidenceReasons" : [
+    "No OUI match"
+  ],
+  "vendorConfidenceScore" : 0
+}

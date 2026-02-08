@@ -1,16 +1,32 @@
 {
   "name": "SODS Node Agent (ESP32-C3)",
-  "version": "0.1.0",
+  "version": "devstation",
   "chipFamily": "ESP32-C3",
   "new_install_prompt_erase": true,
   "builds": [
     {
       "chipFamily": "ESP32-C3",
       "parts": [
-        { "path": "firmware/esp32c3/bootloader.bin", "offset": 4096 },
-        { "path": "firmware/esp32c3/partitions.bin", "offset": 32768 },
-        { "path": "firmware/esp32c3/firmware.bin", "offset": 65536 }
+        {
+          "path": "firmware/esp32-c3/devstation/bootloader.bin",
+          "offset": 4096
+        },
+        {
+          "path": "firmware/esp32-c3/devstation/partition-table.bin",
+          "offset": 32768
+        },
+        {
+          "path": "firmware/esp32-c3/devstation/firmware.bin",
+          "offset": 65536
+        }
       ]
     }
-  ]
+  ],
+  "metadata": {
+    "app": "node-agent",
+    "board_id": "esp32-c3",
+    "buildinfo_path": "firmware/esp32-c3/devstation/buildinfo.json",
+    "sha256sums_path": "firmware/esp32-c3/devstation/sha256sums.txt",
+    "generated_ts_ms": 1770567978671
+  }
 }

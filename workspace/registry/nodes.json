@@ -1,0 +1,78 @@
+{
+  "nodes" : [
+    {
+      "capabilities" : [
+        "flash",
+        "frames",
+        "identify"
+      ],
+      "connectionState" : "offline",
+      "hostname" : "pi-aux",
+      "id" : "exec-pi-aux",
+      "isScanning" : false,
+      "label" : "pi-aux",
+      "lastError" : "Could not connect to the server.",
+      "lastSeen" : "2026-02-08T16:14:51Z",
+      "type" : "unknown"
+    },
+    {
+      "capabilities" : [
+        "flash",
+        "frames",
+        "identify"
+      ],
+      "connectionState" : "offline",
+      "hostname" : "strangelab-pi-logger",
+      "id" : "pi-aux",
+      "isScanning" : false,
+      "label" : "strangelab-pi-logger",
+      "lastError" : "Could not connect to the server.",
+      "lastSeen" : "2026-02-08T16:14:42Z",
+      "type" : "unknown"
+    },
+    {
+      "capabilities" : [
+        "flash",
+        "frames",
+        "identify"
+      ],
+      "connectionState" : "offline",
+      "hostname" : "pi-logger",
+      "id" : "exec-pi-logger",
+      "isScanning" : false,
+      "label" : "pi-logger",
+      "lastError" : "Could not connect to the server.",
+      "lastSeen" : "2026-02-08T16:14:18Z",
+      "type" : "unknown"
+    },
+    {
+      "capabilities" : [
+        "flash",
+        "frames",
+        "identify"
+      ],
+      "connectionState" : "offline",
+      "hostname" : "macblk4.local",
+      "id" : "exec-mac-2",
+      "isScanning" : false,
+      "label" : "macblk4.local",
+      "lastError" : "Could not connect to the server.",
+      "lastSeen" : "2026-02-08T16:14:12Z",
+      "type" : "unknown"
+    },
+    {
+      "capabilities" : [
+        "scan"
+      ],
+      "connectionState" : "connected",
+      "hostname" : "macblk4",
+      "id" : "mac-local",
+      "isScanning" : false,
+      "label" : "DevStation Scanner (macblk4)",
+      "lastError" : "Could not connect to the server.",
+      "lastHeartbeat" : "2026-02-07T04:23:42Z",
+      "type" : "mac"
+    }
+  ],
+  "version" : "1.0"
+}

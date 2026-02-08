@@ -6,6 +6,22 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 CLI_DIR="$REPO_ROOT/cli/sods"
 DIST="$CLI_DIR/dist/cli.js"
 
+resolve_node() {
+  if command -v node >/dev/null 2>&1; then
+    command -v node
+    return 0
+  fi
+  if [[ -x "/opt/homebrew/bin/node" ]]; then
+    echo "/opt/homebrew/bin/node"
+    return 0
+  fi
+  if [[ -x "/usr/local/bin/node" ]]; then
+    echo "/usr/local/bin/node"
+    return 0
+  fi
+  return 1
+}
+
 if [[ ! -d "$CLI_DIR" ]]; then
   echo "sods: CLI directory not found at $CLI_DIR" >&2
   exit 2
@@ -61,4 +77,10 @@ if is_missing || is_stale; then
   (cd "$CLI_DIR" && npm run build)
 fi
 
-exec node "$DIST" "$@"
+NODE_BIN="$(resolve_node || true)"
+if [[ -z "${NODE_BIN:-}" ]]; then
+  echo "sods: node runtime not found (checked PATH, /opt/homebrew/bin/node, /usr/local/bin/node)" >&2
+  exit 127
+fi
+
+exec "$NODE_BIN" "$DIST" "$@"

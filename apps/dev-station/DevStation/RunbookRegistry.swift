@@ -119,10 +119,6 @@ final class RunbookRegistry: ObservableObject {
     }
 
     private func stationBaseURL() -> String {
-        let defaults = UserDefaults.standard
-        if let saved = defaults.string(forKey: "SODSBaseURL"), !saved.isEmpty {
-            return saved
-        }
-        return "http://localhost:9123"
+        StationEndpointResolver.stationBaseURL()
     }
 }

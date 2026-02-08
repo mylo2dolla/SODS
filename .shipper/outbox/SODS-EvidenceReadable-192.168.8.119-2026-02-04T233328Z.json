@@ -1,0 +1,86 @@
+{
+  "confidence" : {
+    "explanations" : [
+      "RTSP port 554 open (+10)",
+      "HTTP reachable (404) (+5)"
+    ],
+    "level" : "Low",
+    "score" : 15
+  },
+  "glossary" : [
+    {
+      "meaning" : "Open Network Video Interface Forum standard for IP cameras.",
+      "term" : "ONVIF"
+    },
+    {
+      "meaning" : "Real Time Streaming Protocol for media streams.",
+      "term" : "RTSP"
+    },
+    {
+      "meaning" : "Simple Service Discovery Protocol for UPnP devices.",
+      "term" : "SSDP"
+    },
+    {
+      "meaning" : "Apple's mDNS-based local service discovery.",
+      "term" : "Bonjour"
+    }
+  ],
+  "meta" : {
+    "appVersion" : "1.0",
+    "buildNumber" : "1",
+    "hostIP" : "192.168.8.119",
+    "isoTimestamp" : "2026-02-04T233328Z"
+  },
+  "rawRef" : {
+    "filename" : "SODS-EvidenceRaw-192.168.8.119-2026-02-04T233328Z.json"
+  },
+  "recommendations" : [
+    "Open the web UI to confirm device identity.",
+    "If RTSP is available, open in VLC to validate streams.",
+    "Verify credentials locally; do not attempt unauthorized access.",
+    "Label the device and record its physical location.",
+    "Re-scan after changes to confirm inventory."
+  ],
+  "signals" : {
+    "bonjour" : {
+      "meaning" : "No Bonjour services found."
+    },
+    "httpAuth" : {
+      "meaning" : "No WWW-Authenticate header observed."
+    },
+    "httpServer" : {
+      "meaning" : "No server header observed."
+    },
+    "httpStatus" : {
+      "meaning" : "Not Found (common on embedded devices).",
+      "raw" : 404
+    },
+    "httpTitle" : {
+      "meaning" : "No title observed."
+    },
+    "onvif" : {
+      "meaning" : "No ONVIF evidence observed.",
+      "raw" : false
+    },
+    "openPorts" : {
+      "meaning" : [
+        "443: HTTPS web UI",
+        "554: RTSP media stream",
+        "8443: Alternate HTTPS"
+      ],
+      "raw" : [
+        443,
+        554,
+        8443
+      ]
+    },
+    "rtsp" : {
+      "meaning" : "RTSP available; validated streams found: 0.",
+      "raw" : "rtsp:\/\/192.168.8.119:554\/"
+    },
+    "ssdp" : {
+      "meaning" : "No SSDP response."
+    }
+  },
+  "summary" : "Host 192.168.8.119 shows signs of life. Open ports: 443, 554, 8443. RTSP port detected; streaming may be available."
+}

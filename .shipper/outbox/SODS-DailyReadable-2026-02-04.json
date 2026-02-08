@@ -1,0 +1,11 @@
+{
+  "notes" : "Daily log summary. Raw lines are preserved in the raw log file.",
+  "summary" : {
+    "date" : "2026-02-04",
+    "error" : 47,
+    "info" : 160,
+    "rawRef" : "SODS-DailyRaw-2026-02-04.txt",
+    "totalLines" : 209,
+    "warn" : 2
+  }
+}

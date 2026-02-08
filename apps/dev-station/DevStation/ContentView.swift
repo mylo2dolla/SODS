@@ -5,6 +5,88 @@ import CoreBluetooth
 import Network
 import AppKit
 
+// Fallback definition kept in ContentView because this target may not include
+// FlashedNoteStore.swift in build phases on some recovered project states.
+struct FlashedNoteRecord: Codable, Hashable, Identifiable {
+    let id: String
+    var note: String
+    var updatedAt: Date
+}
+
+@MainActor
+final class FlashedNoteStore: ObservableObject {
+    static let shared = FlashedNoteStore()
+
+    @Published private(set) var records: [String: FlashedNoteRecord] = [:]
+
+    private let fileURL: URL
+    private let encoder: JSONEncoder
+    private let decoder: JSONDecoder
+
+    private init() {
+        fileURL = StoragePaths.workspaceSubdir("notes").appendingPathComponent("flashed-notes.json")
+        encoder = JSONEncoder()
+        decoder = JSONDecoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        load()
+    }
+
+    func note(for key: String) -> String {
+        records[normalize(key)]?.note ?? ""
+    }
+
+    func setNote(_ note: String, for key: String) {
+        let normalizedKey = normalize(key)
+        guard !normalizedKey.isEmpty else { return }
+
+        let trimmed = note.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty {
+            records.removeValue(forKey: normalizedKey)
+        } else {
+            records[normalizedKey] = FlashedNoteRecord(
+                id: normalizedKey,
+                note: trimmed,
+                updatedAt: Date()
+            )
+        }
+        save()
+    }
+
+    func resolveKey(preferred: String?, fallbacks: [String]) -> String {
+        let candidates = ([preferred] + fallbacks).compactMap { $0 }
+        for raw in candidates {
+            let normalized = normalize(raw)
+            if normalized.isEmpty { continue }
+            if records[normalized] != nil { return normalized }
+        }
+        for raw in candidates {
+            let normalized = normalize(raw)
+            if !normalized.isEmpty { return normalized }
+        }
+        return ""
+    }
+
+    private func normalize(_ raw: String) -> String {
+        raw.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    }
+
+    private func load() {
+        guard let data = try? Data(contentsOf: fileURL) else { return }
+        guard let decoded = try? decoder.decode([FlashedNoteRecord].self, from: data) else { return }
+        records = Dictionary(uniqueKeysWithValues: decoded.map { ($0.id, $0) })
+    }
+
+    private func save() {
+        let list = records.values.sorted { $0.id < $1.id }
+        guard let data = try? encoder.encode(list) else { return }
+        do {
+            try data.write(to: fileURL, options: .atomic)
+        } catch {
+            LogStore.logAsync(.error, "Failed to save flashed notes: \(error.localizedDescription)")
+        }
+    }
+}
+
 struct ContentView: View {
     enum DeviceLifecycleStage: String {
         case staged
@@ -106,7 +188,7 @@ struct ContentView: View {
     @State private var serviceDiscoveryEnabled = true
     @State private var selectedIP: String?
     @State private var showLogs = false
-    @State private var viewMode: ViewMode = .dashboard
+    @State private var viewMode: ViewMode = .spectral
     @State private var searchText = ""
     @State private var hostSortField: HostSortField = .ip
     @State private var hostSortAscending = true
@@ -114,9 +196,9 @@ struct ContentView: View {
     @State private var showArpOnly = true
     @State private var showHighConfidenceOnly = false
     @State private var arpWarmupEnabled = true
-    @State private var bleDiscoveryEnabled = false
+    @State private var bleDiscoveryEnabled = true
     @State private var networkScanMode: ScanMode = .oneShot
-    @State private var bleScanMode: ScanMode = .oneShot
+    @State private var bleScanMode: ScanMode = .continuous
     @State private var selectedBleID: UUID?
     @State private var connectNodeID: String = ""
     @State private var showFlashConfirm: Bool = false
@@ -171,7 +253,13 @@ struct ContentView: View {
                         baseURL: sodsStore.baseURL,
                         onFlash: { showFlashPopover = true },
                         onInspect: { endpoint in modalCoordinator.present(.apiInspector(endpoint: endpoint)) },
-                        onRunTool: { tool in modalCoordinator.present(.toolRunner(tool: tool)) },
+                        onRunTool: { tool in
+                            if shouldRunToolDirectly(tool) {
+                                runToolDirectly(tool)
+                            } else {
+                                modalCoordinator.present(.toolRunner(tool: tool))
+                            }
+                        },
                         onRunRunbook: { name in
                             let id = name.replacingOccurrences(of: "runbook.", with: "")
                             if let runbook = runbookRegistry.runbooks.first(where: { $0.id == id }) {
@@ -254,6 +342,42 @@ struct ContentView: View {
                                 sodsStore.identifyNode(nodeID)
                                 sodsStore.refreshStatus()
                             }
+                        },
+                        onRegisterFallback: { candidate, alias in
+                            let seed = (candidate.mac ?? candidate.ip ?? candidate.ssid ?? "portal").lowercased()
+                            let compact = seed.components(separatedBy: CharacterSet.alphanumerics.inverted).joined()
+                            let suffix = String(compact.suffix(10))
+                            var nodeID = "portal-\(suffix.isEmpty ? "unknown" : suffix)"
+                            if let existing = nodeRegistry.nodes.first(where: { $0.id == nodeID }) {
+                                let existingMac = existing.mac?.lowercased() ?? ""
+                                let nextMac = candidate.mac?.lowercased() ?? ""
+                                if !nextMac.isEmpty && !existingMac.isEmpty && existingMac != nextMac {
+                                    nodeID = "\(nodeID)-\(Int(Date().timeIntervalSince1970))"
+                                }
+                            }
+                            let label = (alias?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
+                                ? alias!
+                                : (candidate.ssid ?? candidate.ip ?? candidate.mac ?? nodeID))
+                            nodeRegistry.register(
+                                nodeID: nodeID,
+                                label: label,
+                                hostname: nil,
+                                ip: candidate.ip,
+                                mac: candidate.mac,
+                                type: .unknown,
+                                capabilities: ["flash", "identify", "scan"]
+                            )
+                            if let ip = candidate.ip, !ip.isEmpty {
+                                aliasStore.setAlias(id: ip, alias: label)
+                            }
+                            if let mac = candidate.mac, !mac.isEmpty {
+                                aliasStore.setAlias(id: mac, alias: label)
+                            }
+                            aliasStore.setAlias(id: nodeID, alias: label)
+                            connectNodeID = nodeID
+                            markFlashClaimed(nodeID: nodeID)
+                            sodsStore.identifyNode(nodeID)
+                            sodsStore.refreshStatus()
                         },
                         onClose: { modalCoordinator.dismiss() }
                     )
@@ -597,6 +721,9 @@ struct ContentView: View {
                     Text(sodsStore.health.label)
                         .font(.system(size: 11))
                         .foregroundColor(Color(sodsStore.health.color))
+                    Text("Pi-Logger: \(piLoggerStatusLabel)")
+                        .font(.system(size: 11))
+                        .foregroundColor(piLoggerStatusColor)
                     Text("Nodes: \(sodsStore.nodes.count)")
                         .font(.system(size: 11))
                         .foregroundColor(.secondary)
@@ -665,6 +792,9 @@ struct ContentView: View {
                 },
                 onGenerateScanReport: {
                     generateScanReport()
+                },
+                onStartStation: {
+                    startStationFromDashboard()
                 },
                 stationActionSections: { dashboardStationSections() },
                 scanActionSections: { dashboardScanSections() },
@@ -1413,7 +1543,7 @@ struct ContentView: View {
                     systemImage: "bolt",
                     enabled: true,
                     reason: nil,
-                    action: { modalCoordinator.present(.runbookRunner(runbook: runbook)) }
+                    action: { runRunbookImmediately(runbook) }
                 ))
             }
             return items
@@ -1434,6 +1564,8 @@ struct ContentView: View {
             })
         ]
 
+        let nodeControlItems = dynamicNodeControlItems()
+
         let flashItems: [ActionMenuItem] = [
             ActionMenuItem(title: "Find Newly Flashed Device", systemImage: "magnifyingglass", enabled: true, reason: nil, action: {
                 markFlashAwaitingHello()
@@ -1447,11 +1579,11 @@ struct ContentView: View {
         if !nowItems.isEmpty { sections.append(ActionMenuSection(title: "Now", items: nowItems)) }
         let toolItems = toolRegistry.tools.map { tool in
             ActionMenuItem(
-                title: tool.name,
+                title: tool.title ?? tool.name,
                 systemImage: "wrench.and.screwdriver",
                 enabled: true,
                 reason: nil,
-                action: { modalCoordinator.present(.toolRunner(tool: tool)) }
+                action: { runToolImmediately(tool) }
             )
         }
         if !toolItems.isEmpty {
@@ -1463,7 +1595,7 @@ struct ContentView: View {
                 systemImage: "bolt",
                 enabled: true,
                 reason: nil,
-                action: { modalCoordinator.present(.runbookRunner(runbook: runbook)) }
+                action: { runRunbookImmediately(runbook) }
             )
         }
         if !runbookItems.isEmpty {
@@ -1471,6 +1603,9 @@ struct ContentView: View {
         }
         sections.append(ActionMenuSection(title: "Inspect", items: inspectItems))
         sections.append(ActionMenuSection(title: "Connect / Control", items: connectItems))
+        if !nodeControlItems.isEmpty {
+            sections.append(ActionMenuSection(title: "Node Control", items: nodeControlItems))
+        }
         sections.append(ActionMenuSection(title: "Flash / Bind", items: flashItems))
         sections.append(ActionMenuSection(title: "Export / Ship", items: exportItems))
         if FeatureFlags.shared.showDevActions {
@@ -1502,6 +1637,198 @@ struct ContentView: View {
             ActionMenuItem(title: "Reveal Exports", systemImage: "folder.fill", enabled: true, reason: nil, action: { revealExports() }),
             ActionMenuItem(title: "Ship Now", systemImage: "paperplane", enabled: true, reason: nil, action: { vaultTransport.shipNow(log: logStore) })
         ]
+    }
+
+    private var piLoggerStatusLabel: String {
+        if let logger = sodsStore.loggerStatus {
+            if let ok = logger.ok {
+                return ok ? "Connected" : "Degraded"
+            }
+            if let status = logger.status, !status.isEmpty {
+                return status
+            }
+        }
+        return "Unknown"
+    }
+
+    private var piLoggerStatusColor: Color {
+        if let logger = sodsStore.loggerStatus, let ok = logger.ok {
+            return ok ? .green : .orange
+        }
+        return .secondary
+    }
+
+    private func dynamicNodeControlItems() -> [ActionMenuItem] {
+        let claimedNodes = nodeRegistry.nodes
+        guard !claimedNodes.isEmpty else { return [] }
+        let selectedID = !connectNodeID.isEmpty ? connectNodeID : claimedNodes.first?.id ?? ""
+        guard let selectedNode = claimedNodes.first(where: { $0.id == selectedID }) ?? claimedNodes.first else { return [] }
+        var items: [ActionMenuItem] = []
+        let profile = NodeFirmwareProfile.infer(nodeID: selectedNode.id, hostname: selectedNode.hostname, capabilities: selectedNode.capabilities)
+        let effectiveCaps = Set((selectedNode.capabilities + profile.defaultCapabilities).map { $0.lowercased() })
+        let supportsScan = effectiveCaps.contains("scan")
+        let supportsFrames = effectiveCaps.contains("frames")
+        let supportsProbe = effectiveCaps.contains("probe")
+        let supportsPing = effectiveCaps.contains("ping")
+        let supportsGod = effectiveCaps.contains("god") || profile == .p4GodButton
+
+        items.append(
+            ActionMenuItem(
+                title: "Connect \(selectedNode.label)",
+                systemImage: "link",
+                enabled: true,
+                reason: nil,
+                action: {
+                    NodeRegistry.shared.setConnecting(nodeID: selectedNode.id, connecting: true)
+                    sodsStore.connectNode(selectedNode.id)
+                    sodsStore.identifyNode(selectedNode.id)
+                    sodsStore.refreshStatus()
+                }
+            )
+        )
+        if supportsGod {
+            items.append(
+                ActionMenuItem(
+                    title: "God On (\(selectedNode.id))",
+                    systemImage: "bolt.fill",
+                    enabled: true,
+                    reason: nil,
+                    action: { sodsStore.setNodeCapability(nodeID: selectedNode.id, capability: "god", enabled: true) }
+                )
+            )
+            items.append(
+                ActionMenuItem(
+                    title: "God Off (\(selectedNode.id))",
+                    systemImage: "bolt.slash",
+                    enabled: true,
+                    reason: nil,
+                    action: { sodsStore.setNodeCapability(nodeID: selectedNode.id, capability: "god", enabled: false) }
+                )
+            )
+            items.append(
+                ActionMenuItem(
+                    title: "God On (All Nodes)",
+                    systemImage: "bolt.circle",
+                    enabled: true,
+                    reason: nil,
+                    action: {
+                        for node in claimedNodes {
+                            let nodeProfile = NodeFirmwareProfile.infer(nodeID: node.id, hostname: node.hostname, capabilities: node.capabilities)
+                            let nodeCaps = Set((node.capabilities + nodeProfile.defaultCapabilities).map { $0.lowercased() })
+                            if nodeCaps.contains("god") || nodeProfile == .p4GodButton {
+                                sodsStore.setNodeCapability(nodeID: node.id, capability: "god", enabled: true)
+                            }
+                        }
+                    }
+                )
+            )
+            items.append(
+                ActionMenuItem(
+                    title: "God Off (All Nodes)",
+                    systemImage: "bolt.slash.circle",
+                    enabled: true,
+                    reason: nil,
+                    action: {
+                        for node in claimedNodes {
+                            let nodeProfile = NodeFirmwareProfile.infer(nodeID: node.id, hostname: node.hostname, capabilities: node.capabilities)
+                            let nodeCaps = Set((node.capabilities + nodeProfile.defaultCapabilities).map { $0.lowercased() })
+                            if nodeCaps.contains("god") || nodeProfile == .p4GodButton {
+                                sodsStore.setNodeCapability(nodeID: node.id, capability: "god", enabled: false)
+                            }
+                        }
+                    }
+                )
+            )
+        }
+        if supportsScan {
+            items.append(
+                ActionMenuItem(
+                    title: "Start Node Scan (\(selectedNode.id))",
+                    systemImage: "dot.radiowaves.left.and.right",
+                    enabled: true,
+                    reason: nil,
+                    action: { sodsStore.setNodeCapability(nodeID: selectedNode.id, capability: "scan", enabled: true) }
+                )
+            )
+            items.append(
+                ActionMenuItem(
+                    title: "Stop Node Scan (\(selectedNode.id))",
+                    systemImage: "stop.circle",
+                    enabled: true,
+                    reason: nil,
+                    action: { sodsStore.setNodeCapability(nodeID: selectedNode.id, capability: "scan", enabled: false) }
+                )
+            )
+            items.append(
+                ActionMenuItem(
+                    title: "Start All Node Scans",
+                    systemImage: "play.circle",
+                    enabled: true,
+                    reason: nil,
+                    action: {
+                        for node in claimedNodes where node.capabilities.contains("scan") {
+                            sodsStore.setNodeCapability(nodeID: node.id, capability: "scan", enabled: true)
+                        }
+                    }
+                )
+            )
+            items.append(
+                ActionMenuItem(
+                    title: "Stop All Node Scans",
+                    systemImage: "stop.circle",
+                    enabled: true,
+                    reason: nil,
+                    action: {
+                        for node in claimedNodes where node.capabilities.contains("scan") {
+                            sodsStore.setNodeCapability(nodeID: node.id, capability: "scan", enabled: false)
+                        }
+                    }
+                )
+            )
+        }
+        if supportsFrames {
+            items.append(
+                ActionMenuItem(
+                    title: "Enable Frames (\(selectedNode.id))",
+                    systemImage: "waveform.path.ecg",
+                    enabled: true,
+                    reason: nil,
+                    action: { sodsStore.setNodeCapability(nodeID: selectedNode.id, capability: "frames", enabled: true) }
+                )
+            )
+            items.append(
+                ActionMenuItem(
+                    title: "Disable Frames (\(selectedNode.id))",
+                    systemImage: "waveform.path",
+                    enabled: true,
+                    reason: nil,
+                    action: { sodsStore.setNodeCapability(nodeID: selectedNode.id, capability: "frames", enabled: false) }
+                )
+            )
+        }
+        if supportsProbe {
+            items.append(
+                ActionMenuItem(
+                    title: "Probe Node (\(selectedNode.id))",
+                    systemImage: "scope",
+                    enabled: true,
+                    reason: nil,
+                    action: { sodsStore.setNodeCapability(nodeID: selectedNode.id, capability: "probe", enabled: true) }
+                )
+            )
+        }
+        if supportsPing {
+            items.append(
+                ActionMenuItem(
+                    title: "Ping Node (\(selectedNode.id))",
+                    systemImage: "dot.radiowaves.left.and.right",
+                    enabled: true,
+                    reason: nil,
+                    action: { sodsStore.setNodeCapability(nodeID: selectedNode.id, capability: "ping", enabled: true) }
+                )
+            )
+        }
+        return items
     }
 
     private func scanControlItems() -> [ActionMenuItem] {
@@ -1539,6 +1866,65 @@ struct ContentView: View {
             }
         ))
         return items
+    }
+
+    private func runToolImmediately(_ tool: ToolDefinition) {
+        guard let url = URL(string: sodsStore.baseURL.trimmingCharacters(in: .whitespacesAndNewlines) + "/api/tool/run") else {
+            LogStore.logAsync(.warn, "God Button tool failed: invalid station URL")
+            return
+        }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try? JSONSerialization.data(withJSONObject: [
+            "name": tool.name,
+            "input": [String: String]()
+        ])
+        Task {
+            do {
+                let (data, response) = try await URLSession.shared.data(for: request)
+                let status = (response as? HTTPURLResponse)?.statusCode ?? -1
+                let output = String(data: data, encoding: .utf8) ?? ""
+                if (200...299).contains(status) {
+                    LogStore.logAsync(.info, "God Button ran tool \(tool.name): HTTP \(status)")
+                } else {
+                    LogStore.logAsync(.warn, "God Button tool \(tool.name) failed: HTTP \(status) \(output)")
+                }
+                toolRegistry.reload()
+                runbookRegistry.reload()
+            } catch {
+                LogStore.logAsync(.warn, "God Button tool \(tool.name) error: \(error.localizedDescription)")
+            }
+        }
+    }
+
+    private func runRunbookImmediately(_ runbook: RunbookDefinition) {
+        guard let url = URL(string: sodsStore.baseURL.trimmingCharacters(in: .whitespacesAndNewlines) + "/api/runbook/run") else {
+            LogStore.logAsync(.warn, "God Button runbook failed: invalid station URL")
+            return
+        }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try? JSONSerialization.data(withJSONObject: [
+            "id": runbook.id,
+            "input": [String: String]()
+        ])
+        Task {
+            do {
+                let (data, response) = try await URLSession.shared.data(for: request)
+                let status = (response as? HTTPURLResponse)?.statusCode ?? -1
+                let output = String(data: data, encoding: .utf8) ?? ""
+                if (200...299).contains(status) {
+                    LogStore.logAsync(.info, "God Button ran runbook \(runbook.id): HTTP \(status)")
+                } else {
+                    LogStore.logAsync(.warn, "God Button runbook \(runbook.id) failed: HTTP \(status) \(output)")
+                }
+                runbookRegistry.reload()
+            } catch {
+                LogStore.logAsync(.warn, "God Button runbook \(runbook.id) error: \(error.localizedDescription)")
+            }
+        }
     }
 
     private func dashboardStationSections() -> [ActionMenuSection] {
@@ -1673,6 +2059,58 @@ struct ContentView: View {
         }
     }
 
+    private func shouldRunToolDirectly(_ tool: ToolDefinition) -> Bool {
+        let raw = (tool.input ?? "").trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        return raw.isEmpty || raw == "none" || raw == "{}"
+    }
+
+    private func runToolDirectly(_ tool: ToolDefinition) {
+        guard let url = URL(string: sodsStore.baseURL.trimmingCharacters(in: .whitespacesAndNewlines) + "/api/tool/run") else {
+            showBaseURLToast("Invalid station URL")
+            return
+        }
+        showBaseURLToast("Running \(tool.name)…")
+        Task {
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+            let body: [String: Any] = ["name": tool.name, "input": [:]]
+            request.httpBody = try? JSONSerialization.data(withJSONObject: body)
+            do {
+                let (data, response) = try await URLSession.shared.data(for: request)
+                if let http = response as? HTTPURLResponse, !(200...299).contains(http.statusCode) {
+                    await MainActor.run {
+                        showBaseURLToast("Tool failed (\(http.statusCode)): \(tool.name)")
+                    }
+                    return
+                }
+                var openedViewer = false
+                if let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                    if let urls = obj["urls"] as? [String], let first = urls.first, let viewer = URL(string: first) {
+                        await MainActor.run {
+                            modalCoordinator.present(.viewer(url: viewer))
+                        }
+                        openedViewer = true
+                    } else if let result = obj["result_json"] as? [String: Any],
+                              let urlString = result["url"] as? String,
+                              let viewer = URL(string: urlString) {
+                        await MainActor.run {
+                            modalCoordinator.present(.viewer(url: viewer))
+                        }
+                        openedViewer = true
+                    }
+                }
+                await MainActor.run {
+                    showBaseURLToast(openedViewer ? "Ran \(tool.name) (viewer opened)" : "Ran \(tool.name)")
+                }
+            } catch {
+                await MainActor.run {
+                    showBaseURLToast("Tool error: \(tool.name)")
+                }
+            }
+        }
+    }
+
     private func openFlashPath(_ path: String, showFinder: Bool = false) {
         let base = sodsStore.baseURL.trimmingCharacters(in: .whitespacesAndNewlines)
         let target = flashTarget(from: path)
@@ -1729,6 +2167,25 @@ struct ContentView: View {
             return false
         }
         return false
+    }
+
+    private func startStationFromDashboard() {
+        let base = sodsStore.baseURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        StationProcessManager.shared.ensureRunning(baseURL: base)
+        Task {
+            let ready = await waitForStation(baseURL: base, timeout: 10.0)
+            await MainActor.run {
+                sodsStore.refreshStatus()
+                sodsStore.connect()
+                if ready {
+                    showBaseURLToast("Station started.")
+                    logStore.log(.info, "Dashboard start station succeeded at \(base)")
+                } else {
+                    showBaseURLToast("Station start attempted. Verify SODS root and port 9123.")
+                    logStore.log(.warn, "Dashboard start station timed out at \(base)")
+                }
+            }
+        }
     }
 
     private func bestONVIFXAddr(for ip: String) -> String? {
@@ -3796,7 +4253,10 @@ struct BLEDetailView: View {
     let onExportRuntimeLog: () -> Void
     let onRevealExports: () -> Void
     let onShipNow: () -> Void
+    @StateObject private var flashedNoteStore = FlashedNoteStore.shared
     @State private var labelText: String = ""
+    @State private var flashedNoteKey: String = ""
+    @State private var flashedNoteText: String = ""
 
     var body: some View {
         VStack(spacing: 0) {
@@ -3817,9 +4277,14 @@ struct BLEDetailView: View {
                         }
                         .onAppear {
                             labelText = BLEScanner.shared.label(for: peripheral.fingerprintID) ?? ""
+                            loadFlashedNoteForCurrentSelection()
                         }
                         .onChange(of: peripheral.fingerprintID) { _ in
                             labelText = BLEScanner.shared.label(for: peripheral.fingerprintID) ?? ""
+                            loadFlashedNoteForCurrentSelection()
+                        }
+                        .onChange(of: prober.results[peripheral.fingerprintID]?.serialNumber ?? "") { _ in
+                            loadFlashedNoteForCurrentSelection()
                         }
                         .onChange(of: labelText) { value in
                             BLEScanner.shared.setLabel(value, for: peripheral.fingerprintID)
@@ -3918,6 +4383,44 @@ struct BLEDetailView: View {
                                     .font(.system(size: 11))
                                     .foregroundColor(.secondary)
                             }
+                        }
+
+                        Divider()
+                        Text("Flashed Notes (Persistent)")
+                            .font(.system(size: 12, weight: .semibold))
+                        Text("Use serial from probe/serial monitor, then save notes for this device.")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                        HStack(spacing: 8) {
+                            Text("Key")
+                                .font(.system(size: 11))
+                                .frame(width: 42, alignment: .leading)
+                            TextField("serial or device id", text: $flashedNoteKey)
+                                .textFieldStyle(.roundedBorder)
+                            Button("Load") {
+                                loadFlashedNoteForCurrentSelection()
+                            }
+                            .buttonStyle(SecondaryActionButtonStyle())
+                        }
+                        TextEditor(text: $flashedNoteText)
+                            .font(.system(size: 11))
+                            .frame(minHeight: 72)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 6)
+                                    .stroke(Theme.border, lineWidth: 1)
+                            )
+                        HStack(spacing: 8) {
+                            Button("Save Note") {
+                                flashedNoteStore.setNote(flashedNoteText, for: flashedNoteKey)
+                                loadFlashedNoteForCurrentSelection()
+                            }
+                            .buttonStyle(PrimaryActionButtonStyle())
+                            Button("Clear Note") {
+                                flashedNoteStore.setNote("", for: flashedNoteKey)
+                                loadFlashedNoteForCurrentSelection()
+                            }
+                            .buttonStyle(SecondaryActionButtonStyle())
+                            Spacer()
                         }
 
                         Text("Confidence: \(peripheral.bleConfidence.level.rawValue) (\(peripheral.bleConfidence.score))")
@@ -4041,20 +4544,6 @@ struct BLEDetailView: View {
     }
 
     private func actionSections() -> [ActionMenuSection] {
-        let hostActions = ActionMenuSection(
-            title: "Host Actions",
-            items: [
-                ActionMenuItem(title: "Open Web UI", systemImage: "globe", enabled: false, reason: "No host selected", action: {}),
-                ActionMenuItem(title: "Open SSDP Location", systemImage: "link", enabled: false, reason: "No host selected", action: {}),
-                ActionMenuItem(title: "Open in VLC", systemImage: "play.rectangle", enabled: false, reason: "No host selected", action: {}),
-                ActionMenuItem(title: "Probe RTSP", systemImage: "dot.radiowaves.left.and.right", enabled: false, reason: "No host selected", action: {}),
-                ActionMenuItem(title: "Hard Probe (VLC + Diagnostics)", systemImage: "hammer", enabled: false, reason: "No host selected", action: {}),
-                ActionMenuItem(title: "Retry RTSP Fetch", systemImage: "arrow.clockwise", enabled: false, reason: "No host selected", action: {}),
-                ActionMenuItem(title: "Export Evidence (Raw + Readable)", systemImage: "tray.and.arrow.down", enabled: false, reason: "No host selected", action: {}),
-                ActionMenuItem(title: "Export Device Report", systemImage: "doc.text", enabled: false, reason: "No host selected", action: {})
-            ]
-        )
-
         let appActions = ActionMenuSection(
             title: "App/Global Actions",
             items: [
@@ -4163,7 +4652,27 @@ struct BLEDetailView: View {
                 )
             ]
         )
-        return [hostActions, appActions, bleActions]
+        return [appActions, bleActions]
+    }
+
+    private func currentFlashedNoteLookupKeys() -> (preferred: String?, fallbacks: [String]) {
+        guard let peripheral else { return (nil, []) }
+        let serial = prober.results[peripheral.fingerprintID]?.serialNumber
+        let sanitizedSerial = serial?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let preferred = (sanitizedSerial?.isEmpty == false) ? sanitizedSerial : nil
+        let fallbacks = [
+            peripheral.fingerprintID,
+            peripheral.id.uuidString,
+            peripheral.name ?? ""
+        ]
+        return (preferred, fallbacks)
+    }
+
+    private func loadFlashedNoteForCurrentSelection() {
+        let keys = currentFlashedNoteLookupKeys()
+        let resolved = flashedNoteStore.resolveKey(preferred: keys.preferred, fallbacks: keys.fallbacks)
+        flashedNoteKey = resolved
+        flashedNoteText = flashedNoteStore.note(for: resolved)
     }
 }
 
@@ -4279,9 +4788,14 @@ struct NodesView: View {
     let onFlashStarted: (FlashTarget) -> Void
     let onFlashAwaitingHello: () -> Void
     let onFlashClaimed: (String) -> Void
+    @StateObject private var nodeRegistry = NodeRegistry.shared
     @State private var portText: String = ""
     @State private var manualConnectHost: String = ""
     @State private var manualConnectLabel: String = ""
+    @State private var addNodeID: String = ""
+    @State private var addNodeLabel: String = ""
+    @State private var addNodeIP: String = ""
+    @State private var addNodeMAC: String = ""
     @State private var manualConnectError: String?
     @State private var isManualConnecting = false
 
@@ -4324,6 +4838,9 @@ struct NodesView: View {
                                 sodsStore.connectNode(node.id)
                                 sodsStore.identifyNode(node.id)
                                 sodsStore.refreshStatus()
+                            },
+                            onForget: {
+                                NodeRegistry.shared.remove(nodeID: node.id)
                             }
                         )
                     }
@@ -4533,6 +5050,33 @@ struct NodesView: View {
                     .disabled(isManualConnecting)
                     Spacer()
                 }
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Persist Node (Manual)")
+                        .font(.system(size: 11, weight: .semibold))
+                    HStack(spacing: 8) {
+                        TextField("Node ID", text: $addNodeID)
+                            .textFieldStyle(.roundedBorder)
+                            .frame(width: 160)
+                        TextField("Label", text: $addNodeLabel)
+                            .textFieldStyle(.roundedBorder)
+                            .frame(width: 160)
+                        TextField("IP", text: $addNodeIP)
+                            .textFieldStyle(.roundedBorder)
+                            .frame(width: 130)
+                        TextField("MAC", text: $addNodeMAC)
+                            .textFieldStyle(.roundedBorder)
+                            .frame(width: 150)
+                        Button("Add / Update") {
+                            addOrUpdateManualNode()
+                        }
+                        .buttonStyle(SecondaryActionButtonStyle())
+                    }
+                    if !nodeRegistry.nodes.isEmpty {
+                        Text("Claimed nodes persist in \(StoragePaths.workspaceSubdir("registry").path)")
+                            .font(.system(size: 10))
+                            .foregroundColor(Theme.textSecondary)
+                    }
+                }
                 if let manualConnectError {
                     Text(manualConnectError)
                         .font(.system(size: 11))
@@ -4706,6 +5250,9 @@ struct NodesView: View {
             .onChange(of: flashManager.selectedTarget) { _ in
                 flashManager.refreshPrepStatus()
             }
+            .onReceive(Timer.publish(every: 8, on: .main, in: .common).autoconnect()) { _ in
+                autoReconnectClaimedNodes()
+            }
         }
     }
 
@@ -4846,6 +5393,42 @@ struct NodesView: View {
             sodsStore.refreshStatus()
         }
     }
+
+    private func addOrUpdateManualNode() {
+        let nodeID = addNodeID.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !nodeID.isEmpty else {
+            manualConnectError = "Node ID is required to persist a node."
+            return
+        }
+        manualConnectError = nil
+        let label = addNodeLabel.trimmingCharacters(in: .whitespacesAndNewlines)
+        let ip = addNodeIP.trimmingCharacters(in: .whitespacesAndNewlines)
+        let mac = addNodeMAC.trimmingCharacters(in: .whitespacesAndNewlines)
+        nodeRegistry.register(
+            nodeID: nodeID,
+            label: label.isEmpty ? nil : label,
+            hostname: nil,
+            ip: ip.isEmpty ? nil : ip,
+            mac: mac.isEmpty ? nil : mac,
+            type: .unknown,
+            capabilities: []
+        )
+        if connectNodeID.isEmpty {
+            connectNodeID = nodeID
+        }
+    }
+
+    private func autoReconnectClaimedNodes() {
+        guard !nodeRegistry.nodes.isEmpty else { return }
+        for node in nodeRegistry.nodes {
+            if node.connectionState == .offline || node.connectionState == .error || nodePresence[node.id] == nil {
+                NodeRegistry.shared.setConnecting(nodeID: node.id, connecting: true)
+                sodsStore.connectNode(node.id)
+                sodsStore.identifyNode(node.id)
+            }
+        }
+        sodsStore.refreshStatus()
+    }
 }
 
 struct NodeAction: Identifiable {
@@ -4862,7 +5445,11 @@ struct NodeCardView: View {
     let isScannerNode: Bool
     let isConnecting: Bool
     let onRefresh: () -> Void
+    let onForget: () -> Void
+    @StateObject private var flashedNoteStore = FlashedNoteStore.shared
     @State private var showActions = false
+    @State private var noteKey = ""
+    @State private var noteText = ""
 
     var body: some View {
         TimelineView(.animation(minimumInterval: 1.0 / 6.0)) { timeline in
@@ -4964,6 +5551,11 @@ struct NodeCardView: View {
                                         NotificationCenter.default.post(name: .openGodMenuCommand, object: nil)
                                     }
                                     .buttonStyle(SecondaryActionButtonStyle())
+                                    Button("Forget Node") {
+                                        onForget()
+                                        showActions = false
+                                    }
+                                    .buttonStyle(SecondaryActionButtonStyle())
                                 }
                                 .padding(12)
                                 .frame(minWidth: 240)
@@ -4972,6 +5564,44 @@ struct NodeCardView: View {
                     }
                     Spacer()
                 }
+
+                DisclosureGroup("Flashed Note") {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack(spacing: 8) {
+                            Text("Key")
+                                .font(.system(size: 11))
+                                .frame(width: 34, alignment: .leading)
+                            TextField("serial or node id", text: $noteKey)
+                                .textFieldStyle(.roundedBorder)
+                            Button("Load") {
+                                loadNodeNote()
+                            }
+                            .buttonStyle(SecondaryActionButtonStyle())
+                        }
+                        TextEditor(text: $noteText)
+                            .font(.system(size: 11))
+                            .frame(minHeight: 56)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 6)
+                                    .stroke(Theme.border, lineWidth: 1)
+                            )
+                        HStack(spacing: 8) {
+                            Button("Save") {
+                                flashedNoteStore.setNote(noteText, for: noteKey)
+                                loadNodeNote()
+                            }
+                            .buttonStyle(SecondaryActionButtonStyle())
+                            Button("Clear") {
+                                flashedNoteStore.setNote("", for: noteKey)
+                                loadNodeNote()
+                            }
+                            .buttonStyle(SecondaryActionButtonStyle())
+                            Spacer()
+                        }
+                    }
+                    .padding(.top, 4)
+                }
+                .font(.system(size: 11))
             }
             .padding(12)
             .background(Theme.panel)
@@ -4981,7 +5611,28 @@ struct NodeCardView: View {
             )
             .cornerRadius(12)
             .shadow(color: presentation.shouldGlow ? Color(presentation.baseColor).opacity(glowAlpha) : .clear, radius: glowRadius)
+            .onAppear {
+                loadNodeNote()
+            }
+            .onChange(of: node.id) { _ in
+                loadNodeNote()
+            }
         }
+    }
+
+    private func nodeNoteFallbackKeys() -> [String] {
+        var keys: [String] = [node.id]
+        if let ip = node.ip, !ip.isEmpty { keys.append(ip) }
+        if let mac = node.mac, !mac.isEmpty { keys.append(mac) }
+        if let ip = presence?.ip, !ip.isEmpty { keys.append(ip) }
+        if let mac = presence?.mac, !mac.isEmpty { keys.append(mac) }
+        return Array(Set(keys))
+    }
+
+    private func loadNodeNote() {
+        let resolved = flashedNoteStore.resolveKey(preferred: nil, fallbacks: nodeNoteFallbackKeys())
+        noteKey = resolved
+        noteText = flashedNoteStore.note(for: resolved)
     }
 
     private func nodeStatus() -> (label: String, isOnline: Bool, lastSeenText: String) {
@@ -5281,7 +5932,7 @@ struct VaultView: View {
             HStack {
                 Text("Host")
                     .frame(width: 90, alignment: .leading)
-                TextField("pi-logger.local", text: $shipper.host)
+                TextField("", text: $shipper.host)
                     .textFieldStyle(.roundedBorder)
                 Text("User")
                     .frame(width: 70, alignment: .leading)
@@ -5292,7 +5943,7 @@ struct VaultView: View {
             HStack {
                 Text("Destination")
                     .frame(width: 90, alignment: .leading)
-                TextField("/var/sods/vault/sods/", text: $shipper.destinationPath)
+                TextField("~/sods/vault/sods/", text: $shipper.destinationPath)
                     .textFieldStyle(.roundedBorder)
             }
 
@@ -6080,11 +6731,7 @@ extension Notification.Name {
 }
 
 private func sodsRootPath() -> String {
-    if let env = ProcessInfo.processInfo.environment["SODS_ROOT"], !env.isEmpty {
-        return env
-    }
-    let home = FileManager.default.homeDirectoryForCurrentUser.path
-    return "\(home)/sods/SODS"
+    StoragePaths.sodsRootPath()
 }
 
 private func nodeAgentRootPath() -> String {
@@ -6138,7 +6785,7 @@ struct FlashPopoverView: View {
             HStack(spacing: 10) {
                 Button("ESP32 DevKit") { onFlashEsp32() }
                     .buttonStyle(PrimaryActionButtonStyle())
-                Button("ESP32-C3 DevKit") { onFlashEsp32c3() }
+                Button("XIAO ESP32-C3") { onFlashEsp32c3() }
                     .buttonStyle(PrimaryActionButtonStyle())
             }
             HStack(spacing: 10) {
@@ -6171,7 +6818,7 @@ enum FlashTarget: String, CaseIterable, Identifiable {
         case .esp32dev:
             return "ESP32 DevKit v1"
         case .esp32c3:
-            return "ESP32-C3 DevKitM-1"
+            return "XIAO ESP32-C3"
         case .portalCyd:
             return "Ops Portal (CYD)"
         case .esp32p4:
@@ -6208,13 +6855,26 @@ enum FlashTarget: String, CaseIterable, Identifiable {
     var buildCommand: String {
         switch self {
         case .esp32dev:
-            return "cd \(nodeAgentRootPath()) && ./tools/build-stage-esp32dev.sh"
+            return "cd \(nodeAgentRootPath()) && node ./tools/stage.mjs --board esp32-devkitv1 --version devstation"
         case .esp32c3:
-            return "cd \(nodeAgentRootPath()) && ./tools/build-stage-esp32c3.sh"
+            return "cd \(nodeAgentRootPath()) && node ./tools/stage.mjs --board esp32-c3 --version devstation"
         case .portalCyd:
-            return "cd \(sodsRootPath()) && ./tools/portal-cyd-stage.sh"
+            return "cd \(sodsRootPath())/firmware/ops-portal && node ./tools/stage.mjs --board cyd-2432s028 --version devstation"
         case .esp32p4:
-            return "cd \(sodsRootPath()) && ./tools/p4-stage.sh"
+            return "cd \(sodsRootPath())/firmware/sods-p4-godbutton && node ./tools/stage.mjs --board waveshare-esp32p4 --version devstation"
+        }
+    }
+
+    var stageCommand: String {
+        switch self {
+        case .esp32dev:
+            return "cd \(nodeAgentRootPath()) && node ./tools/stage.mjs --board esp32-devkitv1 --version devstation --skip-build"
+        case .esp32c3:
+            return "cd \(nodeAgentRootPath()) && node ./tools/stage.mjs --board esp32-c3 --version devstation --skip-build"
+        case .portalCyd:
+            return "cd \(sodsRootPath())/firmware/ops-portal && node ./tools/stage.mjs --board cyd-2432s028 --version devstation --skip-build"
+        case .esp32p4:
+            return "cd \(sodsRootPath())/firmware/sods-p4-godbutton && node ./tools/stage.mjs --board waveshare-esp32p4 --version devstation --skip-build"
         }
     }
 }
@@ -6464,7 +7124,6 @@ final class FlashServerManager: ObservableObject {
             root = p4RootPath()
         }
         let webTools = "\(root)/esp-web-tools"
-        let firmwareBase = "\(webTools)/firmware"
 
         var missing: [String] = []
 
@@ -6482,71 +7141,52 @@ final class FlashServerManager: ObservableObject {
 
         if !FileManager.default.fileExists(atPath: manifestPath) {
             missing.append(displayPath(manifestPath))
+            return FlashPrepStatus(
+                isReady: false,
+                missingItems: missing,
+                buildCommand: target.buildCommand
+            )
         }
 
-        let (bootCandidates, partCandidates, fwCandidates): ([String], [String], [String])
-        switch target {
-        case .esp32dev:
-            bootCandidates = [
-                "\(firmwareBase)/esp32dev/bootloader.bin",
-                "\(firmwareBase)/bootloader.bin"
-            ]
-            partCandidates = [
-                "\(firmwareBase)/esp32dev/partitions.bin",
-                "\(firmwareBase)/partitions.bin"
-            ]
-            fwCandidates = [
-                "\(firmwareBase)/esp32dev/firmware.bin",
-                "\(firmwareBase)/firmware.bin"
-            ]
-        case .esp32c3:
-            bootCandidates = [
-                "\(firmwareBase)/esp32c3/bootloader.bin"
-            ]
-            partCandidates = [
-                "\(firmwareBase)/esp32c3/partitions.bin"
-            ]
-            fwCandidates = [
-                "\(firmwareBase)/esp32c3/firmware.bin"
-            ]
-        case .portalCyd:
-            bootCandidates = [
-                "\(firmwareBase)/portal-cyd/bootloader.bin"
-            ]
-            partCandidates = [
-                "\(firmwareBase)/portal-cyd/partitions.bin"
-            ]
-            fwCandidates = [
-                "\(firmwareBase)/portal-cyd/firmware.bin"
-            ]
-        case .esp32p4:
-            bootCandidates = [
-                "\(firmwareBase)/p4/bootloader.bin"
-            ]
-            partCandidates = [
-                "\(firmwareBase)/p4/partitions.bin"
-            ]
-            fwCandidates = [
-                "\(firmwareBase)/p4/firmware.bin"
-            ]
+        guard let manifestData = try? Data(contentsOf: URL(fileURLWithPath: manifestPath)),
+              let manifestJSON = try? JSONSerialization.jsonObject(with: manifestData) as? [String: Any] else {
+            missing.append("invalid manifest json: \(displayPath(manifestPath))")
+            return FlashPrepStatus(
+                isReady: false,
+                missingItems: missing,
+                buildCommand: target.buildCommand
+            )
         }
 
-        if !anyExists(bootCandidates) {
-            missing.append(displayPath(bootCandidates[0]))
-        }
-        if !anyExists(partCandidates) {
-            missing.append(displayPath(partCandidates[0]))
-        }
-        if target == .portalCyd {
-            let appCandidates = [
-                "\(firmwareBase)/portal-cyd/boot_app0.bin"
-            ]
-            if !anyExists(appCandidates) {
-                missing.append(displayPath(appCandidates[0]))
+        if let metadata = manifestJSON["metadata"] as? [String: Any] {
+            if let buildInfoRel = metadata["buildinfo_path"] as? String, !buildInfoRel.isEmpty {
+                let buildInfoAbs = "\(webTools)/\(buildInfoRel)"
+                if !FileManager.default.fileExists(atPath: buildInfoAbs) {
+                    missing.append(displayPath(buildInfoAbs))
+                }
+            }
+            if let shaRel = metadata["sha256sums_path"] as? String, !shaRel.isEmpty {
+                let shaAbs = "\(webTools)/\(shaRel)"
+                if !FileManager.default.fileExists(atPath: shaAbs) {
+                    missing.append(displayPath(shaAbs))
+                }
             }
         }
-        if !anyExists(fwCandidates) {
-            missing.append(displayPath(fwCandidates[0]))
+
+        if let builds = manifestJSON["builds"] as? [[String: Any]], let firstBuild = builds.first {
+            if let parts = firstBuild["parts"] as? [[String: Any]] {
+                for part in parts {
+                    guard let rel = part["path"] as? String, !rel.isEmpty else { continue }
+                    let absPath = "\(webTools)/\(rel)"
+                    if !FileManager.default.fileExists(atPath: absPath) {
+                        missing.append(displayPath(absPath))
+                    }
+                }
+            } else {
+                missing.append("manifest parts missing in \(displayPath(manifestPath))")
+            }
+        } else {
+            missing.append("manifest builds missing in \(displayPath(manifestPath))")
         }
 
         return FlashPrepStatus(
@@ -6554,15 +7194,6 @@ final class FlashServerManager: ObservableObject {
             missingItems: missing,
             buildCommand: target.buildCommand
         )
-    }
-
-    private func anyExists(_ paths: [String]) -> Bool {
-        for path in paths {
-            if FileManager.default.fileExists(atPath: path) {
-                return true
-            }
-        }
-        return false
     }
 
     private func nodeAgentRoot() -> String {

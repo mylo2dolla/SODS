@@ -79,7 +79,7 @@ final class StationProcessManager: ObservableObject {
         stopProcess()
         guard let url = URL(string: baseURL) else { return }
         let port = url.port ?? 9123
-        let piLogger = ProcessInfo.processInfo.environment["SODS_LOGGER_URL"] ?? "http://pi-logger.local:8088"
+        let piLogger = StationEndpointResolver.loggerURL(baseURL: baseURL)
         let root = sodsRootPath()
         let sodsTool = "\(root)/tools/sods"
         let logDir = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Logs/SODS")
@@ -119,9 +119,5 @@ final class StationProcessManager: ObservableObject {
 }
 
 private func sodsRootPath() -> String {
-    if let env = ProcessInfo.processInfo.environment["SODS_ROOT"], !env.isEmpty {
-        return env
-    }
-    let home = FileManager.default.homeDirectoryForCurrentUser.path
-    return "\(home)/sods/SODS"
+    StoragePaths.sodsRootPath()
 }

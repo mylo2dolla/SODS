@@ -6,7 +6,6 @@ const windowGroup = document.getElementById("windowGroup");
 const nodeFilterInput = document.getElementById("nodeFilter");
 const capRange = document.getElementById("capRange");
 const capValue = document.getElementById("capValue");
-const demoToggle = document.getElementById("demoToggle");
 const godBtn = document.getElementById("godBtn");
 const toolsMenu = document.getElementById("toolsMenu");
 const toolsList = document.getElementById("toolsList");
@@ -17,7 +16,6 @@ let paused = false;
 let timeWindowMs = 15000;
 let deviceCap = Number(capRange.value);
 let nodeFilter = "";
-let useDemo = false;
 
 capValue.textContent = String(deviceCap);
 
@@ -43,16 +41,6 @@ capRange.addEventListener("input", () => {
   capValue.textContent = String(deviceCap);
 });
 
-demoToggle.addEventListener("change", () => {
-  useDemo = demoToggle.checked;
-  resetStream();
-});
-
-const params = new URLSearchParams(window.location.search);
-if (params.get("demo") === "1") {
-  demoToggle.checked = true;
-  useDemo = true;
-}
 
 const trails = new Map();
 const maxTrailPoints = 80;
@@ -198,7 +186,6 @@ function jitter(seed, idx) {
 }
 
 let ws;
-let demoTimer;
 
 function connectWS() {
   const url = new URL("/ws/frames", window.location.href);
@@ -220,40 +207,12 @@ function connectWS() {
   });
 }
 
-async function startDemo() {
-  statusEl.textContent = "demo";
-  const res = await fetch("/demo.ndjson");
-  if (!res.ok) {
-    statusEl.textContent = "demo missing";
-    return;
-  }
-  const text = await res.text();
-  const lines = text.trim().split("\n");
-  let idx = 0;
-  demoTimer = setInterval(() => {
-    if (paused) return;
-    const line = lines[idx++ % lines.length];
-    if (!line) return;
-    const payload = JSON.parse(line);
-    const frames = payload.frames ?? [];
-    for (const frame of frames) {
-      if (nodeFilter && frame.node_id !== nodeFilter) continue;
-      pushTrail(frame);
-    }
-  }, 1000 / 30);
-}
-
 function resetStream() {
   if (ws) {
     ws.close();
     ws = null;
   }
-  if (demoTimer) {
-    clearInterval(demoTimer);
-    demoTimer = null;
-  }
-  if (useDemo) startDemo();
-  else connectWS();
+  connectWS();
 }
 
 async function openTools() {

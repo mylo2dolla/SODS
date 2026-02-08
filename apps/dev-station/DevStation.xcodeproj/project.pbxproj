@@ -1,39 +1,19 @@
 // !$*UTF8*$!
 {
 	archiveVersion = 1;
-	classes = {};
+	classes = {
+	};
 	objectVersion = 56;
 	objects = {
 
 /* Begin PBXBuildFile section */
-		A1A1A1A1A1A1A1A1A1A1A1F6 /* AliasManagerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1F6 /* AliasManagerView.swift */; };
+		471C1C5F48C984D3E44253D8 /* DevStation/EntityStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1FE992EC78DBFB2B9A2C9C1 /* DevStation/EntityStore.swift */; };
+		7D2DC7DD97FBFE250002E63F /* DevStation/ModalCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30E4251FCC8DE55EACC023CC /* DevStation/ModalCoordinator.swift */; };
+		8BAE51ECB4CED21C4BE36BFF /* DevStation/IdentityResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 805A0DFFD8FAFFA48F8F9BEF /* DevStation/IdentityResolver.swift */; };
 		A1A1A1A1A1A1A1A1A1A1A1A1 /* DevStationApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1B1 /* DevStationApp.swift */; };
 		A1A1A1A1A1A1A1A1A1A1A1A2 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1B2 /* ContentView.swift */; };
-		A1A1A1A1A1A1A1A1A1A1A1E0 /* ToolRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1E0 /* ToolRegistry.swift */; };
-		A1A1A1A1A1A1A1A1A1A1A1E1 /* ToolRegistryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1E1 /* ToolRegistryView.swift */; };
-		A1A1A1A1A1A1A1A1A1A1A1E2 /* StationProcessManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1E2 /* StationProcessManager.swift */; };
-		A1A1A1A1A1A1A1A1A1A1A1E3 /* PiLoggerStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1E3 /* PiLoggerStore.swift */; };
-		A1A1A1A1A1A1A1A1A1A1A1FB /* FeatureFlags.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1FB /* FeatureFlags.swift */; };
-		A1A1A1A1A1A1A1A1A1A1A1FC /* FindDeviceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1FC /* FindDeviceView.swift */; };
-		8BAE51ECB4CED21C4BE36BFF /* IdentityResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 805A0DFFD8FAFFA48F8F9BEF /* IdentityResolver.swift */; };
-		471C1C5F48C984D3E44253D8 /* EntityStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1FE992EC78DBFB2B9A2C9C1 /* EntityStore.swift */; };
-		7D2DC7DD97FBFE250002E63F /* ModalCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30E4251FCC8DE55EACC023CC /* ModalCoordinator.swift */; };
-		A1A1A1A1A1A1A1A1A1A1A1E4 /* ModalHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1E4 /* ModalHeaderView.swift */; };
-		A1A1A1A1A1A1A1A1A1A1A1E5 /* APIInspectorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1E5 /* APIInspectorView.swift */; };
-		A1A1A1A1A1A1A1A1A1A1A1E6 /* ToolRunnerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1E6 /* ToolRunnerView.swift */; };
-		A1A1A1A1A1A1A1A1A1A1A1E7 /* ViewerSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1E7 /* ViewerSheet.swift */; };
-		A1A1A1A1A1A1A1A1A1A1A1F0 /* PresetRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1F0 /* PresetRegistry.swift */; };
-		A1A1A1A1A1A1A1A1A1A1A1F1 /* PresetButtonsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1F1 /* PresetButtonsView.swift */; };
-		A1A1A1A1A1A1A1A1A1A1A1F2 /* PresetRunnerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1F2 /* PresetRunnerView.swift */; };
-		A1A1A1A1A1A1A1A1A1A1A1F7 /* RunbookRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1F7 /* RunbookRegistry.swift */; };
-		A1A1A1A1A1A1A1A1A1A1A1F8 /* RunbookListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1F8 /* RunbookListView.swift */; };
-		A1A1A1A1A1A1A1A1A1A1A1F9 /* RunbookRunnerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1F9 /* RunbookRunnerView.swift */; };
-		A1A1A1A1A1A1A1A1A1A1A1F3 /* ToolBuilderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1F3 /* ToolBuilderView.swift */; };
-		A1A1A1A1A1A1A1A1A1A1A1F4 /* PresetBuilderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1F4 /* PresetBuilderView.swift */; };
-		A1A1A1A1A1A1A1A1A1A1A1F5 /* ScratchpadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1F5 /* ScratchpadView.swift */; };
 		A1A1A1A1A1A1A1A1A1A1A1A3 /* NetworkScanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1B3 /* NetworkScanner.swift */; };
 		A1A1A1A1A1A1A1A1A1A1A1A4 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1B4 /* Models.swift */; };
-		A1A1A1A1A1A1A1A1A1A1A1FD /* NodeRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1FD /* NodeRegistry.swift */; };
 		A1A1A1A1A1A1A1A1A1A1A1A5 /* AsyncSemaphore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1B6 /* AsyncSemaphore.swift */; };
 		A1A1A1A1A1A1A1A1A1A1A1A6 /* NetworkHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1B7 /* NetworkHelpers.swift */; };
 		A1A1A1A1A1A1A1A1A1A1A1A7 /* ONVIFDiscovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1B8 /* ONVIFDiscovery.swift */; };
@@ -41,9 +21,6 @@
 		A1A1A1A1A1A1A1A1A1A1A1A9 /* LogStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1BA /* LogStore.swift */; };
 		A1A1A1A1A1A1A1A1A1A1A1AA /* OUIStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1BB /* OUIStore.swift */; };
 		A1A1A1A1A1A1A1A1A1A1A1AB /* OUI.txt in Resources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1BC /* OUI.txt */; };
-		A1A1A1A1A1A1A1A1A1A1A1B3 /* BLECompanyIDs.txt in Resources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1C4 /* BLECompanyIDs.txt */; };
-		A1A1A1A1A1A1A1A1A1A1A1B4 /* BLEServiceUUIDs.txt in Resources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1C5 /* BLEServiceUUIDs.txt */; };
-		A1A1A1A1A1A1A1A1A1A1A1B5 /* BLEAssignedNumbers.txt in Resources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1C6 /* BLEAssignedNumbers.txt */; };
 		A1A1A1A1A1A1A1A1A1A1A1AC /* SSDPDiscovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1BD /* SSDPDiscovery.swift */; };
 		A1A1A1A1A1A1A1A1A1A1A1AD /* BonjourDiscovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1BE /* BonjourDiscovery.swift */; };
 		A1A1A1A1A1A1A1A1A1A1A1AE /* RTSPProber.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1BF /* RTSPProber.swift */; };
@@ -51,7 +28,9 @@
 		A1A1A1A1A1A1A1A1A1A1A1B0 /* BLEScanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1C1 /* BLEScanner.swift */; };
 		A1A1A1A1A1A1A1A1A1A1A1B1 /* BLEProber.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1C2 /* BLEProber.swift */; };
 		A1A1A1A1A1A1A1A1A1A1A1B2 /* BLEMetadataStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1C3 /* BLEMetadataStore.swift */; };
-		A1A1A1A1A1A1A1A1A1A1A1D2 /* PiAuxStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1D2 /* PiAuxStore.swift */; };
+		A1A1A1A1A1A1A1A1A1A1A1B3 /* BLECompanyIDs.txt in Resources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1C4 /* BLECompanyIDs.txt */; };
+		A1A1A1A1A1A1A1A1A1A1A1B4 /* BLEServiceUUIDs.txt in Resources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1C5 /* BLEServiceUUIDs.txt */; };
+		A1A1A1A1A1A1A1A1A1A1A1B5 /* BLEAssignedNumbers.txt in Resources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1C6 /* BLEAssignedNumbers.txt */; };
 		A1A1A1A1A1A1A1A1A1A1A1B7 /* RTSPHardProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1C7 /* RTSPHardProbe.swift */; };
 		A1A1A1A1A1A1A1A1A1A1A1B8 /* AppTruth.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1C8 /* AppTruth.swift */; };
 		A1A1A1A1A1A1A1A1A1A1A1B9 /* Payloads.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1C9 /* Payloads.swift */; };
@@ -63,43 +42,44 @@
 		A1A1A1A1A1A1A1A1A1A1A1BF /* ArtifactStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1CF /* ArtifactStore.swift */; };
 		A1A1A1A1A1A1A1A1A1A1A1C0 /* VaultTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1D0 /* VaultTransport.swift */; };
 		A1A1A1A1A1A1A1A1A1A1A1C1 /* BLEUUIDDisplay.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1D1 /* BLEUUIDDisplay.swift */; };
+		A1A1A1A1A1A1A1A1A1A1A1D2 /* PiAuxStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1D2 /* PiAuxStore.swift */; };
 		A1A1A1A1A1A1A1A1A1A1A1D3 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1D3 /* Theme.swift */; };
 		A1A1A1A1A1A1A1A1A1A1A1D4 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1D4 /* DashboardView.swift */; };
 		A1A1A1A1A1A1A1A1A1A1A1D5 /* VisualizerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1D5 /* VisualizerView.swift */; };
 		A1A1A1A1A1A1A1A1A1A1A1D6 /* DailyLogManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1D6 /* DailyLogManager.swift */; };
 		A1A1A1A1A1A1A1A1A1A1A1D7 /* CaseSessionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1D7 /* CaseSessionManager.swift */; };
+		A1A1A1A1A1A1A1A1A1A1A1E0 /* ToolRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1E0 /* ToolRegistry.swift */; };
+		A1A1A1A1A1A1A1A1A1A1A1E1 /* ToolRegistryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1E1 /* ToolRegistryView.swift */; };
+		A1A1A1A1A1A1A1A1A1A1A1E2 /* StationProcessManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1E2 /* StationProcessManager.swift */; };
+		A1A1A1A1A1A1A1A1A1A1A1E3 /* PiLoggerStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1E3 /* PiLoggerStore.swift */; };
+		A1A1A1A1A1A1A1A1A1A1A1E4 /* ModalHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1E4 /* ModalHeaderView.swift */; };
+		A1A1A1A1A1A1A1A1A1A1A1E5 /* APIInspectorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1E5 /* APIInspectorView.swift */; };
+		A1A1A1A1A1A1A1A1A1A1A1E6 /* ToolRunnerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1E6 /* ToolRunnerView.swift */; };
+		A1A1A1A1A1A1A1A1A1A1A1E7 /* ViewerSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1E7 /* ViewerSheet.swift */; };
+		A1A1A1A1A1A1A1A1A1A1A1F0 /* PresetRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1F0 /* PresetRegistry.swift */; };
+		A1A1A1A1A1A1A1A1A1A1A1F1 /* PresetButtonsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1F1 /* PresetButtonsView.swift */; };
+		A1A1A1A1A1A1A1A1A1A1A1F2 /* PresetRunnerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1F2 /* PresetRunnerView.swift */; };
+		A1A1A1A1A1A1A1A1A1A1A1F3 /* ToolBuilderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1F3 /* ToolBuilderView.swift */; };
+		A1A1A1A1A1A1A1A1A1A1A1F4 /* PresetBuilderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1F4 /* PresetBuilderView.swift */; };
+		A1A1A1A1A1A1A1A1A1A1A1F5 /* ScratchpadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1F5 /* ScratchpadView.swift */; };
+		A1A1A1A1A1A1A1A1A1A1A1F6 /* AliasManagerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1F6 /* AliasManagerView.swift */; };
+		A1A1A1A1A1A1A1A1A1A1A1F7 /* RunbookRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1F7 /* RunbookRegistry.swift */; };
+		A1A1A1A1A1A1A1A1A1A1A1F8 /* RunbookListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1F8 /* RunbookListView.swift */; };
+		A1A1A1A1A1A1A1A1A1A1A1F9 /* RunbookRunnerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1F9 /* RunbookRunnerView.swift */; };
+		A1A1A1A1A1A1A1A1A1A1A1FB /* FeatureFlags.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1FB /* FeatureFlags.swift */; };
+		A1A1A1A1A1A1A1A1A1A1A1FC /* FindDeviceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1FC /* FindDeviceView.swift */; };
+		A1A1A1A1A1A1A1A1A1A1A1FD /* NodeRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1FD /* NodeRegistry.swift */; };
+		A1A1A1A1A1A1A1A1A1A1A1FE /* StationEndpointResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1FE /* StationEndpointResolver.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		B1B1B1B1B1B1B1B1B1B1B1F6 /* AliasManagerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AliasManagerView.swift; sourceTree = "<group>"; };
+		30E4251FCC8DE55EACC023CC /* DevStation/ModalCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevStation/ModalCoordinator.swift; sourceTree = "<group>"; };
+		805A0DFFD8FAFFA48F8F9BEF /* DevStation/IdentityResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevStation/IdentityResolver.swift; sourceTree = "<group>"; };
 		B1B1B1B1B1B1B1B1B1B1B1B0 /* DevStation.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DevStation.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		B1B1B1B1B1B1B1B1B1B1B1B1 /* DevStationApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevStationApp.swift; sourceTree = "<group>"; };
 		B1B1B1B1B1B1B1B1B1B1B1B2 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
-		B1B1B1B1B1B1B1B1B1B1B1E0 /* ToolRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolRegistry.swift; sourceTree = "<group>"; };
-		B1B1B1B1B1B1B1B1B1B1B1E1 /* ToolRegistryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolRegistryView.swift; sourceTree = "<group>"; };
-		B1B1B1B1B1B1B1B1B1B1B1E2 /* StationProcessManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StationProcessManager.swift; sourceTree = "<group>"; };
-		B1B1B1B1B1B1B1B1B1B1B1E3 /* PiLoggerStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PiLoggerStore.swift; sourceTree = "<group>"; };
-		B1B1B1B1B1B1B1B1B1B1B1FB /* FeatureFlags.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeatureFlags.swift; sourceTree = "<group>"; };
-		B1B1B1B1B1B1B1B1B1B1B1FC /* FindDeviceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FindDeviceView.swift; sourceTree = "<group>"; };
-		805A0DFFD8FAFFA48F8F9BEF /* IdentityResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevStation/IdentityResolver.swift; sourceTree = "<group>"; };
-		B1FE992EC78DBFB2B9A2C9C1 /* EntityStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevStation/EntityStore.swift; sourceTree = "<group>"; };
-		30E4251FCC8DE55EACC023CC /* ModalCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevStation/ModalCoordinator.swift; sourceTree = "<group>"; };
-		B1B1B1B1B1B1B1B1B1B1B1E4 /* ModalHeaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModalHeaderView.swift; sourceTree = "<group>"; };
-		B1B1B1B1B1B1B1B1B1B1B1E5 /* APIInspectorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIInspectorView.swift; sourceTree = "<group>"; };
-		B1B1B1B1B1B1B1B1B1B1B1E6 /* ToolRunnerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolRunnerView.swift; sourceTree = "<group>"; };
-		B1B1B1B1B1B1B1B1B1B1B1E7 /* ViewerSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewerSheet.swift; sourceTree = "<group>"; };
-		B1B1B1B1B1B1B1B1B1B1B1F0 /* PresetRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PresetRegistry.swift; sourceTree = "<group>"; };
-		B1B1B1B1B1B1B1B1B1B1B1F1 /* PresetButtonsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PresetButtonsView.swift; sourceTree = "<group>"; };
-		B1B1B1B1B1B1B1B1B1B1B1F2 /* PresetRunnerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PresetRunnerView.swift; sourceTree = "<group>"; };
-		B1B1B1B1B1B1B1B1B1B1B1F7 /* RunbookRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunbookRegistry.swift; sourceTree = "<group>"; };
-		B1B1B1B1B1B1B1B1B1B1B1F8 /* RunbookListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunbookListView.swift; sourceTree = "<group>"; };
-		B1B1B1B1B1B1B1B1B1B1B1F9 /* RunbookRunnerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunbookRunnerView.swift; sourceTree = "<group>"; };
-		B1B1B1B1B1B1B1B1B1B1B1F3 /* ToolBuilderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolBuilderView.swift; sourceTree = "<group>"; };
-		B1B1B1B1B1B1B1B1B1B1B1F4 /* PresetBuilderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PresetBuilderView.swift; sourceTree = "<group>"; };
-		B1B1B1B1B1B1B1B1B1B1B1F5 /* ScratchpadView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScratchpadView.swift; sourceTree = "<group>"; };
 		B1B1B1B1B1B1B1B1B1B1B1B3 /* NetworkScanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkScanner.swift; sourceTree = "<group>"; };
 		B1B1B1B1B1B1B1B1B1B1B1B4 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
-		B1B1B1B1B1B1B1B1B1B1B1FD /* NodeRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NodeRegistry.swift; sourceTree = "<group>"; };
 		B1B1B1B1B1B1B1B1B1B1B1B5 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		B1B1B1B1B1B1B1B1B1B1B1B6 /* AsyncSemaphore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AsyncSemaphore.swift; sourceTree = "<group>"; };
 		B1B1B1B1B1B1B1B1B1B1B1B7 /* NetworkHelpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkHelpers.swift; sourceTree = "<group>"; };
@@ -108,9 +88,6 @@
 		B1B1B1B1B1B1B1B1B1B1B1BA /* LogStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogStore.swift; sourceTree = "<group>"; };
 		B1B1B1B1B1B1B1B1B1B1B1BB /* OUIStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OUIStore.swift; sourceTree = "<group>"; };
 		B1B1B1B1B1B1B1B1B1B1B1BC /* OUI.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = OUI.txt; sourceTree = "<group>"; };
-		B1B1B1B1B1B1B1B1B1B1B1C4 /* BLECompanyIDs.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = BLECompanyIDs.txt; sourceTree = "<group>"; };
-		B1B1B1B1B1B1B1B1B1B1B1C5 /* BLEServiceUUIDs.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = BLEServiceUUIDs.txt; sourceTree = "<group>"; };
-		B1B1B1B1B1B1B1B1B1B1B1C6 /* BLEAssignedNumbers.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = BLEAssignedNumbers.txt; sourceTree = "<group>"; };
 		B1B1B1B1B1B1B1B1B1B1B1BD /* SSDPDiscovery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSDPDiscovery.swift; sourceTree = "<group>"; };
 		B1B1B1B1B1B1B1B1B1B1B1BE /* BonjourDiscovery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BonjourDiscovery.swift; sourceTree = "<group>"; };
 		B1B1B1B1B1B1B1B1B1B1B1BF /* RTSPProber.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RTSPProber.swift; sourceTree = "<group>"; };
@@ -118,7 +95,9 @@
 		B1B1B1B1B1B1B1B1B1B1B1C1 /* BLEScanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BLEScanner.swift; sourceTree = "<group>"; };
 		B1B1B1B1B1B1B1B1B1B1B1C2 /* BLEProber.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BLEProber.swift; sourceTree = "<group>"; };
 		B1B1B1B1B1B1B1B1B1B1B1C3 /* BLEMetadataStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BLEMetadataStore.swift; sourceTree = "<group>"; };
-		B1B1B1B1B1B1B1B1B1B1B1D2 /* PiAuxStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PiAuxStore.swift; sourceTree = "<group>"; };
+		B1B1B1B1B1B1B1B1B1B1B1C4 /* BLECompanyIDs.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = BLECompanyIDs.txt; sourceTree = "<group>"; };
+		B1B1B1B1B1B1B1B1B1B1B1C5 /* BLEServiceUUIDs.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = BLEServiceUUIDs.txt; sourceTree = "<group>"; };
+		B1B1B1B1B1B1B1B1B1B1B1C6 /* BLEAssignedNumbers.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = BLEAssignedNumbers.txt; sourceTree = "<group>"; };
 		B1B1B1B1B1B1B1B1B1B1B1C7 /* RTSPHardProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RTSPHardProbe.swift; sourceTree = "<group>"; };
 		B1B1B1B1B1B1B1B1B1B1B1C8 /* AppTruth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTruth.swift; sourceTree = "<group>"; };
 		B1B1B1B1B1B1B1B1B1B1B1C9 /* Payloads.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Payloads.swift; sourceTree = "<group>"; };
@@ -130,11 +109,35 @@
 		B1B1B1B1B1B1B1B1B1B1B1CF /* ArtifactStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArtifactStore.swift; sourceTree = "<group>"; };
 		B1B1B1B1B1B1B1B1B1B1B1D0 /* VaultTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VaultTransport.swift; sourceTree = "<group>"; };
 		B1B1B1B1B1B1B1B1B1B1B1D1 /* BLEUUIDDisplay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BLEUUIDDisplay.swift; sourceTree = "<group>"; };
+		B1B1B1B1B1B1B1B1B1B1B1D2 /* PiAuxStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PiAuxStore.swift; sourceTree = "<group>"; };
 		B1B1B1B1B1B1B1B1B1B1B1D3 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		B1B1B1B1B1B1B1B1B1B1B1D4 /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
 		B1B1B1B1B1B1B1B1B1B1B1D5 /* VisualizerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisualizerView.swift; sourceTree = "<group>"; };
 		B1B1B1B1B1B1B1B1B1B1B1D6 /* DailyLogManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyLogManager.swift; sourceTree = "<group>"; };
 		B1B1B1B1B1B1B1B1B1B1B1D7 /* CaseSessionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaseSessionManager.swift; sourceTree = "<group>"; };
+		B1B1B1B1B1B1B1B1B1B1B1E0 /* ToolRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolRegistry.swift; sourceTree = "<group>"; };
+		B1B1B1B1B1B1B1B1B1B1B1E1 /* ToolRegistryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolRegistryView.swift; sourceTree = "<group>"; };
+		B1B1B1B1B1B1B1B1B1B1B1E2 /* StationProcessManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StationProcessManager.swift; sourceTree = "<group>"; };
+		B1B1B1B1B1B1B1B1B1B1B1E3 /* PiLoggerStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PiLoggerStore.swift; sourceTree = "<group>"; };
+		B1B1B1B1B1B1B1B1B1B1B1E4 /* ModalHeaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModalHeaderView.swift; sourceTree = "<group>"; };
+		B1B1B1B1B1B1B1B1B1B1B1E5 /* APIInspectorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIInspectorView.swift; sourceTree = "<group>"; };
+		B1B1B1B1B1B1B1B1B1B1B1E6 /* ToolRunnerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolRunnerView.swift; sourceTree = "<group>"; };
+		B1B1B1B1B1B1B1B1B1B1B1E7 /* ViewerSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewerSheet.swift; sourceTree = "<group>"; };
+		B1B1B1B1B1B1B1B1B1B1B1F0 /* PresetRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PresetRegistry.swift; sourceTree = "<group>"; };
+		B1B1B1B1B1B1B1B1B1B1B1F1 /* PresetButtonsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PresetButtonsView.swift; sourceTree = "<group>"; };
+		B1B1B1B1B1B1B1B1B1B1B1F2 /* PresetRunnerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PresetRunnerView.swift; sourceTree = "<group>"; };
+		B1B1B1B1B1B1B1B1B1B1B1F3 /* ToolBuilderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolBuilderView.swift; sourceTree = "<group>"; };
+		B1B1B1B1B1B1B1B1B1B1B1F4 /* PresetBuilderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PresetBuilderView.swift; sourceTree = "<group>"; };
+		B1B1B1B1B1B1B1B1B1B1B1F5 /* ScratchpadView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScratchpadView.swift; sourceTree = "<group>"; };
+		B1B1B1B1B1B1B1B1B1B1B1F6 /* AliasManagerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AliasManagerView.swift; sourceTree = "<group>"; };
+		B1B1B1B1B1B1B1B1B1B1B1F7 /* RunbookRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunbookRegistry.swift; sourceTree = "<group>"; };
+		B1B1B1B1B1B1B1B1B1B1B1F8 /* RunbookListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunbookListView.swift; sourceTree = "<group>"; };
+		B1B1B1B1B1B1B1B1B1B1B1F9 /* RunbookRunnerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunbookRunnerView.swift; sourceTree = "<group>"; };
+		B1B1B1B1B1B1B1B1B1B1B1FB /* FeatureFlags.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeatureFlags.swift; sourceTree = "<group>"; };
+		B1B1B1B1B1B1B1B1B1B1B1FC /* FindDeviceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FindDeviceView.swift; sourceTree = "<group>"; };
+		B1B1B1B1B1B1B1B1B1B1B1FD /* NodeRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NodeRegistry.swift; sourceTree = "<group>"; };
+		B1B1B1B1B1B1B1B1B1B1B1FE /* StationEndpointResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StationEndpointResolver.swift; sourceTree = "<group>"; };
+		B1FE992EC78DBFB2B9A2C9C1 /* DevStation/EntityStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevStation/EntityStore.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -153,6 +156,7 @@
 			children = (
 				D1D1D1D1D1D1D1D1D1D1D1D2 /* DevStation */,
 				B1B1B1B1B1B1B1B1B1B1B1B0 /* DevStation.app */,
+				D7FDE8A32F377E7B0071A4E4 /* Recovered References */,
 			);
 			sourceTree = "<group>";
 		};
@@ -164,6 +168,7 @@
 				B1B1B1B1B1B1B1B1B1B1B1E0 /* ToolRegistry.swift */,
 				B1B1B1B1B1B1B1B1B1B1B1E1 /* ToolRegistryView.swift */,
 				B1B1B1B1B1B1B1B1B1B1B1E2 /* StationProcessManager.swift */,
+				B1B1B1B1B1B1B1B1B1B1B1FE /* StationEndpointResolver.swift */,
 				B1B1B1B1B1B1B1B1B1B1B1E3 /* PiLoggerStore.swift */,
 				B1B1B1B1B1B1B1B1B1B1B1FB /* FeatureFlags.swift */,
 				B1B1B1B1B1B1B1B1B1B1B1FC /* FindDeviceView.swift */,
@@ -231,6 +236,16 @@
 			path = Resources;
 			sourceTree = "<group>";
 		};
+		D7FDE8A32F377E7B0071A4E4 /* Recovered References */ = {
+			isa = PBXGroup;
+			children = (
+				805A0DFFD8FAFFA48F8F9BEF /* DevStation/IdentityResolver.swift */,
+				B1FE992EC78DBFB2B9A2C9C1 /* DevStation/EntityStore.swift */,
+				30E4251FCC8DE55EACC023CC /* DevStation/ModalCoordinator.swift */,
+			);
+			name = "Recovered References";
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -270,6 +285,10 @@
 			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
 			mainGroup = D1D1D1D1D1D1D1D1D1D1D1D1;
 			productRefGroup = D1D1D1D1D1D1D1D1D1D1D1D1;
 			projectDirPath = "";
@@ -304,12 +323,13 @@
 				A1A1A1A1A1A1A1A1A1A1A1E0 /* ToolRegistry.swift in Sources */,
 				A1A1A1A1A1A1A1A1A1A1A1E1 /* ToolRegistryView.swift in Sources */,
 				A1A1A1A1A1A1A1A1A1A1A1E2 /* StationProcessManager.swift in Sources */,
+				A1A1A1A1A1A1A1A1A1A1A1FE /* StationEndpointResolver.swift in Sources */,
 				A1A1A1A1A1A1A1A1A1A1A1E3 /* PiLoggerStore.swift in Sources */,
 				A1A1A1A1A1A1A1A1A1A1A1FB /* FeatureFlags.swift in Sources */,
 				A1A1A1A1A1A1A1A1A1A1A1FC /* FindDeviceView.swift in Sources */,
-				8BAE51ECB4CED21C4BE36BFF /* IdentityResolver.swift in Sources */,
-				471C1C5F48C984D3E44253D8 /* EntityStore.swift in Sources */,
-				7D2DC7DD97FBFE250002E63F /* ModalCoordinator.swift in Sources */,
+				8BAE51ECB4CED21C4BE36BFF /* DevStation/IdentityResolver.swift in Sources */,
+				471C1C5F48C984D3E44253D8 /* DevStation/EntityStore.swift in Sources */,
+				7D2DC7DD97FBFE250002E63F /* DevStation/ModalCoordinator.swift in Sources */,
 				A1A1A1A1A1A1A1A1A1A1A1E4 /* ModalHeaderView.swift in Sources */,
 				A1A1A1A1A1A1A1A1A1A1A1E5 /* APIInspectorView.swift in Sources */,
 				A1A1A1A1A1A1A1A1A1A1A1E6 /* ToolRunnerView.swift in Sources */,
@@ -369,6 +389,7 @@
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CODE_SIGNING_ALLOWED = NO;
 				CODE_SIGNING_REQUIRED = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_HARDENED_RUNTIME = NO;
 				INFOPLIST_FILE = DevStation/Resources/Info.plist;
@@ -376,7 +397,6 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.strangelab.sods;
 				PRODUCT_NAME = DevStation;
 				SWIFT_VERSION = 5.0;
-				DEBUG_INFORMATION_FORMAT = dwarf;
 			};
 			name = Debug;
 		};
@@ -403,8 +423,11 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGNING_ALLOWED = NO;
 				CODE_SIGNING_REQUIRED = NO;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
+				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = BV32V2YQ8R;
 				ENABLE_HARDENED_RUNTIME = NO;
 				INFOPLIST_FILE = DevStation/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -414,6 +437,7 @@
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.strangelab.sods;
 				PRODUCT_NAME = DevStation;
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_VERSION = 5.0;
 			};
 			name = Debug;
@@ -425,8 +449,11 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGNING_ALLOWED = NO;
 				CODE_SIGNING_REQUIRED = NO;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
+				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = BV32V2YQ8R;
 				ENABLE_HARDENED_RUNTIME = NO;
 				INFOPLIST_FILE = DevStation/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -436,6 +463,7 @@
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.strangelab.sods;
 				PRODUCT_NAME = DevStation;
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_VERSION = 5.0;
 			};
 			name = Release;

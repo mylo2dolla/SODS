@@ -1,0 +1,35 @@
+{
+  "meta" : {
+    "appVersion" : "1.0",
+    "buildNumber" : "1",
+    "isoTimestamp" : "2026-02-05T182715Z"
+  },
+  "rawRef" : {
+    "filename" : "SODS-AuditRaw-2026-02-05T182715Z.json"
+  },
+  "summary" : {
+    "aliveHosts" : 2,
+    "bleDevices" : 52,
+    "errors" : 24,
+    "evidenceCount" : 256,
+    "highConfidenceHosts" : 0,
+    "interestingHosts" : 0,
+    "piAuxEvents" : 0,
+    "topBLE" : [
+      " (127 dBm)",
+      "Quest 3S (127 dBm)",
+      " (-24 dBm)",
+      "macgr3y (-25 dBm)",
+      " (-25 dBm)"
+    ],
+    "topHosts" : [
+      " Low (0)",
+      "192.168.8.1 Low (0)",
+      "192.168.8.10 Low (0)",
+      "192.168.8.100 Low (0)",
+      "192.168.8.101 Low (0)"
+    ],
+    "totalHosts" : 254,
+    "warnings" : 5
+  }
+}

@@ -3,11 +3,13 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-PORT="${1:-9123}"
-PI_LOGGER="${PI_LOGGER:-http://pi-logger.local:8088}"
+source "$SCRIPT_DIR/_env.sh"
+PORT="${1:-$SODS_PORT}"
+PI_LOGGER="${PI_LOGGER:-$PI_LOGGER_URL}"
 APP_PATH="$REPO_ROOT/dist/DevStation.app"
 LOG_DIR="$HOME/Library/Logs/SODS"
 LOG_FILE="$LOG_DIR/station.log"
+BUILD="${DEVSTATION_BUILD:-1}"
 
 mkdir -p "$LOG_DIR"
 
@@ -17,7 +19,7 @@ if ! curl -fsS "http://localhost:${PORT}/api/status" >/dev/null 2>&1; then
   sleep 1
 fi
 
-if [[ ! -d "$APP_PATH" ]]; then
+if [[ "${BUILD}" != "0" ]] || [[ ! -d "$APP_PATH" ]]; then
   "$REPO_ROOT/tools/devstation-build.sh"
 fi
 

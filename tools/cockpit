@@ -3,11 +3,125 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+source "$SCRIPT_DIR/_env.sh"
 RUNNER="$REPO_ROOT/tools/_sods_cli.sh"
+PORT="${PORT:-$SODS_PORT}"
+PI_LOGGER="${PI_LOGGER:-$PI_LOGGER_URL}"
+LOG_FILE="${HOME}/Library/Logs/SODS/station.log"
 
-if [[ ! -x "$RUNNER" ]]; then
-  echo "cockpit: missing runner at $RUNNER" >&2
+usage() {
+  cat <<USAGE
+cockpit commands:
+  cockpit up|all      Alias of: devstation rebuild
+  cockpit rebuild     Alias of: devstation rebuild
+  cockpit run         Alias of: devstation run
+  cockpit build       Alias of: devstation build
+  cockpit install     Alias of: devstation install
+  cockpit start       Start station on http://localhost:${PORT}
+  cockpit stop        Stop station process
+  cockpit status      Query station /api/status
+  cockpit logs        Tail station log
+  cockpit spectrum    Open spectrum web UI
+  cockpit sods ...    Run raw SODS CLI command
+  cockpit ...         Falls through to SODS CLI
+USAGE
+}
+
+start_station() {
+  mkdir -p "$(dirname "$LOG_FILE")"
+  if curl -fsS "http://localhost:${PORT}/api/status" >/dev/null 2>&1; then
+    echo "Station already running on http://localhost:${PORT}"
+    return 0
+  fi
+  nohup "$REPO_ROOT/tools/sods" start --pi-logger "$PI_LOGGER" --port "$PORT" >>"$LOG_FILE" 2>&1 &
+  sleep 1
+  if curl -fsS "http://localhost:${PORT}/api/status" >/dev/null 2>&1; then
+    echo "Station started on http://localhost:${PORT}"
+    return 0
+  fi
+  echo "cockpit: failed to start station, check $LOG_FILE" >&2
   exit 2
-fi
+}
 
-exec "$RUNNER" "$@"
+stop_station() {
+  pkill -f 'dist/cli.js start' >/dev/null 2>&1 || true
+  if command -v lsof >/dev/null 2>&1; then
+    pids="$(lsof -ti tcp:${PORT} || true)"
+    if [[ -n "${pids}" ]]; then
+      kill ${pids} >/dev/null 2>&1 || true
+    fi
+  fi
+  echo "Station stop requested"
+}
+
+show_status() {
+  curl -fsS "http://localhost:${PORT}/api/status" || {
+    echo "cockpit: station not reachable on http://localhost:${PORT}" >&2
+    exit 2
+  }
+  echo
+}
+
+cmd="${1:-}"
+case "$cmd" in
+  up|all|rebuild)
+    shift
+    exec "$REPO_ROOT/tools/devstation" rebuild "$@"
+    ;;
+  run)
+    shift
+    exec "$REPO_ROOT/tools/devstation" run "$@"
+    ;;
+  build)
+    shift
+    exec "$REPO_ROOT/tools/devstation" build "$@"
+    ;;
+  install)
+    shift
+    exec "$REPO_ROOT/tools/devstation" install "$@"
+    ;;
+  start)
+    shift
+    start_station
+    ;;
+  stop)
+    shift
+    stop_station
+    ;;
+  status)
+    shift
+    show_status
+    ;;
+  logs)
+    shift
+    mkdir -p "$(dirname "$LOG_FILE")"
+    touch "$LOG_FILE"
+    tail -n "${1:-100}" "$LOG_FILE"
+    ;;
+  spectrum)
+    shift
+    if [[ ! -x "$RUNNER" ]]; then
+      echo "cockpit: missing runner at $RUNNER" >&2
+      exit 2
+    fi
+    exec "$RUNNER" spectrum "$@"
+    ;;
+  sods)
+    shift
+    if [[ ! -x "$RUNNER" ]]; then
+      echo "cockpit: missing runner at $RUNNER" >&2
+      exit 2
+    fi
+    exec "$RUNNER" "$@"
+    ;;
+  help|-h|--help)
+    usage
+    ;;
+  *)
+    if [[ ! -x "$RUNNER" ]]; then
+      echo "cockpit: missing runner at $RUNNER" >&2
+      exit 2
+    fi
+    exec "$RUNNER" "$@"
+    ;;
+esac

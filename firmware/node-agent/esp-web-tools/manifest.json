@@ -1,16 +1,32 @@
 {
   "name": "SODS Node Agent (ESP32)",
-  "version": "0.1.0",
+  "version": "devstation",
   "chipFamily": "ESP32",
   "new_install_prompt_erase": true,
   "builds": [
     {
       "chipFamily": "ESP32",
       "parts": [
-        { "path": "firmware/esp32dev/bootloader.bin", "offset": 4096 },
-        { "path": "firmware/esp32dev/partitions.bin", "offset": 32768 },
-        { "path": "firmware/esp32dev/firmware.bin", "offset": 65536 }
+        {
+          "path": "firmware/esp32-devkitv1/devstation/bootloader.bin",
+          "offset": 4096
+        },
+        {
+          "path": "firmware/esp32-devkitv1/devstation/partition-table.bin",
+          "offset": 32768
+        },
+        {
+          "path": "firmware/esp32-devkitv1/devstation/firmware.bin",
+          "offset": 65536
+        }
       ]
     }
-  ]
+  ],
+  "metadata": {
+    "app": "node-agent",
+    "board_id": "esp32-devkitv1",
+    "buildinfo_path": "firmware/esp32-devkitv1/devstation/buildinfo.json",
+    "sha256sums_path": "firmware/esp32-devkitv1/devstation/sha256sums.txt",
+    "generated_ts_ms": 1770567978384
+  }
 }

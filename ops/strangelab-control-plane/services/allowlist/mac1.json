@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "host": "exec-mac-1",
+  "rules": [
+    { "cmd": "/usr/bin/uptime", "maxArgs": 0, "cwd": ["."] },
+    { "cmd": "/usr/bin/whoami", "maxArgs": 0, "cwd": ["."] },
+    { "cmd": "/bin/df", "maxArgs": 4, "allowedFlags": ["-h"], "cwd": ["."] },
+    { "cmd": "/bin/ps", "maxArgs": 6, "cwd": ["."] },
+    { "cmd": "/sbin/ifconfig", "maxArgs": 4, "cwd": ["."] },
+    { "cmd": "/sbin/route", "maxArgs": 6, "cwd": ["."] },
+    {
+      "cmd": "/sbin/ping",
+      "maxArgs": 6,
+      "allowedFlags": ["-c", "-W"],
+      "allowedTargets": ["192.168.8.114", "192.168.8.160"],
+      "cwd": ["."]
+    }
+  ]
+}

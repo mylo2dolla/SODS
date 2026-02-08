@@ -21,6 +21,7 @@ struct DashboardView: View {
     let onStartScan: () -> Void
     let onStopScan: () -> Void
     let onGenerateScanReport: () -> Void
+    let onStartStation: () -> Void
     let stationActionSections: () -> [ActionMenuSection]
     let scanActionSections: () -> [ActionMenuSection]
     let eventsActionSections: () -> [ActionMenuSection]
@@ -105,15 +106,29 @@ struct DashboardView: View {
                     }
                 }
 
-                statusCard(title: "Pi-Aux Node", onOpen: { showPiAuxOverlay = true }) {
-                    statusLine("Connected", piAuxStore.isRunning)
-                    Text("Last event: \(piAuxStore.lastUpdate?.formatted(date: .abbreviated, time: .shortened) ?? "None")")
+                statusCard(title: "Node Overview", onOpen: { showPiAuxOverlay = true }) {
+                    let totalNodes = entityStore.nodes.count
+                    let onlineNodes = entityStore.nodes.filter(isNodeOnline).count
+                    let scannerNodes = entityStore.nodes.filter { node in
+                        node.capabilities.contains("scan")
+                            || node.presenceState == .scanning
+                            || sodsStore.nodePresence[node.id]?.state.lowercased() == "scanning"
+                    }.count
+
+                    statusLine("Any Connected", onlineNodes > 0)
+                    Text("Nodes online: \(onlineNodes) / \(totalNodes)")
                         .font(.system(size: 11))
                         .foregroundColor(Theme.textSecondary)
-                    Text("Recent events (10m): \(piAuxStore.recentEventCount(window: 600))")
+                    Text("Scanner nodes: \(scannerNodes)")
                         .font(.system(size: 11))
                         .foregroundColor(Theme.textSecondary)
-                    Text("Active nodes: \(entityStore.nodes.count)")
+                    Text("Pi-Aux relay: \(piAuxStore.isRunning ? "Running" : "Stopped")")
+                        .font(.system(size: 11))
+                        .foregroundColor(Theme.textSecondary)
+                    Text("Last relay event: \(piAuxStore.lastUpdate?.formatted(date: .abbreviated, time: .shortened) ?? "None")")
+                        .font(.system(size: 11))
+                        .foregroundColor(Theme.textSecondary)
+                    Text("Relay events (10m): \(piAuxStore.recentEventCount(window: 600))")
                         .font(.system(size: 11))
                         .foregroundColor(Theme.textSecondary)
                     if let lastError = piAuxStore.lastError, !lastError.isEmpty {
@@ -123,7 +138,7 @@ struct DashboardView: View {
                     }
                 }
                 .popover(isPresented: $showPiAuxOverlay, arrowEdge: .bottom) {
-                    dashboardPopover(title: "Pi-Aux Node", onClose: { showPiAuxOverlay = false }, sections: scanActionSections()) {
+                    dashboardPopover(title: "Node Overview", onClose: { showPiAuxOverlay = false }, sections: scanActionSections()) {
                         piAuxDetailView()
                     }
                 }
@@ -193,6 +208,10 @@ struct DashboardView: View {
                                     NodeRegistry.shared.setConnecting(nodeID: node.id, connecting: true)
                                     sodsStore.connectNode(node.id)
                                     sodsStore.identifyNode(node.id)
+                                    sodsStore.refreshStatus()
+                                },
+                                onForget: {
+                                    NodeRegistry.shared.remove(nodeID: node.id)
                                     sodsStore.refreshStatus()
                                 }
                             )
@@ -369,15 +388,29 @@ struct DashboardView: View {
     }
 
     private func piAuxDetailView() -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            statusLine("Connected", piAuxStore.isRunning)
-            Text("Last event: \(piAuxStore.lastUpdate?.formatted(date: .abbreviated, time: .shortened) ?? "None")")
+        let totalNodes = entityStore.nodes.count
+        let onlineNodes = entityStore.nodes.filter(isNodeOnline).count
+        let scannerNodes = entityStore.nodes.filter { node in
+            node.capabilities.contains("scan")
+                || node.presenceState == .scanning
+                || sodsStore.nodePresence[node.id]?.state.lowercased() == "scanning"
+        }.count
+
+        return VStack(alignment: .leading, spacing: 6) {
+            statusLine("Any Connected", onlineNodes > 0)
+            Text("Nodes online: \(onlineNodes) / \(totalNodes)")
                 .font(.system(size: 11))
                 .foregroundColor(Theme.textSecondary)
-            Text("Recent events (10m): \(piAuxStore.recentEventCount(window: 600))")
+            Text("Scanner nodes: \(scannerNodes)")
                 .font(.system(size: 11))
                 .foregroundColor(Theme.textSecondary)
-            Text("Active nodes: \(entityStore.nodes.count)")
+            Text("Pi-Aux relay: \(piAuxStore.isRunning ? "Running" : "Stopped")")
+                .font(.system(size: 11))
+                .foregroundColor(Theme.textSecondary)
+            Text("Last relay event: \(piAuxStore.lastUpdate?.formatted(date: .abbreviated, time: .shortened) ?? "None")")
+                .font(.system(size: 11))
+                .foregroundColor(Theme.textSecondary)
+            Text("Relay events (10m): \(piAuxStore.recentEventCount(window: 600))")
                 .font(.system(size: 11))
                 .foregroundColor(Theme.textSecondary)
             if let lastError = piAuxStore.lastError, !lastError.isEmpty {
@@ -485,9 +518,12 @@ struct DashboardView: View {
     private func dashboardActions(for node: NodeRecord) -> [NodeAction] {
         var items: [NodeAction] = []
         let supportsScan = node.type == .mac || node.capabilities.contains("scan")
+        let supportsBLEControl = node.type == .mac || node.capabilities.contains("ble")
         let supportsReport = node.type == .mac || node.capabilities.contains("report")
         let supportsProbe = node.capabilities.contains("probe")
         let supportsPing = node.capabilities.contains("ping")
+        let hostHint = nodeEndpointHint(for: node)
+        let canRouteToNode = hostHint != nil
 
         if supportsScan {
             if scanner.isScanning {
@@ -496,7 +532,33 @@ struct DashboardView: View {
                 items.append(NodeAction(title: "Start Scan", action: { onStartScan() }))
             }
         }
-        items.append(NodeAction(title: "Identify", action: { sodsStore.identifyNode(node.id) }))
+        if supportsBLEControl {
+            items.append(NodeAction(title: bleDiscoveryEnabled ? "Stop BLE Scan" : "Start BLE Scan", action: {
+                if bleDiscoveryEnabled {
+                    bleScanner.stopScan()
+                } else {
+                    bleScanner.startScan(mode: .continuous)
+                }
+            }))
+        }
+        items.append(NodeAction(title: "Target + God Button", action: {
+            NotificationCenter.default.post(name: .openGodMenuCommand, object: node.id)
+        }))
+        if canRouteToNode {
+            items.append(NodeAction(title: "Connect Node", action: {
+                NodeRegistry.shared.setConnecting(nodeID: node.id, connecting: true)
+                sodsStore.connectNode(node.id, hostHint: hostHint)
+                sodsStore.identifyNode(node.id, hostHint: hostHint)
+                sodsStore.refreshStatus()
+                piAuxStore.connectNode(node.id)
+            }))
+            items.append(NodeAction(title: "Identify", action: { sodsStore.identifyNode(node.id, hostHint: hostHint) }))
+        }
+        if let signalNode = signalNode(for: node), signalNode.ip != nil {
+            items.append(NodeAction(title: "Whoami", action: { sodsStore.openEndpoint(for: signalNode, path: "/whoami") }))
+            items.append(NodeAction(title: "Health", action: { sodsStore.openEndpoint(for: signalNode, path: "/health") }))
+            items.append(NodeAction(title: "Metrics", action: { sodsStore.openEndpoint(for: signalNode, path: "/metrics") }))
+        }
         if supportsProbe {
             items.append(NodeAction(title: "Probe", action: {
                 LogStore.shared.log(.info, "Probe action requested for node \(node.id)")
@@ -508,7 +570,52 @@ struct DashboardView: View {
         if supportsReport {
             items.append(NodeAction(title: "Generate Report", action: { onGenerateScanReport() }))
         }
-        return items
+        return dedupeNodeActions(items)
+    }
+
+    private func nodeEndpointHint(for node: NodeRecord) -> String? {
+        if let ip = node.ip?.trimmingCharacters(in: .whitespacesAndNewlines), !ip.isEmpty { return ip }
+        if let host = node.hostname?.trimmingCharacters(in: .whitespacesAndNewlines), !host.isEmpty { return host }
+        if let mac = node.mac?.trimmingCharacters(in: .whitespacesAndNewlines), !mac.isEmpty,
+           let host = entityStore.hosts.first(where: { $0.macAddress?.caseInsensitiveCompare(mac) == .orderedSame }) {
+            return host.ip
+        }
+        if let presence = sodsStore.nodePresence[node.id] {
+            if let ip = presence.ip?.trimmingCharacters(in: .whitespacesAndNewlines), !ip.isEmpty { return ip }
+            if let host = presence.hostname?.trimmingCharacters(in: .whitespacesAndNewlines), !host.isEmpty { return host }
+            if let mac = presence.mac?.trimmingCharacters(in: .whitespacesAndNewlines), !mac.isEmpty,
+               let host = entityStore.hosts.first(where: { $0.macAddress?.caseInsensitiveCompare(mac) == .orderedSame }) {
+                return host.ip
+            }
+        }
+        if let host = entityStore.hosts.first(where: {
+            ($0.hostname?.caseInsensitiveCompare(node.id) == .orderedSame) || ($0.ip == node.id)
+        }) {
+            return host.ip
+        }
+        return nil
+    }
+
+    private func signalNode(for node: NodeRecord) -> SignalNode? {
+        SignalNode(
+            id: node.id,
+            lastSeen: node.lastSeen ?? node.lastHeartbeat ?? .distantPast,
+            ip: node.ip,
+            hostname: node.hostname,
+            mac: node.mac,
+            lastKind: node.capabilities.first
+        )
+    }
+
+    private func dedupeNodeActions(_ actions: [NodeAction]) -> [NodeAction] {
+        var seen = Set<String>()
+        var output: [NodeAction] = []
+        for action in actions {
+            if seen.insert(action.title).inserted {
+                output.append(action)
+            }
+        }
+        return output
     }
 
     private func filteredEvents(limit: Int) -> [PiAuxEvent] {
@@ -551,5 +658,22 @@ struct DashboardView: View {
         case ble
         case rf
         case gps
+    }
+
+    private func isNodeOnline(_ node: NodeRecord) -> Bool {
+        if let state = sodsStore.nodePresence[node.id]?.state.lowercased() {
+            switch state {
+            case "online", "idle", "scanning", "connected":
+                return true
+            default:
+                break
+            }
+        }
+        switch node.presenceState {
+        case .connected, .idle, .scanning:
+            return true
+        case .offline, .error:
+            return false
+        }
     }
 }

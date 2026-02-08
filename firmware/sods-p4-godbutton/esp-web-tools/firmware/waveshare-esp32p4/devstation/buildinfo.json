@@ -1,0 +1,33 @@
+{
+  "app": "sods-p4-godbutton",
+  "board_id": "waveshare-esp32p4",
+  "version": "devstation",
+  "git_commit": "1a76b4015d6c85afc76bfb9b62daad27a1db290b",
+  "build_ts_ms": 1770567981504,
+  "idf_version": "unknown",
+  "esptool_version": "esptool v5.1.0",
+  "control_plane_url": "http://192.168.8.114:8099/god",
+  "binaries": [
+    {
+      "name": "bootloader.bin",
+      "offset": 4096,
+      "path": "firmware/waveshare-esp32p4/devstation/bootloader.bin",
+      "sha256": "929100f21b836d20a98366ee2d6b8713639878f5c38d06558348b33faf40dfd1",
+      "size_bytes": 22752
+    },
+    {
+      "name": "partition-table.bin",
+      "offset": 32768,
+      "path": "firmware/waveshare-esp32p4/devstation/partition-table.bin",
+      "sha256": "7f00b6c042a89b15b0cac534f82ed988caf29278ff5700b0c511eb1b5bb7c820",
+      "size_bytes": 3072
+    },
+    {
+      "name": "firmware.bin",
+      "offset": 65536,
+      "path": "firmware/waveshare-esp32p4/devstation/firmware.bin",
+      "sha256": "59f066114aadc66f1fce7958d7ff6c591b27425fa9b47d2ce15985ea3bfddadc",
+      "size_bytes": 398160
+    }
+  ]
+}

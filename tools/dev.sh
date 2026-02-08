@@ -2,8 +2,9 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-PORT="${1:-9123}"
-PI_LOGGER="${PI_LOGGER:-http://pi-logger.local:8088}"
+source "$ROOT/tools/_env.sh"
+PORT="${1:-$SODS_PORT}"
+PI_LOGGER="${PI_LOGGER:-$PI_LOGGER_URL}"
 
 cd "$ROOT/cli/sods"
 

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <rect width="256" height="256" rx="32" fill="#0f1928"/>
+  <circle cx="116" cy="112" r="48" fill="none" stroke="#45d4ff" stroke-width="12"/>
+  <line x1="148" y1="148" x2="200" y2="200" stroke="#45d4ff" stroke-width="12" stroke-linecap="round"/>
+  <rect x="44" y="200" width="168" height="34" rx="10" fill="#1d2a40"/>
+  <text x="128" y="223" fill="#ffffff" text-anchor="middle" font-family="Arial" font-size="18">SCAN LAN</text>
+</svg>

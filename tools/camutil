@@ -5,9 +5,53 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 RUNNER="$REPO_ROOT/tools/_sods_cli.sh"
 
-if [[ ! -x "$RUNNER" ]]; then
-  echo "camutil: missing runner at $RUNNER" >&2
-  exit 2
-fi
+usage() {
+  cat <<'USAGE'
+camutil commands:
+  camutil build      Build DevStation app
+  camutil run        Start station (if needed) + launch app
+  camutil rebuild    Clean rebuild + install app
+  camutil install    Install built app to /Applications
+  camutil sods ...   Run raw SODS CLI command
+  camutil ...        Falls through to SODS CLI
+USAGE
+}
 
-exec "$RUNNER" "$@"
+cmd="${1:-}"
+case "$cmd" in
+  build)
+    shift
+    exec "$REPO_ROOT/tools/devstation-build.sh" "$@"
+    ;;
+  run)
+    shift
+    exec "$REPO_ROOT/tools/devstation-run.sh" "$@"
+    ;;
+  rebuild)
+    shift
+    exec "$REPO_ROOT/tools/devstation-rebuild.sh" "$@"
+    ;;
+  install)
+    shift
+    exec "$REPO_ROOT/tools/devstation-install.sh" "$@"
+    ;;
+  sods)
+    shift
+    if [[ ! -x "$RUNNER" ]]; then
+      echo "camutil: missing runner at $RUNNER" >&2
+      exit 2
+    fi
+    exec "$RUNNER" "$@"
+    ;;
+  help|-h|--help)
+    usage
+    exit 0
+    ;;
+  *)
+    if [[ ! -x "$RUNNER" ]]; then
+      echo "camutil: missing runner at $RUNNER" >&2
+      exit 2
+    fi
+    exec "$RUNNER" "$@"
+    ;;
+esac

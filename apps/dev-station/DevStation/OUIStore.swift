@@ -22,7 +22,9 @@ actor OUIStore {
                 return count
             }
         }
-        guard let url = Bundle.main.url(forResource: "OUI", withExtension: "txt") else {
+        let defaultURL = Bundle.main.url(forResource: "OUI", withExtension: "txt")
+            ?? Bundle.main.url(forResource: "oui", withExtension: "txt")
+        guard let url = defaultURL else {
             log.log(.warn, "OUI default file missing in bundle")
             return nil
         }

@@ -10,13 +10,43 @@
       .card { max-width:720px; margin:0 auto; background:#121216; border:1px solid #2a2a2f; border-radius:16px; padding:20px; box-shadow:0 0 24px rgba(255,60,60,0.18); }
       h1 { margin:0 0 8px 0; font-size:22px; }
       p { color:#b9b9c0; line-height:1.4; }
+      .status { margin-top: 12px; font-size: 13px; color: #b9b9c0; }
+      .status.ok { color: #86efac; }
+      .status.err { color: #fca5a5; }
+      .disabled { opacity: 0.5; pointer-events: none; }
     </style>
+    <script type="module">
+      document.addEventListener("DOMContentLoaded", async () => {
+        const status = document.getElementById("status");
+        const button = document.querySelector("esp-web-install-button");
+        const setStatus = (msg, ok) => {
+          status.textContent = msg;
+          status.className = "status " + (ok ? "ok" : "err");
+          if (!ok) button.classList.add("disabled");
+        };
+        try {
+          const rsp = await fetch("/api/flash/diagnostics", { cache: "no-store" });
+          if (!rsp.ok) throw new Error("diagnostics unavailable");
+          const payload = await rsp.json();
+          const item = Array.isArray(payload.items) ? payload.items.find((entry) => entry.id === "portal-cyd") : null;
+          if (!item) throw new Error("target diagnostics missing");
+          if (!item.ready) {
+            const issue = Array.isArray(item.issues) && item.issues.length ? item.issues[0] : "artifacts not ready";
+            throw new Error(issue);
+          }
+          setStatus("Diagnostics: ready", true);
+        } catch (err) {
+          setStatus(`Diagnostics failed: ${String(err && err.message ? err.message : err)}`, false);
+        }
+      });
+    </script>
   </head>
   <body>
     <div class="card">
       <h1>Ops Portal CYD</h1>
       <p>Connect the CYD device and click Install to flash the portal firmware.</p>
       <esp-web-install-button manifest="./manifest-portal-cyd.json"></esp-web-install-button>
+      <div id="status" class="status">Checking diagnostics...</div>
     </div>
   </body>
 </html>

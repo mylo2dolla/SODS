@@ -1,0 +1,33 @@
+{
+  "app": "node-agent",
+  "board_id": "esp32-devkitv1",
+  "version": "devstation",
+  "git_commit": "1a76b4015d6c85afc76bfb9b62daad27a1db290b",
+  "build_ts_ms": 1770567978079,
+  "idf_version": "unknown",
+  "esptool_version": "esptool v5.1.0",
+  "control_plane_url": "http://192.168.8.114:8099/god",
+  "binaries": [
+    {
+      "name": "bootloader.bin",
+      "offset": 4096,
+      "path": "firmware/esp32-devkitv1/devstation/bootloader.bin",
+      "sha256": "3d234a7471f67b013686dabd4dee7c1fa915c9928463616a94bc9297acf1abf8",
+      "size_bytes": 17536
+    },
+    {
+      "name": "partition-table.bin",
+      "offset": 32768,
+      "path": "firmware/esp32-devkitv1/devstation/partition-table.bin",
+      "sha256": "148b959cbff1c38aa8e1d5c0ba9d612c54997b945e56a63f41223eef650653a1",
+      "size_bytes": 3072
+    },
+    {
+      "name": "firmware.bin",
+      "offset": 65536,
+      "path": "firmware/esp32-devkitv1/devstation/firmware.bin",
+      "sha256": "cbe9c4dc8d63e4282666ec4cfb2336a61bdefdff2cfb7c1dbaba0820f107c19a",
+      "size_bytes": 1273872
+    }
+  ]
+}

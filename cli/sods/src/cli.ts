@@ -10,6 +10,14 @@ import { presetRegistryPaths } from "./presets.js";
 
 const args = process.argv.slice(2);
 const cmd = args[0] ?? "help";
+const env = process.env;
+const defaultPort = env.SODS_PORT || "9123";
+const auxHost = env.AUX_HOST || "192.168.8.114";
+const loggerHost = env.LOGGER_HOST || "192.168.8.160";
+const fallbackPiLoggerList = `http://${auxHost}:9101,http://pi-logger.local:8088,http://${loggerHost}:8088`;
+const defaultPiLoggerList = env.PI_LOGGER_URL || env.SODS_LOGGER_URL || env.PI_LOGGER || fallbackPiLoggerList;
+const defaultStationURL = (env.SODS_STATION_URL || env.SODS_BASE_URL || env.SODS_STATION || env.STATION_URL || `http://localhost:${defaultPort}`).replace(/\/+$/, "");
+const defaultLoggerURL = (env.SODS_LOGGER_URL || env.PI_LOGGER_URL || env.PI_LOGGER || `http://${loggerHost}:8088`).split(",")[0].trim().replace(/\/+$/, "");
 
 function getArg(flag: string, fallback?: string) {
   const idx = args.indexOf(flag);
@@ -52,10 +60,10 @@ Commands:
   scratch --runner <shell|python|node> [--input <json>] < script
 
 Defaults:
-  --pi-logger http://pi-logger.local:8088
-  --port 9123
-  --station http://localhost:9123
-  --logger http://pi-logger.local:8088
+  --pi-logger ${defaultPiLoggerList}
+  --port ${defaultPort}
+  --station ${defaultStationURL}
+  --logger ${defaultLoggerURL}
 `);
   process.exit(exitCode);
 }
@@ -70,6 +78,11 @@ if (cmd === "help") {
 function repoRoot(): string {
   let dir = resolve(fileURLToPath(new URL(".", import.meta.url)));
   for (let i = 0; i < 6; i += 1) {
+    const pkgHere = resolve(dir, "cli", "sods", "package.json");
+    if (existsSync(pkgHere)) return dir;
+    const pkgNested = resolve(dir, "SODS", "cli", "sods", "package.json");
+    if (existsSync(pkgNested)) return resolve(dir, "SODS");
+
     const toolsPath = resolve(dir, "tools", "_sods_cli.sh");
     const cliPath = resolve(dir, "cli", "sods");
     if (existsSync(toolsPath) && existsSync(cliPath)) return dir;
@@ -81,11 +94,11 @@ function repoRoot(): string {
 }
 
 function stationURL() {
-  return (getArg("--station", "http://localhost:9123") ?? "http://localhost:9123").replace(/\/+$/, "");
+  return (getArg("--station", defaultStationURL) ?? defaultStationURL).replace(/\/+$/, "");
 }
 
 function loggerURL() {
-  return (getArg("--logger", "http://pi-logger.local:8088") ?? "http://pi-logger.local:8088").replace(/\/+$/, "");
+  return (getArg("--logger", defaultLoggerURL) ?? defaultLoggerURL).replace(/\/+$/, "");
 }
 
 function parseJsonMaybe(value: any): Record<string, unknown> {
@@ -189,8 +202,8 @@ function eventTime(ev: RawEvent): number {
 }
 
 async function cmdStart() {
-  const piLogger = getArg("--pi-logger", "http://pi-logger.local:8088")!;
-  const port = Number(getArg("--port", "9123"));
+  const piLogger = getArg("--pi-logger", defaultPiLoggerList)!;
+  const port = Number(getArg("--port", defaultPort));
   if (!piLogger.startsWith("http")) {
     console.error("Invalid --pi-logger URL");
     process.exit(1);
@@ -204,6 +217,7 @@ async function cmdStart() {
     publicDir: new URL("../public/", import.meta.url).pathname,
     flashDir: new URL("../../../firmware/node-agent/esp-web-tools/", import.meta.url).pathname,
     portalFlashDir: new URL("../../../firmware/ops-portal/esp-web-tools/", import.meta.url).pathname,
+    p4FlashDir: new URL("../../../firmware/sods-p4-godbutton/esp-web-tools/", import.meta.url).pathname,
     localLogPath: localLogPath && localLogPath.trim() ? localLogPath.trim() : undefined,
   });
   server.start();

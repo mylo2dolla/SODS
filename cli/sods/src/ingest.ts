@@ -10,6 +10,10 @@ export type IngestCounters = {
 
 type RawEvent = {
   id?: string | number;
+  ts_ms?: number | string;
+  type?: string;
+  src?: string;
+  data?: any;
   recv_ts?: string;
   event_ts?: string;
   node_id?: string;
@@ -20,7 +24,8 @@ type RawEvent = {
 };
 
 export class Ingestor {
-  private baseURL: string;
+  private baseURLs: string[];
+  private activeBaseURL: string;
   private pollIntervalMs: number;
   private limit: number;
   private timer?: NodeJS.Timeout;
@@ -38,11 +43,21 @@ export class Ingestor {
   };
   private onEvent?: (ev: CanonicalEvent) => void;
   private onError?: (msg: string) => void;
+  private eventsPathByBase = new Map<string, string>();
 
   constructor(baseURL: string, limit = 500, pollIntervalMs = 1400) {
-    this.baseURL = baseURL.replace(/\/+$/, "");
+    this.baseURLs = buildBaseURLList(baseURL);
+    this.activeBaseURL = this.baseURLs[0] ?? "http://pi-logger.local:8088";
     this.limit = limit;
     this.pollIntervalMs = pollIntervalMs;
+  }
+
+  getActiveBaseURL() {
+    return this.activeBaseURL;
+  }
+
+  getBaseURLs() {
+    return [...this.baseURLs];
   }
 
   start(onEvent: (ev: CanonicalEvent) => void, onError: (msg: string) => void) {
@@ -71,34 +86,57 @@ export class Ingestor {
   }
 
   private async pollOnce() {
-    try {
-      const url = new URL(`${this.baseURL}/v1/events`);
+    const ordered = [this.activeBaseURL, ...this.baseURLs.filter((u) => u !== this.activeBaseURL)];
+    let lastError = "pi-logger fetch failed";
+
+    for (const baseURL of ordered) {
+      try {
+        const body = await this.fetchEventsBody(baseURL);
+        const items: RawEvent[] = Array.isArray(body) ? body : body.items ?? body.events ?? [];
+        this.counters.events_in += items.length;
+        this.activeBaseURL = baseURL;
+
+        const fresh = this.filterFresh(items);
+        if (fresh.length === 0) {
+          this.lastIngestAt = nowMs();
+          return;
+        }
+
+        for (const raw of fresh) {
+          const canonical = this.toCanonical(raw);
+          this.updateNodes(canonical);
+          this.onEvent?.(canonical);
+          this.counters.events_out++;
+        }
+        this.lastIngestAt = nowMs();
+        return;
+      } catch (err: any) {
+        lastError = `${baseURL} ${err?.message ?? "fetch failed"}`;
+      }
+    }
+
+    this.onError?.(lastError);
+  }
+
+  private async fetchEventsBody(baseURL: string): Promise<any> {
+    const preferred = this.eventsPathByBase.get(baseURL);
+    const candidatePaths = preferred
+      ? [preferred, "/v1/events", "/events"].filter((v, idx, arr) => arr.indexOf(v) === idx)
+      : ["/v1/events", "/events"];
+
+    let lastErr = "events endpoint unavailable";
+    for (const endpoint of candidatePaths) {
+      const url = new URL(`${baseURL}${endpoint}`);
       url.searchParams.set("limit", String(this.limit));
       const res = await fetch(url, { method: "GET", headers: { "Accept": "application/json" } });
       if (!res.ok) {
-        this.onError?.(`pi-logger HTTP ${res.status}`);
-        return;
+        lastErr = `${baseURL}${endpoint} HTTP ${res.status}`;
+        continue;
       }
-      const body = await res.json();
-      const items: RawEvent[] = Array.isArray(body) ? body : body.items ?? body.events ?? [];
-      this.counters.events_in += items.length;
-
-      const fresh = this.filterFresh(items);
-      if (fresh.length === 0) {
-        this.lastIngestAt = nowMs();
-        return;
-      }
-
-      for (const raw of fresh) {
-        const canonical = this.toCanonical(raw);
-        this.updateNodes(canonical);
-        this.onEvent?.(canonical);
-        this.counters.events_out++;
-      }
-      this.lastIngestAt = nowMs();
-    } catch (err: any) {
-      this.onError?.(err?.message ?? "pi-logger fetch failed");
+      this.eventsPathByBase.set(baseURL, endpoint);
+      return await res.json();
     }
+    throw new Error(lastErr);
   }
 
   private filterFresh(items: RawEvent[]): RawEvent[] {
@@ -134,13 +172,14 @@ export class Ingestor {
   }
 
   private toCanonical(raw: RawEvent): CanonicalEvent {
-    const recvMs = parseIsoToMs(raw.recv_ts) ?? nowMs();
-    const eventMs = parseIsoToMs(raw.event_ts) ?? recvMs;
-    const node_id = (raw.node_id ?? "unknown").trim() || "unknown";
-    const kind = (raw.kind ?? "unknown").trim() || "unknown";
+    const parsedTsMs = asNumber(raw.ts_ms);
+    const recvMs = parseIsoToMs(raw.recv_ts) ?? parsedTsMs ?? nowMs();
+    const eventMs = parseIsoToMs(raw.event_ts) ?? parsedTsMs ?? recvMs;
+    const node_id = (raw.node_id ?? raw.src ?? "unknown").trim() || "unknown";
+    const kind = (raw.kind ?? raw.type ?? "unknown").trim() || "unknown";
     const severity = (raw.severity ?? "info").trim() || "info";
     const summary = (raw.summary ?? kind).trim() || kind;
-    const data = this.parseDataJson(raw.data_json);
+    const data = this.parseDataJson(raw.data_json ?? raw.data);
 
     return {
       id: raw.id != null ? String(raw.id) : undefined,
@@ -207,6 +246,31 @@ export class Ingestor {
     this.onEvent?.(ev);
     this.counters.events_out++;
   }
+}
+
+function buildBaseURLList(value: string): string[] {
+  const envList = process.env.PI_LOGGER_URL || process.env.SODS_LOGGER_URL || process.env.PI_LOGGER || "";
+  const auxHost = process.env.AUX_HOST || "192.168.8.114";
+  const loggerHost = process.env.LOGGER_HOST || "192.168.8.160";
+  const raw = [value, envList, `http://${auxHost}:9101`, "http://pi-logger.local:8088", `http://${loggerHost}:8088`]
+    .join(",")
+    .split(",")
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+
+  const normalized = raw
+    .map((s) => s.replace(/\/+$/, ""))
+    .filter((s) => /^https?:\/\/[^/]+/i.test(s));
+
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const entry of normalized) {
+    const key = entry.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(entry);
+  }
+  return out;
 }
 
 function parseIsoToMs(value?: string): number | null {

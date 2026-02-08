@@ -61,7 +61,7 @@ final class IdentityResolver: ObservableObject {
 
     func updateFromBLE(_ peripherals: [BLEPeripheral]) {
         for peripheral in peripherals {
-            let label = peripheral.name ?? peripheral.fingerprintID
+            let label = Self.bleDisplayLabel(for: peripheral)
             record(keys: [peripheral.fingerprintID, peripheral.id.uuidString], label: label)
         }
     }
@@ -77,5 +77,39 @@ final class IdentityResolver: ObservableObject {
             let label = node.hostname ?? node.ip ?? node.id
             record(keys: [node.id, node.hostname ?? "", node.ip ?? ""], label: label)
         }
+    }
+
+    static func bleDisplayLabel(for peripheral: BLEPeripheral) -> String {
+        let name = cleaned(peripheral.name)
+        let company = cleaned(peripheral.fingerprint.manufacturerCompanyName)
+        let service = cleaned(peripheral.fingerprint.servicesDecoded.first?.name)
+            ?? cleaned(peripheral.fingerprint.serviceUUIDs.first)
+        let beacon = cleaned(peripheral.fingerprint.beaconHint)
+
+        if let name {
+            if let company, !name.localizedCaseInsensitiveContains(company) {
+                return "\(name) • \(company)"
+            }
+            return name
+        }
+        if let company, let service {
+            return "\(company) • \(service)"
+        }
+        if let company {
+            return company
+        }
+        if let service {
+            return "BLE • \(service)"
+        }
+        if let beacon {
+            return "BLE • \(beacon)"
+        }
+        return peripheral.fingerprintID
+    }
+
+    private static func cleaned(_ value: String?) -> String? {
+        guard let value else { return nil }
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
     }
 }
