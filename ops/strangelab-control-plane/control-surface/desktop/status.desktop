@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Status Pulse
+Exec=/opt/strangelab/bin/sl-status
+Icon=/opt/strangelab/icons/status.svg
+Terminal=true
+Categories=System;

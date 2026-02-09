@@ -28,7 +28,7 @@ final class VaultShipper: ObservableObject {
 
     private init() {
         let defaults = UserDefaults.standard
-        host = defaults.string(forKey: "VaultHost") ?? "pi-logger.local"
+        host = StationEndpointResolver.defaultVaultHost()
         user = defaults.string(forKey: "VaultUser") ?? "pi"
         basePath = defaults.string(forKey: "VaultBasePath") ?? "/mnt/vault/SODS/"
         autoShip = defaults.object(forKey: "VaultAutoShip") as? Bool ?? true

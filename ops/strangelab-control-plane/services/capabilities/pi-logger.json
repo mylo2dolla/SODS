@@ -1,0 +1,12 @@
+{
+  "node_id": "exec-pi-logger",
+  "roles": ["tier1", "vault"],
+  "capabilities": {
+    "panic": { "enabled": true, "scopes": ["node"], "tools": ["systemctl"] },
+    "snapshot": { "enabled": true, "scopes": ["node"] },
+    "maint": { "enabled": true, "scopes": ["node"], "tools": ["systemctl", "df"] },
+    "scan": { "enabled": false },
+    "build": { "enabled": false },
+    "ritual": { "enabled": true, "scopes": ["node"] }
+  }
+}

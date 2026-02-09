@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "host": "exec-pi-aux",
+  "rules": [
+    { "cmd": "/usr/bin/uptime", "maxArgs": 0, "cwd": ["."] },
+    { "cmd": "/usr/bin/whoami", "maxArgs": 0, "cwd": ["."] },
+    { "cmd": "/bin/df", "maxArgs": 4, "allowedFlags": ["-h"], "cwd": ["."] },
+    {
+      "cmd": "/usr/bin/journalctl",
+      "maxArgs": 8,
+      "allowedFlags": ["-u", "-n", "--no-pager"],
+      "denyFlags": ["-f", "--follow"],
+      "cwd": ["."]
+    },
+    {
+      "cmd": "/bin/systemctl",
+      "maxArgs": 8,
+      "subcommands": ["status", "restart"],
+      "allowedUnits": ["strangelab-token.service", "strangelab-god-gateway.service", "strangelab-exec-agent@pi-aux.service", "docker.service"],
+      "allowedFlags": ["--no-pager"],
+      "cwd": ["."]
+    },
+    {
+      "cmd": "/bin/ping",
+      "maxArgs": 6,
+      "allowedFlags": ["-c", "-W"],
+      "allowedTargets": ["192.168.8.160", "192.168.8.114"],
+      "cwd": ["."]
+    },
+    {
+      "cmd": "/usr/bin/nmap",
+      "maxArgs": 10,
+      "allowedFlags": ["-sn", "-Pn", "--top-ports"],
+      "allowedTargets": ["192.168.8.0/24"],
+      "cwd": ["."]
+    }
+  ]
+}

@@ -14,6 +14,7 @@ targets=(
   "$TOOLS_DIR/_sods_cli.sh"
   "$TOOLS_DIR/sods"
   "$TOOLS_DIR/devstation"
+  "$TOOLS_DIR/station"
   "$TOOLS_DIR/cockpit"
   "$TOOLS_DIR/camutil"
   "$TOOLS_DIR/permfix.sh"
@@ -22,6 +23,7 @@ targets=(
   "$TOOLS_DIR/devstation-build.sh"
   "$TOOLS_DIR/devstation-run.sh"
   "$TOOLS_DIR/devstation-install.sh"
+  "$TOOLS_DIR/devstation-rebuild.sh"
   "$TOOLS_DIR/audit-tools.sh"
   "$TOOLS_DIR/audit-repo.sh"
   "$TOOLS_DIR/launchagent-install.sh"
@@ -32,6 +34,10 @@ targets=(
   "$TOOLS_DIR/portal-cyd-stage.sh"
   "$TOOLS_DIR/portal-build.sh"
   "$TOOLS_DIR/portal-flash-help.sh"
+  "$TOOLS_DIR/p4-build.sh"
+  "$TOOLS_DIR/p4-flash.sh"
+  "$TOOLS_DIR/p4-monitor.sh"
+  "$TOOLS_DIR/p4-stage.sh"
   "$TOOLS_DIR/verify.sh"
 )
 

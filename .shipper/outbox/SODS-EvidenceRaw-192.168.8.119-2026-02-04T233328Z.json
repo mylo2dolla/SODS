@@ -1,0 +1,25 @@
+{
+  "bonjourServices" : [
+
+  ],
+  "hostConfidence" : {
+    "level" : "Low",
+    "reasons" : [
+      "RTSP port 554 open (+10)",
+      "HTTP reachable (404) (+5)"
+    ],
+    "score" : 15
+  },
+  "httpStatus" : 404,
+  "ip" : "192.168.8.119",
+  "mac" : "20:23:51:fa:28:19",
+  "openPorts" : [
+    443,
+    554,
+    8443
+  ],
+  "vendorConfidenceReasons" : [
+    "No OUI match"
+  ],
+  "vendorConfidenceScore" : 0
+}

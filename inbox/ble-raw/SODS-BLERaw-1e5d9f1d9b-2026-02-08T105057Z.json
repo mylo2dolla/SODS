@@ -1,0 +1,39 @@
+{
+  "advertisementBytes" : "4C00100501108625D6",
+  "bleConfidence" : {
+    "level" : "Low",
+    "reasons" : [
+      "Known company ID (+20)",
+      "Connectable advertisement (+10)",
+      "TX power present (+5)"
+    ],
+    "score" : 35
+  },
+  "fingerprint" : {
+    "isConnectable" : true,
+    "localName" : "Base",
+    "manufacturerCompanyID" : 76,
+    "manufacturerCompanyName" : "Apple, Inc.",
+    "manufacturerDataPrefixHex" : "4C00100501108625",
+    "serviceUUIDs" : [
+
+    ],
+    "servicesDecoded" : [
+
+    ],
+    "txPower" : 12,
+    "unknownServices" : [
+
+    ]
+  },
+  "fingerprintID" : "1e5d9f1d9b",
+  "label" : "Unlabeled",
+  "lastSeen" : 792240655.181417,
+  "manufacturerDataHex" : "4C00100501108625D6",
+  "name" : "Base",
+  "rssi" : -40,
+  "serviceUUIDs" : [
+
+  ],
+  "smoothedRSSI" : -41.29711294624613
+}

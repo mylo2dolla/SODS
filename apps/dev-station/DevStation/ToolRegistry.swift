@@ -129,18 +129,10 @@ final class ToolRegistry: ObservableObject {
     }
 
     private func sodsRootPath() -> String {
-        if let env = ProcessInfo.processInfo.environment["SODS_ROOT"], !env.isEmpty {
-            return env
-        }
-        let home = FileManager.default.homeDirectoryForCurrentUser.path
-        return "\(home)/sods/SODS"
+        StoragePaths.sodsRootPath()
     }
 
     private func stationBaseURL() -> String {
-        let defaults = UserDefaults.standard
-        if let saved = defaults.string(forKey: "SODSBaseURL"), !saved.isEmpty {
-            return saved
-        }
-        return "http://localhost:9123"
+        StationEndpointResolver.stationBaseURL()
     }
 }

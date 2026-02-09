@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SODS P4 God Button Flash</title>
+    <style>
+      :root {
+        --bg: #0f172a;
+        --card: #111827;
+        --text: #e5e7eb;
+        --muted: #94a3b8;
+        --accent: #22c55e;
+      }
+      body {
+        margin: 0;
+        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif;
+        background: radial-gradient(1200px 600px at 20% 0%, #1f2937 0%, #0f172a 60%);
+        color: var(--text);
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+      }
+      .card {
+        background: var(--card);
+        border: 1px solid #1f2937;
+        border-radius: 16px;
+        padding: 28px;
+        max-width: 560px;
+        width: 100%;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+      }
+      h1 {
+        margin: 0 0 8px 0;
+        font-size: 22px;
+      }
+      p {
+        margin: 0 0 14px 0;
+        color: var(--muted);
+        line-height: 1.5;
+      }
+      .hint {
+        font-size: 13px;
+        color: var(--muted);
+        margin-top: 10px;
+      }
+      .row {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        flex-wrap: wrap;
+        margin-top: 14px;
+      }
+      .status {
+        margin-top: 16px;
+        font-size: 13px;
+        color: var(--muted);
+      }
+      .status.ok {
+        color: #86efac;
+      }
+      .status.err {
+        color: #fca5a5;
+      }
+      .disabled {
+        opacity: 0.5;
+        pointer-events: none;
+      }
+      .pill {
+        border: 1px solid #334155;
+        border-radius: 999px;
+        padding: 6px 10px;
+        font-size: 12px;
+        color: #cbd5f5;
+      }
+    </style>
+    <script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js"></script>
+    <script type="module">
+      document.addEventListener("DOMContentLoaded", async () => {
+        const status = document.getElementById("status");
+        const button = document.querySelector("esp-web-install-button");
+        const setStatus = (msg, ok) => {
+          status.textContent = msg;
+          status.className = "status " + (ok ? "ok" : "err");
+          if (!ok) button.classList.add("disabled");
+        };
+
+        try {
+          const diagRsp = await fetch("/api/flash/diagnostics", { cache: "no-store" });
+          if (!diagRsp.ok) {
+            throw new Error("diagnostics unavailable");
+          }
+          const diag = await diagRsp.json();
+          const item = Array.isArray(diag.items) ? diag.items.find((entry) => entry.id === "esp32p4") : null;
+          if (!item) {
+            throw new Error("target diagnostics missing");
+          }
+          if (!item.ready) {
+            const issue = Array.isArray(item.issues) && item.issues.length ? item.issues[0] : "artifacts not ready";
+            throw new Error(issue);
+          }
+        } catch (err) {
+          setStatus(`Diagnostics failed: ${String(err && err.message ? err.message : err)}`, false);
+          return;
+        }
+
+        const manifestName = "manifest-p4.json";
+        button.setAttribute("manifest", `./${manifestName}`);
+        button.setAttribute("baud-rate", "115200");
+
+        const manifestUrl = new URL(`./${manifestName}`, window.location.href);
+        try {
+          const res = await fetch(manifestUrl.toString(), { cache: "no-store" });
+          if (!res.ok) {
+            setStatus(`Manifest not found (${res.status}). Run stage step first.`, false);
+            return;
+          }
+          await res.json();
+        } catch {
+          setStatus(`Failed to load ${manifestName}. Check server.`, false);
+          return;
+        }
+
+        setStatus("Ready to flash ESP32-P4 God Button.", true);
+      });
+    </script>
+  </head>
+  <body>
+    <div class="card">
+      <h1>SODS ESP32-P4 God Button</h1>
+      <p>Flash the ESP32-P4 God Button firmware using ESP Web Tools.</p>
+      <div class="row">
+        <span class="pill">chip: ESP32-P4</span>
+        <span class="pill">profile: p4</span>
+      </div>
+      <div class="row">
+        <esp-web-install-button></esp-web-install-button>
+      </div>
+      <div id="status" class="status">Loading manifest...</div>
+      <div class="hint">If flashing fails, rebuild and stage with tools/p4-stage.sh.</div>
+    </div>
+  </body>
+</html>

@@ -46,9 +46,16 @@ Build:
 ./tools/devstation-build.sh
 ```
 
-Run (starts station if needed and launches the app):
+Run (starts Station backend if needed and launches the app):
 ```bash
 ./tools/devstation-run.sh
+```
+
+Run Station backend only (no UI):
+```bash
+./tools/station start
+./tools/station status
+./tools/station logs
 ```
 
 Install:
@@ -75,6 +82,14 @@ Launch local ESP Web Tools:
 ./tools/flash-esp32c3.sh
 ```
 
+CLI preflight (no write):
+```bash
+./tools/flash-diagnose.sh esp32
+./tools/flash-diagnose.sh esp32c3
+./tools/flash-diagnose.sh portal-cyd
+./tools/flash-diagnose.sh p4
+```
+
 Stage Ops Portal CYD for station flashing:
 ```bash
 ./tools/portal-cyd-stage.sh
@@ -98,7 +113,7 @@ Examples:
 
 ## Dev Station App Flow
 
-- App connects to the local station at `http://localhost:9123`.
+- App connects to Station at `SODS_STATION_URL` (default `http://192.168.8.214:9123`).
 - If the station is not running, the app launches it as a child process.
 - Tools load from `/api/tools`.
 - Visualizer streams from `/ws/frames`.
@@ -106,6 +121,8 @@ Examples:
   - `http://localhost:9123/flash/esp32`
   - `http://localhost:9123/flash/esp32c3`
   - `http://localhost:9123/flash/portal-cyd`
+  - `http://localhost:9123/flash/p4`
+- Flash diagnostics API: `http://localhost:9123/api/flash/diagnostics`
 - Internal station views (tools/status) open inside the app; only Flash opens a browser window.
 
 ## Station LaunchAgent (optional)
@@ -181,12 +198,6 @@ Dev Station stores local artifacts under `~/SODS`:
 - `~/SODS/.shipper`
 - `~/SODS/oui/oui_combined.txt`
 
-## Demo/Replays
-```bash
-./tools/sods stream --frames --out ./cli/sods/public/demo.ndjson
-open "http://localhost:9123/?demo=1"
-```
-
 ## Flashing Paths
 
 - Manifests:
@@ -206,6 +217,9 @@ Legacy aliases remain:
 Canonical CLI:
 - `tools/sods`
 
+Canonical Station backend entrypoint:
+- `tools/station`
+
 ## Environment Override
 
-The Dev Station app resolves the repo root from `SODS_ROOT` if set. Default fallback is `~/sods/SODS`.
+The Dev Station app resolves the repo root from `SODS_ROOT` if set. Default fallbacks include `~/SODS-main` and the current working directory.

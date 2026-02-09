@@ -1,5 +1,6 @@
 import Foundation
 import Network
+import Darwin
 
 enum PiAuxKind: String, Codable {
     case ble_rssi
@@ -45,11 +46,14 @@ final class PiAuxStore: ObservableObject {
     private let maxEvents = 200
     private let tokenKey = "PiAuxToken"
     private let portKey = "PiAuxPort"
+    private let preferredControlNodeIDKey = "PiAuxPreferredControlNodeID"
     private var server: PiAuxServer?
     private var activeByID: [String: NodeRecord] = [:]
-    private let localNodeID = "mac-local"
 
-    var localNodeIdentifier: String { localNodeID }
+    var localNodeIdentifier: String { controlNodeIdentifier }
+    var controlNodeIdentifier: String {
+        preferredControlNodeID()
+    }
     private var heartbeatTimer: Timer?
     private let heartbeatInterval: TimeInterval = 5
     private let offlineThreshold: TimeInterval = 30
@@ -64,16 +68,22 @@ final class PiAuxStore: ObservableObject {
             defaults.set(token, forKey: tokenKey)
         }
         let savedPort = defaults.integer(forKey: portKey)
-        self.port = savedPort > 0 ? savedPort : 8787
-        ensureLocalNodeRecord()
+        let candidatePort = savedPort > 0 ? savedPort : 8787
+        let resolvedPort = Self.resolvePortConflict(candidatePort)
+        self.port = resolvedPort
+        if resolvedPort != candidatePort {
+            defaults.set(resolvedPort, forKey: portKey)
+            LogStore.logAsync(.warn, "Pi-Aux port \(candidatePort) conflicts with station port; using \(resolvedPort)")
+        }
         startHeartbeatTimer()
         start()
     }
 
     func start() {
         stop()
+        let advertisedHost = resolveAdvertisedHost()
         let server = PiAuxServer(
-            host: "127.0.0.1",
+            host: "0.0.0.0",
             port: port,
             tokenProvider: { [weak self] in self?.token ?? "" },
             onEvent: { [weak self] event in
@@ -88,7 +98,8 @@ final class PiAuxStore: ObservableObject {
             },
             onLog: { level, message in
                 LogStore.logAsync(level, message)
-            }
+            },
+            advertisedHost: advertisedHost
         )
         self.server = server
         server.start()
@@ -104,16 +115,26 @@ final class PiAuxStore: ObservableObject {
         let trimmed = nodeID.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
         guard activeByID[trimmed] != nil else { return }
+        rememberPreferredControlNodeID(trimmed)
         activeNodes = activeByID.values.sorted { ($0.lastSeen ?? .distantPast) > ($1.lastSeen ?? .distantPast) }
     }
 
     func setNodeScanning(nodeID: String, enabled: Bool) {
-        guard var record = activeByID[nodeID] else { return }
+        let trimmedID = nodeID.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedID.isEmpty else { return }
+        guard var record = activeByID[trimmedID] else { return }
         record.isScanning = enabled
+        record.lastSeen = Date()
         if enabled, record.connectionState == .offline {
             record.connectionState = .idle
         }
-        activeByID[nodeID] = record
+        if !record.capabilities.contains("scan") {
+            record.capabilities = Array(Set(record.capabilities + ["scan"])).sorted()
+        }
+        activeByID[trimmedID] = record
+        if enabled {
+            rememberPreferredControlNodeID(trimmedID)
+        }
         activeNodes = activeByID.values.sorted { ($0.lastSeen ?? .distantPast) > ($1.lastSeen ?? .distantPast) }
     }
 
@@ -122,7 +143,6 @@ final class PiAuxStore: ObservableObject {
         heartbeatTimer = Timer.scheduledTimer(withTimeInterval: heartbeatInterval, repeats: true) { [weak self] _ in
             guard let self else { return }
             Task { @MainActor in
-                self.touchHeartbeat(nodeID: self.localNodeID, setConnected: true)
                 self.updateConnectionStates()
             }
         }
@@ -158,10 +178,31 @@ final class PiAuxStore: ObservableObject {
 
     func updatePort(_ newPort: Int) {
         guard newPort > 0 else { return }
-        if newPort == port { return }
-        port = newPort
-        UserDefaults.standard.set(newPort, forKey: portKey)
+        let resolved = Self.resolvePortConflict(newPort)
+        if resolved == port { return }
+        port = resolved
+        UserDefaults.standard.set(resolved, forKey: portKey)
+        if resolved != newPort {
+            lastError = "Port \(newPort) conflicts with station port. Switched to \(resolved)."
+            LogStore.logAsync(.warn, "Pi-Aux port conflict: requested \(newPort), using \(resolved)")
+        }
         start()
+    }
+
+    private static func resolvePortConflict(_ requestedPort: Int) -> Int {
+        guard requestedPort > 0 else { return 8787 }
+        let stationBase = StationEndpointResolver.stationBaseURL()
+        let stationPort: Int = {
+            if let components = URLComponents(string: stationBase), let p = components.port {
+                return p
+            }
+            if stationBase.lowercased().hasPrefix("https://") { return 443 }
+            return 80
+        }()
+        if requestedPort == stationPort {
+            return stationPort == 8787 ? 8788 : 8787
+        }
+        return requestedPort
     }
 
     private func append(event: PiAuxEvent) {
@@ -234,43 +275,9 @@ final class PiAuxStore: ObservableObject {
     }
 
     func refreshLocalNodeHeartbeat() {
-        ensureLocalNodeRecord()
-        touchHeartbeat(nodeID: localNodeID, setConnected: true)
-    }
-
-    private func ensureLocalNodeRecord() {
-        let nodeID = localNodeID
-        let hostLabel = Host.current().localizedName ?? "Mac"
-        let defaultLabel = "DevStation Scanner (\(hostLabel))"
-        if var record = activeByID[nodeID] {
-            if record.label.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                record.label = defaultLabel
-            }
-            if record.type != .mac {
-                record.type = .mac
-            }
-            if !record.capabilities.contains("scan") {
-                record.capabilities = Array(Set(record.capabilities + ["scan"])).sorted()
-            }
-            activeByID[nodeID] = record
-        } else {
-            let record = NodeRecord(
-                id: nodeID,
-                label: defaultLabel,
-                type: .mac,
-                capabilities: ["scan"],
-                lastSeen: nil,
-                lastHeartbeat: nil,
-                connectionState: .idle,
-                isScanning: false,
-                lastError: nil,
-                ip: nil,
-                hostname: hostLabel,
-                mac: nil
-            )
-            activeByID[nodeID] = record
-        }
-        activeNodes = activeByID.values.sorted { ($0.lastSeen ?? .distantPast) > ($1.lastSeen ?? .distantPast) }
+        let nodeID = controlNodeIdentifier
+        guard activeByID[nodeID] != nil else { return }
+        touchHeartbeat(nodeID: nodeID, setConnected: false)
     }
 
     private func updateActiveNode(from event: PiAuxEvent) {
@@ -306,22 +313,31 @@ final class PiAuxStore: ObservableObject {
         }
         record.lastHeartbeat = now
         activeByID[nodeID] = record
+        let preferred = UserDefaults.standard.string(forKey: preferredControlNodeIDKey)?
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if preferred.isEmpty {
+            rememberPreferredControlNodeID(nodeID)
+        }
         activeNodes = activeByID.values.sorted { ($0.lastSeen ?? .distantPast) > ($1.lastSeen ?? .distantPast) }
     }
 
     private func extractNodeID(from event: PiAuxEvent) -> String? {
         if let direct = event.data["nodeId"] ?? event.data["node_id"] {
-            return direct.trimmingCharacters(in: .whitespacesAndNewlines)
+            let trimmed = direct.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !trimmed.isEmpty { return trimmed }
         }
         for tag in event.tags {
             if tag.lowercased().hasPrefix("nodeid:") {
-                return String(tag.dropFirst("nodeid:".count))
+                let value = String(tag.dropFirst("nodeid:".count)).trimmingCharacters(in: .whitespacesAndNewlines)
+                if !value.isEmpty { return value }
             }
             if tag.lowercased().hasPrefix("nodeid=") {
-                return String(tag.dropFirst("nodeid=".count))
+                let value = String(tag.dropFirst("nodeid=".count)).trimmingCharacters(in: .whitespacesAndNewlines)
+                if !value.isEmpty { return value }
             }
         }
-        return event.deviceID.isEmpty ? nil : event.deviceID
+        let fallback = event.deviceID.trimmingCharacters(in: .whitespacesAndNewlines)
+        return fallback.isEmpty ? nil : fallback
     }
 
     private func extractLabel(from event: PiAuxEvent) -> String? {
@@ -383,7 +399,63 @@ final class PiAuxStore: ObservableObject {
     }
 
     var endpointURL: String {
-        "http://127.0.0.1:\(port)/api/v1/events"
+        "http://\(resolveAdvertisedHost()):\(port)/api/v1/events"
+    }
+
+    private func resolveAdvertisedHost() -> String {
+        let stationBase = StationEndpointResolver.stationBaseURL()
+        if let components = URLComponents(string: stationBase),
+           let host = components.host?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !host.isEmpty {
+            let lowered = host.lowercased()
+            if lowered != "127.0.0.1" && lowered != "localhost" && lowered != "::1" {
+                return host
+            }
+        }
+        if let subnet = IPv4Subnet.active() {
+            return subnet.addressString
+        }
+        return "127.0.0.1"
+    }
+
+    private func preferredControlNodeID() -> String {
+        let preferred = UserDefaults.standard.string(forKey: preferredControlNodeIDKey)?
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if !preferred.isEmpty,
+           activeByID[preferred] != nil || NodeRegistry.shared.nodes.contains(where: { $0.id == preferred }) {
+            return preferred
+        }
+        if let claimedPiAux = NodeRegistry.shared.nodes.first(where: { $0.type == .piAux }) {
+            return claimedPiAux.id
+        }
+        if let claimedScanner = NodeRegistry.shared.nodes.first(where: { $0.capabilities.contains("scan") }) {
+            return claimedScanner.id
+        }
+        if let activePiAux = activeByID.values
+            .sorted(by: { ($0.lastSeen ?? .distantPast) > ($1.lastSeen ?? .distantPast) })
+            .first(where: { $0.type == .piAux }) {
+            return activePiAux.id
+        }
+        if let activeScanner = activeByID.values
+            .sorted(by: { ($0.lastSeen ?? .distantPast) > ($1.lastSeen ?? .distantPast) })
+            .first(where: { $0.capabilities.contains("scan") }) {
+            return activeScanner.id
+        }
+        if let firstClaimed = NodeRegistry.shared.nodes.first {
+            return firstClaimed.id
+        }
+        if let firstActive = activeByID.values
+            .sorted(by: { ($0.lastSeen ?? .distantPast) > ($1.lastSeen ?? .distantPast) })
+            .first {
+            return firstActive.id
+        }
+        return NodeType.unknown.rawValue
+    }
+
+    private func rememberPreferredControlNodeID(_ nodeID: String) {
+        let trimmed = nodeID.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        UserDefaults.standard.set(trimmed, forKey: preferredControlNodeIDKey)
     }
 }
 
@@ -394,17 +466,19 @@ final class PiAuxServer {
     private let onEvent: (PiAuxEvent) -> Void
     private let onStatus: (Bool) -> Void
     private let onLog: (LogLevel, String) -> Void
+    private let advertisedHost: String
     private let queue = DispatchQueue(label: "PiAuxServer.queue", qos: .utility)
 
     private var listener: NWListener?
 
-    init(host: String, port: Int, tokenProvider: @escaping () -> String, onEvent: @escaping (PiAuxEvent) -> Void, onStatus: @escaping (Bool) -> Void, onLog: @escaping (LogLevel, String) -> Void) {
+    init(host: String, port: Int, tokenProvider: @escaping () -> String, onEvent: @escaping (PiAuxEvent) -> Void, onStatus: @escaping (Bool) -> Void, onLog: @escaping (LogLevel, String) -> Void, advertisedHost: String) {
         self.host = NWEndpoint.Host(host)
         self.port = NWEndpoint.Port(rawValue: UInt16(port)) ?? 8787
         self.tokenProvider = tokenProvider
         self.onEvent = onEvent
         self.onStatus = onStatus
         self.onLog = onLog
+        self.advertisedHost = advertisedHost
     }
 
     func start() {
@@ -418,7 +492,7 @@ final class PiAuxServer {
                 switch state {
                 case .ready:
                     self?.onStatus(true)
-                    self?.onLog(.info, "Pi-Aux server listening on 127.0.0.1:\(self?.port.rawValue ?? 0)")
+                    self?.onLog(.info, "Pi-Aux server listening on \(self?.advertisedHost ?? "127.0.0.1"):\(self?.port.rawValue ?? 0)")
                 case .failed(let error):
                     self?.onStatus(false)
                     self?.onLog(.error, "Pi-Aux server failed: \(error.localizedDescription)")
@@ -441,14 +515,6 @@ final class PiAuxServer {
     }
 
     private func handle(_ connection: NWConnection) {
-        if case let NWEndpoint.hostPort(host, _) = connection.endpoint {
-            let hostString = host.debugDescription
-            if hostString != "127.0.0.1" && hostString != "::1" && hostString != "localhost" {
-                onLog(.warn, "Pi-Aux rejected non-local connection from \(hostString)")
-                connection.cancel()
-                return
-            }
-        }
         connection.start(queue: queue)
         let handler = PiAuxConnectionHandler(
             connection: connection,

@@ -33,3 +33,10 @@ docs/aliases.user.json
 data/logs/*.ndjson
 data/logs/*.log
 data/logs/*.txt
+
+# Runtime artifacts (not source)
+workspace/
+reports/
+inbox/
+recordings/
+.shipper/

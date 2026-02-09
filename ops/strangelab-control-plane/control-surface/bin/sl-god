@@ -1,0 +1,106 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../../../.." && pwd)"
+source "$REPO_ROOT/tools/_env.sh"
+
+GOD_URL="${GOD_URL:-$GOD_GATEWAY_URL}"
+VAULT_URL="${VAULT_URL:-$VAULT_INGEST_URL}"
+
+usage() {
+  cat <<'EOF'
+usage:
+  sl-god rollcall
+  sl-god snapshot [tier1|all|node] [target]
+  sl-god freeze
+  sl-god status <target_node> <service>
+  sl-god restart <target_node> <service>
+  sl-god scan-lan
+  sl-god raw <action> [scope] [target]
+EOF
+}
+
+json_escape() {
+  python3 - "$1" <<'PY'
+import json, sys
+print(json.dumps(sys.argv[1]))
+PY
+}
+
+require_vault() {
+  local payload='{"type":"control.surface.probe","src":"pi-aux-control-surface","ts_ms":0,"data":{"ok":true}}'
+  curl -fsS -X POST "$VAULT_URL" -H 'content-type: application/json' -d "$payload" >/dev/null
+}
+
+post_action() {
+  local action="$1"
+  local scope="$2"
+  local target="$3"
+  local reason="$4"
+  local args_json="$5"
+  local req_id
+  req_id="desktop-${action}-$(date +%s)-$RANDOM"
+  local target_json
+  if [[ -n "$target" ]]; then
+    target_json="\"$target\""
+  else
+    target_json="null"
+  fi
+
+  local payload
+  payload="$(cat <<EOF
+{"action":"$action","scope":"$scope","target":$target_json,"request_id":"$req_id","reason":"$reason","ts_ms":0,"args":$args_json}
+EOF
+)"
+  curl -fsS -X POST "$GOD_URL" -H 'content-type: application/json' -d "$payload"
+}
+
+cmd="${1:-}"
+if [[ -z "$cmd" ]]; then
+  usage
+  exit 2
+fi
+shift || true
+
+require_vault
+
+case "$cmd" in
+  rollcall)
+    post_action "ritual.rollcall" "all" "" "desktop-rollcall" "{}"
+    ;;
+  snapshot)
+    scope="${1:-tier1}"
+    target="${2:-}"
+    post_action "snapshot.now" "$scope" "$target" "desktop-snapshot" "{}"
+    ;;
+  freeze)
+    post_action "panic.freeze.agents" "all" "" "desktop-panic" "{}"
+    ;;
+  status)
+    target="${1:-}"
+    service="${2:-}"
+    [[ -n "$target" && -n "$service" ]] || { usage; exit 2; }
+    post_action "maint.status.service" "node" "$target" "desktop-status" "{\"service\":\"$service\"}"
+    ;;
+  restart)
+    target="${1:-}"
+    service="${2:-}"
+    [[ -n "$target" && -n "$service" ]] || { usage; exit 2; }
+    post_action "maint.restart.service" "node" "$target" "desktop-restart" "{\"service\":\"$service\"}"
+    ;;
+  scan-lan)
+    post_action "scan.lan.fast" "tier1" "" "desktop-scan-lan" "{}"
+    ;;
+  raw)
+    action="${1:-}"
+    scope="${2:-all}"
+    target="${3:-}"
+    [[ -n "$action" ]] || { usage; exit 2; }
+    post_action "$action" "$scope" "$target" "desktop-raw" "{}"
+    ;;
+  *)
+    usage
+    exit 2
+    ;;
+esac

@@ -1,0 +1,12 @@
+{
+  "node_id": "exec-pi-aux",
+  "roles": ["tier1", "gateway"],
+  "capabilities": {
+    "panic": { "enabled": true, "scopes": ["tier1", "node"], "tools": ["systemctl", "ip"] },
+    "snapshot": { "enabled": true, "scopes": ["tier1", "node"] },
+    "maint": { "enabled": true, "scopes": ["tier1", "node"], "tools": ["systemctl", "journalctl", "df", "ping"] },
+    "scan": { "enabled": true, "scopes": ["tier1"], "tools": ["nmap"] },
+    "build": { "enabled": false },
+    "ritual": { "enabled": true, "scopes": ["tier1"] }
+  }
+}

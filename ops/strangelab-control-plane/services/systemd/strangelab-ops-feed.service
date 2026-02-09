@@ -1,0 +1,23 @@
+[Unit]
+Description=StrangeLab Ops Feed API
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+WorkingDirectory=/opt/strangelab
+User=pi
+Group=pi
+ExecStart=/usr/bin/node /opt/strangelab/ops-feed.mjs
+Restart=always
+RestartSec=2
+Environment=NODE_ENV=production
+Environment=HOST=0.0.0.0
+Environment=PORT=9101
+Environment=READ_MODE=auto
+Environment=REMOTE_HOST=pi@192.168.8.160
+Environment=REMOTE_EVENTS_DIR=/var/sods/vault/events
+Environment=SL_SSH_BIN=/usr/local/bin/sl-ssh
+Environment=SL_SSH_ALIAS=strangelab-pi-logger
+
+[Install]
+WantedBy=multi-user.target

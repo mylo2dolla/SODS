@@ -1,0 +1,10 @@
+{
+  "name": "sods-firmware",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "fw:verify": "node ./tools/fw-verify-all.mjs",
+    "fw:stage:all": "node ./tools/fw-stage-all.mjs"
+  }
+}

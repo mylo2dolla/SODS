@@ -5,6 +5,88 @@ import CoreBluetooth
 import Network
 import AppKit
 
+// Fallback definition kept in ContentView because this target may not include
+// FlashedNoteStore.swift in build phases on some recovered project states.
+struct FlashedNoteRecord: Codable, Hashable, Identifiable {
+    let id: String
+    var note: String
+    var updatedAt: Date
+}
+
+@MainActor
+final class FlashedNoteStore: ObservableObject {
+    static let shared = FlashedNoteStore()
+
+    @Published private(set) var records: [String: FlashedNoteRecord] = [:]
+
+    private let fileURL: URL
+    private let encoder: JSONEncoder
+    private let decoder: JSONDecoder
+
+    private init() {
+        fileURL = StoragePaths.workspaceSubdir("notes").appendingPathComponent("flashed-notes.json")
+        encoder = JSONEncoder()
+        decoder = JSONDecoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        load()
+    }
+
+    func note(for key: String) -> String {
+        records[normalize(key)]?.note ?? ""
+    }
+
+    func setNote(_ note: String, for key: String) {
+        let normalizedKey = normalize(key)
+        guard !normalizedKey.isEmpty else { return }
+
+        let trimmed = note.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty {
+            records.removeValue(forKey: normalizedKey)
+        } else {
+            records[normalizedKey] = FlashedNoteRecord(
+                id: normalizedKey,
+                note: trimmed,
+                updatedAt: Date()
+            )
+        }
+        save()
+    }
+
+    func resolveKey(preferred: String?, fallbacks: [String]) -> String {
+        let candidates = ([preferred] + fallbacks).compactMap { $0 }
+        for raw in candidates {
+            let normalized = normalize(raw)
+            if normalized.isEmpty { continue }
+            if records[normalized] != nil { return normalized }
+        }
+        for raw in candidates {
+            let normalized = normalize(raw)
+            if !normalized.isEmpty { return normalized }
+        }
+        return ""
+    }
+
+    private func normalize(_ raw: String) -> String {
+        raw.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    }
+
+    private func load() {
+        guard let data = try? Data(contentsOf: fileURL) else { return }
+        guard let decoded = try? decoder.decode([FlashedNoteRecord].self, from: data) else { return }
+        records = Dictionary(uniqueKeysWithValues: decoded.map { ($0.id, $0) })
+    }
+
+    private func save() {
+        let list = records.values.sorted { $0.id < $1.id }
+        guard let data = try? encoder.encode(list) else { return }
+        do {
+            try data.write(to: fileURL, options: .atomic)
+        } catch {
+            LogStore.logAsync(.error, "Failed to save flashed notes: \(error.localizedDescription)")
+        }
+    }
+}
+
 struct ContentView: View {
     enum DeviceLifecycleStage: String {
         case staged
@@ -99,6 +181,7 @@ struct ContentView: View {
     @StateObject private var runbookRegistry = RunbookRegistry.shared
     @StateObject private var aliasStore = SODSStore.shared
     @StateObject private var nodeRegistry = NodeRegistry.shared
+    @StateObject private var controlPlaneStore = ControlPlaneStore.shared
     @AppStorage("consentAcknowledged") private var consentAcknowledged = false
     @AppStorage("bleFindFingerprintID") private var bleFindFingerprintID = ""
 
@@ -114,9 +197,9 @@ struct ContentView: View {
     @State private var showArpOnly = true
     @State private var showHighConfidenceOnly = false
     @State private var arpWarmupEnabled = true
-    @State private var bleDiscoveryEnabled = false
+    @State private var bleDiscoveryEnabled = true
     @State private var networkScanMode: ScanMode = .oneShot
-    @State private var bleScanMode: ScanMode = .oneShot
+    @State private var bleScanMode: ScanMode = .continuous
     @State private var selectedBleID: UUID?
     @State private var connectNodeID: String = ""
     @State private var showFlashConfirm: Bool = false
@@ -153,6 +236,8 @@ struct ContentView: View {
     @State private var flashLifecycleStage: DeviceLifecycleStage?
     @State private var flashLifecycleTarget: FlashTarget?
     @State private var flashLifecycleNodeID: String?
+    @AppStorage("TargetLockNodeID") private var targetLockNodeID: String = ""
+    @StateObject private var rateLimiter = ActionRateLimiter.shared
 
     var body: some View {
         mainContent
@@ -171,7 +256,11 @@ struct ContentView: View {
                         baseURL: sodsStore.baseURL,
                         onFlash: { showFlashPopover = true },
                         onInspect: { endpoint in modalCoordinator.present(.apiInspector(endpoint: endpoint)) },
-                        onRunTool: { tool in modalCoordinator.present(.toolRunner(tool: tool)) },
+                        onRunTool: { tool in
+                            // Tools are buttons: default behavior is execute.
+                            // If a tool truly needs input, it should fail explicitly rather than silently opening a runner.
+                            runToolDirectly(tool)
+                        },
                         onRunRunbook: { name in
                             let id = name.replacingOccurrences(of: "runbook.", with: "")
                             if let runbook = runbookRegistry.runbooks.first(where: { $0.id == id }) {
@@ -255,6 +344,42 @@ struct ContentView: View {
                                 sodsStore.refreshStatus()
                             }
                         },
+                        onRegisterFallback: { candidate, alias in
+                            let seed = (candidate.mac ?? candidate.ip ?? candidate.ssid ?? "portal").lowercased()
+                            let compact = seed.components(separatedBy: CharacterSet.alphanumerics.inverted).joined()
+                            let suffix = String(compact.suffix(10))
+                            var nodeID = "portal-\(suffix.isEmpty ? "unknown" : suffix)"
+                            if let existing = nodeRegistry.nodes.first(where: { $0.id == nodeID }) {
+                                let existingMac = existing.mac?.lowercased() ?? ""
+                                let nextMac = candidate.mac?.lowercased() ?? ""
+                                if !nextMac.isEmpty && !existingMac.isEmpty && existingMac != nextMac {
+                                    nodeID = "\(nodeID)-\(Int(Date().timeIntervalSince1970))"
+                                }
+                            }
+                            let label = (alias?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
+                                ? alias!
+                                : (candidate.ssid ?? candidate.ip ?? candidate.mac ?? nodeID))
+                            nodeRegistry.register(
+                                nodeID: nodeID,
+                                label: label,
+                                hostname: nil,
+                                ip: candidate.ip,
+                                mac: candidate.mac,
+                                type: .unknown,
+                                capabilities: ["flash", "identify", "scan"]
+                            )
+                            if let ip = candidate.ip, !ip.isEmpty {
+                                aliasStore.setAlias(id: ip, alias: label)
+                            }
+                            if let mac = candidate.mac, !mac.isEmpty {
+                                aliasStore.setAlias(id: mac, alias: label)
+                            }
+                            aliasStore.setAlias(id: nodeID, alias: label)
+                            connectNodeID = nodeID
+                            markFlashClaimed(nodeID: nodeID)
+                            sodsStore.identifyNode(nodeID)
+                            sodsStore.refreshStatus()
+                        },
                         onClose: { modalCoordinator.dismiss() }
                     )
                 case .consent:
@@ -272,20 +397,40 @@ struct ContentView: View {
                         TextField("Username", text: $rtspPromptUsername)
                         SecureField("Password", text: $rtspPromptPassword)
                         HStack {
-                            Button("Try Without Credentials") {
+                            Button {
                                 runRtspTry(with: nil)
                                 showRtspCredentialsPrompt = false
                                 modalCoordinator.dismiss()
+                            } label: {
+                                Image(systemName: "person.crop.circle.badge.xmark")
+                                    .font(.system(size: 12, weight: .semibold))
                             }
-                            Button("Use Credentials") {
+                            .buttonStyle(SecondaryActionButtonStyle())
+                            .help("Try Without Credentials")
+                            .accessibilityLabel(Text("Try Without Credentials"))
+
+                            Button {
                                 runRtspTry(with: (rtspPromptUsername, rtspPromptPassword))
                                 showRtspCredentialsPrompt = false
                                 modalCoordinator.dismiss()
+                            } label: {
+                                Image(systemName: "person.crop.circle.badge.checkmark")
+                                    .font(.system(size: 12, weight: .semibold))
                             }
-                            Button("Cancel") {
+                            .buttonStyle(SecondaryActionButtonStyle())
+                            .help("Use Credentials")
+                            .accessibilityLabel(Text("Use Credentials"))
+
+                            Button {
                                 showRtspCredentialsPrompt = false
                                 modalCoordinator.dismiss()
+                            } label: {
+                                Image(systemName: "xmark.circle")
+                                    .font(.system(size: 12, weight: .semibold))
                             }
+                            .buttonStyle(SecondaryActionButtonStyle())
+                            .help("Cancel")
+                            .accessibilityLabel(Text("Cancel"))
                         }
                     }
                     .padding(20)
@@ -329,6 +474,7 @@ struct ContentView: View {
                 if scopeCIDR.isEmpty, let subnet = IPv4Subnet.active() {
                     scopeCIDR = "\(subnet.addressString)/\(subnet.prefixLength)"
                 }
+                applyLaunchOverrides()
                 sodsURLText = sodsStore.baseURL
                 if let error = sodsStore.baseURLError, !error.isEmpty {
                     baseURLValidationMessage = error
@@ -356,6 +502,9 @@ struct ContentView: View {
                 if flashManager.prepStatus.isReady, flashLifecycleStage == nil {
                     flashLifecycleStage = .staged
                 }
+                StationProcessManager.shared.ensureRunning(baseURL: sodsStore.baseURL)
+                kickoffRoundupIfRequested()
+                controlPlaneStore.refresh()
                 Task.detached {
                     await ArtifactStore.shared.runCleanup(log: logStore)
                 }
@@ -404,6 +553,11 @@ struct ContentView: View {
                 sodsStore.identifyNode(connectNodeID)
                 sodsStore.refreshStatus()
                 piAuxStore.connectNode(connectNodeID)
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .targetLockNodeCommand)) { note in
+                if let id = note.object as? String {
+                    targetLockNodeID = id
+                }
             }
             .onReceive(NotificationCenter.default.publisher(for: .openGodMenuCommand)) { _ in
                 toolRegistry.reload()
@@ -538,7 +692,7 @@ struct ContentView: View {
                         .frame(width: 70, alignment: .leading)
                     TextField("", text: $sodsURLText)
                         .textFieldStyle(.roundedBorder)
-                    Button("Apply") {
+                    Button {
                         if sodsStore.updateBaseURL(sodsURLText) {
                             baseURLValidationMessage = nil
                             sodsURLText = sodsStore.baseURL
@@ -548,19 +702,36 @@ struct ContentView: View {
                             sodsURLText = sodsStore.baseURL
                             showBaseURLToast(message)
                         }
+                    } label: {
+                        Image(systemName: "checkmark.circle")
+                            .font(.system(size: 13, weight: .semibold))
                     }
                     .buttonStyle(SecondaryActionButtonStyle())
-                    Button("Reset") {
+                    .help("Apply")
+                    .accessibilityLabel(Text("Apply"))
+
+                    Button {
                         sodsStore.resetBaseURL()
                         sodsURLText = sodsStore.baseURL
                         baseURLValidationMessage = nil
                         showBaseURLToast("Base URL reset to \(sodsStore.baseURL)")
+                    } label: {
+                        Image(systemName: "arrow.counterclockwise")
+                            .font(.system(size: 13, weight: .semibold))
                     }
                     .buttonStyle(SecondaryActionButtonStyle())
-                    Button("Inspect API") {
+                    .help("Reset")
+                    .accessibilityLabel(Text("Reset"))
+
+                    Button {
                         modalCoordinator.present(.apiInspector(endpoint: .status))
+                    } label: {
+                        Image(systemName: "doc.text.magnifyingglass")
+                            .font(.system(size: 13, weight: .semibold))
                     }
                     .buttonStyle(SecondaryActionButtonStyle())
+                    .help("Inspect API")
+                    .accessibilityLabel(Text("Inspect API"))
                 }
                 if let message = baseURLValidationMessage {
                     Text(message)
@@ -568,22 +739,38 @@ struct ContentView: View {
                         .foregroundColor(.red)
                 }
                 HStack(spacing: 10) {
-                    Button("Open Spectrum") { viewMode = .spectral }
+                    Button { viewMode = .spectral } label: {
+                        Image(systemName: "waveform")
+                            .font(.system(size: 13, weight: .semibold))
+                    }
                         .buttonStyle(PrimaryActionButtonStyle())
-                    Button("God Button") {
+                        .help("Open Spectrum")
+                        .accessibilityLabel(Text("Open Spectrum"))
+
+                    Button {
                         toolRegistry.reload()
                         runbookRegistry.reload()
                         showGodMenu = true
+                    } label: {
+                        Image(systemName: "sparkles")
+                            .font(.system(size: 13, weight: .semibold))
                     }
                         .buttonStyle(SecondaryActionButtonStyle())
+                        .help("God Button")
+                        .accessibilityLabel(Text("God Button"))
                         .popover(isPresented: $showGodMenu, arrowEdge: .bottom) {
                             ActionMenuView(sections: godButtonSections())
                                 .frame(minWidth: 320)
                                 .padding(10)
                                 .background(Theme.background)
                         }
-                    Button("Flash") { showFlashPopover = true }
+                    Button { showFlashPopover = true } label: {
+                        Image(systemName: "bolt.circle")
+                            .font(.system(size: 13, weight: .semibold))
+                    }
                         .buttonStyle(SecondaryActionButtonStyle())
+                        .help("Flash")
+                        .accessibilityLabel(Text("Flash"))
                         .popover(isPresented: $showFlashPopover, arrowEdge: .bottom) {
                             FlashPopoverView(
                                 status: sodsStore.health,
@@ -597,6 +784,9 @@ struct ContentView: View {
                     Text(sodsStore.health.label)
                         .font(.system(size: 11))
                         .foregroundColor(Color(sodsStore.health.color))
+                    Text("Pi-Logger: \(piLoggerStatusLabel)")
+                        .font(.system(size: 11))
+                        .foregroundColor(piLoggerStatusColor)
                     Text("Nodes: \(sodsStore.nodes.count)")
                         .font(.system(size: 11))
                         .foregroundColor(.secondary)
@@ -634,17 +824,18 @@ struct ContentView: View {
     @ViewBuilder
     private var contentSection: some View {
         if viewMode == .dashboard {
-            DashboardView(
-                scanner: scanner,
-                bleScanner: bleScanner,
-                piAuxStore: piAuxStore,
-                entityStore: entityStore,
-                sodsStore: sodsStore,
-                vaultTransport: vaultTransport,
-                connectingNodeIDs: nodeRegistry.connectingNodeIDs,
-                inboxStatus: inboxStatus,
-                retentionDays: inboxRetentionDays,
-                retentionMaxGB: inboxMaxGB,
+                    DashboardView(
+                        scanner: scanner,
+                        bleScanner: bleScanner,
+                        piAuxStore: piAuxStore,
+                        entityStore: entityStore,
+                        sodsStore: sodsStore,
+                        controlPlane: controlPlaneStore,
+                        vaultTransport: vaultTransport,
+                        connectingNodeIDs: nodeRegistry.connectingNodeIDs,
+                        inboxStatus: inboxStatus,
+                        retentionDays: inboxRetentionDays,
+                        retentionMaxGB: inboxMaxGB,
                 onvifDiscoveryEnabled: onvifDiscoveryEnabled,
                 serviceDiscoveryEnabled: serviceDiscoveryEnabled,
                 arpWarmupEnabled: arpWarmupEnabled,
@@ -665,6 +856,9 @@ struct ContentView: View {
                 },
                 onGenerateScanReport: {
                     generateScanReport()
+                },
+                onStartStation: {
+                    startStationFromDashboard()
                 },
                 stationActionSections: { dashboardStationSections() },
                 scanActionSections: { dashboardScanSections() },
@@ -736,7 +930,8 @@ struct ContentView: View {
         } else if viewMode == .buttons {
             PresetButtonsView(
                 registry: presetRegistry,
-                onRunPreset: { preset in modalCoordinator.present(.presetRunner(preset: preset)) },
+                onRunPreset: { preset in runPresetDirectly(preset) },
+                onOpenRunner: { preset in modalCoordinator.present(.presetRunner(preset: preset)) },
                 onOpenBuilder: { modalCoordinator.present(.presetBuilder) }
             )
         } else if viewMode == .runbooks {
@@ -1034,18 +1229,45 @@ struct ContentView: View {
                 Toggle("Show High Confidence Only", isOn: $showHighConfidenceOnly)
                     .toggleStyle(SwitchToggleStyle(tint: Theme.accent))
                 Spacer()
-                Button("Refresh ARP") {
+                Button {
                     scanner.refreshARP()
+                } label: {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.system(size: 12, weight: .semibold))
                 }
-                Button("Import OUI File...") {
+                .buttonStyle(SecondaryActionButtonStyle())
+                .help("Refresh ARP")
+                .accessibilityLabel(Text("Refresh ARP"))
+
+                Button {
                     OUIStore.shared.importFromOpenPanel(log: logStore)
+                } label: {
+                    Image(systemName: "square.and.arrow.down")
+                        .font(.system(size: 12, weight: .semibold))
                 }
-                Button("Export...") {
+                .buttonStyle(SecondaryActionButtonStyle())
+                .help("Import OUI File")
+                .accessibilityLabel(Text("Import OUI File"))
+
+                Button {
                     exportHosts()
+                } label: {
+                    Image(systemName: "square.and.arrow.up")
+                        .font(.system(size: 12, weight: .semibold))
                 }
-                Button("Reveal Exports") {
+                .buttonStyle(SecondaryActionButtonStyle())
+                .help("Export")
+                .accessibilityLabel(Text("Export"))
+
+                Button {
                     revealExports()
+                } label: {
+                    Image(systemName: "folder")
+                        .font(.system(size: 12, weight: .semibold))
                 }
+                .buttonStyle(SecondaryActionButtonStyle())
+                .help("Reveal Exports")
+                .accessibilityLabel(Text("Reveal Exports"))
                 Picker("Sort", selection: $hostSortField) {
                     ForEach(HostSortField.allCases) { field in
                         Text(field.rawValue).tag(field)
@@ -1141,12 +1363,29 @@ struct ContentView: View {
         ToolbarItemGroup(placement: .navigation) {
             Text("SODS Dev Station")
                 .font(.system(size: 16, weight: .semibold))
-            Button("Tools") { openSODSTools() }
+            Button { openSODSTools() } label: {
+                Image(systemName: "wrench.and.screwdriver")
+                    .font(.system(size: 13, weight: .semibold))
+            }
                 .buttonStyle(SecondaryActionButtonStyle())
-            Button("Guide") { modalCoordinator.present(.consent) }
+                .help("Tools")
+                .accessibilityLabel(Text("Tools"))
+
+            Button { modalCoordinator.present(.consent) } label: {
+                Image(systemName: "questionmark.circle")
+                    .font(.system(size: 13, weight: .semibold))
+            }
                 .buttonStyle(SecondaryActionButtonStyle())
-            Button("Aliases") { modalCoordinator.present(.aliasManager) }
+                .help("Guide")
+                .accessibilityLabel(Text("Guide"))
+
+            Button { modalCoordinator.present(.aliasManager) } label: {
+                Image(systemName: "tag")
+                    .font(.system(size: 13, weight: .semibold))
+            }
                 .buttonStyle(SecondaryActionButtonStyle())
+                .help("Aliases")
+                .accessibilityLabel(Text("Aliases"))
         }
         ToolbarItem(placement: .principal) {
             Picker("View", selection: $viewMode) {
@@ -1158,8 +1397,13 @@ struct ContentView: View {
             .labelsHidden()
         }
         ToolbarItemGroup(placement: .status) {
-            Button("Flash") { showFlashPopover = true }
+            Button { showFlashPopover = true } label: {
+                Image(systemName: "bolt.circle")
+                    .font(.system(size: 13, weight: .semibold))
+            }
                 .buttonStyle(SecondaryActionButtonStyle())
+                .help("Flash")
+                .accessibilityLabel(Text("Flash"))
                 .popover(isPresented: $showFlashPopover, arrowEdge: .bottom) {
                     FlashPopoverView(
                         status: sodsStore.health,
@@ -1352,8 +1596,48 @@ struct ContentView: View {
     private func godButtonSections() -> [ActionMenuSection] {
         let isBleTab = viewMode == .ble
         let isNodesTab = viewMode == .nodes
+        let lockedNode = targetLockNodeID.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ? nil
+            : nodeRegistry.nodes.first(where: { $0.id == targetLockNodeID })
+        let isTargetLocked = lockedNode != nil
         let nowItems: [ActionMenuItem] = {
             var items: [ActionMenuItem] = []
+            if let lockedNode {
+                items.append(ActionMenuItem(
+                    title: "Clear Target Lock (\(lockedNode.label))",
+                    systemImage: "scope",
+                    enabled: true,
+                    reason: nil,
+                    action: { targetLockNodeID = "" }
+                ))
+                items.append(ActionMenuItem(
+                    title: "Connect + Identify (\(lockedNode.label))",
+                    systemImage: "link",
+                    enabled: true,
+                    reason: nil,
+                    action: {
+                        Task {
+                            let gate = await MainActor.run {
+                                rateLimiter.canFire(key: "target.connectIdentify:\(lockedNode.id)", cooldownSeconds: 1.0)
+                            }
+                            guard gate.ok else {
+                                await MainActor.run {
+                                    showBaseURLToast("Cooldown: \(Int(ceil(gate.remaining)))s")
+                                }
+                                return
+                            }
+                            await MainActor.run {
+                                rateLimiter.markFired(key: "target.connectIdentify:\(lockedNode.id)")
+                                NodeRegistry.shared.setConnecting(nodeID: lockedNode.id, connecting: true)
+                                sodsStore.connectNode(lockedNode.id)
+                                sodsStore.identifyNode(lockedNode.id)
+                                sodsStore.refreshStatus()
+                                piAuxStore.connectNode(lockedNode.id)
+                            }
+                        }
+                    }
+                ))
+            }
             if isBleTab {
                 items.append(ActionMenuItem(
                     title: bleDiscoveryEnabled ? "Stop BLE Scan" : "Start BLE Scan",
@@ -1377,7 +1661,7 @@ struct ContentView: View {
                 items.append(ActionMenuItem(
                     title: "Connect Node",
                     systemImage: "link",
-                    enabled: true,
+                    enabled: !isTargetLocked,
                     reason: nil,
                         action: {
                             let target = !connectNodeID.isEmpty ? connectNodeID : (self.connectCandidates.first?.id ?? "")
@@ -1413,7 +1697,7 @@ struct ContentView: View {
                     systemImage: "bolt",
                     enabled: true,
                     reason: nil,
-                    action: { modalCoordinator.present(.runbookRunner(runbook: runbook)) }
+                    action: { runRunbookImmediately(runbook) }
                 ))
             }
             return items
@@ -1434,6 +1718,8 @@ struct ContentView: View {
             })
         ]
 
+        let nodeControlItems = dynamicNodeControlItems()
+
         let flashItems: [ActionMenuItem] = [
             ActionMenuItem(title: "Find Newly Flashed Device", systemImage: "magnifyingglass", enabled: true, reason: nil, action: {
                 markFlashAwaitingHello()
@@ -1443,15 +1729,65 @@ struct ContentView: View {
 
         let exportItems: [ActionMenuItem] = exportMenuItems()
 
+        let agentItems: [ActionMenuItem] = {
+            let target = lockedNode?.id
+            let scope = isTargetLocked ? "tier1" : "all"
+            let reason = isTargetLocked ? "app-god-button-target" : "app-god-button"
+
+            func item(_ title: String, _ systemImage: String, _ action: String) -> ActionMenuItem {
+                ActionMenuItem(
+                    title: title,
+                    systemImage: systemImage,
+                    enabled: true,
+                    reason: nil,
+                    action: {
+                        Task {
+                            let allowed = await MainActor.run { () -> Bool in
+                                let key = "god.action:\(action):\(target ?? scope)"
+                                let gate = rateLimiter.canFire(key: key, cooldownSeconds: 1.0)
+                                if gate.ok {
+                                    rateLimiter.markFired(key: key)
+                                    return true
+                                }
+                                return false
+                            }
+                            if !allowed { return }
+                            let result = await GodGatewayClient.postAction(
+                                action: action,
+                                scope: scope,
+                                target: target,
+                                reason: reason,
+                                args: [:]
+                            )
+                            await MainActor.run {
+                                showBaseURLToast(result.ok ? "God OK: \(action)" : "God FAIL: \(action)")
+                            }
+                        }
+                    }
+                )
+            }
+
+            let suffix = isTargetLocked ? " (Target)" : ""
+            return [
+                item("Rollcall" + suffix, "person.3.sequence", "ritual.rollcall"),
+                item("Services Snapshot" + suffix, "waveform.path.ecg", "snapshot.services"),
+                item("LAN Scan" + suffix, "dot.radiowaves.left.and.right", "scan.lan.fast"),
+                item("Ports Top" + suffix, "point.3.connected.trianglepath.dotted", "scan.lan.ports.top"),
+                item("Wi-Fi Snapshot" + suffix, "wifi", "scan.wifi.snapshot"),
+                item("BLE Sweep" + suffix, "antenna.radiowaves.left.and.right", "scan.ble.sweep"),
+            ]
+        }()
+
         var sections: [ActionMenuSection] = []
         if !nowItems.isEmpty { sections.append(ActionMenuSection(title: "Now", items: nowItems)) }
+        if !agentItems.isEmpty { sections.append(ActionMenuSection(title: "Agents", items: agentItems)) }
         let toolItems = toolRegistry.tools.map { tool in
             ActionMenuItem(
-                title: tool.name,
+                title: tool.title ?? tool.name,
                 systemImage: "wrench.and.screwdriver",
                 enabled: true,
                 reason: nil,
-                action: { modalCoordinator.present(.toolRunner(tool: tool)) }
+                action: { runToolImmediately(tool) }
             )
         }
         if !toolItems.isEmpty {
@@ -1463,7 +1799,7 @@ struct ContentView: View {
                 systemImage: "bolt",
                 enabled: true,
                 reason: nil,
-                action: { modalCoordinator.present(.runbookRunner(runbook: runbook)) }
+                action: { runRunbookImmediately(runbook) }
             )
         }
         if !runbookItems.isEmpty {
@@ -1471,6 +1807,9 @@ struct ContentView: View {
         }
         sections.append(ActionMenuSection(title: "Inspect", items: inspectItems))
         sections.append(ActionMenuSection(title: "Connect / Control", items: connectItems))
+        if !nodeControlItems.isEmpty {
+            sections.append(ActionMenuSection(title: "Node Control", items: nodeControlItems))
+        }
         sections.append(ActionMenuSection(title: "Flash / Bind", items: flashItems))
         sections.append(ActionMenuSection(title: "Export / Ship", items: exportItems))
         if FeatureFlags.shared.showDevActions {
@@ -1502,6 +1841,198 @@ struct ContentView: View {
             ActionMenuItem(title: "Reveal Exports", systemImage: "folder.fill", enabled: true, reason: nil, action: { revealExports() }),
             ActionMenuItem(title: "Ship Now", systemImage: "paperplane", enabled: true, reason: nil, action: { vaultTransport.shipNow(log: logStore) })
         ]
+    }
+
+    private var piLoggerStatusLabel: String {
+        if let logger = sodsStore.loggerStatus {
+            if let ok = logger.ok {
+                return ok ? "Connected" : "Degraded"
+            }
+            if let status = logger.status, !status.isEmpty {
+                return status
+            }
+        }
+        return "Unknown"
+    }
+
+    private var piLoggerStatusColor: Color {
+        if let logger = sodsStore.loggerStatus, let ok = logger.ok {
+            return ok ? .green : .orange
+        }
+        return .secondary
+    }
+
+    private func dynamicNodeControlItems() -> [ActionMenuItem] {
+        let claimedNodes = nodeRegistry.nodes
+        guard !claimedNodes.isEmpty else { return [] }
+        let selectedID = !connectNodeID.isEmpty ? connectNodeID : claimedNodes.first?.id ?? ""
+        guard let selectedNode = claimedNodes.first(where: { $0.id == selectedID }) ?? claimedNodes.first else { return [] }
+        var items: [ActionMenuItem] = []
+        let profile = NodeFirmwareProfile.infer(nodeID: selectedNode.id, hostname: selectedNode.hostname, capabilities: selectedNode.capabilities)
+        let effectiveCaps = Set((selectedNode.capabilities + profile.defaultCapabilities).map { $0.lowercased() })
+        let supportsScan = effectiveCaps.contains("scan")
+        let supportsFrames = effectiveCaps.contains("frames")
+        let supportsProbe = effectiveCaps.contains("probe")
+        let supportsPing = effectiveCaps.contains("ping")
+        let supportsGod = effectiveCaps.contains("god") || profile == .p4GodButton
+
+        items.append(
+            ActionMenuItem(
+                title: "Connect \(selectedNode.label)",
+                systemImage: "link",
+                enabled: true,
+                reason: nil,
+                action: {
+                    NodeRegistry.shared.setConnecting(nodeID: selectedNode.id, connecting: true)
+                    sodsStore.connectNode(selectedNode.id)
+                    sodsStore.identifyNode(selectedNode.id)
+                    sodsStore.refreshStatus()
+                }
+            )
+        )
+        if supportsGod {
+            items.append(
+                ActionMenuItem(
+                    title: "God On (\(selectedNode.id))",
+                    systemImage: "bolt.fill",
+                    enabled: true,
+                    reason: nil,
+                    action: { sodsStore.setNodeCapability(nodeID: selectedNode.id, capability: "god", enabled: true) }
+                )
+            )
+            items.append(
+                ActionMenuItem(
+                    title: "God Off (\(selectedNode.id))",
+                    systemImage: "bolt.slash",
+                    enabled: true,
+                    reason: nil,
+                    action: { sodsStore.setNodeCapability(nodeID: selectedNode.id, capability: "god", enabled: false) }
+                )
+            )
+            items.append(
+                ActionMenuItem(
+                    title: "God On (All Nodes)",
+                    systemImage: "bolt.circle",
+                    enabled: true,
+                    reason: nil,
+                    action: {
+                        for node in claimedNodes {
+                            let nodeProfile = NodeFirmwareProfile.infer(nodeID: node.id, hostname: node.hostname, capabilities: node.capabilities)
+                            let nodeCaps = Set((node.capabilities + nodeProfile.defaultCapabilities).map { $0.lowercased() })
+                            if nodeCaps.contains("god") || nodeProfile == .p4GodButton {
+                                sodsStore.setNodeCapability(nodeID: node.id, capability: "god", enabled: true)
+                            }
+                        }
+                    }
+                )
+            )
+            items.append(
+                ActionMenuItem(
+                    title: "God Off (All Nodes)",
+                    systemImage: "bolt.slash.circle",
+                    enabled: true,
+                    reason: nil,
+                    action: {
+                        for node in claimedNodes {
+                            let nodeProfile = NodeFirmwareProfile.infer(nodeID: node.id, hostname: node.hostname, capabilities: node.capabilities)
+                            let nodeCaps = Set((node.capabilities + nodeProfile.defaultCapabilities).map { $0.lowercased() })
+                            if nodeCaps.contains("god") || nodeProfile == .p4GodButton {
+                                sodsStore.setNodeCapability(nodeID: node.id, capability: "god", enabled: false)
+                            }
+                        }
+                    }
+                )
+            )
+        }
+        if supportsScan {
+            items.append(
+                ActionMenuItem(
+                    title: "Start Node Scan (\(selectedNode.id))",
+                    systemImage: "dot.radiowaves.left.and.right",
+                    enabled: true,
+                    reason: nil,
+                    action: { sodsStore.setNodeCapability(nodeID: selectedNode.id, capability: "scan", enabled: true) }
+                )
+            )
+            items.append(
+                ActionMenuItem(
+                    title: "Stop Node Scan (\(selectedNode.id))",
+                    systemImage: "stop.circle",
+                    enabled: true,
+                    reason: nil,
+                    action: { sodsStore.setNodeCapability(nodeID: selectedNode.id, capability: "scan", enabled: false) }
+                )
+            )
+            items.append(
+                ActionMenuItem(
+                    title: "Start All Node Scans",
+                    systemImage: "play.circle",
+                    enabled: true,
+                    reason: nil,
+                    action: {
+                        for node in claimedNodes where node.capabilities.contains("scan") {
+                            sodsStore.setNodeCapability(nodeID: node.id, capability: "scan", enabled: true)
+                        }
+                    }
+                )
+            )
+            items.append(
+                ActionMenuItem(
+                    title: "Stop All Node Scans",
+                    systemImage: "stop.circle",
+                    enabled: true,
+                    reason: nil,
+                    action: {
+                        for node in claimedNodes where node.capabilities.contains("scan") {
+                            sodsStore.setNodeCapability(nodeID: node.id, capability: "scan", enabled: false)
+                        }
+                    }
+                )
+            )
+        }
+        if supportsFrames {
+            items.append(
+                ActionMenuItem(
+                    title: "Enable Frames (\(selectedNode.id))",
+                    systemImage: "waveform.path.ecg",
+                    enabled: true,
+                    reason: nil,
+                    action: { sodsStore.setNodeCapability(nodeID: selectedNode.id, capability: "frames", enabled: true) }
+                )
+            )
+            items.append(
+                ActionMenuItem(
+                    title: "Disable Frames (\(selectedNode.id))",
+                    systemImage: "waveform.path",
+                    enabled: true,
+                    reason: nil,
+                    action: { sodsStore.setNodeCapability(nodeID: selectedNode.id, capability: "frames", enabled: false) }
+                )
+            )
+        }
+        if supportsProbe {
+            items.append(
+                ActionMenuItem(
+                    title: "Probe Node (\(selectedNode.id))",
+                    systemImage: "scope",
+                    enabled: true,
+                    reason: nil,
+                    action: { sodsStore.setNodeCapability(nodeID: selectedNode.id, capability: "probe", enabled: true) }
+                )
+            )
+        }
+        if supportsPing {
+            items.append(
+                ActionMenuItem(
+                    title: "Ping Node (\(selectedNode.id))",
+                    systemImage: "dot.radiowaves.left.and.right",
+                    enabled: true,
+                    reason: nil,
+                    action: { sodsStore.setNodeCapability(nodeID: selectedNode.id, capability: "ping", enabled: true) }
+                )
+            )
+        }
+        return items
     }
 
     private func scanControlItems() -> [ActionMenuItem] {
@@ -1539,6 +2070,65 @@ struct ContentView: View {
             }
         ))
         return items
+    }
+
+    private func runToolImmediately(_ tool: ToolDefinition) {
+        guard let url = URL(string: sodsStore.baseURL.trimmingCharacters(in: .whitespacesAndNewlines) + "/api/tool/run") else {
+            LogStore.logAsync(.warn, "God Button tool failed: invalid station URL")
+            return
+        }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try? JSONSerialization.data(withJSONObject: [
+            "name": tool.name,
+            "input": [String: String]()
+        ])
+        Task {
+            do {
+                let (data, response) = try await URLSession.shared.data(for: request)
+                let status = (response as? HTTPURLResponse)?.statusCode ?? -1
+                let output = String(data: data, encoding: .utf8) ?? ""
+                if (200...299).contains(status) {
+                    LogStore.logAsync(.info, "God Button ran tool \(tool.name): HTTP \(status)")
+                } else {
+                    LogStore.logAsync(.warn, "God Button tool \(tool.name) failed: HTTP \(status) \(output)")
+                }
+                toolRegistry.reload()
+                runbookRegistry.reload()
+            } catch {
+                LogStore.logAsync(.warn, "God Button tool \(tool.name) error: \(error.localizedDescription)")
+            }
+        }
+    }
+
+    private func runRunbookImmediately(_ runbook: RunbookDefinition) {
+        guard let url = URL(string: sodsStore.baseURL.trimmingCharacters(in: .whitespacesAndNewlines) + "/api/runbook/run") else {
+            LogStore.logAsync(.warn, "God Button runbook failed: invalid station URL")
+            return
+        }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try? JSONSerialization.data(withJSONObject: [
+            "id": runbook.id,
+            "input": [String: String]()
+        ])
+        Task {
+            do {
+                let (data, response) = try await URLSession.shared.data(for: request)
+                let status = (response as? HTTPURLResponse)?.statusCode ?? -1
+                let output = String(data: data, encoding: .utf8) ?? ""
+                if (200...299).contains(status) {
+                    LogStore.logAsync(.info, "God Button ran runbook \(runbook.id): HTTP \(status)")
+                } else {
+                    LogStore.logAsync(.warn, "God Button runbook \(runbook.id) failed: HTTP \(status) \(output)")
+                }
+                runbookRegistry.reload()
+            } catch {
+                LogStore.logAsync(.warn, "God Button runbook \(runbook.id) error: \(error.localizedDescription)")
+            }
+        }
     }
 
     private func dashboardStationSections() -> [ActionMenuSection] {
@@ -1673,6 +2263,103 @@ struct ContentView: View {
         }
     }
 
+    private func shouldRunToolDirectly(_ tool: ToolDefinition) -> Bool {
+        let raw = (tool.input ?? "").trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        return raw.isEmpty || raw == "none" || raw == "{}"
+    }
+
+    private func runToolDirectly(_ tool: ToolDefinition) {
+        guard let url = URL(string: sodsStore.baseURL.trimmingCharacters(in: .whitespacesAndNewlines) + "/api/tool/run") else {
+            showBaseURLToast("Invalid station URL")
+            return
+        }
+        showBaseURLToast("Running \(tool.name)…")
+        Task {
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+            let body: [String: Any] = ["name": tool.name, "input": [:]]
+            request.httpBody = try? JSONSerialization.data(withJSONObject: body)
+            do {
+                let (data, response) = try await URLSession.shared.data(for: request)
+                if let http = response as? HTTPURLResponse, !(200...299).contains(http.statusCode) {
+                    await MainActor.run {
+                        showBaseURLToast("Tool failed (\(http.statusCode)): \(tool.name)")
+                    }
+                    return
+                }
+                var openedViewer = false
+                if let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                    if let urls = obj["urls"] as? [String], let first = urls.first, let viewer = URL(string: first) {
+                        await MainActor.run {
+                            modalCoordinator.present(.viewer(url: viewer))
+                        }
+                        openedViewer = true
+                    } else if let result = obj["result_json"] as? [String: Any],
+                              let urlString = result["url"] as? String,
+                              let viewer = URL(string: urlString) {
+                        await MainActor.run {
+                            modalCoordinator.present(.viewer(url: viewer))
+                        }
+                        openedViewer = true
+                    }
+                }
+                await MainActor.run {
+                    showBaseURLToast(openedViewer ? "Ran \(tool.name) (viewer opened)" : "Ran \(tool.name)")
+                }
+            } catch {
+                await MainActor.run {
+                    showBaseURLToast("Tool error: \(tool.name)")
+                }
+            }
+        }
+    }
+
+    private func runPresetDirectly(_ preset: PresetDefinition) {
+        guard let url = URL(string: sodsStore.baseURL.trimmingCharacters(in: .whitespacesAndNewlines) + "/api/preset/run") else {
+            showBaseURLToast("Invalid station URL")
+            return
+        }
+        let title = preset.title?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let label = (title?.isEmpty == false) ? title! : preset.id
+        showBaseURLToast("Running \(label)…")
+        Task {
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+            let body: [String: Any] = ["id": preset.id]
+            request.httpBody = try? JSONSerialization.data(withJSONObject: body)
+            do {
+                let (data, response) = try await URLSession.shared.data(for: request)
+                if let http = response as? HTTPURLResponse, !(200...299).contains(http.statusCode) {
+                    await MainActor.run {
+                        showBaseURLToast("Preset failed (\(http.statusCode)): \(label)")
+                    }
+                    return
+                }
+                var openedViewer = false
+                if let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                    if let urls = obj["urls"] as? [String], let first = urls.first, let viewer = URL(string: first) {
+                        await MainActor.run { modalCoordinator.present(.viewer(url: viewer)) }
+                        openedViewer = true
+                    } else if let result = obj["result_json"] as? [String: Any],
+                              let urlString = result["url"] as? String,
+                              let viewer = URL(string: urlString) {
+                        await MainActor.run { modalCoordinator.present(.viewer(url: viewer)) }
+                        openedViewer = true
+                    }
+                }
+                await MainActor.run {
+                    showBaseURLToast(openedViewer ? "Ran \(label) (viewer opened)" : "Ran \(label)")
+                }
+            } catch {
+                await MainActor.run {
+                    showBaseURLToast("Preset error: \(label)")
+                }
+            }
+        }
+    }
+
     private func openFlashPath(_ path: String, showFinder: Bool = false) {
         let base = sodsStore.baseURL.trimmingCharacters(in: .whitespacesAndNewlines)
         let target = flashTarget(from: path)
@@ -1729,6 +2416,25 @@ struct ContentView: View {
             return false
         }
         return false
+    }
+
+    private func startStationFromDashboard() {
+        let base = sodsStore.baseURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        StationProcessManager.shared.ensureRunning(baseURL: base)
+        Task {
+            let ready = await waitForStation(baseURL: base, timeout: 10.0)
+            await MainActor.run {
+                sodsStore.refreshStatus()
+                sodsStore.connect()
+                if ready {
+                    showBaseURLToast("Station started.")
+                    logStore.log(.info, "Dashboard start station succeeded at \(base)")
+                } else {
+                    showBaseURLToast("Station start attempted. Verify SODS root and port 9123.")
+                    logStore.log(.warn, "Dashboard start station timed out at \(base)")
+                }
+            }
+        }
     }
 
     private func bestONVIFXAddr(for ip: String) -> String? {
@@ -2659,6 +3365,64 @@ struct ContentView: View {
 
 }
 
+private extension ContentView {
+    func applyLaunchOverrides() {
+        let args = ProcessInfo.processInfo.arguments
+        guard let idx = args.firstIndex(of: "--start-view") else { return }
+        let next = (idx + 1 < args.count) ? args[idx + 1] : ""
+        let cleaned = next.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleaned.isEmpty else { return }
+        if let match = ViewMode.allCases.first(where: { $0.rawValue.caseInsensitiveCompare(cleaned) == .orderedSame }) {
+            viewMode = match
+            return
+        }
+        if let match = ViewMode.allCases.first(where: { $0.rawValue.lowercased().replacingOccurrences(of: " ", with: "") == cleaned.lowercased().replacingOccurrences(of: " ", with: "") }) {
+            viewMode = match
+        }
+    }
+
+    func kickoffRoundupIfRequested() {
+        let args = ProcessInfo.processInfo.arguments
+        guard let idx = args.firstIndex(of: "--roundup") else {
+            roundUpClaimedNodesConnectIdentify()
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 2_000_000_000)
+                roundUpClaimedNodesConnectIdentify()
+            }
+            return
+        }
+        let next = (idx + 1 < args.count) ? args[idx + 1] : ""
+        let mode = next.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        if mode == "connect-identify" || mode == "connect+identify" || mode == "connectidentify" || mode.isEmpty {
+            roundUpClaimedNodesConnectIdentify()
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 2_000_000_000)
+                roundUpClaimedNodesConnectIdentify()
+            }
+            return
+        }
+        if mode == "status" || mode == "refresh" {
+            sodsStore.refreshStatus()
+            return
+        }
+        roundUpClaimedNodesConnectIdentify()
+    }
+
+    func roundUpClaimedNodesConnectIdentify() {
+        let claimed = nodeRegistry.nodes
+        guard !claimed.isEmpty else { return }
+        let presence = sodsStore.nodePresence
+        for node in claimed {
+            if node.connectionState == .offline || node.connectionState == .error || presence[node.id] == nil {
+                NodeRegistry.shared.setConnecting(nodeID: node.id, connecting: true)
+                sodsStore.connectNode(node.id)
+                sodsStore.identifyNode(node.id)
+            }
+        }
+        sodsStore.refreshStatus()
+    }
+}
+
 struct ConsentView: View {
     let onAcknowledge: () -> Void
 
@@ -2668,9 +3432,12 @@ struct ConsentView: View {
                 .font(.system(size: 18, weight: .semibold))
             Text("Use only on networks you own or are authorized to assess. This tool performs network scanning and service discovery for inventory and validation purposes.")
                 .font(.system(size: 13))
-            Button("I Understand") {
-                onAcknowledge()
+            Button { onAcknowledge() } label: {
+                Image(systemName: "checkmark.circle")
+                    .font(.system(size: 14, weight: .semibold))
             }
+            .help("I Understand")
+            .accessibilityLabel(Text("I Understand"))
             .keyboardShortcut(.defaultAction)
         }
         .padding(20)
@@ -2829,15 +3596,28 @@ struct DeviceRow: View {
                     .foregroundColor(.secondary)
                     .cornerRadius(4)
                 Spacer()
-                Button("Copy IP") {
+                Button {
                     NSPasteboard.general.clearContents()
                     NSPasteboard.general.setString(device.ip, forType: .string)
                 }
-                Button("Copy RTSP") {
+                label: {
+                    Image(systemName: "doc.on.doc")
+                        .font(.system(size: 12, weight: .semibold))
+                }
+                .help("Copy IP")
+                .accessibilityLabel(Text("Copy IP"))
+
+                Button {
                     NSPasteboard.general.clearContents()
                     let value = device.bestRtspURI ?? device.suggestedRTSPURL
                     NSPasteboard.general.setString(value, forType: .string)
                 }
+                label: {
+                    Image(systemName: "video")
+                        .font(.system(size: 12, weight: .semibold))
+                }
+                .help("Copy RTSP URL")
+                .accessibilityLabel(Text("Copy RTSP URL"))
             }
 
             if let title = device.httpTitle {
@@ -2990,20 +3770,40 @@ struct UnifiedDetailView: View {
         let rtsp = bestRTSPURI
         HStack(spacing: 8) {
             if let ip, bestHTTPURL != nil {
-                Button("Open Web UI") { onOpenWeb(ip) }
-                    .buttonStyle(SecondaryActionButtonStyle())
+                Button { onOpenWeb(ip) } label: {
+                    Image(systemName: "globe")
+                        .font(.system(size: 12, weight: .semibold))
+                }
+                .buttonStyle(SecondaryActionButtonStyle())
+                .help("Open Web UI")
+                .accessibilityLabel(Text("Open Web UI"))
             }
             if let ip, let rtsp {
-                Button("Open in VLC") { onOpenVLC(rtsp, ip) }
-                    .buttonStyle(SecondaryActionButtonStyle())
+                Button { onOpenVLC(rtsp, ip) } label: {
+                    Image(systemName: "play.rectangle")
+                        .font(.system(size: 12, weight: .semibold))
+                }
+                .buttonStyle(SecondaryActionButtonStyle())
+                .help("Open in VLC")
+                .accessibilityLabel(Text("Open in VLC"))
             }
             if let device, !safeMode && !device.rtspProbeInProgress {
-                Button("Probe RTSP") { onProbeRtsp(device) }
-                    .buttonStyle(PrimaryActionButtonStyle())
+                Button { onProbeRtsp(device) } label: {
+                    Image(systemName: "dot.radiowaves.left.and.right")
+                        .font(.system(size: 12, weight: .semibold))
+                }
+                .buttonStyle(PrimaryActionButtonStyle())
+                .help("Probe RTSP")
+                .accessibilityLabel(Text("Probe RTSP"))
             }
             if let device, !safeMode && !isFetching {
-                Button("Retry RTSP Fetch") { onFetch(device) }
-                    .buttonStyle(SecondaryActionButtonStyle())
+                Button { onFetch(device) } label: {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.system(size: 12, weight: .semibold))
+                }
+                .buttonStyle(SecondaryActionButtonStyle())
+                .help("Retry RTSP Fetch")
+                .accessibilityLabel(Text("Retry RTSP Fetch"))
             }
         }
     }
@@ -3352,10 +4152,15 @@ struct DeviceDetailView: View {
                         Text(result.uri)
                             .font(.system(size: 11))
                             .contextMenu {
-                                Button("Copy RTSP URL") {
+                                Button {
                                     NSPasteboard.general.clearContents()
                                     NSPasteboard.general.setString(result.uri, forType: .string)
+                                } label: {
+                                    Image(systemName: "doc.on.doc")
+                                        .font(.system(size: 12, weight: .semibold))
                                 }
+                                .help("Copy RTSP URL")
+                                .accessibilityLabel(Text("Copy RTSP URL"))
                             }
                         if let server = result.server, !server.isEmpty {
                             Text("Server: \(server)")
@@ -3563,20 +4368,47 @@ struct BLEListView: View {
                 Text("Last: \(scanner.lastPermissionMessage)")
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
-                Button("Touch Permission") {
+                Button {
                     Task { @MainActor in
                         await BLEScanner.shared.touchForPermissionIfNeeded()
                     }
                 }
-                Button("Import BLE Company IDs...") {
+                label: {
+                    Image(systemName: "hand.tap")
+                        .font(.system(size: 12, weight: .semibold))
+                }
+                .help("Touch Permission")
+                .accessibilityLabel(Text("Touch Permission"))
+
+                Button {
                     BLEMetadataStore.shared.importCompanyMap(log: LogStore.shared)
                 }
-                Button("Import BLE Assigned Numbers...") {
+                label: {
+                    Image(systemName: "square.and.arrow.down")
+                        .font(.system(size: 12, weight: .semibold))
+                }
+                .help("Import BLE Company IDs")
+                .accessibilityLabel(Text("Import BLE Company IDs"))
+
+                Button {
                     BLEMetadataStore.shared.importAssignedNumbersMap(log: LogStore.shared)
                 }
-                Button("Reveal Resources Folder") {
+                label: {
+                    Image(systemName: "square.and.arrow.down.on.square")
+                        .font(.system(size: 12, weight: .semibold))
+                }
+                .help("Import BLE Assigned Numbers")
+                .accessibilityLabel(Text("Import BLE Assigned Numbers"))
+
+                Button {
                     StoragePaths.revealResourcesFolder()
                 }
+                label: {
+                    Image(systemName: "folder")
+                        .font(.system(size: 12, weight: .semibold))
+                }
+                .help("Reveal Resources Folder")
+                .accessibilityLabel(Text("Reveal Resources Folder"))
                 Spacer()
                 if !findFingerprintID.isEmpty {
                     Text("Find: \(findFingerprintID)")
@@ -3591,9 +4423,15 @@ struct BLEListView: View {
                         .font(.system(size: 12))
                         .foregroundColor(.orange)
                     Spacer()
-                    Button("Open Bluetooth Privacy Settings") {
+                    Button {
                         openBluetoothPrivacySettings()
                     }
+                    label: {
+                        Image(systemName: "gearshape")
+                            .font(.system(size: 12, weight: .semibold))
+                    }
+                    .help("Open Bluetooth Privacy Settings")
+                    .accessibilityLabel(Text("Open Bluetooth Privacy Settings"))
                 }
                 .padding(6)
                 .background(Color.orange.opacity(0.12))
@@ -3796,7 +4634,10 @@ struct BLEDetailView: View {
     let onExportRuntimeLog: () -> Void
     let onRevealExports: () -> Void
     let onShipNow: () -> Void
+    @StateObject private var flashedNoteStore = FlashedNoteStore.shared
     @State private var labelText: String = ""
+    @State private var flashedNoteKey: String = ""
+    @State private var flashedNoteText: String = ""
 
     var body: some View {
         VStack(spacing: 0) {
@@ -3817,9 +4658,14 @@ struct BLEDetailView: View {
                         }
                         .onAppear {
                             labelText = BLEScanner.shared.label(for: peripheral.fingerprintID) ?? ""
+                            loadFlashedNoteForCurrentSelection()
                         }
                         .onChange(of: peripheral.fingerprintID) { _ in
                             labelText = BLEScanner.shared.label(for: peripheral.fingerprintID) ?? ""
+                            loadFlashedNoteForCurrentSelection()
+                        }
+                        .onChange(of: prober.results[peripheral.fingerprintID]?.serialNumber ?? "") { _ in
+                            loadFlashedNoteForCurrentSelection()
                         }
                         .onChange(of: labelText) { value in
                             BLEScanner.shared.setLabel(value, for: peripheral.fingerprintID)
@@ -3918,6 +4764,63 @@ struct BLEDetailView: View {
                                     .font(.system(size: 11))
                                     .foregroundColor(.secondary)
                             }
+                        }
+
+                        Divider()
+                        Text("Flashed Notes (Persistent)")
+                            .font(.system(size: 12, weight: .semibold))
+                        Text("Use serial from probe/serial monitor, then save notes for this device.")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                        HStack(spacing: 8) {
+                            Text("Key")
+                                .font(.system(size: 11))
+                                .frame(width: 42, alignment: .leading)
+                            TextField("serial or device id", text: $flashedNoteKey)
+                                .textFieldStyle(.roundedBorder)
+                            Button {
+                                loadFlashedNoteForCurrentSelection()
+                            }
+                            label: {
+                                Image(systemName: "arrow.down.circle")
+                                    .font(.system(size: 12, weight: .semibold))
+                            }
+                            .buttonStyle(SecondaryActionButtonStyle())
+                            .help("Load")
+                            .accessibilityLabel(Text("Load"))
+                        }
+                        TextEditor(text: $flashedNoteText)
+                            .font(.system(size: 11))
+                            .frame(minHeight: 72)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 6)
+                                    .stroke(Theme.border, lineWidth: 1)
+                            )
+                        HStack(spacing: 8) {
+                            Button {
+                                flashedNoteStore.setNote(flashedNoteText, for: flashedNoteKey)
+                                loadFlashedNoteForCurrentSelection()
+                            }
+                            label: {
+                                Image(systemName: "square.and.arrow.down")
+                                    .font(.system(size: 12, weight: .semibold))
+                            }
+                            .buttonStyle(PrimaryActionButtonStyle())
+                            .help("Save Note")
+                            .accessibilityLabel(Text("Save Note"))
+
+                            Button {
+                                flashedNoteStore.setNote("", for: flashedNoteKey)
+                                loadFlashedNoteForCurrentSelection()
+                            }
+                            label: {
+                                Image(systemName: "trash")
+                                    .font(.system(size: 12, weight: .semibold))
+                            }
+                            .buttonStyle(SecondaryActionButtonStyle())
+                            .help("Clear Note")
+                            .accessibilityLabel(Text("Clear Note"))
+                            Spacer()
                         }
 
                         Text("Confidence: \(peripheral.bleConfidence.level.rawValue) (\(peripheral.bleConfidence.score))")
@@ -4026,35 +4929,33 @@ struct BLEDetailView: View {
         if let peripheral {
             let canProbe = (peripheral.fingerprint.isConnectable == true) && prober.canProbe(fingerprintID: peripheral.fingerprintID)
             HStack(spacing: 8) {
-                Button("Probe / Connect") {
+                Button {
                     prober.startProbe(peripheralInfo: peripheral)
+                }
+                label: {
+                    Image(systemName: "link.circle")
+                        .font(.system(size: 12, weight: .semibold))
                 }
                 .buttonStyle(PrimaryActionButtonStyle())
                 .disabled(!canProbe)
+                .help("Probe / Connect")
+                .accessibilityLabel(Text("Probe / Connect"))
 
-                Button("Pin to Case") {
+                Button {
                     CaseManager.shared.pinBLE(fingerprintID: peripheral.fingerprintID, bleScanner: BLEScanner.shared, log: LogStore.shared)
                 }
+                label: {
+                    Image(systemName: "pin")
+                        .font(.system(size: 12, weight: .semibold))
+                }
                 .buttonStyle(SecondaryActionButtonStyle())
+                .help("Pin to Case")
+                .accessibilityLabel(Text("Pin to Case"))
             }
         }
     }
 
     private func actionSections() -> [ActionMenuSection] {
-        let hostActions = ActionMenuSection(
-            title: "Host Actions",
-            items: [
-                ActionMenuItem(title: "Open Web UI", systemImage: "globe", enabled: false, reason: "No host selected", action: {}),
-                ActionMenuItem(title: "Open SSDP Location", systemImage: "link", enabled: false, reason: "No host selected", action: {}),
-                ActionMenuItem(title: "Open in VLC", systemImage: "play.rectangle", enabled: false, reason: "No host selected", action: {}),
-                ActionMenuItem(title: "Probe RTSP", systemImage: "dot.radiowaves.left.and.right", enabled: false, reason: "No host selected", action: {}),
-                ActionMenuItem(title: "Hard Probe (VLC + Diagnostics)", systemImage: "hammer", enabled: false, reason: "No host selected", action: {}),
-                ActionMenuItem(title: "Retry RTSP Fetch", systemImage: "arrow.clockwise", enabled: false, reason: "No host selected", action: {}),
-                ActionMenuItem(title: "Export Evidence (Raw + Readable)", systemImage: "tray.and.arrow.down", enabled: false, reason: "No host selected", action: {}),
-                ActionMenuItem(title: "Export Device Report", systemImage: "doc.text", enabled: false, reason: "No host selected", action: {})
-            ]
-        )
-
         let appActions = ActionMenuSection(
             title: "App/Global Actions",
             items: [
@@ -4163,7 +5064,27 @@ struct BLEDetailView: View {
                 )
             ]
         )
-        return [hostActions, appActions, bleActions]
+        return [appActions, bleActions]
+    }
+
+    private func currentFlashedNoteLookupKeys() -> (preferred: String?, fallbacks: [String]) {
+        guard let peripheral else { return (nil, []) }
+        let serial = prober.results[peripheral.fingerprintID]?.serialNumber
+        let sanitizedSerial = serial?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let preferred = (sanitizedSerial?.isEmpty == false) ? sanitizedSerial : nil
+        let fallbacks = [
+            peripheral.fingerprintID,
+            peripheral.id.uuidString,
+            peripheral.name ?? ""
+        ]
+        return (preferred, fallbacks)
+    }
+
+    private func loadFlashedNoteForCurrentSelection() {
+        let keys = currentFlashedNoteLookupKeys()
+        let resolved = flashedNoteStore.resolveKey(preferred: keys.preferred, fallbacks: keys.fallbacks)
+        flashedNoteKey = resolved
+        flashedNoteText = flashedNoteStore.note(for: resolved)
     }
 }
 
@@ -4279,9 +5200,14 @@ struct NodesView: View {
     let onFlashStarted: (FlashTarget) -> Void
     let onFlashAwaitingHello: () -> Void
     let onFlashClaimed: (String) -> Void
+    @StateObject private var nodeRegistry = NodeRegistry.shared
     @State private var portText: String = ""
     @State private var manualConnectHost: String = ""
     @State private var manualConnectLabel: String = ""
+    @State private var addNodeID: String = ""
+    @State private var addNodeLabel: String = ""
+    @State private var addNodeIP: String = ""
+    @State private var addNodeMAC: String = ""
     @State private var manualConnectError: String?
     @State private var isManualConnecting = false
 
@@ -4312,18 +5238,22 @@ struct NodesView: View {
                         let isScannerNode = node.capabilities.contains("scan")
                             || node.presenceState == .scanning
                             || presence?.state.lowercased() == "scanning"
-                        NodeCardView(
-                            node: node,
-                            presence: presence,
-                            eventCount: store.recentEventCount(nodeID: node.id, window: 600),
-                            actions: actions(for: node),
-                            isScannerNode: isScannerNode,
-                            isConnecting: connectingNodeIDs.contains(node.id),
-                            onRefresh: {
-                                NodeRegistry.shared.setConnecting(nodeID: node.id, connecting: true)
-                                sodsStore.connectNode(node.id)
-                                sodsStore.identifyNode(node.id)
+	                        NodeCardView(
+	                            node: node,
+	                            presence: presence,
+	                            eventCount: store.recentEventCount(nodeID: node.id, window: 600),
+	                            actions: actions(for: node),
+	                            isScannerNode: isScannerNode,
+	                            isConnecting: connectingNodeIDs.contains(node.id),
+	                            stationBaseURL: sodsStore.baseURL,
+	                            onRefresh: {
+	                                NodeRegistry.shared.setConnecting(nodeID: node.id, connecting: true)
+	                                sodsStore.connectNode(node.id)
+	                                sodsStore.identifyNode(node.id)
                                 sodsStore.refreshStatus()
+                            },
+                            onForget: {
+                                NodeRegistry.shared.remove(nodeID: node.id)
                             }
                         )
                     }
@@ -4385,21 +5315,33 @@ struct NodesView: View {
                     HStack {
                         Text("Port:")
                             .font(.system(size: 12))
-                        TextField("8787", text: $portText)
+                        TextField("9123", text: $portText)
                             .textFieldStyle(.roundedBorder)
                             .frame(width: 80)
                             .onAppear {
                                 portText = String(store.port)
                             }
-                        Button("Apply") {
+                        Button {
                             if let value = Int(portText) {
                                 store.updatePort(value)
                             }
-                        }
-                        Button("Test Ping") {
-                            store.testPing()
+                        } label: {
+                            Image(systemName: "checkmark.circle")
+                                .font(.system(size: 12, weight: .semibold))
                         }
                         .buttonStyle(SecondaryActionButtonStyle())
+                        .help("Apply")
+                        .accessibilityLabel(Text("Apply"))
+
+                        Button {
+                            store.testPing()
+                        } label: {
+                            Image(systemName: "dot.radiowaves.left.and.right")
+                                .font(.system(size: 12, weight: .semibold))
+                        }
+                        .buttonStyle(SecondaryActionButtonStyle())
+                        .help("Test Ping")
+                        .accessibilityLabel(Text("Test Ping"))
                     }
                     if let lastPing = store.lastPingResult, !lastPing.isEmpty {
                         Text("Ping: \(lastPing)")
@@ -4476,16 +5418,36 @@ struct NodesView: View {
                 }
                 HStack(spacing: 10) {
                     if scanner.isScanning {
-                        Button("Stop Scan") { onStopScan() }
+                        Button { onStopScan() } label: {
+                            Image(systemName: "stop.circle.fill")
+                                .font(.system(size: 13, weight: .semibold))
+                        }
                             .buttonStyle(PrimaryActionButtonStyle())
+                            .help("Stop Scan")
+                            .accessibilityLabel(Text("Stop Scan"))
                     } else {
-                        Button("Start \(networkScanMode.label) Scan") { onStartScan() }
+                        Button { onStartScan() } label: {
+                            Image(systemName: networkScanMode == .oneShot ? "play.circle.fill" : "playpause.circle.fill")
+                                .font(.system(size: 13, weight: .semibold))
+                        }
                             .buttonStyle(PrimaryActionButtonStyle())
+                            .help("Start \(networkScanMode.label) Scan")
+                            .accessibilityLabel(Text("Start \(networkScanMode.label) Scan"))
                     }
-                    Button("Generate Scan Report") { onGenerateScanReport() }
+                    Button { onGenerateScanReport() } label: {
+                        Image(systemName: "doc.badge.gearshape")
+                            .font(.system(size: 12, weight: .semibold))
+                    }
                         .buttonStyle(SecondaryActionButtonStyle())
-                    Button("Reveal Latest Report") { onRevealLatestReport() }
+                        .help("Generate Scan Report")
+                        .accessibilityLabel(Text("Generate Scan Report"))
+                    Button { onRevealLatestReport() } label: {
+                        Image(systemName: "doc.text.magnifyingglass")
+                            .font(.system(size: 12, weight: .semibold))
+                    }
                         .buttonStyle(SecondaryActionButtonStyle())
+                        .help("Reveal Latest Report")
+                        .accessibilityLabel(Text("Reveal Latest Report"))
                     Toggle("Logs Panel", isOn: $showLogs)
                         .toggleStyle(.switch)
                         .font(.system(size: 11))
@@ -4526,12 +5488,55 @@ struct NodesView: View {
                     TextField("Label (optional)", text: $manualConnectLabel)
                         .textFieldStyle(.roundedBorder)
                         .frame(width: 180)
-                    Button(isManualConnecting ? "Connecting..." : "Connect Node") {
-                        connectSelectedNode()
+                    Button { connectSelectedNode() } label: {
+                        if isManualConnecting {
+                            ProgressView()
+                                .progressViewStyle(.circular)
+                                .controlSize(.small)
+                                .frame(width: 14, height: 14)
+                        } else {
+                            Image(systemName: "link.circle")
+                                .font(.system(size: 13, weight: .semibold))
+                        }
                     }
                     .buttonStyle(PrimaryActionButtonStyle())
                     .disabled(isManualConnecting)
+                    .help(isManualConnecting ? "Connecting..." : "Connect Node")
+                    .accessibilityLabel(Text(isManualConnecting ? "Connecting..." : "Connect Node"))
                     Spacer()
+                }
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Persist Node (Manual)")
+                        .font(.system(size: 11, weight: .semibold))
+                    HStack(spacing: 8) {
+                        TextField("Node ID", text: $addNodeID)
+                            .textFieldStyle(.roundedBorder)
+                            .frame(width: 160)
+                        TextField("Label", text: $addNodeLabel)
+                            .textFieldStyle(.roundedBorder)
+                            .frame(width: 160)
+                        TextField("IP", text: $addNodeIP)
+                            .textFieldStyle(.roundedBorder)
+                            .frame(width: 130)
+                        TextField("MAC", text: $addNodeMAC)
+                            .textFieldStyle(.roundedBorder)
+                            .frame(width: 150)
+                        Button {
+                            addOrUpdateManualNode()
+                        }
+                        label: {
+                            Image(systemName: "square.and.pencil")
+                                .font(.system(size: 12, weight: .semibold))
+                        }
+                        .buttonStyle(SecondaryActionButtonStyle())
+                        .help("Add / Update")
+                        .accessibilityLabel(Text("Add / Update"))
+                    }
+                    if !nodeRegistry.nodes.isEmpty {
+                        Text("Claimed nodes persist in \(StoragePaths.workspaceSubdir("registry").path)")
+                            .font(.system(size: 10))
+                            .foregroundColor(Theme.textSecondary)
+                    }
                 }
                 if let manualConnectError {
                     Text(manualConnectError)
@@ -4594,10 +5599,16 @@ struct NodesView: View {
                                     }
                                 }
                                 Spacer()
-                                Button("Claim") {
+                                Button {
                                     claimDiscovered(item)
                                 }
+                                label: {
+                                    Image(systemName: "checkmark.seal")
+                                        .font(.system(size: 12, weight: .semibold))
+                                }
                                 .buttonStyle(SecondaryActionButtonStyle())
+                                .help("Claim")
+                                .accessibilityLabel(Text("Claim"))
                             }
                             .padding(8)
                             .background(Theme.panelAlt)
@@ -4615,7 +5626,9 @@ struct NodesView: View {
                         .font(.system(size: 11))
                     Picker("Target", selection: $flashManager.selectedTarget) {
                         ForEach(FlashTarget.allCases) { target in
-                            Text(target.label).tag(target)
+                            Label(target.label, systemImage: target.systemImage)
+                                .labelStyle(.iconOnly)
+                                .tag(target)
                         }
                     }
                     .pickerStyle(.segmented)
@@ -4624,11 +5637,17 @@ struct NodesView: View {
                 }
 
                 HStack(spacing: 10) {
-                    Button("Flash Firmware") {
+                    Button {
                         showFlashConfirm = true
+                    }
+                    label: {
+                        Image(systemName: "bolt.fill")
+                            .font(.system(size: 12, weight: .semibold))
                     }
                     .buttonStyle(PrimaryActionButtonStyle())
                     .disabled(flashManager.isStarting)
+                    .help("Flash Firmware")
+                    .accessibilityLabel(Text("Flash Firmware"))
                     .confirmationDialog(
                         "Flash firmware to \(flashManager.selectedTarget.label)?",
                         isPresented: $showFlashConfirm,
@@ -4645,29 +5664,53 @@ struct NodesView: View {
                         Text("This will open the station flasher for the selected target. Confirm before continuing.")
                     }
 
-                    Button("Open Station Flasher") {
+                    Button {
                         flashManager.openLocalFlasher()
                     }
+                    label: {
+                        Image(systemName: "safari")
+                            .font(.system(size: 12, weight: .semibold))
+                    }
                     .buttonStyle(SecondaryActionButtonStyle())
+                    .help("Open Station Flasher")
+                    .accessibilityLabel(Text("Open Station Flasher"))
 
                     if flashManager.canOpenFlasher {
-                        Button("Open Flasher") {
+                        Button {
                             flashManager.openFlasher()
                         }
+                        label: {
+                            Image(systemName: "safari.fill")
+                                .font(.system(size: 12, weight: .semibold))
+                        }
                         .buttonStyle(SecondaryActionButtonStyle())
+                        .help("Open Flasher")
+                        .accessibilityLabel(Text("Open Flasher"))
                     }
 
                     if flashManager.isRunning {
-                        Button("Stop Server") {
+                        Button {
                             flashManager.stop()
                         }
+                        label: {
+                            Image(systemName: "stop.circle")
+                                .font(.system(size: 12, weight: .semibold))
+                        }
                         .buttonStyle(SecondaryActionButtonStyle())
+                        .help("Stop Server")
+                        .accessibilityLabel(Text("Stop Server"))
                     }
-                    Button("Find Newly Flashed Device") {
+                    Button {
                         onFlashAwaitingHello()
                         onFindDevice()
                     }
+                    label: {
+                        Image(systemName: "magnifyingglass.circle")
+                            .font(.system(size: 12, weight: .semibold))
+                    }
                     .buttonStyle(SecondaryActionButtonStyle())
+                    .help("Find Newly Flashed Device")
+                    .accessibilityLabel(Text("Find Newly Flashed Device"))
                     Spacer()
                 }
 
@@ -4691,11 +5734,17 @@ struct NodesView: View {
                             .font(.system(size: 10, design: .monospaced))
                             .textSelection(.enabled)
                             .foregroundColor(Theme.textSecondary)
-                        Button("Copy Command") {
+                        Button {
                             NSPasteboard.general.clearContents()
                             NSPasteboard.general.setString(terminalCommand, forType: .string)
                         }
+                        label: {
+                            Image(systemName: "doc.on.doc")
+                                .font(.system(size: 12, weight: .semibold))
+                        }
                         .buttonStyle(SecondaryActionButtonStyle())
+                        .help("Copy Command")
+                        .accessibilityLabel(Text("Copy Command"))
                     }
                 }
 
@@ -4705,6 +5754,9 @@ struct NodesView: View {
             .onAppear { flashManager.refreshPrepStatus() }
             .onChange(of: flashManager.selectedTarget) { _ in
                 flashManager.refreshPrepStatus()
+            }
+            .onReceive(Timer.publish(every: 8, on: .main, in: .common).autoconnect()) { _ in
+                autoReconnectClaimedNodes()
             }
         }
     }
@@ -4731,11 +5783,17 @@ struct NodesView: View {
                         .font(.system(size: 10, design: .monospaced))
                         .foregroundColor(Theme.textSecondary)
                         .textSelection(.enabled)
-                    Button("Copy") {
+                    Button {
                         NSPasteboard.general.clearContents()
                         NSPasteboard.general.setString(flashManager.prepStatus.buildCommand, forType: .string)
                     }
+                    label: {
+                        Image(systemName: "doc.on.doc")
+                            .font(.system(size: 12, weight: .semibold))
+                    }
                     .buttonStyle(SecondaryActionButtonStyle())
+                    .help("Copy")
+                    .accessibilityLabel(Text("Copy"))
                     Spacer()
                 }
             }
@@ -4747,7 +5805,6 @@ struct NodesView: View {
         let supportsScan = node.type == .mac || node.capabilities.contains("scan")
         let supportsReport = node.type == .mac || node.capabilities.contains("report")
         let supportsProbe = node.capabilities.contains("probe")
-        let supportsPing = node.capabilities.contains("ping")
 
         if supportsScan {
             if scanner.isScanning {
@@ -4759,11 +5816,11 @@ struct NodesView: View {
         items.append(NodeAction(title: "Identify", action: { sodsStore.identifyNode(node.id) }))
         if supportsProbe {
             items.append(NodeAction(title: "Probe", action: {
-                LogStore.shared.log(.info, "Probe action requested for node \(node.id)")
+                NodeRegistry.shared.setConnecting(nodeID: node.id, connecting: true)
+                sodsStore.connectNode(node.id)
+                sodsStore.identifyNode(node.id)
+                sodsStore.refreshStatus()
             }))
-        }
-        if supportsPing {
-            items.append(NodeAction(title: "Ping", action: { store.pingNode(node.id) }))
         }
         if supportsReport {
             items.append(NodeAction(title: "Generate Report", action: { onGenerateScanReport() }))
@@ -4846,6 +5903,43 @@ struct NodesView: View {
             sodsStore.refreshStatus()
         }
     }
+
+    private func addOrUpdateManualNode() {
+        let nodeID = addNodeID.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !nodeID.isEmpty else {
+            manualConnectError = "Node ID is required to persist a node."
+            return
+        }
+        manualConnectError = nil
+        let label = addNodeLabel.trimmingCharacters(in: .whitespacesAndNewlines)
+        let ip = addNodeIP.trimmingCharacters(in: .whitespacesAndNewlines)
+        let mac = addNodeMAC.trimmingCharacters(in: .whitespacesAndNewlines)
+        nodeRegistry.register(
+            nodeID: nodeID,
+            label: label.isEmpty ? nil : label,
+            hostname: nil,
+            ip: ip.isEmpty ? nil : ip,
+            mac: mac.isEmpty ? nil : mac,
+            type: .unknown,
+            capabilities: []
+        )
+        if connectNodeID.isEmpty {
+            connectNodeID = nodeID
+        }
+    }
+
+    private func autoReconnectClaimedNodes() {
+        guard !nodeRegistry.nodes.isEmpty else { return }
+        for node in nodeRegistry.nodes {
+            if node.connectionState == .offline || node.connectionState == .error || nodePresence[node.id] == nil {
+                NodeRegistry.shared.setConnecting(nodeID: node.id, connecting: true)
+                sodsStore.connectNode(node.id)
+                sodsStore.identifyNode(node.id)
+            }
+        }
+        sodsStore.refreshStatus()
+    }
+
 }
 
 struct NodeAction: Identifiable {
@@ -4861,14 +5955,34 @@ struct NodeCardView: View {
     let actions: [NodeAction]
     let isScannerNode: Bool
     let isConnecting: Bool
+    let stationBaseURL: String
     let onRefresh: () -> Void
+    let onForget: () -> Void
+    @AppStorage("TargetLockNodeID") private var targetLockNodeID: String = ""
+    @StateObject private var flashedNoteStore = FlashedNoteStore.shared
     @State private var showActions = false
+    @State private var showRemoveSheet = false
+    @State private var noteKey = ""
+    @State private var noteText = ""
 
     var body: some View {
         TimelineView(.animation(minimumInterval: 1.0 / 6.0)) { timeline in
             let status = nodeStatus()
             let activity = min(1.0, Double(eventCount) / 40.0)
-            let presentation = NodePresentation.forNode(node, presence: presence, activityScore: activity)
+            let presentation: NodePresentation = {
+                let base = NodePresentation.forNode(node, presence: presence, activityScore: activity)
+                if targetLockNodeID == node.id {
+                    return NodePresentation(
+                        baseColor: NSColor.systemRed,
+                        displayColor: NSColor.systemRed,
+                        shouldGlow: true,
+                        isOffline: base.isOffline,
+                        glowColor: NSColor.systemRed,
+                        activityScore: activity
+                    )
+                }
+                return base
+            }()
             let state = presence?.state.lowercased() ?? ""
             let isRefreshing = isConnecting || state == "connecting" || state == "scanning"
             let refreshLabel: String = {
@@ -4891,6 +6005,22 @@ struct NodeCardView: View {
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundColor(presentation.isOffline ? Theme.muted : Theme.textPrimary)
                     Spacer()
+                    Button {
+                        if targetLockNodeID == node.id {
+                            targetLockNodeID = ""
+                        } else {
+                            targetLockNodeID = node.id
+                        }
+                    } label: {
+                        Image(systemName: targetLockNodeID == node.id ? "scope" : "scope")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(targetLockNodeID == node.id ? .white : Theme.textSecondary)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 6)
+                            .background((targetLockNodeID == node.id ? Color(NSColor.systemRed) : Theme.border.opacity(0.35)))
+                            .clipShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
                     Circle()
                         .fill(Color(presentation.displayColor))
                         .frame(width: 8, height: 8)
@@ -4930,48 +6060,156 @@ struct NodeCardView: View {
                 }
 
                 HStack(spacing: 8) {
-                    Button(refreshLabel) { onRefresh() }
-                        .buttonStyle(SecondaryActionButtonStyle())
-                        .disabled(isRefreshing)
-                    if isScannerNode {
-                        Button("God Button") {
-                            NotificationCenter.default.post(name: .openGodMenuCommand, object: nil)
+                    Button { onRefresh() } label: {
+                        if isRefreshing {
+                            ProgressView()
+                                .progressViewStyle(.circular)
+                                .controlSize(.small)
+                                .frame(width: 14, height: 14)
+                        } else {
+                            Image(systemName: "arrow.clockwise")
+                                .font(.system(size: 12, weight: .semibold))
                         }
-                        .buttonStyle(SecondaryActionButtonStyle())
-                    } else {
-                        Button("Actions") { showActions.toggle() }
-                            .font(.system(size: 12, weight: .semibold))
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
-                            .background(Theme.accent.opacity(0.85))
-                            .foregroundColor(.white)
-                            .clipShape(Capsule())
-                            .popover(isPresented: $showActions, arrowEdge: .bottom) {
-                                VStack(alignment: .leading, spacing: 8) {
-                                    ModalHeaderView(title: "Node Actions", onBack: nil, onClose: { showActions = false })
-                                    if actions.isEmpty {
-                                        Text("No actions available.")
-                                            .font(.system(size: 11))
-                                            .foregroundColor(.secondary)
-                                    } else {
+                    }
+                    .buttonStyle(SecondaryActionButtonStyle())
+                    .disabled(isRefreshing)
+                    .help(refreshLabel)
+                    .accessibilityLabel(Text(refreshLabel))
+
+                    Button { showActions.toggle() } label: {
+                        Image(systemName: "ellipsis.circle")
+                            .font(.system(size: 13, weight: .semibold))
+                    }
+                    .buttonStyle(SecondaryActionButtonStyle())
+                    .help("Actions")
+                    .accessibilityLabel(Text("Actions"))
+                    .popover(isPresented: $showActions, arrowEdge: .bottom) {
+                            VStack(alignment: .leading, spacing: 8) {
+                                ModalHeaderView(title: "Node Actions", onBack: nil, onClose: { showActions = false })
+                                if actions.isEmpty {
+                                    Text("No actions available.")
+                                        .font(.system(size: 11))
+                                        .foregroundColor(.secondary)
+                                } else {
+                                    let columns = [GridItem(.adaptive(minimum: 40), spacing: 10)]
+                                    LazyVGrid(columns: columns, alignment: .leading, spacing: 10) {
                                         ForEach(actions) { action in
-                                            Button(action.title) { action.action() }
-                                                .buttonStyle(SecondaryActionButtonStyle())
+                                            Button { action.action() } label: {
+                                                Image(systemName: nodeActionSystemImage(action.title))
+                                                    .font(.system(size: 13, weight: .semibold))
+                                            }
+                                            .buttonStyle(SecondaryActionButtonStyle())
+                                            .help(action.title)
+                                            .accessibilityLabel(Text(action.title))
                                         }
                                     }
-                                    Divider()
-                                    Button("God Button") {
-                                        NotificationCenter.default.post(name: .openGodMenuCommand, object: nil)
+                                }
+                                Divider()
+                                HStack(spacing: 10) {
+                                    Text("Target Lock")
+                                        .font(.system(size: 11))
+                                        .foregroundColor(.secondary)
+                                    Spacer()
+                                    Button {
+                                        targetLockNodeID = (targetLockNodeID == node.id) ? "" : node.id
+                                        showActions = false
+                                    } label: {
+                                        Image(systemName: "scope")
+                                            .font(.system(size: 12, weight: .semibold))
                                     }
                                     .buttonStyle(SecondaryActionButtonStyle())
+                                    .help("Target Lock")
+                                    .accessibilityLabel(Text("Target Lock"))
                                 }
-                                .padding(12)
-                                .frame(minWidth: 240)
-                                .background(Theme.panel)
+                                HStack(spacing: 10) {
+                                    Text("Remove / Forget")
+                                        .font(.system(size: 11))
+                                        .foregroundColor(.secondary)
+                                    Spacer()
+                                    Button {
+                                        showRemoveSheet = true
+                                        showActions = false
+                                    } label: {
+                                        Image(systemName: "trash")
+                                            .font(.system(size: 12, weight: .semibold))
+                                    }
+                                    .buttonStyle(SecondaryActionButtonStyle())
+                                    .help("Remove / Forget")
+                                    .accessibilityLabel(Text("Remove / Forget"))
+                                }
                             }
+                            .padding(12)
+                            .frame(minWidth: 240)
+                            .background(Theme.panel)
+                        }
+                    Button { showRemoveSheet = true } label: {
+                        Image(systemName: "trash")
+                            .font(.system(size: 12, weight: .semibold))
                     }
+                    .buttonStyle(SecondaryActionButtonStyle())
+                    .help("Remove / Forget")
+                    .accessibilityLabel(Text("Remove / Forget"))
                     Spacer()
                 }
+
+                EmptyView()
+
+                DisclosureGroup("Flashed Note") {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack(spacing: 8) {
+                            Text("Key")
+                                .font(.system(size: 11))
+                                .frame(width: 34, alignment: .leading)
+                            TextField("serial or node id", text: $noteKey)
+                                .textFieldStyle(.roundedBorder)
+                            Button {
+                                loadNodeNote()
+                            }
+                            label: {
+                                Image(systemName: "arrow.down.circle")
+                                    .font(.system(size: 12, weight: .semibold))
+                            }
+                            .buttonStyle(SecondaryActionButtonStyle())
+                            .help("Load")
+                            .accessibilityLabel(Text("Load"))
+                        }
+                        TextEditor(text: $noteText)
+                            .font(.system(size: 11))
+                            .frame(minHeight: 56)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 6)
+                                    .stroke(Theme.border, lineWidth: 1)
+                            )
+                        HStack(spacing: 8) {
+                            Button {
+                                flashedNoteStore.setNote(noteText, for: noteKey)
+                                loadNodeNote()
+                            }
+                            label: {
+                                Image(systemName: "square.and.arrow.down")
+                                    .font(.system(size: 12, weight: .semibold))
+                            }
+                            .buttonStyle(SecondaryActionButtonStyle())
+                            .help("Save")
+                            .accessibilityLabel(Text("Save"))
+
+                            Button {
+                                flashedNoteStore.setNote("", for: noteKey)
+                                loadNodeNote()
+                            }
+                            label: {
+                                Image(systemName: "trash")
+                                    .font(.system(size: 12, weight: .semibold))
+                            }
+                            .buttonStyle(SecondaryActionButtonStyle())
+                            .help("Clear")
+                            .accessibilityLabel(Text("Clear"))
+                            Spacer()
+                        }
+                    }
+                    .padding(.top, 4)
+                }
+                .font(.system(size: 11))
             }
             .padding(12)
             .background(Theme.panel)
@@ -4981,7 +6219,43 @@ struct NodeCardView: View {
             )
             .cornerRadius(12)
             .shadow(color: presentation.shouldGlow ? Color(presentation.baseColor).opacity(glowAlpha) : .clear, radius: glowRadius)
+            .contentShape(RoundedRectangle(cornerRadius: 12))
+            .onAppear {
+                loadNodeNote()
+            }
+            .onChange(of: node.id) { _ in
+                loadNodeNote()
+            }
         }
+        .sheet(isPresented: $showRemoveSheet) {
+            RemoveNodeSheet(
+                node: node,
+                stationBaseURL: stationBaseURL,
+                hostHint: hostSummaryHostHint(),
+                onForgetLocal: {
+                    onForget()
+                    if targetLockNodeID == node.id {
+                        targetLockNodeID = ""
+                    }
+                },
+                onClose: { showRemoveSheet = false }
+            )
+        }
+    }
+
+    private func nodeNoteFallbackKeys() -> [String] {
+        var keys: [String] = [node.id]
+        if let ip = node.ip, !ip.isEmpty { keys.append(ip) }
+        if let mac = node.mac, !mac.isEmpty { keys.append(mac) }
+        if let ip = presence?.ip, !ip.isEmpty { keys.append(ip) }
+        if let mac = presence?.mac, !mac.isEmpty { keys.append(mac) }
+        return Array(Set(keys))
+    }
+
+    private func loadNodeNote() {
+        let resolved = flashedNoteStore.resolveKey(preferred: nil, fallbacks: nodeNoteFallbackKeys())
+        noteKey = resolved
+        noteText = flashedNoteStore.note(for: resolved)
     }
 
     private func nodeStatus() -> (label: String, isOnline: Bool, lastSeenText: String) {
@@ -5054,6 +6328,14 @@ struct NodeCardView: View {
         let error = (presence?.lastError ?? node.lastError)?.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let error, !error.isEmpty else { return nil }
         return "Last error: \(error)"
+    }
+
+    private func hostSummaryHostHint() -> String? {
+        if let ip = presence?.ip?.trimmingCharacters(in: .whitespacesAndNewlines), !ip.isEmpty { return ip }
+        if let ip = node.ip?.trimmingCharacters(in: .whitespacesAndNewlines), !ip.isEmpty { return ip }
+        if let host = presence?.hostname?.trimmingCharacters(in: .whitespacesAndNewlines), !host.isEmpty { return host }
+        if let host = node.hostname?.trimmingCharacters(in: .whitespacesAndNewlines), !host.isEmpty { return host }
+        return nil
     }
 }
 struct CasesView: View {
@@ -5146,10 +6428,16 @@ struct CasesView: View {
                                             .foregroundColor(presentation.isOffline ? Theme.muted : Theme.textPrimary)
                                     }
                                     Spacer()
-                                    Button("Add") {
+                                    Button {
                                         appendNodeID(node.id)
                                     }
+                                    label: {
+                                        Image(systemName: "plus.circle")
+                                            .font(.system(size: 12, weight: .semibold))
+                                    }
                                     .buttonStyle(SecondaryActionButtonStyle())
+                                    .help("Add")
+                                    .accessibilityLabel(Text("Add"))
                                 }
                             }
                         }
@@ -5164,29 +6452,53 @@ struct CasesView: View {
                     .font(.system(size: 11))
                     .toggleStyle(SwitchToggleStyle(tint: Theme.accent))
                     HStack {
-                        Button("Start Session") {
+                        Button {
                             let nodes = sessionNodesText.split(separator: ",").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
                             sessionManager.start(nodes: nodes, sources: selectedSources())
                         }
+                        label: {
+                            Image(systemName: "play.circle")
+                                .font(.system(size: 12, weight: .semibold))
+                        }
                         .buttonStyle(PrimaryActionButtonStyle())
                         .disabled(sessionManager.isActive)
-                        Button("Stop Session") {
+                        .help("Start Session")
+                        .accessibilityLabel(Text("Start Session"))
+
+                        Button {
                             sessionManager.stop(log: LogStore.shared)
+                        }
+                        label: {
+                            Image(systemName: "stop.circle")
+                                .font(.system(size: 12, weight: .semibold))
                         }
                         .buttonStyle(SecondaryActionButtonStyle())
                         .disabled(!sessionManager.isActive)
+                        .help("Stop Session")
+                        .accessibilityLabel(Text("Stop Session"))
                     }
                 }
                 .padding(6)
             }
             HStack {
-                Button("Refresh") { onRefresh() }
-                    .buttonStyle(SecondaryActionButtonStyle())
-                Button("Clear Selection") {
+                Button { onRefresh() } label: {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.system(size: 12, weight: .semibold))
+                }
+                .buttonStyle(SecondaryActionButtonStyle())
+                .help("Refresh")
+                .accessibilityLabel(Text("Refresh"))
+                Button {
                     selectedCase = nil
                     sessionNodesText = ""
                 }
+                label: {
+                    Image(systemName: "xmark.circle")
+                        .font(.system(size: 12, weight: .semibold))
+                }
                 .buttonStyle(SecondaryActionButtonStyle())
+                .help("Clear Selection")
+                .accessibilityLabel(Text("Clear Selection"))
                 Spacer()
             }
             if let selectedCase {
@@ -5206,18 +6518,38 @@ struct CasesView: View {
                     .font(.system(size: 12))
 
                 HStack {
-                    Button("Open Case Folder") {
+                    Button {
                         caseManager.openCaseFolder(selectedCase)
                     }
+                    label: {
+                        Image(systemName: "folder")
+                            .font(.system(size: 12, weight: .semibold))
+                    }
                     .buttonStyle(SecondaryActionButtonStyle())
-                    Button("Generate Case Report") {
+                    .help("Open Case Folder")
+                    .accessibilityLabel(Text("Open Case Folder"))
+
+                    Button {
                         caseManager.generateCaseReport(selectedCase, log: LogStore.shared)
                     }
+                    label: {
+                        Image(systemName: "doc.badge.plus")
+                            .font(.system(size: 12, weight: .semibold))
+                    }
                     .buttonStyle(SecondaryActionButtonStyle())
-                    Button("Ship Now") {
+                    .help("Generate Case Report")
+                    .accessibilityLabel(Text("Generate Case Report"))
+
+                    Button {
                         vaultTransport.shipNow(log: LogStore.shared)
                     }
+                    label: {
+                        Image(systemName: "paperplane")
+                            .font(.system(size: 12, weight: .semibold))
+                    }
                     .buttonStyle(PrimaryActionButtonStyle())
+                    .help("Ship Now")
+                    .accessibilityLabel(Text("Ship Now"))
                 }
             } else {
                 Text("Select a case to view details.")
@@ -5281,7 +6613,7 @@ struct VaultView: View {
             HStack {
                 Text("Host")
                     .frame(width: 90, alignment: .leading)
-                TextField("pi-logger.local", text: $shipper.host)
+                TextField("", text: $shipper.host)
                     .textFieldStyle(.roundedBorder)
                 Text("User")
                     .frame(width: 70, alignment: .leading)
@@ -5292,7 +6624,7 @@ struct VaultView: View {
             HStack {
                 Text("Destination")
                     .frame(width: 90, alignment: .leading)
-                TextField("/var/sods/vault/sods/", text: $shipper.destinationPath)
+                TextField("~/sods/vault/sods/", text: $shipper.destinationPath)
                     .textFieldStyle(.roundedBorder)
             }
 
@@ -5308,13 +6640,26 @@ struct VaultView: View {
                 Toggle("Auto-ship after export/report", isOn: $shipper.autoShipAfterExport)
                     .toggleStyle(.switch)
                 Spacer()
-                Button("Ship Now") {
+                Button {
                     shipper.save()
                     shipper.shipNow(log: LogStore.shared)
                 }
-                Button("Reveal Shipper State") {
+                label: {
+                    Image(systemName: "paperplane")
+                        .font(.system(size: 12, weight: .semibold))
+                }
+                .help("Ship Now")
+                .accessibilityLabel(Text("Ship Now"))
+
+                Button {
                     onRevealShipper()
                 }
+                label: {
+                    Image(systemName: "folder")
+                        .font(.system(size: 12, weight: .semibold))
+                }
+                .help("Reveal Shipper State")
+                .accessibilityLabel(Text("Reveal Shipper State"))
             }
 
             Text("Status: \(shipper.lastShipResult) • Queued: \(shipper.queuedCount)")
@@ -5344,9 +6689,19 @@ struct VaultView: View {
                 Text("Inbox: \(retentionDays) days / \(retentionMaxGB) GB")
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
-                Button("Prune Now") { onPrune() }
+                Button { onPrune() } label: {
+                    Image(systemName: "scissors")
+                        .font(.system(size: 12, weight: .semibold))
+                }
+                .help("Prune Now")
+                .accessibilityLabel(Text("Prune Now"))
                 Spacer()
-                Button("Reveal Resources Folder") { onRevealResources() }
+                Button { onRevealResources() } label: {
+                    Image(systemName: "folder")
+                        .font(.system(size: 12, weight: .semibold))
+                }
+                .help("Reveal Resources Folder")
+                .accessibilityLabel(Text("Reveal Resources Folder"))
             }
             Text("Inbox size: \(formatBytes(inboxStatus.totalBytes)) • Files: \(inboxStatus.fileCount)")
                 .font(.system(size: 11))
@@ -5519,24 +6874,45 @@ struct LogPanel: View {
                 Text("Logs")
                     .font(.system(size: 13, weight: .semibold))
                 Spacer()
-                Button("Export Audit Log") {
+                Button {
                     onExportAudit()
                 }
-                Button("View Latest Audit") {
+                label: {
+                    Image(systemName: "tray.and.arrow.down")
+                        .font(.system(size: 12, weight: .semibold))
+                }
+                .help("Export Audit Log")
+                .accessibilityLabel(Text("Export Audit Log"))
+
+                Button {
                     if let url = LogStore.latestAuditURL(log: logStore) {
                         NSWorkspace.shared.open(url)
                     } else {
                         logStore.log(.warn, "No audit file exists yet in ~/SODS/reports/audit-raw/")
                     }
                 }
-                Button("View Latest Readable") {
+                label: {
+                    Image(systemName: "doc.text.magnifyingglass")
+                        .font(.system(size: 12, weight: .semibold))
+                }
+                .help("View Latest Audit")
+                .accessibilityLabel(Text("View Latest Audit"))
+
+                Button {
                     if let url = LogStore.latestReadableAuditURL(log: logStore) {
                         NSWorkspace.shared.open(url)
                     } else {
                         logStore.log(.warn, "No readable audit file exists yet in ~/SODS/reports/audit-readable/")
                     }
                 }
-                Button("Export Runtime Log (TXT)") {
+                label: {
+                    Image(systemName: "doc.richtext")
+                        .font(.system(size: 12, weight: .semibold))
+                }
+                .help("View Latest Readable")
+                .accessibilityLabel(Text("View Latest Readable"))
+
+                Button {
                     let iso = LogStore.isoTimestamp()
                     let rawFilename = "SODS-LogsRaw-\(iso).txt"
                     let rawURL = LogStore.exportURL(subdir: "logs-raw", filename: rawFilename, log: logStore)
@@ -5550,9 +6926,22 @@ struct LogPanel: View {
                         logStore.log(.info, "Runtime log export copied to clipboard")
                     }
                 }
-                Button("Clear") {
+                label: {
+                    Image(systemName: "doc.plaintext")
+                        .font(.system(size: 12, weight: .semibold))
+                }
+                .help("Export Runtime Log (TXT)")
+                .accessibilityLabel(Text("Export Runtime Log (TXT)"))
+
+                Button {
                     logStore.clear()
                 }
+                label: {
+                    Image(systemName: "trash")
+                        .font(.system(size: 12, weight: .semibold))
+                }
+                .help("Clear")
+                .accessibilityLabel(Text("Clear"))
             }
 
             GeometryReader { geo in
@@ -6077,14 +7466,177 @@ extension Notification.Name {
     static let connectNodeCommand = Notification.Name("sods.connectNodeCommand")
     static let sodsOpenURLInApp = Notification.Name("sods.openUrlInApp")
     static let openGodMenuCommand = Notification.Name("sods.openGodMenuCommand")
+    static let targetLockNodeCommand = Notification.Name("sods.targetLockNodeCommand")
+}
+
+struct RemoveNodeSheet: View {
+    let node: NodeRecord
+    let stationBaseURL: String
+    let hostHint: String?
+    let onForgetLocal: () -> Void
+    let onClose: () -> Void
+
+    @State private var busy = false
+    @State private var lastError: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            ModalHeaderView(title: "Remove Node", onBack: nil, onClose: onClose)
+            Text(node.label)
+                .font(.system(size: 14, weight: .semibold))
+            Text("Node ID: \(node.id)")
+                .font(.system(size: 11, design: .monospaced))
+                .foregroundColor(Theme.textSecondary)
+
+            let profile = NodeFirmwareProfile.infer(nodeID: node.id, hostname: node.hostname, capabilities: node.capabilities)
+            Text("Firmware: \(profile.rawValue)")
+                .font(.system(size: 11))
+                .foregroundColor(Theme.textSecondary)
+            if let hostHint, !hostHint.isEmpty {
+                Text("Host: \(hostHint)")
+                    .font(.system(size: 11))
+                    .foregroundColor(Theme.textSecondary)
+            }
+
+            if let err = lastError, !err.isEmpty {
+                Text(err)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(Theme.accent)
+            }
+
+            Divider()
+
+            HStack(spacing: 10) {
+                Text("Forget locally")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                Spacer()
+                Button {
+                    lastError = nil
+                    onForgetLocal()
+                    onClose()
+                } label: {
+                    if busy {
+                        ProgressView()
+                            .controlSize(.small)
+                    } else {
+                        Image(systemName: "trash")
+                            .font(.system(size: 12, weight: .semibold))
+                    }
+                }
+                .buttonStyle(SecondaryActionButtonStyle())
+                .disabled(busy)
+                .help("Forget locally")
+                .accessibilityLabel(Text("Forget locally"))
+            }
+
+            HStack(spacing: 10) {
+                Text("Forget via Station")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                Spacer()
+                Button {
+                    Task { await forgetViaStation() }
+                } label: {
+                    if busy {
+                        ProgressView()
+                            .controlSize(.small)
+                    } else {
+                        Image(systemName: "server.rack")
+                            .font(.system(size: 12, weight: .semibold))
+                    }
+                }
+                .buttonStyle(SecondaryActionButtonStyle())
+                .disabled(busy || stationBaseURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                .help("Forget via Station")
+                .accessibilityLabel(Text("Forget via Station"))
+            }
+
+            let canFactoryReset = profile == .opsPortalCYD && (hostHint?.isEmpty == false)
+            HStack(spacing: 10) {
+                Text("Factory reset networking (CYD)")
+                    .font(.system(size: 11))
+                    .foregroundColor(canFactoryReset ? .secondary : Theme.muted)
+                Spacer()
+                Button {
+                    Task { await factoryResetNetworking() }
+                } label: {
+                    if busy {
+                        ProgressView()
+                            .controlSize(.small)
+                    } else {
+                        Image(systemName: "arrow.counterclockwise")
+                            .font(.system(size: 12, weight: .semibold))
+                    }
+                }
+                .buttonStyle(SecondaryActionButtonStyle())
+                .disabled(busy || !canFactoryReset)
+                .help("Factory reset networking (CYD)")
+                .accessibilityLabel(Text("Factory reset networking (CYD)"))
+            }
+
+            Spacer()
+        }
+        .padding(14)
+        .frame(minWidth: 360, minHeight: 260)
+        .background(Theme.panel)
+    }
+
+    private func postJSON(path: String, body: [String: Any]) async throws -> (Int, String) {
+        let base = stationBaseURL.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: "/+$", with: "", options: .regularExpression)
+        guard let url = URL(string: base + path) else { throw NSError(domain: "remove.node", code: 1, userInfo: [NSLocalizedDescriptionKey: "bad station url"]) }
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.timeoutInterval = 8.0
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.httpBody = try JSONSerialization.data(withJSONObject: body, options: [])
+        let (data, resp) = try await URLSession.shared.data(for: req)
+        let status = (resp as? HTTPURLResponse)?.statusCode ?? -1
+        return (status, String(data: data, encoding: .utf8) ?? "")
+    }
+
+    private func forgetViaStation() async {
+        busy = true
+        defer { busy = false }
+        lastError = nil
+        do {
+            let (status, text) = try await postJSON(path: "/api/registry/nodes/forget", body: ["node_id": node.id])
+            guard (200...299).contains(status) else {
+                lastError = "Station refused: HTTP \(status) \(text)"
+                return
+            }
+            await MainActor.run {
+                NodeRegistry.shared.load()
+            }
+            onClose()
+        } catch {
+            lastError = error.localizedDescription
+        }
+    }
+
+    private func factoryResetNetworking() async {
+        busy = true
+        defer { busy = false }
+        lastError = nil
+        guard let hostHint, !hostHint.isEmpty else {
+            lastError = "Missing device host/IP."
+            return
+        }
+        do {
+            let (status, text) = try await postJSON(path: "/api/registry/nodes/factory-reset", body: ["node_id": node.id, "host": hostHint])
+            guard (200...299).contains(status) else {
+                lastError = "Factory reset failed: HTTP \(status) \(text)"
+                return
+            }
+            onClose()
+        } catch {
+            lastError = error.localizedDescription
+        }
+    }
 }
 
 private func sodsRootPath() -> String {
-    if let env = ProcessInfo.processInfo.environment["SODS_ROOT"], !env.isEmpty {
-        return env
-    }
-    let home = FileManager.default.homeDirectoryForCurrentUser.path
-    return "\(home)/sods/SODS"
+    StoragePaths.sodsRootPath()
 }
 
 private func nodeAgentRootPath() -> String {
@@ -6097,6 +7649,20 @@ private func p4RootPath() -> String {
 
 private func portalRootPath() -> String {
     "\(sodsRootPath())/firmware/ops-portal"
+}
+
+private func nodeActionSystemImage(_ title: String) -> String {
+    let t = title.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    if t.contains("connect") { return "link.circle" }
+    if t.contains("identify") || t.contains("whoami") { return "person.crop.circle" }
+    if t.contains("scan") && t.contains("stop") { return "stop.circle" }
+    if t.contains("scan") { return "dot.radiowaves.left.and.right" }
+    if t.contains("probe") { return "waveform.path.ecg" }
+    if t.contains("ping") { return "antenna.radiowaves.left.and.right" }
+    if t.contains("report") { return "doc.badge.plus" }
+    if t.contains("ship") { return "paperplane" }
+    if t.contains("refresh") { return "arrow.clockwise" }
+    return "circle"
 }
 
 struct FlashPopoverView: View {
@@ -6136,20 +7702,47 @@ struct FlashPopoverView: View {
                 .foregroundColor(Theme.textSecondary)
 
             HStack(spacing: 10) {
-                Button("ESP32 DevKit") { onFlashEsp32() }
-                    .buttonStyle(PrimaryActionButtonStyle())
-                Button("ESP32-C3 DevKit") { onFlashEsp32c3() }
-                    .buttonStyle(PrimaryActionButtonStyle())
+                Button { onFlashEsp32() } label: {
+                    Image(systemName: "cpu")
+                        .font(.system(size: 12, weight: .semibold))
+                }
+                .buttonStyle(PrimaryActionButtonStyle())
+                .help("ESP32 DevKit")
+                .accessibilityLabel(Text("ESP32 DevKit"))
+
+                Button { onFlashEsp32c3() } label: {
+                    Image(systemName: "cpu.fill")
+                        .font(.system(size: 12, weight: .semibold))
+                }
+                .buttonStyle(PrimaryActionButtonStyle())
+                .help("XIAO ESP32-C3")
+                .accessibilityLabel(Text("XIAO ESP32-C3"))
             }
             HStack(spacing: 10) {
-                Button("Ops Portal CYD") { onFlashPortalCyd() }
-                    .buttonStyle(PrimaryActionButtonStyle())
-                Button("ESP32-P4 God Button") { onFlashP4() }
-                    .buttonStyle(PrimaryActionButtonStyle())
+                Button { onFlashPortalCyd() } label: {
+                    Image(systemName: "display")
+                        .font(.system(size: 12, weight: .semibold))
+                }
+                .buttonStyle(PrimaryActionButtonStyle())
+                .help("Ops Portal CYD")
+                .accessibilityLabel(Text("Ops Portal CYD"))
+
+                Button { onFlashP4() } label: {
+                    Image(systemName: "radiowaves.left.and.right")
+                        .font(.system(size: 12, weight: .semibold))
+                }
+                .buttonStyle(PrimaryActionButtonStyle())
+                .help("ESP32-P4 God Button")
+                .accessibilityLabel(Text("ESP32-P4 God Button"))
             }
 
-            Button("Open Web Tools Folder") { onOpenWebTools() }
-                .buttonStyle(SecondaryActionButtonStyle())
+            Button { onOpenWebTools() } label: {
+                Image(systemName: "folder")
+                    .font(.system(size: 12, weight: .semibold))
+            }
+            .buttonStyle(SecondaryActionButtonStyle())
+            .help("Open Web Tools Folder")
+            .accessibilityLabel(Text("Open Web Tools Folder"))
         }
         .padding(14)
         .frame(width: 360)
@@ -6166,12 +7759,25 @@ enum FlashTarget: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
+    var systemImage: String {
+        switch self {
+        case .esp32dev:
+            return "cpu"
+        case .esp32c3:
+            return "cpu.fill"
+        case .portalCyd:
+            return "display"
+        case .esp32p4:
+            return "radiowaves.left.and.right"
+        }
+    }
+
     var label: String {
         switch self {
         case .esp32dev:
             return "ESP32 DevKit v1"
         case .esp32c3:
-            return "ESP32-C3 DevKitM-1"
+            return "XIAO ESP32-C3"
         case .portalCyd:
             return "Ops Portal (CYD)"
         case .esp32p4:
@@ -6208,13 +7814,26 @@ enum FlashTarget: String, CaseIterable, Identifiable {
     var buildCommand: String {
         switch self {
         case .esp32dev:
-            return "cd \(nodeAgentRootPath()) && ./tools/build-stage-esp32dev.sh"
+            return "cd \(nodeAgentRootPath()) && node ./tools/stage.mjs --board esp32-devkitv1 --version devstation"
         case .esp32c3:
-            return "cd \(nodeAgentRootPath()) && ./tools/build-stage-esp32c3.sh"
+            return "cd \(nodeAgentRootPath()) && node ./tools/stage.mjs --board esp32-c3 --version devstation"
         case .portalCyd:
-            return "cd \(sodsRootPath()) && ./tools/portal-cyd-stage.sh"
+            return "cd \(sodsRootPath())/firmware/ops-portal && node ./tools/stage.mjs --board cyd-2432s028 --version devstation"
         case .esp32p4:
-            return "cd \(sodsRootPath()) && ./tools/p4-stage.sh"
+            return "cd \(sodsRootPath())/firmware/sods-p4-godbutton && node ./tools/stage.mjs --board waveshare-esp32p4 --version devstation"
+        }
+    }
+
+    var stageCommand: String {
+        switch self {
+        case .esp32dev:
+            return "cd \(nodeAgentRootPath()) && node ./tools/stage.mjs --board esp32-devkitv1 --version devstation --skip-build"
+        case .esp32c3:
+            return "cd \(nodeAgentRootPath()) && node ./tools/stage.mjs --board esp32-c3 --version devstation --skip-build"
+        case .portalCyd:
+            return "cd \(sodsRootPath())/firmware/ops-portal && node ./tools/stage.mjs --board cyd-2432s028 --version devstation --skip-build"
+        case .esp32p4:
+            return "cd \(sodsRootPath())/firmware/sods-p4-godbutton && node ./tools/stage.mjs --board waveshare-esp32p4 --version devstation --skip-build"
         }
     }
 }
@@ -6464,7 +8083,6 @@ final class FlashServerManager: ObservableObject {
             root = p4RootPath()
         }
         let webTools = "\(root)/esp-web-tools"
-        let firmwareBase = "\(webTools)/firmware"
 
         var missing: [String] = []
 
@@ -6482,71 +8100,52 @@ final class FlashServerManager: ObservableObject {
 
         if !FileManager.default.fileExists(atPath: manifestPath) {
             missing.append(displayPath(manifestPath))
+            return FlashPrepStatus(
+                isReady: false,
+                missingItems: missing,
+                buildCommand: target.buildCommand
+            )
         }
 
-        let (bootCandidates, partCandidates, fwCandidates): ([String], [String], [String])
-        switch target {
-        case .esp32dev:
-            bootCandidates = [
-                "\(firmwareBase)/esp32dev/bootloader.bin",
-                "\(firmwareBase)/bootloader.bin"
-            ]
-            partCandidates = [
-                "\(firmwareBase)/esp32dev/partitions.bin",
-                "\(firmwareBase)/partitions.bin"
-            ]
-            fwCandidates = [
-                "\(firmwareBase)/esp32dev/firmware.bin",
-                "\(firmwareBase)/firmware.bin"
-            ]
-        case .esp32c3:
-            bootCandidates = [
-                "\(firmwareBase)/esp32c3/bootloader.bin"
-            ]
-            partCandidates = [
-                "\(firmwareBase)/esp32c3/partitions.bin"
-            ]
-            fwCandidates = [
-                "\(firmwareBase)/esp32c3/firmware.bin"
-            ]
-        case .portalCyd:
-            bootCandidates = [
-                "\(firmwareBase)/portal-cyd/bootloader.bin"
-            ]
-            partCandidates = [
-                "\(firmwareBase)/portal-cyd/partitions.bin"
-            ]
-            fwCandidates = [
-                "\(firmwareBase)/portal-cyd/firmware.bin"
-            ]
-        case .esp32p4:
-            bootCandidates = [
-                "\(firmwareBase)/p4/bootloader.bin"
-            ]
-            partCandidates = [
-                "\(firmwareBase)/p4/partitions.bin"
-            ]
-            fwCandidates = [
-                "\(firmwareBase)/p4/firmware.bin"
-            ]
+        guard let manifestData = try? Data(contentsOf: URL(fileURLWithPath: manifestPath)),
+              let manifestJSON = try? JSONSerialization.jsonObject(with: manifestData) as? [String: Any] else {
+            missing.append("invalid manifest json: \(displayPath(manifestPath))")
+            return FlashPrepStatus(
+                isReady: false,
+                missingItems: missing,
+                buildCommand: target.buildCommand
+            )
         }
 
-        if !anyExists(bootCandidates) {
-            missing.append(displayPath(bootCandidates[0]))
-        }
-        if !anyExists(partCandidates) {
-            missing.append(displayPath(partCandidates[0]))
-        }
-        if target == .portalCyd {
-            let appCandidates = [
-                "\(firmwareBase)/portal-cyd/boot_app0.bin"
-            ]
-            if !anyExists(appCandidates) {
-                missing.append(displayPath(appCandidates[0]))
+        if let metadata = manifestJSON["metadata"] as? [String: Any] {
+            if let buildInfoRel = metadata["buildinfo_path"] as? String, !buildInfoRel.isEmpty {
+                let buildInfoAbs = "\(webTools)/\(buildInfoRel)"
+                if !FileManager.default.fileExists(atPath: buildInfoAbs) {
+                    missing.append(displayPath(buildInfoAbs))
+                }
+            }
+            if let shaRel = metadata["sha256sums_path"] as? String, !shaRel.isEmpty {
+                let shaAbs = "\(webTools)/\(shaRel)"
+                if !FileManager.default.fileExists(atPath: shaAbs) {
+                    missing.append(displayPath(shaAbs))
+                }
             }
         }
-        if !anyExists(fwCandidates) {
-            missing.append(displayPath(fwCandidates[0]))
+
+        if let builds = manifestJSON["builds"] as? [[String: Any]], let firstBuild = builds.first {
+            if let parts = firstBuild["parts"] as? [[String: Any]] {
+                for part in parts {
+                    guard let rel = part["path"] as? String, !rel.isEmpty else { continue }
+                    let absPath = "\(webTools)/\(rel)"
+                    if !FileManager.default.fileExists(atPath: absPath) {
+                        missing.append(displayPath(absPath))
+                    }
+                }
+            } else {
+                missing.append("manifest parts missing in \(displayPath(manifestPath))")
+            }
+        } else {
+            missing.append("manifest builds missing in \(displayPath(manifestPath))")
         }
 
         return FlashPrepStatus(
@@ -6554,15 +8153,6 @@ final class FlashServerManager: ObservableObject {
             missingItems: missing,
             buildCommand: target.buildCommand
         )
-    }
-
-    private func anyExists(_ paths: [String]) -> Bool {
-        for path in paths {
-            if FileManager.default.fileExists(atPath: path) {
-                return true
-            }
-        }
-        return false
     }
 
     private func nodeAgentRoot() -> String {

@@ -40,13 +40,30 @@ struct ScratchpadView: View {
                 .overlay(RoundedRectangle(cornerRadius: 8).stroke(Theme.border, lineWidth: 1))
 
             HStack(spacing: 10) {
-                Button(isRunning ? "Running..." : "Run") { runScratch() }
+                Button { runScratch() } label: {
+                    if isRunning {
+                        ProgressView()
+                            .progressViewStyle(.circular)
+                            .controlSize(.small)
+                            .frame(width: 14, height: 14)
+                    } else {
+                        Image(systemName: "play.fill")
+                            .font(.system(size: 12, weight: .semibold))
+                    }
+                }
                     .buttonStyle(PrimaryActionButtonStyle())
                     .disabled(isRunning)
-                Button("Save as Tool") {
+                    .help(isRunning ? "Running..." : "Run")
+                    .accessibilityLabel(Text(isRunning ? "Running..." : "Run"))
+                Button {
                     onSaveAsTool(runner, script)
+                } label: {
+                    Image(systemName: "tray.and.arrow.down")
+                        .font(.system(size: 12, weight: .semibold))
                 }
                 .buttonStyle(SecondaryActionButtonStyle())
+                .help("Save as Tool")
+                .accessibilityLabel(Text("Save as Tool"))
             }
 
             if let lastError {

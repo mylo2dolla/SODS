@@ -4,6 +4,8 @@ Date: 2026-02-04
 
 ## What Changed Today
 
+- 2026-02-04: Staged ESP32-P4 godbutton firmware for ESP Web Tools. Rebuilt and restaged node-agent firmware for ESP32 DevKit v1 (`esp32dev`) and ESP32-C3 (`esp32c3`). Staged ops-portal CYD firmware for ESP Web Tools.
+- 2026-02-04: DevStation UI now enforces a single global node presentation (identity color + faint glow for active, grey/no glow for offline) across node cards and visualizer, with per-node Refresh wired to existing status/connect codepaths.
 - Canonical repo structure established under `firmware/`, `apps/`, `cli/`, `tools/`, and `docs/`.
 - `node-agent` + `ops-portal` firmware moved into `firmware/`.
 - Dev Station app moved into `apps/dev-station`.
@@ -91,13 +93,14 @@ If executables lose permissions, run `./tools/permfix.sh`.
 - Ops Portal Watch Mode: tap anywhere to show a 2–3 stat overlay that auto-hides.
 - CLI flags split: `--logger` for pi-logger, `--station` for spine endpoints.
 - Tool Registry is now shared between CLI and Dev Station (`docs/tool-registry.json`), and only passive tools are exposed.
-- 2026-02-04: Audit completed across Station, Dev Station, Ops Portal. Runbooks added with `/api/runbooks` and `/api/runbook/run`, portal state enriched (actions, quick stats, frames summary), simulated frames toggle added for Spectrum, and audit scripts added (`tools/audit-tools.sh`, `tools/audit-repo.sh`). See `docs/audit-report.md`.
+- 2026-02-04: Audit completed across Station, Dev Station, Ops Portal. Runbooks added with `/api/runbooks` and `/api/runbook/run`, portal state enriched (actions, quick stats, frames summary), and audit scripts added (`tools/audit-tools.sh`, `tools/audit-repo.sh`). See `docs/audit-report.md`.
 - Visual model unified: hue=identity, brightness=recency, saturation=confidence, glow=correlation with smooth decay.
 - Added launchd LaunchAgent (optional) for station auto-run on login.
 - Flash UX: station serves `/api/flash` and `/flash/*` pages; Dev Station popover opens the right flasher URLs.
 - Dev Station now uses in-app sheets for tools, API inspector, tool runner, and viewer; only Flash opens external browser.
-- Dev Station local paths now default to `~/SODS/*` (inbox/workspace/reports/.shipper/oui).
+- Dev Station local paths now default to the repo root (typically `~/SODS-main`), with legacy data under `~/SODS/*` migrated on first run.
 - Added Tool Builder + Presets system (user registries in `docs/*.user.json`, scripts under `tools/user/`).
+- Dev Station app bundling: fixed Info.plist validation to prevent “executable is missing” after install, added bundle validation in build/install/smoke, and forced CFBundleExecutable/CFBundleName to match the binary.
 
 ## LaunchAgent
 
@@ -125,13 +128,3 @@ Logs:
   - `http://localhost:9123/flash/esp32`
   - `http://localhost:9123/flash/esp32c3`
 - If station is not running, Dev Station starts it and opens the URL once healthy.
-
-## Dev Station Build (Canonical)
-
-Build:
-```bash
-./tools/devstation-build.sh
-```
-
-Output:
-- `./dist/DevStation.app`

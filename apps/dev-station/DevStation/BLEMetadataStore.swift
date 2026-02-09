@@ -125,24 +125,34 @@ final class BLEMetadataStore {
             companyMap = builtInCompanyMap()
             assignedMap = builtInAssignedMap()
 
-            if let bundleCompanyURL = Bundle.main.url(forResource: "BLECompanyIDs", withExtension: "txt") {
-                if let bundleCompany = loadLines(url: bundleCompanyURL) {
-                    mergeCompany(lines: bundleCompany)
-                }
+            let moduleBundle: Bundle
+            #if SWIFT_PACKAGE
+            moduleBundle = Bundle.module
+            #else
+            moduleBundle = Bundle.main
+            #endif
+            let fallbackBundle = Bundle.main
+
+            let bundleCompanyURL = moduleBundle.url(forResource: "BLECompanyIDs", withExtension: "txt")
+                ?? fallbackBundle.url(forResource: "BLECompanyIDs", withExtension: "txt")
+            if let bundleCompanyURL, let bundleCompany = loadLines(url: bundleCompanyURL) {
+                mergeCompany(lines: bundleCompany)
             } else {
                 log?.log(.warn, "BLECompanyIDs.txt missing in bundle")
             }
-            if let bundleAssignedURL = Bundle.main.url(forResource: "BLEAssignedNumbers", withExtension: "txt") {
-                if let bundleAssigned = loadLines(url: bundleAssignedURL) {
-                    mergeAssignedNumbers(lines: bundleAssigned)
-                }
+
+            let bundleAssignedURL = moduleBundle.url(forResource: "BLEAssignedNumbers", withExtension: "txt")
+                ?? fallbackBundle.url(forResource: "BLEAssignedNumbers", withExtension: "txt")
+            if let bundleAssignedURL, let bundleAssigned = loadLines(url: bundleAssignedURL) {
+                mergeAssignedNumbers(lines: bundleAssigned)
             } else {
                 log?.log(.warn, "BLEAssignedNumbers.txt missing in bundle")
             }
-            if let bundleServiceURL = Bundle.main.url(forResource: "BLEServiceUUIDs", withExtension: "txt") {
-                if let bundleServices = loadLines(url: bundleServiceURL) {
-                    mergeServiceUUIDs(lines: bundleServices)
-                }
+
+            let bundleServiceURL = moduleBundle.url(forResource: "BLEServiceUUIDs", withExtension: "txt")
+                ?? fallbackBundle.url(forResource: "BLEServiceUUIDs", withExtension: "txt")
+            if let bundleServiceURL, let bundleServices = loadLines(url: bundleServiceURL) {
+                mergeServiceUUIDs(lines: bundleServices)
             } else {
                 log?.log(.warn, "BLEServiceUUIDs.txt missing in bundle")
             }
@@ -169,8 +179,7 @@ final class BLEMetadataStore {
     }
 
     private func builtInAssignedMap() -> [String: BLEAssignedUUIDInfo] {
-        var map: [String: BLEAssignedUUIDInfo] = [:]
-        return map
+        [:]
     }
 
     private func loadLines(url: URL?) -> [String]? {

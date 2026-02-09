@@ -1,0 +1,12 @@
+{
+  "node_id": "exec-mac-1",
+  "roles": ["control", "build"],
+  "capabilities": {
+    "panic": { "enabled": true, "scopes": ["all", "node"] },
+    "snapshot": { "enabled": true, "scopes": ["all", "node"] },
+    "maint": { "enabled": true, "scopes": ["all", "node"], "tools": ["ps", "df", "ping"] },
+    "scan": { "enabled": true, "scopes": ["node"], "tools": ["nmap"] },
+    "build": { "enabled": true, "scopes": ["node"], "tools": ["python3", "esptool"] },
+    "ritual": { "enabled": true, "scopes": ["all"] }
+  }
+}

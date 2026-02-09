@@ -1,4 +1,5 @@
 import http from "node:http";
+import os from "node:os";
 import { readFileSync, existsSync, statSync, createReadStream, mkdirSync, createWriteStream, writeFileSync, chmodSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { WebSocketServer, WebSocket } from "ws";
@@ -21,6 +22,7 @@ type ServerOptions = {
   publicDir: string;
   flashDir: string;
   portalFlashDir?: string;
+  p4FlashDir?: string;
   localLogPath?: string;
 };
 
@@ -32,6 +34,7 @@ export class SODSServer {
   private lastFrames: SignalFrame[] = [];
   private lastError: string | null = null;
   private lastIngestAt = 0;
+  private nodePresence = new Map<string, { state: string; lastError?: string; updatedAt: number }>();
   private activeTool: { name: string; started_at: number; status: string; ok?: boolean } | null = null;
   private activeRunbook: { id: string; started_at: number; status: string; step?: string; ok?: boolean } | null = null;
   private eventsClients: Set<WebSocket> = new Set();
@@ -134,6 +137,24 @@ export class SODSServer {
     if (url.pathname === "/api/tools") {
       return this.respondJson(res, this.buildToolRegistry());
     }
+    if (url.pathname === "/api/nodes") {
+      return this.respondJson(res, this.buildNodePresence());
+    }
+    if (url.pathname === "/api/registry/nodes") {
+      return this.handleRegistryNodes(res);
+    }
+    if (url.pathname === "/api/registry/nodes/forget" && req.method === "POST") {
+      return this.handleRegistryForget(req, res);
+    }
+    if (url.pathname === "/api/registry/nodes/factory-reset" && req.method === "POST") {
+      return this.handleRegistryFactoryReset(req, res);
+    }
+    if (url.pathname === "/api/node/connect" && req.method === "POST") {
+      return this.handleNodeConnect(req, res);
+    }
+    if (url.pathname === "/api/node/identify" && req.method === "POST") {
+      return this.handleNodeIdentify(req, res);
+    }
     if (url.pathname === "/api/runbooks") {
       return this.respondJson(res, this.buildRunbooks());
     }
@@ -166,7 +187,7 @@ export class SODSServer {
       const payload = {
         ok: true,
         uptime_ms: Math.floor(process.uptime() * 1000),
-        pi_logger: this.options.piLoggerBase,
+        pi_logger: this.ingestor.getActiveBaseURL(),
         last_ingest_ms: this.lastIngestAt,
         last_error: this.lastError,
         events_in: counters.events_in,
@@ -193,6 +214,45 @@ export class SODSServer {
     }
     if (url.pathname === "/api/flash") {
       return this.respondJson(res, this.buildFlashInfo(req));
+    }
+    if (url.pathname === "/api/flash/diagnostics") {
+      return this.respondJson(res, this.buildFlashDiagnostics(req));
+    }
+    if (url.pathname === "/api/p4/status") {
+      const ip = url.searchParams.get("ip");
+      if (!ip) {
+        res.writeHead(400);
+        res.end("missing ip");
+        return;
+      }
+      fetch(`http://${ip}/status`, { method: "GET" })
+        .then(async (r) => {
+          res.writeHead(r.status, { "Content-Type": "application/json" });
+          res.end(await r.text());
+        })
+        .catch((err) => {
+          res.writeHead(502);
+          res.end(String(err?.message ?? "p4 fetch failed"));
+        });
+      return;
+    }
+    if (url.pathname === "/api/p4/god") {
+      const ip = url.searchParams.get("ip");
+      if (!ip) {
+        res.writeHead(400);
+        res.end("missing ip");
+        return;
+      }
+      fetch(`http://${ip}/god`, { method: "POST" })
+        .then(async (r) => {
+          res.writeHead(r.status, { "Content-Type": "application/json" });
+          res.end(await r.text());
+        })
+        .catch((err) => {
+          res.writeHead(502);
+          res.end(String(err?.message ?? "p4 fetch failed"));
+        });
+      return;
     }
     if (url.pathname === "/api/tool/run" && req.method === "POST") {
       let body = "";
@@ -225,14 +285,20 @@ export class SODSServer {
       }));
       return this.respondJson(res, { items });
     }
+    if (url.pathname === "/flash") {
+      return this.serveStaticFrom(res, this.options.flashDir, "index.html");
+    }
     if (url.pathname === "/flash/esp32") {
       return this.respondFlashHtml(res, "esp32", "ESP32 DevKit", "/flash/manifest.json");
     }
     if (url.pathname === "/flash/esp32c3") {
-      return this.respondFlashHtml(res, "esp32c3", "ESP32-C3 DevKit", "/flash/manifest-esp32c3.json");
+      return this.respondFlashHtml(res, "esp32c3", "ESP32-C3 (XIAO/DevKit)", "/flash/manifest-esp32c3.json");
     }
     if (url.pathname === "/flash/portal-cyd") {
       return this.respondFlashHtml(res, "portal-cyd", "Ops Portal CYD", "/flash-portal/manifest-portal-cyd.json");
+    }
+    if (url.pathname === "/flash/p4") {
+      return this.respondFlashHtml(res, "esp32p4", "ESP32-P4 God Button", "/flash-p4/manifest-p4.json");
     }
     if (url.pathname.startsWith("/flash/")) {
       const rel = url.pathname.replace(/^\/flash\/+/, "");
@@ -241,6 +307,10 @@ export class SODSServer {
     if (url.pathname.startsWith("/flash-portal/") && this.options.portalFlashDir) {
       const rel = url.pathname.replace(/^\/flash-portal\/+/, "");
       return this.serveStaticFrom(res, this.options.portalFlashDir, rel || "index.html");
+    }
+    if (url.pathname.startsWith("/flash-p4/") && this.options.p4FlashDir) {
+      const rel = url.pathname.replace(/^\/flash-p4\/+/, "");
+      return this.serveStaticFrom(res, this.options.p4FlashDir, rel || "index.html");
     }
     if (url.pathname === "/opsportal/state") {
       return this.respondJson(res, this.buildOpsPortalState());
@@ -298,9 +368,6 @@ export class SODSServer {
     }
     if (url.pathname.startsWith("/assets/") || url.pathname.startsWith("/spectrum/")) {
       return this.serveStatic(res, url.pathname.slice(1));
-    }
-    if (url.pathname === "/demo.ndjson") {
-      return this.serveDemo(res);
     }
     return this.serveStatic(res, url.pathname.slice(1));
   }
@@ -362,28 +429,17 @@ export class SODSServer {
     createReadStream(abs).pipe(res);
   }
 
-  private serveDemo(res: http.ServerResponse) {
-    const demoPath = join(this.options.publicDir, "demo.ndjson");
-    if (!existsSync(demoPath)) {
-      res.writeHead(404);
-      res.end("No demo file. Generate with `sods stream --frames --out ./cli/sods/public/demo.ndjson`");
-      return;
-    }
-    res.writeHead(200, { "Content-Type": "application/x-ndjson" });
-    createReadStream(demoPath).pipe(res);
-  }
-
   private buildOpsPortalState() {
     const counters = this.ingestor.getCounters();
     const nodes = this.ingestor.getNodes();
     const tools = listTools();
     const buttons = tools.slice(0, 6).map((tool) => ({
       id: tool.name,
-      label: tool.name.split(".").pop() ?? tool.name,
+      label: tool.title ?? (tool.name.split(".").pop() ?? tool.name),
       kind: "tool",
       enabled: tool.kind === "passive",
       glow_level: 0.2,
-      actions: [{ id: tool.name, label: tool.name, cmd: tool.name }],
+      actions: [{ id: tool.name, label: tool.title ?? tool.name, cmd: tool.name }],
     }));
     return {
       connection: {
@@ -419,7 +475,7 @@ export class SODSServer {
       uptime_ms: Math.floor(process.uptime() * 1000),
       last_ingest_ms: this.lastIngestAt,
       last_error: this.lastError ?? "",
-      pi_logger: this.options.piLoggerBase,
+      pi_logger: this.ingestor.getActiveBaseURL(),
       nodes_total: nodes.length,
       nodes_online: nodes.filter((n) => nowMs() - n.last_seen < 60_000).length,
       tools: listTools().length,
@@ -485,14 +541,14 @@ export class SODSServer {
         uptime_ms: Math.floor(process.uptime() * 1000),
         last_ingest_ms: this.lastIngestAt,
         last_error: this.lastError ?? "",
-        pi_logger: this.options.piLoggerBase,
+        pi_logger: this.ingestor.getActiveBaseURL(),
         nodes_total: nodes.length,
         nodes_online: nodes.filter((n) => now - n.last_seen < 60_000).length,
         tools: listTools().length,
       },
       logger: {
         ok: logger.ok,
-        url: this.options.piLoggerBase,
+        url: this.ingestor.getActiveBaseURL(),
         status: logger.status ?? "",
         last_event_ts: lastEventTs,
         last_event_ms: lastEventMs,
@@ -556,17 +612,205 @@ export class SODSServer {
     ];
   }
 
-  private async fetchLoggerHealth() {
-    try {
-      const res = await fetch(`${this.options.piLoggerBase}/health`, { method: "GET" });
-      if (!res.ok) {
-        return { ok: false, status: `HTTP ${res.status}` };
-      }
-      const json = await res.json();
-      return { ok: true, status: "ok", detail: json };
-    } catch (err: any) {
-      return { ok: false, status: err?.message ?? "offline" };
+  private buildNodePresence() {
+    const nodes = this.ingestor.getNodes();
+    const now = nowMs();
+    const recentEvents = this.eventBuffer.slice(-400);
+    const byNodeKind = new Map<string, Set<string>>();
+    for (const ev of recentEvents) {
+      if (!byNodeKind.has(ev.node_id)) byNodeKind.set(ev.node_id, new Set());
+      byNodeKind.get(ev.node_id)!.add(ev.kind);
     }
+
+    const visibleNodes = nodes.filter((node) => {
+      const age = now - node.last_seen;
+      const ip = String(node.ip ?? "").trim();
+      const hostname = String(node.hostname ?? "").trim();
+      return Boolean(ip || hostname) || age < 30_000;
+    });
+
+    return {
+      items: visibleNodes.map((node) => {
+        const override = this.nodePresence.get(node.node_id);
+        const age = now - node.last_seen;
+        let state = "offline";
+        if (override && override.state === "connecting" && now - override.updatedAt < 30_000) {
+          state = "connecting";
+        } else if (age < 30_000) {
+          state = "online";
+        } else if (override && override.state === "error" && now - override.updatedAt < 60_000) {
+          state = "error";
+        }
+        const kinds = byNodeKind.get(node.node_id) ?? new Set();
+        const canScanWifi = Array.from(kinds).some((k) => k.includes("wifi"));
+        const canScanBle = Array.from(kinds).some((k) => k.includes("ble"));
+        const canFrames = this.lastFrames.some((f) => f.node_id === node.node_id);
+        const ip = String(node.ip ?? "").trim();
+        const hostname = String(node.hostname ?? "").trim();
+        const canWhoami = Boolean(ip || hostname);
+        const canFlash = node.node_id !== "station";
+        return {
+          node_id: node.node_id,
+          state,
+          last_seen: node.last_seen,
+          last_seen_age_ms: age,
+          last_error: override?.lastError ?? "",
+          ip: ip || undefined,
+          mac: node.mac,
+          hostname: hostname || undefined,
+          confidence: node.confidence,
+          capabilities: {
+            canScanWifi,
+            canScanBle,
+            canFrames,
+            canFlash,
+            canWhoami,
+          },
+          provenance_id: node.node_id,
+        };
+      }),
+    };
+  }
+
+  private async handleNodeConnect(req: http.IncomingMessage, res: http.ServerResponse) {
+    let body = "";
+    req.on("data", (chunk) => body += chunk);
+    req.on("end", async () => {
+      try {
+        const payload = body ? JSON.parse(body) : {};
+        const nodeId = payload.node_id;
+        if (!nodeId) {
+          res.writeHead(400);
+          res.end("missing node_id");
+          return;
+        }
+        this.nodePresence.set(nodeId, { state: "connecting", updatedAt: nowMs() });
+        const hostHint = String(payload.host ?? payload.hostname ?? "").trim();
+        const result = await this.probeNode(nodeId, hostHint);
+        this.respondJson(res, result);
+      } catch (err: any) {
+        res.writeHead(400);
+        res.end(err?.message ?? "connect error");
+      }
+    });
+  }
+
+  private async handleNodeIdentify(req: http.IncomingMessage, res: http.ServerResponse) {
+    let body = "";
+    req.on("data", (chunk) => body += chunk);
+    req.on("end", async () => {
+      try {
+        const payload = body ? JSON.parse(body) : {};
+        const nodeId = payload.node_id;
+        if (!nodeId) {
+          res.writeHead(400);
+          res.end("missing node_id");
+          return;
+        }
+        const hostHint = String(payload.host ?? payload.hostname ?? "").trim();
+        const result = await this.probeNode(nodeId, hostHint);
+        this.respondJson(res, result);
+      } catch (err: any) {
+        res.writeHead(400);
+        res.end(err?.message ?? "identify error");
+      }
+    });
+  }
+
+  private async probeNode(nodeId: string, hostHint = "") {
+    const nodes = this.ingestor.getNodes();
+    const snapshot = nodes.find((n) => n.node_id === nodeId);
+    const normalizedHint = hostHint.trim();
+    const inferredHost = /^[0-9a-z.-]+$/i.test(nodeId) ? nodeId : "";
+    const host = snapshot?.ip || snapshot?.hostname || normalizedHint || inferredHost;
+    if (!host) {
+      const errMsg = "node has no ip/hostname";
+      this.nodePresence.set(nodeId, { state: "error", lastError: errMsg, updatedAt: nowMs() });
+      return { ok: false, node_id: nodeId, error: errMsg };
+    }
+    const isIPv4 = /^\d{1,3}(\.\d{1,3}){3}$/.test(host);
+    const lowerHost = host.toLowerCase();
+    const localHints = new Set([
+      "localhost",
+      "127.0.0.1",
+      "::1",
+      "mac-local",
+      os.hostname().toLowerCase(),
+    ]);
+    const shouldTryLocalStation = !isIPv4 && (localHints.has(lowerHost) || !lowerHost.includes("."));
+    const candidates = [
+      `http://${host}/whoami`,
+      `http://${host}/health`,
+      `http://${host}/api/status`,
+      `http://${host}/`,
+      ...(shouldTryLocalStation ? [
+        `http://127.0.0.1:${this.options.port}/health`,
+        `http://localhost:${this.options.port}/health`,
+        `http://127.0.0.1:${this.options.port}/api/status`,
+      ] : []),
+    ];
+
+    let lastErr = "probe failed";
+    for (const url of candidates) {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 2000);
+      try {
+        const res = await fetch(url, { method: "GET", signal: controller.signal });
+        clearTimeout(timer);
+        const text = await res.text();
+        if (!res.ok) {
+          // Captive portals commonly redirect or return non-JSON pages.
+          // Treat reachable HTTP responses as online for claim/connect flow.
+          if (res.status >= 300 && res.status < 500 && url.endsWith("/")) {
+            this.nodePresence.set(nodeId, { state: "online", updatedAt: nowMs() });
+            return {
+              ok: true,
+              node_id: nodeId,
+              host,
+              probe_url: url,
+              whoami: `portal-http-${res.status}`,
+            };
+          }
+          lastErr = `HTTP ${res.status} @ ${url}`;
+          continue;
+        }
+        this.nodePresence.set(nodeId, { state: "online", updatedAt: nowMs() });
+        return { ok: true, node_id: nodeId, whoami: text, host, probe_url: url };
+      } catch (err: any) {
+        clearTimeout(timer);
+        lastErr = err?.message ?? "probe failed";
+      }
+    }
+    this.nodePresence.set(nodeId, { state: "error", lastError: lastErr, updatedAt: nowMs() });
+    return { ok: false, node_id: nodeId, error: lastErr };
+  }
+
+  private async fetchLoggerHealth() {
+    const bases = this.ingestor.getBaseURLs();
+    const ordered = [this.ingestor.getActiveBaseURL(), ...bases.filter((b) => b !== this.ingestor.getActiveBaseURL())];
+    let lastStatus = "offline";
+    const timeoutMs = 1200;
+
+    for (const base of ordered) {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), timeoutMs);
+      try {
+        const res = await fetch(`${base}/health`, { method: "GET", signal: controller.signal });
+        if (!res.ok) {
+          lastStatus = `${base} HTTP ${res.status}`;
+          continue;
+        }
+        const json = await res.json();
+        clearTimeout(timer);
+        return { ok: true, status: "ok", detail: json, url: base };
+      } catch (err: any) {
+        clearTimeout(timer);
+        lastStatus = `${base} ${err?.message ?? "offline"}`;
+      } finally {
+        clearTimeout(timer);
+      }
+    }
+    return { ok: false, status: lastStatus };
   }
 
   private readStationVersion() {
@@ -724,20 +968,37 @@ export class SODSServer {
     });
 
     if (name === "net.wifi_scan") {
-      const lines = (result.result_json as any)?.lines ?? result.stdout?.split("\n") ?? [];
-      for (const line of lines) {
-        const macMatch = String(line).match(/([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}/);
-        if (!macMatch) continue;
-        const ssid = String(line).split(macMatch[0])[0].trim();
-        const channelMatch = String(line).match(/\bch(?:annel)?\s*:?(\d{1,3})\b/i) ?? String(line).match(/\s(\d{1,3})\s*$/);
-        const rssiMatch = String(line).match(/-?\d{2,3}\b/);
+      const stdout = result.stdout ?? "";
+      // Honesty rule: system_profiler output is not a scan. Do not synthesize wifi.scan from it.
+      if (/^Wi-Fi:\s*$/m.test(stdout) || /CoreWLAN:\s*\d+/i.test(stdout) || /Other Local Wi-Fi Networks:/i.test(stdout)) {
+        emit("wifi.scan.unavailable", {
+          ok: false,
+          reason: "no_scan_tool",
+          detail: "tools/wifi-scan.sh could not access a real scan backend (airport/wdutil).",
+        });
+        return;
+      }
+
+      const lines = (result.result_json as any)?.lines ?? stdout.split("\n");
+      for (const rawLine of lines) {
+        const line = String(rawLine);
+        // Expected "airport -s" rows (SSID may contain spaces; BSSID is MAC; then RSSI then channel).
+        const m = line.match(/^(.*?)([0-9A-Fa-f]{2}(?::[0-9A-Fa-f]{2}){5})\s+(-?\d{2,3})\s+(\d{1,3})\b/);
+        if (!m) continue;
+        const ssid = m[1].trim();
+        const bssid = m[2];
+        const rssi = Number(m[3]);
+        const channel = Number(m[4]);
+        if (!Number.isFinite(rssi) || rssi > 0 || rssi < -120) continue;
+        if (!Number.isFinite(channel) || channel <= 0 || channel > 233) continue;
+
         emit("wifi.scan", {
-          bssid: macMatch[0],
+          bssid,
           ssid: ssid || undefined,
-          channel: channelMatch ? Number(channelMatch[1]) : undefined,
-          rssi: rssiMatch ? Number(rssiMatch[0]) : undefined,
+          channel,
+          rssi,
           line,
-          device_id: macMatch[0],
+          device_id: bssid,
         });
       }
     }
@@ -1091,6 +1352,7 @@ export class SODSServer {
   }
 
   private writeUserRegistry(path: string, tools: ToolEntry[]) {
+    mkdirSync(resolve(path, ".."), { recursive: true });
     writeFileSync(path, JSON.stringify({ version: "1.0", tools }, null, 2));
   }
 
@@ -1104,12 +1366,161 @@ export class SODSServer {
   }
 
   private writeUserPresets(path: string, presets: any[]) {
+    mkdirSync(resolve(path, ".."), { recursive: true });
     writeFileSync(path, JSON.stringify({ version: "1.0", presets }, null, 2));
   }
 
   private isLocalRequest(req: http.IncomingMessage) {
     const addr = req.socket.remoteAddress ?? "";
     return addr === "127.0.0.1" || addr === "::1" || addr === "::ffff:127.0.0.1";
+  }
+
+  private registryNodesPath() {
+    const repoRoot = resolve(new URL("../../..", import.meta.url).pathname);
+    return join(repoRoot, "workspace", "registry", "nodes.json");
+  }
+
+  private readRegistryNodes(): { version: string; nodes: any[] } {
+    const path = this.registryNodesPath();
+    if (!existsSync(path)) return { version: "1.0", nodes: [] };
+    try {
+      const raw = JSON.parse(readFileSync(path, "utf8"));
+      const nodes = Array.isArray(raw?.nodes) ? raw.nodes : [];
+      const version = typeof raw?.version === "string" ? raw.version : "1.0";
+      return { version, nodes };
+    } catch {
+      return { version: "1.0", nodes: [] };
+    }
+  }
+
+  private writeRegistryNodes(payload: { version: string; nodes: any[] }) {
+    const path = this.registryNodesPath();
+    mkdirSync(resolve(path, ".."), { recursive: true });
+    writeFileSync(path, JSON.stringify(payload, null, 2));
+  }
+
+  private handleRegistryNodes(res: http.ServerResponse) {
+    return this.respondJson(res, { ok: true, ...this.readRegistryNodes() });
+  }
+
+  private handleRegistryForget(req: http.IncomingMessage, res: http.ServerResponse) {
+    if (!this.isLocalRequest(req)) {
+      res.writeHead(403);
+      res.end("node registry edits allowed only on localhost station");
+      return;
+    }
+    let body = "";
+    req.on("data", (chunk) => body += chunk);
+    req.on("end", () => {
+      try {
+        const payload = body ? JSON.parse(body) : {};
+        const nodeID = String(payload.node_id ?? "").trim();
+        if (!nodeID) {
+          res.writeHead(400);
+          res.end("missing node_id");
+          return;
+        }
+        const current = this.readRegistryNodes();
+        const nextNodes = current.nodes.filter((n: any) => String(n?.id ?? "").trim() !== nodeID);
+        this.writeRegistryNodes({ version: current.version ?? "1.0", nodes: nextNodes });
+        return this.respondJson(res, { ok: true, version: current.version ?? "1.0", nodes: nextNodes });
+      } catch (err: any) {
+        res.writeHead(400);
+        res.end(err?.message ?? "registry forget error");
+      }
+    });
+  }
+
+  private vaultIngestURL() {
+    const explicit = (process.env.VAULT_INGEST_URL ?? "").trim();
+    if (explicit) return explicit;
+    const loggerHost = (process.env.LOGGER_HOST ?? "192.168.8.160").trim() || "192.168.8.160";
+    return `http://${loggerHost}:8088/v1/ingest`;
+  }
+
+  private async vaultIngest(event: any) {
+    const url = this.vaultIngestURL();
+    const r = await fetch(url, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(event),
+    });
+    if (!r.ok) {
+      const t = await r.text().catch(() => "");
+      throw new Error(`vault ingest failed: ${r.status} ${t}`);
+    }
+  }
+
+  private async handleRegistryFactoryReset(req: http.IncomingMessage, res: http.ServerResponse) {
+    if (!this.isLocalRequest(req)) {
+      res.writeHead(403);
+      res.end("factory reset allowed only on localhost station");
+      return;
+    }
+    let body = "";
+    req.on("data", (chunk) => body += chunk);
+    req.on("end", async () => {
+      const started = Date.now();
+      try {
+        const payload = body ? JSON.parse(body) : {};
+        const nodeID = String(payload.node_id ?? "").trim();
+        const host = String(payload.host ?? "").trim();
+        if (!nodeID) {
+          res.writeHead(400);
+          res.end("missing node_id");
+          return;
+        }
+        if (!host) {
+          res.writeHead(400);
+          res.end("missing host");
+          return;
+        }
+        if (host.includes("localhost") || host.startsWith("127.") || host.startsWith("::1")) {
+          res.writeHead(400);
+          res.end("refusing localhost host");
+          return;
+        }
+
+        const requestId = `factory-reset-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+        await this.vaultIngest({
+          type: "node.maintenance.intent",
+          src: "station",
+          ts_ms: Date.now(),
+          data: { request_id: requestId, op: "factory_reset_networking", node_id: nodeID, host },
+        });
+
+        const targetBase = host.startsWith("http://") || host.startsWith("https://") ? host : `http://${host}`;
+        const targetURL = `${targetBase.replace(/\/+$/, "")}/api/factory-reset`;
+        const rsp = await fetch(targetURL, { method: "POST" });
+        const text = await rsp.text().catch(() => "");
+
+        await this.vaultIngest({
+          type: "node.maintenance.result",
+          src: "station",
+          ts_ms: Date.now(),
+          data: {
+            request_id: requestId,
+            op: "factory_reset_networking",
+            node_id: nodeID,
+            host,
+            ok: rsp.ok,
+            status: rsp.status,
+            body: text.slice(0, 2048),
+            duration_ms: Date.now() - started,
+          },
+        });
+
+        if (!rsp.ok) {
+          res.writeHead(502);
+          res.end(`device refused: HTTP ${rsp.status} ${text}`);
+          return;
+        }
+        return this.respondJson(res, { ok: true });
+      } catch (err: any) {
+        res.writeHead(503);
+        res.end(err?.message ?? "factory reset failed");
+      }
+    });
   }
 
   private buildFlashInfo(req: http.IncomingMessage) {
@@ -1126,7 +1537,7 @@ export class SODSServer {
         },
         {
           id: "esp32c3",
-          label: "ESP32-C3 DevKit",
+          label: "ESP32-C3 (XIAO/DevKit)",
           url: `${base}/flash/esp32c3`,
           manifest: `${base}/flash/manifest-esp32c3.json`,
         },
@@ -1136,11 +1547,169 @@ export class SODSServer {
           url: `${base}/flash/portal-cyd`,
           manifest: `${base}/flash-portal/manifest-portal-cyd.json`,
         },
+        {
+          id: "esp32p4",
+          label: "ESP32-P4 God Button",
+          url: `${base}/flash/p4`,
+          manifest: `${base}/flash-p4/manifest-p4.json`,
+        },
       ],
     };
   }
 
+  private buildFlashDiagnostics(req: http.IncomingMessage) {
+    const host = req.headers.host ?? `localhost:${this.options.port}`;
+    const base = `http://${host}`;
+    const targets = [
+      {
+        id: "esp32",
+        label: "ESP32 DevKit",
+        chip: "esp32",
+        page: `${base}/flash/esp32`,
+        manifestUrl: `${base}/flash/manifest.json`,
+        manifestRel: "manifest.json",
+        rootDir: this.options.flashDir,
+      },
+      {
+        id: "esp32c3",
+        label: "ESP32-C3 (XIAO/DevKit)",
+        chip: "esp32c3",
+        page: `${base}/flash/esp32c3`,
+        manifestUrl: `${base}/flash/manifest-esp32c3.json`,
+        manifestRel: "manifest-esp32c3.json",
+        rootDir: this.options.flashDir,
+      },
+      {
+        id: "portal-cyd",
+        label: "Ops Portal CYD",
+        chip: "portal-cyd",
+        page: `${base}/flash/portal-cyd`,
+        manifestUrl: `${base}/flash-portal/manifest-portal-cyd.json`,
+        manifestRel: "manifest-portal-cyd.json",
+        rootDir: this.options.portalFlashDir,
+      },
+      {
+        id: "esp32p4",
+        label: "ESP32-P4 God Button",
+        chip: "esp32p4",
+        page: `${base}/flash/p4`,
+        manifestUrl: `${base}/flash-p4/manifest-p4.json`,
+        manifestRel: "manifest-p4.json",
+        rootDir: this.options.p4FlashDir,
+      },
+    ];
+
+    const items = targets.map((target) => {
+      const issues: string[] = [];
+      const rootDir = target.rootDir ? resolve(target.rootDir) : "";
+      const manifestFile = rootDir ? resolve(join(rootDir, target.manifestRel)) : "";
+      let manifestExists = false;
+      let manifestOk = false;
+      let manifestError = "";
+      type FlashPart = { path: string; offset: number; file_exists: boolean; abs_path: string };
+      type FlashBuildInfo = { name: string | null; ready: boolean; issues: string[]; parts: FlashPart[] };
+      let parts: FlashPart[] = [];
+      let buildInfos: FlashBuildInfo[] = [];
+      let buildVersion = "";
+
+      if (!rootDir) {
+        issues.push("flash root directory is not configured");
+      } else if (!existsSync(rootDir)) {
+        issues.push("flash root directory is missing");
+      }
+
+      if (manifestFile && existsSync(manifestFile)) {
+        manifestExists = true;
+        try {
+          const parsed = JSON.parse(readFileSync(manifestFile, "utf8"));
+          const builds = Array.isArray(parsed?.builds) ? parsed.builds : [];
+          buildVersion = String(parsed?.version || "");
+          if (builds.length === 0) {
+            issues.push("manifest has no builds");
+          } else {
+            buildInfos = builds.map((build: any): FlashBuildInfo => {
+              const buildIssues: string[] = [];
+              const name = String(build?.name || build?.label || "");
+              const rawParts = Array.isArray(build?.parts) ? build.parts : [];
+              if (rawParts.length === 0) {
+                buildIssues.push("build has no parts");
+              }
+              const buildParts: FlashPart[] = rawParts.map((part: any): FlashPart => {
+                const rel = String(part?.path || "");
+                const abs = rootDir ? resolve(join(rootDir, rel)) : "";
+                const exists = !!abs && existsSync(abs);
+                if (!exists) {
+                  buildIssues.push(`missing artifact: ${rel}`);
+                }
+                return {
+                  path: rel,
+                  offset: Number(part?.offset || 0),
+                  file_exists: exists,
+                  abs_path: abs,
+                };
+              });
+              return {
+                name: name || null,
+                ready: buildIssues.length === 0 && buildParts.length > 0 && buildParts.every((p: FlashPart) => p.file_exists),
+                issues: buildIssues,
+                parts: buildParts,
+              };
+            });
+
+            const anyReady = buildInfos.some((b: FlashBuildInfo) => b.ready);
+            // Backward compatibility: keep top-level `parts` as the first build's parts.
+            parts = buildInfos[0]?.parts || [];
+
+            if (!anyReady) {
+              const firstIssue = buildInfos.flatMap((b: FlashBuildInfo) => b.issues).find(Boolean);
+              if (firstIssue) issues.push(firstIssue);
+            }
+
+            manifestOk = true;
+          }
+        } catch (error: any) {
+          manifestError = String(error?.message || error);
+          issues.push("manifest parse failed");
+        }
+      } else {
+        issues.push("manifest file is missing");
+      }
+
+      return {
+        id: target.id,
+        chip: target.chip,
+        label: target.label,
+        page: target.page,
+        manifest_url: target.manifestUrl,
+        manifest_file: manifestFile,
+        manifest_exists: manifestExists,
+        manifest_ok: manifestOk,
+        manifest_error: manifestError || null,
+        version: buildVersion || null,
+        ready: (manifestOk && buildInfos.length > 0)
+          ? buildInfos.some((b) => b.ready)
+          : (manifestOk && parts.length > 0 && parts.every((part) => part.file_exists)),
+        parts,
+        builds: buildInfos.length ? buildInfos : null,
+        issues,
+      };
+    });
+
+    return {
+      base_url: base,
+      checked_at_ms: nowMs(),
+      all_ready: items.every((item) => item.ready),
+      items,
+    };
+  }
+
   private respondFlashHtml(res: http.ServerResponse, chip: string, label: string, manifestPath: string) {
+    let flasherPath = "/flash/index.html";
+    if (chip === "portal-cyd") {
+      flasherPath = "/flash-portal/index.html";
+    } else if (chip === "esp32p4") {
+      flasherPath = "/flash-p4/index.html";
+    }
     const html = `<!doctype html>
 <html>
   <head>
@@ -1154,6 +1723,10 @@ export class SODSServer {
       p { color:#b9b9c0; line-height:1.4; }
       a { color:#ff3c3c; }
       .button { margin-top:16px; display:inline-block; padding:10px 18px; border-radius:20px; background:#ff3c3c; color:#fff; text-decoration:none; box-shadow:0 0 14px rgba(255,60,60,0.4); }
+      .button.disabled { opacity:0.45; pointer-events:none; }
+      .diag { margin-top:12px; font-size:13px; color:#b9b9c0; }
+      .diag.ok { color:#86efac; }
+      .diag.err { color:#fca5a5; }
     </style>
   </head>
   <body>
@@ -1161,8 +1734,38 @@ export class SODSServer {
       <h1>Flash ${label}</h1>
       <p>Use the SODS web flasher to install firmware for ${label}. This page points to the repo-local ESP Web Tools manifest.</p>
       <p>Manifest: <a href="${manifestPath}">${manifestPath}</a></p>
-      <a class="button" href="/flash/index.html?chip=${chip}">Open Web Flasher</a>
+      <a id="open-flasher" class="button" href="${flasherPath}?chip=${chip}">Open Web Flasher</a>
+      <div id="diag" class="diag">Checking firmware diagnostics...</div>
     </div>
+    <script>
+      (async () => {
+        const chip = ${JSON.stringify(chip)};
+        const chipToId = { esp32: "esp32", esp32c3: "esp32c3", "portal-cyd": "portal-cyd", esp32p4: "esp32p4", p4: "esp32p4" };
+        const expectedId = chipToId[chip] || chip;
+        const diagEl = document.getElementById("diag");
+        const openBtn = document.getElementById("open-flasher");
+        try {
+          const rsp = await fetch("/api/flash/diagnostics", { cache: "no-store" });
+          if (!rsp.ok) throw new Error("diagnostics unavailable");
+          const payload = await rsp.json();
+          const item = Array.isArray(payload.items) ? payload.items.find((row) => row.id === expectedId) : null;
+          if (!item) throw new Error("target diagnostics missing");
+          if (item.ready) {
+            diagEl.textContent = "Diagnostics: ready";
+            diagEl.className = "diag ok";
+            return;
+          }
+          const reason = Array.isArray(item.issues) && item.issues.length ? item.issues[0] : "artifacts are not ready";
+          diagEl.textContent = "Diagnostics: not ready (" + reason + ")";
+          diagEl.className = "diag err";
+          openBtn.classList.add("disabled");
+        } catch (error) {
+          diagEl.textContent = "Diagnostics: unavailable";
+          diagEl.className = "diag err";
+          openBtn.classList.add("disabled");
+        }
+      })();
+    </script>
   </body>
 </html>`;
     res.writeHead(200, { "Content-Type": "text/html" });

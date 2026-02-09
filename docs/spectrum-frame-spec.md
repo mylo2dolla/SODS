@@ -51,5 +51,4 @@ WS `/ws/frames` emits:
 ### Required behavior
 
 - If frames are not available, renderers fall back to raw events and show an **idle state** rather than a blank view.
-- Tool outputs and scan results should emit synthetic **tool events** that feed the same frame engine.
-
+- Tool outputs and scan results should emit normalized **tool events** that feed the same frame engine.

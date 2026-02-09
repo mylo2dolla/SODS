@@ -24,7 +24,11 @@ struct VisualizerView: View {
     @State private var replayOffset: Double = 0
     @State private var replayAutoPlay: Bool = false
     @State private var replaySpeed: Double = 1.0
-    @State private var ghostTrails: Bool = true
+    @State private var ghostTrails: Bool = false
+    @State private var topologyClarity: Bool = true
+    @State private var protocolLanes: Bool = true
+    @State private var recentOnlyLinks: Bool = true
+    @State private var targetSpotlight: Bool = true
     @State private var selectedNodeIDs: Set<String> = []
     @State private var selectedKinds: Set<String> = []
     @State private var selectedDeviceIDs: Set<String> = []
@@ -37,6 +41,7 @@ struct VisualizerView: View {
                     .frame(minWidth: 320, maxWidth: 360)
                 SignalFieldView(
                     events: filteredEvents,
+                    traceEvents: store.events,
                     frames: displayFrames,
                     framesAreDerived: framesAreDerived,
                     paused: paused,
@@ -47,6 +52,10 @@ struct VisualizerView: View {
                     replayEnabled: replayEnabled,
                     replayOffset: replayOffset,
                     ghostTrails: ghostTrails,
+                    topologyClarity: topologyClarity,
+                    protocolLanes: protocolLanes,
+                    recentOnlyLinks: recentOnlyLinks,
+                    targetSpotlight: targetSpotlight,
                     aliases: nodeAliases,
                     nodePresentations: nodePresentationByID,
                     focusID: entityStore.selectedEntityID,
@@ -59,6 +68,7 @@ struct VisualizerView: View {
                 sidebar
                 SignalFieldView(
                     events: filteredEvents,
+                    traceEvents: store.events,
                     frames: displayFrames,
                     framesAreDerived: framesAreDerived,
                     paused: paused,
@@ -69,6 +79,10 @@ struct VisualizerView: View {
                     replayEnabled: replayEnabled,
                     replayOffset: replayOffset,
                     ghostTrails: ghostTrails,
+                    topologyClarity: topologyClarity,
+                    protocolLanes: protocolLanes,
+                    recentOnlyLinks: recentOnlyLinks,
+                    targetSpotlight: targetSpotlight,
                     aliases: nodeAliases,
                     nodePresentations: nodePresentationByID,
                     focusID: entityStore.selectedEntityID,
@@ -125,7 +139,7 @@ struct VisualizerView: View {
         VStack(alignment: .leading, spacing: 10) {
             header
             controls
-            legend
+            legendSection
             nodesSection
             kindsSection
             devicesSection
@@ -197,7 +211,7 @@ struct VisualizerView: View {
                         .frame(width: 70, alignment: .leading)
                     TextField("", text: $baseURLText)
                         .textFieldStyle(.roundedBorder)
-                    Button("Apply") {
+                    Button {
                         if store.updateBaseURL(baseURLText) {
                             baseURLValidationMessage = nil
                             baseURLText = store.baseURL
@@ -207,15 +221,26 @@ struct VisualizerView: View {
                             baseURLText = store.baseURL
                             showBaseURLToast(message)
                         }
+                    } label: {
+                        Image(systemName: "checkmark.circle")
+                            .font(.system(size: 13, weight: .semibold))
                     }
                     .buttonStyle(SecondaryActionButtonStyle())
-                    Button("Reset") {
+                    .help("Apply")
+                    .accessibilityLabel(Text("Apply"))
+
+                    Button {
                         store.resetBaseURL()
                         baseURLText = store.baseURL
                         baseURLValidationMessage = nil
                         showBaseURLToast("Base URL reset to \(store.baseURL)")
+                    } label: {
+                        Image(systemName: "arrow.counterclockwise")
+                            .font(.system(size: 13, weight: .semibold))
                     }
                     .buttonStyle(SecondaryActionButtonStyle())
+                    .help("Reset")
+                    .accessibilityLabel(Text("Reset"))
                 }
                 if let message = baseURLValidationMessage {
                     Text(message)
@@ -223,10 +248,13 @@ struct VisualizerView: View {
                         .foregroundColor(.red)
                 }
                 HStack(spacing: 8) {
-                    Button(paused ? "Play" : "Pause") {
-                        paused.toggle()
+                    Button { paused.toggle() } label: {
+                        Image(systemName: paused ? "play.fill" : "pause.fill")
+                            .font(.system(size: 13, weight: .semibold))
                     }
                     .buttonStyle(PrimaryActionButtonStyle())
+                    .help(paused ? "Play" : "Pause")
+                    .accessibilityLabel(Text(paused ? "Play" : "Pause"))
                     Picker("Intensity", selection: $intensityMode) {
                         ForEach(SignalIntensity.allCases) { mode in
                             Text(mode.label).tag(mode)
@@ -241,26 +269,49 @@ struct VisualizerView: View {
                     sliderRow(title: "Particles", value: $maxParticles, range: 600...2400, format: "%.0f")
                 }
                 HStack(spacing: 8) {
-                    Button(store.isRecording ? "Stop Recording" : "Start Recording") {
+                    Button {
                         if store.isRecording {
                             store.stopRecording()
                         } else {
                             store.startRecording()
                         }
+                    } label: {
+                        Image(systemName: store.isRecording ? "stop.circle.fill" : "record.circle")
+                            .font(.system(size: 13, weight: .semibold))
                     }
                     .buttonStyle(PrimaryActionButtonStyle())
-                    Button("Clear Recording") {
+                    .help(store.isRecording ? "Stop Recording" : "Start Recording")
+                    .accessibilityLabel(Text(store.isRecording ? "Stop Recording" : "Start Recording"))
+
+                    Button {
                         store.clearRecording()
+                    } label: {
+                        Image(systemName: "trash")
+                            .font(.system(size: 12, weight: .semibold))
                     }
                     .buttonStyle(SecondaryActionButtonStyle())
-                    Button("Save Recording") {
+                    .help("Clear Recording")
+                    .accessibilityLabel(Text("Clear Recording"))
+
+                    Button {
                         saveRecording()
+                    } label: {
+                        Image(systemName: "square.and.arrow.down")
+                            .font(.system(size: 12, weight: .semibold))
                     }
                     .buttonStyle(SecondaryActionButtonStyle())
-                    Button("Load Recording") {
+                    .help("Save Recording")
+                    .accessibilityLabel(Text("Save Recording"))
+
+                    Button {
                         loadRecording()
+                    } label: {
+                        Image(systemName: "folder")
+                            .font(.system(size: 12, weight: .semibold))
                     }
                     .buttonStyle(SecondaryActionButtonStyle())
+                    .help("Load Recording")
+                    .accessibilityLabel(Text("Load Recording"))
                     Text("\(store.recordedEvents.count) events")
                         .font(.system(size: 10))
                         .foregroundColor(.secondary)
@@ -275,8 +326,52 @@ struct VisualizerView: View {
                 }
                 Toggle("Ghost trails", isOn: $ghostTrails)
                     .font(.system(size: 11))
+                Toggle("Topology clarity", isOn: $topologyClarity)
+                    .font(.system(size: 11))
+                Toggle("Protocol lanes", isOn: $protocolLanes)
+                    .font(.system(size: 11))
+                Toggle("Recent-only links", isOn: $recentOnlyLinks)
+                    .font(.system(size: 11))
+                Toggle("Target spotlight", isOn: $targetSpotlight)
+                    .font(.system(size: 11))
             }
             .padding(6)
+        }
+    }
+
+    private var legendSection: some View {
+        GroupBox("What you're seeing") {
+            DisclosureGroup {
+                VStack(alignment: .leading, spacing: 6) {
+                    legendRow(color: SignalColor.kindAccent(kind: "ble.seen"), label: "BLE • dot + tight ring")
+                    legendRow(color: SignalColor.kindAccent(kind: "wifi.status", channel: "6"), label: "Wi‑Fi 2.4G • wave ring")
+                    legendRow(color: SignalColor.kindAccent(kind: "wifi.status", channel: "36"), label: "Wi‑Fi 5G • wave ring")
+                    legendRow(color: SignalColor.kindAccent(kind: "rf"), label: "RF • wave burst")
+                    legendRow(color: SignalColor.kindAccent(kind: "node.heartbeat"), label: "Node • diamond halo")
+                    legendRow(color: SignalColor.kindAccent(kind: "tool"), label: "Action • pulse burst")
+                    legendRow(color: SignalColor.kindAccent(kind: "error"), label: "Error • starburst")
+                    Text("Brightness = recency + strength. Trails fade with time.")
+                        .font(.system(size: 9))
+                        .foregroundColor(.secondary)
+                    Text("Depth = size/blur/alpha/parallax cues.")
+                        .font(.system(size: 9))
+                        .foregroundColor(.secondary)
+                }
+            } label: {
+                Text("Legend + interpretation")
+                    .font(.system(size: 11, weight: .semibold))
+            }
+            .padding(6)
+        }
+    }
+
+    private func legendRow(color: NSColor, label: String) -> some View {
+        HStack(spacing: 8) {
+            Circle()
+                .fill(Color(color))
+                .frame(width: 8, height: 8)
+            Text(label)
+                .font(.system(size: 10))
         }
     }
 
@@ -342,43 +437,6 @@ struct VisualizerView: View {
             withAnimation(.easeInOut(duration: 0.2)) {
                 showBaseURLToast = false
             }
-        }
-    }
-
-    private var legend: some View {
-        GroupBox("What you're seeing") {
-            DisclosureGroup {
-                VStack(alignment: .leading, spacing: 6) {
-                    legendRow(color: SignalColor.kindAccent(kind: "ble.seen"), label: "BLE • dot + tight ring")
-                    legendRow(color: SignalColor.kindAccent(kind: "wifi.status", channel: "6"), label: "Wi‑Fi 2.4G • wave ring")
-                    legendRow(color: SignalColor.kindAccent(kind: "wifi.status", channel: "36"), label: "Wi‑Fi 5G • wave ring")
-                    legendRow(color: SignalColor.kindAccent(kind: "rf"), label: "RF • wave burst")
-                    legendRow(color: SignalColor.kindAccent(kind: "node.heartbeat"), label: "Node • diamond halo")
-                    legendRow(color: SignalColor.kindAccent(kind: "tool"), label: "Action • pulse burst")
-                    legendRow(color: SignalColor.kindAccent(kind: "error"), label: "Error • starburst")
-                    Text("Brightness = recency + RSSI strength.")
-                        .font(.system(size: 10))
-                        .foregroundColor(.secondary)
-                    Text("Trails fade with time; depth uses size/blur/alpha.")
-                        .font(.system(size: 10))
-                        .foregroundColor(.secondary)
-                }
-            } label: {
-                Text("Legend + interpretation")
-                    .font(.system(size: 11, weight: .semibold))
-            }
-            .padding(6)
-        }
-    }
-
-    private func legendRow(color: NSColor, label: String) -> some View {
-        HStack(spacing: 8) {
-            Circle()
-                .fill(Color(color))
-                .frame(width: 8, height: 8)
-            Text(label)
-                .font(.system(size: 11))
-            Spacer()
         }
     }
 
@@ -512,27 +570,47 @@ struct VisualizerView: View {
         guard !recent.isEmpty else { return [] }
         return recent.suffix(140).compactMap { event in
             let ts = event.eventTs ?? event.recvTs ?? now
-            let deviceID = event.deviceID ?? event.nodeID
             let kind = event.kind.lowercased()
-            let source: String = {
-                if kind.contains("ble") { return "ble" }
-                if kind.contains("wifi") { return "wifi" }
-                if kind.contains("rf") { return "rf" }
-                if kind.contains("gps") { return "gps" }
-                if kind.contains("node") { return "node" }
-                return "event"
+
+            // Honesty rule: only derive fallback frames from actual signal events with real signal fields.
+            // No default RSSI/channel/device fallbacks.
+            let source: String
+            if kind.contains("ble") {
+                source = "ble"
+            } else if kind.contains("wifi") {
+                source = "wifi"
+            } else {
+                return nil
+            }
+
+            guard let deviceID = event.deviceID, !deviceID.isEmpty else { return nil }
+            guard let strength = event.signal.strength else { return nil }
+            guard let channelRaw = event.signal.channel, let channel = Int(channelRaw), channel > 0 else { return nil }
+
+            let frequency: Int = {
+                if source == "ble" {
+                    if channel == 37 { return 2402 }
+                    if channel == 38 { return 2426 }
+                    if channel == 39 { return 2480 }
+                    return 0
+                }
+                // Wi-Fi: support common 2.4GHz + 5GHz channels only.
+                if channel >= 1 && channel <= 13 { return 2412 + (channel - 1) * 5 }
+                if channel == 14 { return 2484 }
+                if channel >= 36 && channel <= 165 { return 5000 + channel * 5 }
+                return 0
             }()
+            guard frequency > 0 else { return nil }
+
             let style = SignalVisualStyle.from(event: event, now: now)
             let (nx, ny, nz) = normalizedFramePosition(for: event)
-            let channel = Int(Double(event.signal.channel ?? "") ?? 0)
-            let strength = event.signal.strength ?? -65
             return SignalFrame(
                 t: Int(ts.timeIntervalSince1970 * 1000),
                 source: source,
                 nodeID: event.nodeID,
                 deviceID: deviceID,
                 channel: channel,
-                frequency: 0,
+                frequency: frequency,
                 rssi: strength,
                 x: nx,
                 y: ny,
@@ -582,10 +660,13 @@ struct VisualizerView: View {
     private var localEvents: [NormalizedEvent] {
         let obsByID = latestObservationByID
         let now = Date()
+        let recencyWindow: TimeInterval = 8.0
+        let sourceNodeID = resolvedDerivedNodeID
         var output: [NormalizedEvent] = []
 
         for peripheral in entityStore.blePeripherals.prefix(120) {
             let timestamp = obsByID[peripheral.fingerprintID]?.timestamp ?? peripheral.lastSeen
+            guard now.timeIntervalSince(timestamp) <= recencyWindow else { continue }
             let label = IdentityResolver.shared.resolveLabel(keys: [peripheral.fingerprintID, peripheral.id.uuidString]) ?? peripheral.name ?? peripheral.fingerprintID
             var data: [String: JSONValue] = [
                 "rssi": .number(Double(peripheral.smoothedRSSI)),
@@ -600,7 +681,7 @@ struct VisualizerView: View {
             }
             output.append(
                 NormalizedEvent(
-                    localNodeID: "mac-local",
+                    localNodeID: sourceNodeID,
                     kind: "ble.seen",
                     summary: "BLE \(label)",
                     data: data,
@@ -611,7 +692,8 @@ struct VisualizerView: View {
         }
 
         for device in entityStore.devices.prefix(120) {
-            let timestamp = obsByID[device.ip]?.timestamp ?? now
+            guard let timestamp = obsByID[device.ip]?.timestamp,
+                  now.timeIntervalSince(timestamp) <= recencyWindow else { continue }
             var data: [String: JSONValue] = [
                 "ip": .string(device.ip),
                 "mac": .string(device.macAddress ?? "")
@@ -620,7 +702,7 @@ struct VisualizerView: View {
             if let title = device.httpTitle, !title.isEmpty { data["http_title"] = .string(title) }
             output.append(
                 NormalizedEvent(
-                    localNodeID: "mac-local",
+                    localNodeID: sourceNodeID,
                     kind: "net.device",
                     summary: "Device \(device.ip)",
                     data: data,
@@ -631,7 +713,8 @@ struct VisualizerView: View {
         }
 
         for host in entityStore.hosts.prefix(120) where host.isAlive {
-            let timestamp = obsByID[host.ip]?.timestamp ?? now
+            guard let timestamp = obsByID[host.ip]?.timestamp,
+                  now.timeIntervalSince(timestamp) <= recencyWindow else { continue }
             var data: [String: JSONValue] = [
                 "ip": .string(host.ip),
                 "mac": .string(host.macAddress ?? "")
@@ -640,7 +723,7 @@ struct VisualizerView: View {
             if let hostname = host.hostname, !hostname.isEmpty { data["hostname"] = .string(hostname) }
             output.append(
                 NormalizedEvent(
-                    localNodeID: "mac-local",
+                    localNodeID: sourceNodeID,
                     kind: "net.host",
                     summary: "Host \(host.ip)",
                     data: data,
@@ -651,6 +734,28 @@ struct VisualizerView: View {
         }
 
         return output
+    }
+
+    private var resolvedDerivedNodeID: String {
+        if selectedNodeIDs.count == 1, let selected = selectedNodeIDs.first {
+            return selected
+        }
+        let scanningPresence = store.nodePresence.values
+            .filter { $0.state.lowercased() == "scanning" }
+            .sorted { $0.lastSeen > $1.lastSeen }
+            .first
+        if let scanningID = scanningPresence?.nodeID.trimmingCharacters(in: .whitespacesAndNewlines),
+           !scanningID.isEmpty {
+            return scanningID
+        }
+        if let recentNode = store.nodes.sorted(by: { $0.lastSeen > $1.lastSeen }).first {
+            return recentNode.id
+        }
+        if let lastEventNode = store.events.last?.nodeID.trimmingCharacters(in: .whitespacesAndNewlines),
+           !lastEventNode.isEmpty {
+            return lastEventNode
+        }
+        return NodeType.unknown.rawValue
     }
 
     private var latestObservationByID: [String: Observation] {
@@ -770,19 +875,44 @@ struct NodeRow: View {
                     .foregroundColor(presentation.isOffline ? Theme.muted : (node.isStale ? .orange : .green))
             }
             HStack(spacing: 6) {
-                Button(selected ? "Hide" : "Show") { onToggle() }
+                Button { onToggle() } label: {
+                    Image(systemName: selected ? "eye.slash" : "eye")
+                        .font(.system(size: 12, weight: .semibold))
+                }
                     .buttonStyle(SecondaryActionButtonStyle())
-                Button("Whoami") { onOpenWhoami() }
+                    .help(selected ? "Hide" : "Show")
+                    .accessibilityLabel(Text(selected ? "Hide" : "Show"))
+                Button { onOpenWhoami() } label: {
+                    Image(systemName: "person.crop.circle")
+                        .font(.system(size: 12, weight: .semibold))
+                }
                     .buttonStyle(SecondaryActionButtonStyle())
+                    .help("Whoami")
+                    .accessibilityLabel(Text("Whoami"))
                     .disabled(node.ip == nil)
-                Button("Health") { onOpenHealth() }
+                Button { onOpenHealth() } label: {
+                    Image(systemName: "heart.text.square")
+                        .font(.system(size: 12, weight: .semibold))
+                }
                     .buttonStyle(SecondaryActionButtonStyle())
+                    .help("Health")
+                    .accessibilityLabel(Text("Health"))
                     .disabled(node.ip == nil)
-                Button("Metrics") { onOpenMetrics() }
+                Button { onOpenMetrics() } label: {
+                    Image(systemName: "chart.bar")
+                        .font(.system(size: 12, weight: .semibold))
+                }
                     .buttonStyle(SecondaryActionButtonStyle())
+                    .help("Metrics")
+                    .accessibilityLabel(Text("Metrics"))
                     .disabled(node.ip == nil)
-                Button("Tools") { onOpenTools() }
+                Button { onOpenTools() } label: {
+                    Image(systemName: "wrench.and.screwdriver")
+                        .font(.system(size: 12, weight: .semibold))
+                }
                     .buttonStyle(SecondaryActionButtonStyle())
+                    .help("Tools")
+                    .accessibilityLabel(Text("Tools"))
                 Spacer()
             }
         }
@@ -792,6 +922,10 @@ struct NodeRow: View {
         .shadow(color: presentation.shouldGlow ? Color(presentation.baseColor).opacity(0.25) : .clear, radius: 6)
         .animation(.easeInOut(duration: 0.25), value: presentation.isOffline)
         .animation(.easeOut(duration: 0.35), value: presentation.activityScore)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            onToggle()
+        }
     }
 
     private func lastSeenLabel() -> String? {
@@ -825,23 +959,38 @@ struct FilterRow: View {
     let onToggle: () -> Void
 
     var body: some View {
-        HStack(spacing: 8) {
-            Circle()
-                .fill(Color(color))
-                .frame(width: 8, height: 8)
-            Text(label)
-                .font(.system(size: 11))
-            Spacer()
-            Button(selected ? "Hide" : "Show") {
-                onToggle()
+        Button(action: onToggle) {
+            HStack(spacing: 8) {
+                Circle()
+                    .fill(Color(color))
+                    .frame(width: 8, height: 8)
+                Text(label)
+                    .font(.system(size: 11))
+                    .foregroundColor(Theme.textPrimary)
+                Spacer()
+                Text(selected ? "Hide" : "Show")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(Theme.textPrimary)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(
+                        Capsule()
+                            .stroke(Theme.border, lineWidth: 1)
+                    )
             }
-            .buttonStyle(SecondaryActionButtonStyle())
+            .padding(.horizontal, 6)
+            .padding(.vertical, 4)
+            .background(selected ? Theme.panelAlt : .clear)
+            .cornerRadius(6)
+            .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
     }
 }
 
 struct SignalFieldView: View {
     let events: [NormalizedEvent]
+    let traceEvents: [NormalizedEvent]
     let frames: [SignalFrame]
     let framesAreDerived: Bool
     let paused: Bool
@@ -852,6 +1001,10 @@ struct SignalFieldView: View {
     let replayEnabled: Bool
     let replayOffset: Double
     let ghostTrails: Bool
+    let topologyClarity: Bool
+    let protocolLanes: Bool
+    let recentOnlyLinks: Bool
+    let targetSpotlight: Bool
     let aliases: [String: String]
     let nodePresentations: [String: NodePresentation]
     let focusID: String?
@@ -862,6 +1015,8 @@ struct SignalFieldView: View {
     @State private var mousePoint: CGPoint = .zero
     @State private var lastMouseMove: Date = .distantPast
     @State private var selectedNode: SignalFieldEngine.ProjectedNode?
+    @State private var hoveredEdge: SignalFieldEngine.ProjectedEdge?
+    @State private var selectedEdge: SignalFieldEngine.ProjectedEdge?
     @State private var focusedNodeID: String?
     @State private var pinnedNodeIDs: Set<String> = []
     @State private var quickOverlayVisible: Bool = false
@@ -869,8 +1024,8 @@ struct SignalFieldView: View {
 
     var body: some View {
         ZStack {
-            // Single true frame rate for both Calm and Storm; only the effects change.
-            TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { timeline in
+            // Keep the field at a bounded update rate for readability + edge count scalability.
+            TimelineView(.animation(minimumInterval: 1.0 / 15.0)) { timeline in
                 Canvas { context, size in
                     let parallax = Parallax.offset(mousePoint: mousePoint, size: size, now: timeline.date, lastMove: lastMouseMove)
                     let isActive = fieldIsActive(now: timeline.date)
@@ -889,6 +1044,10 @@ struct SignalFieldView: View {
                         selectedID: selectedNode?.id,
                         focusID: focusID ?? focusedNodeID,
                         ghostTrails: ghostTrails,
+                        topologyClarity: topologyClarity,
+                        protocolLanes: protocolLanes,
+                        recentOnlyLinks: recentOnlyLinks,
+                        targetSpotlight: targetSpotlight,
                         nodePresentations: nodePresentations,
                         framesAreDerived: framesAreDerived,
                         isActive: isActive
@@ -898,6 +1057,7 @@ struct SignalFieldView: View {
             .overlay(MouseTracker { location in
                 mousePoint = location
                 lastMouseMove = Date()
+                hoveredEdge = engine.nearestEdge(to: location)
             })
             .onChange(of: focusID ?? "") { newValue in
                 let trimmed = newValue.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -907,13 +1067,28 @@ struct SignalFieldView: View {
             .gesture(DragGesture(minimumDistance: 0).onEnded { value in
                 if let hit = engine.nearestNode(to: value.location) {
                     selectedNode = hit
+                    selectedEdge = nil
+                    quickOverlayVisible = false
+                } else if let edgeHit = engine.nearestEdge(to: value.location) {
+                    selectedEdge = edgeHit
+                    selectedNode = nil
                     quickOverlayVisible = false
                 } else {
                     selectedNode = nil
+                    selectedEdge = nil
                     quickOverlayVisible = true
                     quickOverlayHideAt = Date().addingTimeInterval(2.5)
                 }
             })
+
+            if let hoveredEdge, selectedNode == nil, selectedEdge == nil {
+                EdgeHoverTooltipView(edge: hoveredEdge)
+                    .position(
+                        x: max(180, min(mousePoint.x + 220, 1200)),
+                        y: max(84, min(mousePoint.y + 36, 700))
+                    )
+                    .transition(.opacity)
+            }
 
             if quickOverlayVisible {
                 let now = Date()
@@ -937,40 +1112,72 @@ struct SignalFieldView: View {
             if let node = selectedNode {
                 let detail = resolveDetail(for: node)
                 let actions = buildActions(for: detail)
-                NodeInspectorView(
-                    node: node,
-                    presentation: nodePresentations[node.id] ?? NodePresentation.forNode(
-                        id: node.id,
-                        keys: [node.id],
-                        isOnline: true,
-                        activityScore: 0
-                    ),
-                    alias: aliases[node.id],
-                    suggestions: Array(Set(aliases.values)).sorted(),
-                    detail: detail,
-                    actions: actions,
-                    focused: focusedNodeID == node.id,
-                    pinned: pinnedNodeIDs.contains(node.id),
-                    onFocus: {
-                        focusedNodeID = (focusedNodeID == node.id) ? nil : node.id
-                        persistState()
-                    },
-                    onPin: {
-                        if pinnedNodeIDs.contains(node.id) {
-                            pinnedNodeIDs.remove(node.id)
-                        } else {
-                            pinnedNodeIDs.insert(node.id)
+                ZStack {
+                    Color.black.opacity(0.24)
+                        .ignoresSafeArea()
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            selectedNode = nil
                         }
-                        persistState()
-                    },
-                    onSaveAlias: { alias in
-                        SODSStore.shared.setAlias(id: node.id, alias: alias)
-                    },
-                    onClose: {
-                        selectedNode = nil
-                    }
-                )
-                .transition(.opacity)
+
+                    NodeInspectorView(
+                        node: node,
+                        presentation: nodePresentations[node.id] ?? NodePresentation.forNode(
+                            id: node.id,
+                            keys: [node.id],
+                            isOnline: true,
+                            activityScore: 0
+                        ),
+                        alias: aliases[node.id],
+                        suggestions: Array(Set(aliases.values)).sorted(),
+                        detail: detail,
+                        actions: actions,
+                        focused: focusedNodeID == node.id,
+                        pinned: pinnedNodeIDs.contains(node.id),
+                        onFocus: {
+                            focusedNodeID = (focusedNodeID == node.id) ? nil : node.id
+                            persistState()
+                        },
+                        onPin: {
+                            if pinnedNodeIDs.contains(node.id) {
+                                pinnedNodeIDs.remove(node.id)
+                            } else {
+                                pinnedNodeIDs.insert(node.id)
+                            }
+                            persistState()
+                        },
+                        onSaveAlias: { alias in
+                            SODSStore.shared.setAlias(id: node.id, alias: alias)
+                        },
+                        onClose: {
+                            selectedNode = nil
+                        }
+                    )
+                    .frame(maxWidth: 780)
+                    .padding(28)
+                    .transition(.opacity.combined(with: .scale(scale: 0.97)))
+                }
+                .zIndex(20)
+            }
+
+            if let selectedEdge {
+                ZStack {
+                    Color.black.opacity(0.24)
+                        .ignoresSafeArea()
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            self.selectedEdge = nil
+                        }
+                    EdgeTracePanelView(
+                        edge: selectedEdge,
+                        traces: edgeTraceEntries(for: selectedEdge),
+                        onClose: { self.selectedEdge = nil }
+                    )
+                    .frame(maxWidth: 820)
+                    .padding(28)
+                    .transition(.opacity.combined(with: .scale(scale: 0.97)))
+                }
+                .zIndex(21)
             }
 
             if !fieldIsActive(now: Date()) {
@@ -986,7 +1193,6 @@ struct SignalFieldView: View {
                 )
             }
 
-            LegendOverlayView()
             if replayEnabled {
                 ReplayBarView(progress: replayOffset / 60.0, label: "\(Int(replayOffset))s", onSeek: { progress in
                     let next = progress * 60.0
@@ -1006,7 +1212,7 @@ struct SignalFieldView: View {
 
     private var hottestLabel: String {
         if let hottest = frames.max(by: { ($0.glow ?? 0) < ($1.glow ?? 0) }) {
-            return aliases[hottest.deviceID] ?? hottest.deviceID
+            return resolvedDisplayLabel(primaryID: hottest.deviceID)
         }
         if let hottestEvent = events.max(by: { (a, b) in
             let sa = a.signal.strength ?? -100
@@ -1014,14 +1220,34 @@ struct SignalFieldView: View {
             return sa < sb
         }) {
             let id = hottestEvent.deviceID ?? hottestEvent.nodeID
-            return aliases[id] ?? id
+            return resolvedDisplayLabel(primaryID: id, nodeID: hottestEvent.nodeID)
         }
         return "idle"
     }
 
     private var focusedLabel: String? {
         guard let focusedNodeID else { return nil }
-        return aliases[focusedNodeID] ?? focusedNodeID
+        return resolvedDisplayLabel(primaryID: focusedNodeID)
+    }
+
+    private func resolvedDisplayLabel(primaryID: String, nodeID: String? = nil) -> String {
+        var keys: [String] = [primaryID]
+        if !primaryID.hasPrefix("node:") {
+            keys.append("node:\(primaryID)")
+        }
+        if let nodeID, !nodeID.isEmpty {
+            keys.append(nodeID)
+            keys.append("node:\(nodeID)")
+        }
+        if let resolved = IdentityResolver.shared.resolveLabel(keys: keys), !resolved.isEmpty {
+            return resolved
+        }
+        for key in keys {
+            if let alias = aliases[key], !alias.isEmpty {
+                return alias
+            }
+        }
+        return primaryID
     }
 
     private func loadPersistedState() {
@@ -1085,9 +1311,9 @@ struct SignalFieldView: View {
         let device = entityStore.devices.first { $0.id == id || $0.ip == id }
         let host = entityStore.hosts.first { $0.ip == id }
 
-        let alias = aliases[id] ?? (nodeID != nil ? aliases["node:\(nodeID!)"] ?? aliases[nodeID!] : nil)
+        let alias = resolvedDisplayLabel(primaryID: id, nodeID: nodeID)
         let label = nodeRecord?.label
-            ?? alias
+            ?? (alias == id ? nil : alias)
             ?? blePeripheral?.name
             ?? device?.httpTitle
             ?? host?.hostname
@@ -1136,30 +1362,34 @@ struct SignalFieldView: View {
     }
 
     private func buildActions(for detail: SignalDetail) -> [SignalAction] {
-        var actions: [SignalAction] = []
-        guard let nodeID = detail.nodeID else {
-            if !ToolRegistry.shared.tools.isEmpty {
-                actions.append(SignalAction(title: "Tools", enabled: true, action: { onOpenTools() }))
-            }
-            return actions
-        }
+        var actions: [SignalAction] = [
+            SignalAction(title: "Tools", enabled: true, action: { onOpenTools() }),
+            SignalAction(title: "God Button", enabled: true, action: {
+                NotificationCenter.default.post(name: .targetLockNodeCommand, object: detail.nodeID ?? detail.id)
+            })
+        ]
+        guard let nodeID = detail.nodeID else { return actions }
 
         let caps = detail.capabilities
         let canIdentify = caps.isEmpty || caps.contains("identify") || caps.contains("whoami")
+        let hostHint = (detail.ip?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false)
+            ? detail.ip
+            : detail.hostname
+        let canRouteToNode = (hostHint?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false)
 
         actions.append(
-            SignalAction(title: "Connect", enabled: true, action: {
+            SignalAction(title: "Connect", enabled: canRouteToNode, action: {
                 NodeRegistry.shared.setConnecting(nodeID: nodeID, connecting: true)
-                SODSStore.shared.connectNode(nodeID)
-                SODSStore.shared.identifyNode(nodeID)
+                SODSStore.shared.connectNode(nodeID, hostHint: hostHint)
+                SODSStore.shared.identifyNode(nodeID, hostHint: hostHint)
                 SODSStore.shared.refreshStatus()
             })
         )
 
         if canIdentify {
             actions.append(
-                SignalAction(title: "Identify", enabled: true, action: {
-                    SODSStore.shared.identifyNode(nodeID)
+                SignalAction(title: "Identify", enabled: canRouteToNode, action: {
+                    SODSStore.shared.identifyNode(nodeID, hostHint: hostHint)
                     SODSStore.shared.refreshStatus()
                 })
             )
@@ -1183,15 +1413,14 @@ struct SignalFieldView: View {
             )
         }
 
-        if !ToolRegistry.shared.tools.isEmpty {
-            actions.append(SignalAction(title: "Tools", enabled: true, action: { onOpenTools() }))
+        var deduped: [SignalAction] = []
+        var seen = Set<String>()
+        for action in actions {
+            if seen.insert(action.title).inserted {
+                deduped.append(action)
+            }
         }
-
-        actions.append(SignalAction(title: "God Button", enabled: true, action: {
-            NotificationCenter.default.post(name: .openGodMenuCommand, object: nil)
-        }))
-
-        return actions
+        return deduped
     }
 
     private func signalNode(from detail: SignalDetail) -> SignalNode? {
@@ -1204,6 +1433,35 @@ struct SignalFieldView: View {
             mac: detail.mac,
             lastKind: detail.kind
         )
+    }
+
+    private func edgeTraceEntries(for edge: SignalFieldEngine.ProjectedEdge) -> [EdgeTraceEntry] {
+        let now = Date()
+        return traceEvents
+            .reversed()
+            .compactMap { event -> EdgeTraceEntry? in
+                guard let sample = SignalFieldEngine.classifyEdgeSample(from: event, now: now) else { return nil }
+                guard sample.signalType == edge.signalType else { return nil }
+                guard sample.transport == edge.transport else { return nil }
+                guard sample.sourceID == edge.sourceID else { return nil }
+                guard sample.targetID == edge.targetID else { return nil }
+                let timestamp = event.eventTs ?? event.recvTs ?? now
+                let latency = SignalFieldEngine.extractLatencyMs(from: event.data)
+                let bytes = SignalFieldEngine.estimateEventBytes(event)
+                return EdgeTraceEntry(
+                    id: event.id,
+                    kind: event.kind,
+                    summary: event.summary,
+                    timestamp: timestamp,
+                    sourceID: sample.sourceID,
+                    targetID: sample.targetID,
+                    latencyMs: latency,
+                    bytes: bytes,
+                    status: sample.status
+                )
+            }
+            .prefix(24)
+            .map { $0 }
     }
 }
 
@@ -1303,8 +1561,13 @@ struct PinnedNodesView: View {
                 Text("Pinned")
                     .font(.system(size: 11, weight: .semibold))
                 Spacer()
-                Button("Clear") { onClear() }
-                    .buttonStyle(SecondaryActionButtonStyle())
+                Button { onClear() } label: {
+                    Image(systemName: "xmark.circle")
+                        .font(.system(size: 12, weight: .semibold))
+                }
+                .buttonStyle(SecondaryActionButtonStyle())
+                .help("Clear")
+                .accessibilityLabel(Text("Clear"))
             }
             ForEach(pinned, id: \.self) { id in
                 HStack(spacing: 6) {
@@ -1312,8 +1575,13 @@ struct PinnedNodesView: View {
                         .font(.system(size: 10, design: .monospaced))
                         .foregroundColor(.secondary)
                     Spacer()
-                    Button("Focus") { onFocus(id) }
-                        .buttonStyle(SecondaryActionButtonStyle())
+                    Button { onFocus(id) } label: {
+                        Image(systemName: "scope")
+                            .font(.system(size: 12, weight: .semibold))
+                    }
+                    .buttonStyle(SecondaryActionButtonStyle())
+                    .help("Focus")
+                    .accessibilityLabel(Text("Focus"))
                 }
             }
         }
@@ -1389,6 +1657,125 @@ struct SignalAction: Identifiable {
     let action: () -> Void
 }
 
+struct EdgeTraceEntry: Identifiable, Hashable {
+    let id: String
+    let kind: String
+    let summary: String
+    let timestamp: Date
+    let sourceID: String
+    let targetID: String
+    let latencyMs: Double?
+    let bytes: Double
+    let status: SpectrumEdgeStatus
+}
+
+struct EdgeHoverTooltipView: View {
+    let edge: SignalFieldEngine.ProjectedEdge
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("\(edge.sourceLabel) → \(edge.targetLabel)")
+                .font(.system(size: 11, weight: .semibold))
+            Text("Type: \(edge.signalType.label) • Transport: \(edge.transport.label)")
+                .font(.system(size: 10))
+                .foregroundColor(.secondary)
+            Text(String(format: "rps %.2f • latency %.0fms • bytes/s %.0f", edge.metrics.rps, edge.metrics.latencyMs, edge.metrics.bytesPerSec))
+                .font(.system(size: 10, design: .monospaced))
+                .foregroundColor(.secondary)
+            Text("Last seen: \(edge.metrics.lastSeenText) • \(edge.status.label)")
+                .font(.system(size: 10))
+                .foregroundColor(.secondary)
+        }
+        .padding(10)
+        .background(
+            RoundedRectangle(cornerRadius: 10)
+                .fill(.ultraThinMaterial)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10)
+                        .stroke(Theme.border, lineWidth: 1)
+                )
+        )
+        .shadow(color: .black.opacity(0.22), radius: 10, x: 0, y: 4)
+    }
+}
+
+struct EdgeTracePanelView: View {
+    let edge: SignalFieldEngine.ProjectedEdge
+    let traces: [EdgeTraceEntry]
+    let onClose: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Edge Trace")
+                        .font(.system(size: 12, weight: .semibold))
+                    Text("\(edge.sourceLabel) → \(edge.targetLabel)")
+                        .font(.system(size: 11))
+                    Text("Type: \(edge.signalType.label) • Transport: \(edge.transport.label) • \(edge.status.label)")
+                        .font(.system(size: 10))
+                        .foregroundColor(.secondary)
+                }
+                Spacer()
+                Button { onClose() } label: {
+                    Image(systemName: "xmark.circle")
+                        .font(.system(size: 12, weight: .semibold))
+                }
+                .buttonStyle(SecondaryActionButtonStyle())
+                .help("Close")
+                .accessibilityLabel(Text("Close"))
+                .keyboardShortcut(.cancelAction)
+            }
+            if traces.isEmpty {
+                Text("No matching traces in current event window.")
+                    .font(.system(size: 10))
+                    .foregroundColor(.secondary)
+            } else {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 6) {
+                        ForEach(traces) { trace in
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text(trace.summary)
+                                    .font(.system(size: 10, weight: .semibold))
+                                Text(trace.kind)
+                                    .font(.system(size: 10))
+                                    .foregroundColor(.secondary)
+                                Text(
+                                    String(
+                                        format: "%@ • latency %.0fms • bytes %.0f • %@",
+                                        trace.timestamp.formatted(date: .abbreviated, time: .standard),
+                                        trace.latencyMs ?? 0,
+                                        trace.bytes,
+                                        trace.status.label
+                                    )
+                                )
+                                .font(.system(size: 10, design: .monospaced))
+                                .foregroundColor(.secondary)
+                            }
+                            .padding(8)
+                            .background(Theme.panelAlt)
+                            .cornerRadius(8)
+                        }
+                    }
+                }
+                .frame(maxHeight: 380)
+            }
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(.ultraThinMaterial)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(Theme.border, lineWidth: 1)
+                )
+        )
+        .shadow(color: .black.opacity(0.28), radius: 18, x: 0, y: 8)
+        .frame(maxWidth: 820)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+    }
+}
+
 struct NodeInspectorView: View {
     let node: SignalFieldEngine.ProjectedNode
     let presentation: NodePresentation
@@ -1406,13 +1793,19 @@ struct NodeInspectorView: View {
     @State private var aliasText: String = ""
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 10) {
             HStack {
                 Text("Node Inspector")
                     .font(.system(size: 12, weight: .semibold))
                 Spacer()
-                Button("Close") { onClose() }
-                    .buttonStyle(SecondaryActionButtonStyle())
+                Button { onClose() } label: {
+                    Image(systemName: "xmark.circle")
+                        .font(.system(size: 12, weight: .semibold))
+                }
+                .buttonStyle(SecondaryActionButtonStyle())
+                .help("Close")
+                .accessibilityLabel(Text("Close"))
+                .keyboardShortcut(.cancelAction)
             }
             HStack(spacing: 8) {
                 Circle()
@@ -1488,16 +1881,36 @@ struct NodeInspectorView: View {
                         }
                     }
                 }
-                Button("Save Alias") { onSaveAlias(aliasText) }
-                    .buttonStyle(SecondaryActionButtonStyle())
+                Button { onSaveAlias(aliasText) } label: {
+                    Image(systemName: "checkmark.circle")
+                        .font(.system(size: 12, weight: .semibold))
+                }
+                .buttonStyle(SecondaryActionButtonStyle())
+                .help("Save Alias")
+                .accessibilityLabel(Text("Save Alias"))
             }
             if !actions.isEmpty {
-                let columns = [GridItem(.adaptive(minimum: 120), spacing: 8)]
+                let columns = [GridItem(.adaptive(minimum: 132), spacing: 8)]
                 LazyVGrid(columns: columns, alignment: .leading, spacing: 8) {
                     ForEach(actions) { action in
-                        Button(action.title) { action.action() }
+                        HStack(spacing: 8) {
+                            Text(action.title)
+                                .font(.system(size: 11))
+                                .foregroundColor(action.enabled ? Theme.textPrimary : Theme.textSecondary)
+                            Spacer()
+                            Button { action.action() } label: {
+                                Image(systemName: "arrow.right.circle")
+                                    .font(.system(size: 12, weight: .semibold))
+                            }
                             .buttonStyle(SecondaryActionButtonStyle())
                             .disabled(!action.enabled)
+                            .help(action.title)
+                            .accessibilityLabel(Text(action.title))
+                        }
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 6)
+                        .background(Theme.panelAlt)
+                        .cornerRadius(8)
                     }
                 }
             } else {
@@ -1509,13 +1922,24 @@ struct NodeInspectorView: View {
                 .font(.system(size: 10, design: .monospaced))
                 .foregroundColor(.secondary)
             HStack(spacing: 8) {
-                Button(focused ? "Unfocus" : "Focus") { onFocus() }
-                    .buttonStyle(PrimaryActionButtonStyle())
-                Button(pinned ? "Unpin" : "Pin") { onPin() }
-                    .buttonStyle(SecondaryActionButtonStyle())
+                Button { onFocus() } label: {
+                    Image(systemName: focused ? "scope" : "scope")
+                        .font(.system(size: 12, weight: .semibold))
+                }
+                .buttonStyle(PrimaryActionButtonStyle())
+                .help(focused ? "Unfocus" : "Focus")
+                .accessibilityLabel(Text(focused ? "Unfocus" : "Focus"))
+
+                Button { onPin() } label: {
+                    Image(systemName: pinned ? "pin.slash" : "pin")
+                        .font(.system(size: 12, weight: .semibold))
+                }
+                .buttonStyle(SecondaryActionButtonStyle())
+                .help(pinned ? "Unpin" : "Pin")
+                .accessibilityLabel(Text(pinned ? "Unpin" : "Pin"))
             }
         }
-        .padding(12)
+        .padding(16)
         .background(
             RoundedRectangle(cornerRadius: 12)
                 .fill(.ultraThinMaterial)
@@ -1524,8 +1948,9 @@ struct NodeInspectorView: View {
                         .stroke(Theme.border, lineWidth: 1)
                 )
         )
-        .padding(20)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+        .shadow(color: .black.opacity(0.28), radius: 18, x: 0, y: 8)
+        .frame(maxWidth: 780)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
     }
 }
 
@@ -1554,6 +1979,72 @@ struct IdleOverlayView: View {
     }
 }
 
+enum SpectrumSignalType: String, Hashable, Codable {
+    case control = "CONTROL"
+    case event = "EVENT"
+    case evidence = "EVIDENCE"
+    case media = "MEDIA"
+    case mgmt = "MGMT"
+
+    var label: String { rawValue }
+
+    var edgeColor: NSColor {
+        switch self {
+        case .control:
+            return NSColor(calibratedRed: 0.62, green: 0.39, blue: 1.0, alpha: 1.0) // purple
+        case .event:
+            return NSColor(calibratedRed: 0.25, green: 0.86, blue: 0.94, alpha: 1.0) // cyan
+        case .evidence:
+            return NSColor(calibratedRed: 0.97, green: 0.78, blue: 0.30, alpha: 1.0) // gold
+        case .media:
+            return NSColor(calibratedRed: 0.95, green: 0.36, blue: 0.84, alpha: 1.0) // magenta
+        case .mgmt:
+            return NSColor(calibratedRed: 0.98, green: 0.57, blue: 0.24, alpha: 1.0) // orange
+        }
+    }
+}
+
+enum SpectrumTransport: String, Hashable, Codable {
+    case http = "HTTP/REST"
+    case livekit = "WebSocket/LiveKit"
+    case ssh = "SSH"
+    case ble = "BLE"
+    case wifiPassive = "Wi-Fi Passive"
+    case serial = "Serial/USB"
+    case unknown = "Unknown"
+
+    var label: String { rawValue }
+}
+
+enum SpectrumEdgeStatus: String, Hashable, Codable {
+    case active
+    case idle
+    case error
+
+    var label: String { rawValue.capitalized }
+}
+
+struct SpectrumEdgeMetrics: Hashable {
+    let rps: Double
+    let bytesPerSec: Double
+    let latencyMs: Double
+    let lastSeenMs: Double
+    let lastSeenText: String
+    let signalStrengthDbm: Double?
+}
+
+struct SpectrumEdgeSample: Hashable {
+    let sourceID: String
+    let targetID: String
+    let signalType: SpectrumSignalType
+    let transport: SpectrumTransport
+    let status: SpectrumEdgeStatus
+    let eventTime: Date
+    let latencyMs: Double
+    let bytes: Double
+    let signalStrengthDbm: Double?
+}
+
 // Spectrum Visualizer Core: consumes frames/events and produces a living field state.
 final class SignalFieldEngine: ObservableObject {
     private var sources: [String: SignalSource] = [:]
@@ -1561,16 +2052,55 @@ final class SignalFieldEngine: ObservableObject {
     private var processedIDs: Set<String> = []
     private var lastUpdate: Date?
     private var lastProjected: [ProjectedNode] = []
+    private var lastProjectedEdges: [ProjectedEdge] = []
     private var pulses: [FieldPulse] = []
     private var lastPulseBySource: [String: Date] = [:]
     private var edgePulses: [EdgePulse] = []
     private var lastEdgePulseBySource: [String: Date] = [:]
+    private var edgeGraph: [AggregatedEdge] = []
+    private var edgeGraphToken: String = ""
+    private var lastEdgeGraphRefresh: Date = .distantPast
+    // Keep the field readable: directional line pulses are primary, particles are disabled.
+    private let linePulseOnly = true
 
     struct ProjectedNode: Hashable {
         let id: String
         let point: CGPoint
         let color: NSColor
         let depth: CGFloat
+    }
+
+    struct ProjectedEdge: Hashable {
+        let id: String
+        let sourceID: String
+        let targetID: String
+        let sourceLabel: String
+        let targetLabel: String
+        let sourcePoint: CGPoint
+        let targetPoint: CGPoint
+        let signalType: SpectrumSignalType
+        let transport: SpectrumTransport
+        let status: SpectrumEdgeStatus
+        let typeColor: NSColor
+        let deviceTint: NSColor
+        let lineWidth: CGFloat
+        let alpha: Double
+        let metrics: SpectrumEdgeMetrics
+    }
+
+    private struct AggregatedEdge: Hashable {
+        let id: String
+        let sourceID: String
+        let targetID: String
+        let signalType: SpectrumSignalType
+        let transport: SpectrumTransport
+        let status: SpectrumEdgeStatus
+        let rps: Double
+        let bytesPerSec: Double
+        let latencyMs: Double
+        let lastSeenMs: Double
+        let lastSeenText: String
+        let signalStrengthDbm: Double?
     }
 
     struct FieldPulse: Hashable {
@@ -1618,6 +2148,10 @@ final class SignalFieldEngine: ObservableObject {
         selectedID: String?,
         focusID: String?,
         ghostTrails: Bool,
+        topologyClarity: Bool,
+        protocolLanes: Bool,
+        recentOnlyLinks: Bool,
+        targetSpotlight: Bool,
         nodePresentations: [String: NodePresentation],
         framesAreDerived: Bool,
         isActive: Bool
@@ -1642,28 +2176,31 @@ final class SignalFieldEngine: ObservableObject {
 
         // Enforce particle budget *before* drawing so rendering cost doesn't spike.
         // Calm should be dramatically quieter; Storm can be dense but still bounded.
-        let particleBudget = max(200, min(maxParticles, intensity.particleCap))
-        if particles.count > particleBudget {
+        let particleBudget = linePulseOnly ? 0 : max(120, min(maxParticles, intensity.particleCap))
+        if linePulseOnly {
+            particles.removeAll(keepingCapacity: true)
+            pulses.removeAll(keepingCapacity: true)
+        } else if particles.count > particleBudget {
             particles = Array(particles.suffix(particleBudget))
         }
 
         let activityFade: CGFloat = isActive ? 1.0 : 0.25
-        let lineOnly = (intensity == .calm)
-        if !lineOnly {
+        if !linePulseOnly {
             drawBins(context: &context, size: size, frames: frames, now: now, focusID: focusID, activityFade: activityFade, intensity: intensity)
         }
-        lastProjected = drawSources(context: &context, size: size, now: now, parallax: parallax, selectedID: selectedID, focusID: focusID, nodePresentations: nodePresentations, activityFade: activityFade)
-        if ghostTrails && !lineOnly {
+        lastProjected = drawSources(context: &context, size: size, now: now, parallax: parallax, selectedID: selectedID, focusID: focusID, nodePresentations: nodePresentations, activityFade: activityFade, targetSpotlight: targetSpotlight)
+        refreshEdgeGraphIfNeeded(events: events, now: now)
+        if ghostTrails {
             if isActive {
                 updateGhosts(now: now, nodePresentations: nodePresentations, intensity: intensity)
             }
             drawGhosts(context: &context, size: size, parallax: parallax, focusID: focusID, activityFade: activityFade)
         }
-        drawConnections(context: &context, focusID: focusID, activityFade: activityFade, intensity: intensity)
-        drawEdgePulses(context: &context, now: now, focusID: focusID, activityFade: activityFade, intensity: intensity)
-        if !lineOnly {
-            drawPulses(context: &context, size: size, now: now, parallax: parallax, focusID: focusID, activityFade: activityFade)
-            drawParticles(context: &context, size: size, now: now, parallax: parallax, focusID: focusID, activityFade: activityFade, budget: particleBudget)
+        lastProjectedEdges = drawConnections(context: &context, focusID: focusID, activityFade: activityFade, intensity: intensity, topologyClarity: topologyClarity, recentOnlyLinks: recentOnlyLinks, now: now)
+        drawEdgePulses(context: &context, now: now, focusID: focusID, activityFade: activityFade, intensity: intensity, protocolLanes: protocolLanes, targetSpotlight: targetSpotlight)
+        if !linePulseOnly {
+            drawPulses(context: &context, size: size, now: now, parallax: parallax, focusID: focusID, activityFade: activityFade, targetSpotlight: targetSpotlight)
+            drawParticles(context: &context, size: size, now: now, parallax: parallax, focusID: focusID, activityFade: activityFade, budget: particleBudget, targetSpotlight: targetSpotlight)
         }
     }
 
@@ -1675,8 +2212,11 @@ final class SignalFieldEngine: ObservableObject {
             let source = sources[key] ?? SignalSource(id: key)
             source.update(from: event)
             sources[key] = source
-            let lineOnly = (intensity == .calm)
-            if !lineOnly {
+            if let sample = Self.classifyEdgeSample(from: event, now: now) {
+                ensureEdgeEndpoint(sample.sourceID, event: event, now: now)
+                ensureEdgeEndpoint(sample.targetID, event: event, now: now)
+            }
+            if !linePulseOnly {
                 let emitted = SignalEmitter.emit(from: source, event: event, intensity: intensity, now: now)
                 particles.append(contentsOf: emitted)
             }
@@ -1685,22 +2225,24 @@ final class SignalFieldEngine: ObservableObject {
             // is actually "broadcasting" (i.e., we have strength / a real seen-type signal).
             let isBLE = event.kind.lowercased().contains("ble")
             if !isBLE || SignalEmitter.isBLEBroadcasting(event: event) {
-                if !lineOnly {
+                if !linePulseOnly {
                     seedPulse(id: key, source: source, event: event, now: now, intensity: intensity)
-                }
-                if let nodeID = source.lastNodeID, !nodeID.isEmpty, nodeID != "unknown" {
-                    let fromID = "node:\(nodeID)"
-                    let toID = key
-                    seedEdgePulse(
-                        throttleKey: key,
-                        fromID: fromID,
-                        toID: toID,
-                        strength: source.lastStrength ?? -70,
-                        color: source.color,
-                        renderKind: SignalRenderKind.from(event: event),
-                        now: now,
-                        intensity: intensity
-                    )
+                    if let nodeID = source.lastNodeID, !nodeID.isEmpty, nodeID != "unknown" {
+                        let lane = edgeLaneKey(for: event)
+                        let commandLike = isCommandLike(kind: event.kind)
+                        let fromID = commandLike ? "node:\(nodeID)" : key
+                        let toID = commandLike ? key : "node:\(nodeID)"
+                        seedEdgePulse(
+                            throttleKey: "\(key)|\(nodeID)|\(lane)|\(commandLike ? "out" : "in")",
+                            fromID: fromID,
+                            toID: toID,
+                            strength: source.lastStrength ?? -70,
+                            color: SignalColor.kindAccent(kind: event.kind, channel: event.signal.channel),
+                            renderKind: SignalRenderKind.from(event: event),
+                            now: now,
+                            intensity: intensity
+                        )
+                    }
                 }
             }
         }
@@ -1716,8 +2258,7 @@ final class SignalFieldEngine: ObservableObject {
             source.update(from: frame)
             sources[key] = source
             let style = SignalFrameStyle.from(frame: frame)
-            let lineOnly = (intensity == .calm)
-            if !lineOnly {
+            if !linePulseOnly {
                 particles.append(
                     SignalParticle(
                         id: UUID(),
@@ -1738,18 +2279,18 @@ final class SignalFieldEngine: ObservableObject {
                     )
                 )
                 seedPulse(id: key, color: style.color, strength: style.glow, source: source, now: now, renderKind: SignalRenderKind.from(source: frame.source), intensity: intensity)
-            }
-            if let nodeID = source.lastNodeID, !nodeID.isEmpty, nodeID != "unknown" {
-                seedEdgePulse(
-                    throttleKey: key,
-                    fromID: "node:\(nodeID)",
-                    toID: key,
-                    strength: frame.rssi,
-                    color: style.color,
-                    renderKind: SignalRenderKind.from(source: frame.source),
-                    now: now,
-                    intensity: intensity
-                )
+                if let nodeID = source.lastNodeID, !nodeID.isEmpty, nodeID != "unknown" {
+                    seedEdgePulse(
+                        throttleKey: "\(key)|\(nodeID)|\(edgeLaneKey(for: frame))|in",
+                        fromID: key,
+                        toID: "node:\(nodeID)",
+                        strength: frame.rssi,
+                        color: style.color,
+                        renderKind: SignalRenderKind.from(source: frame.source),
+                        now: now,
+                        intensity: intensity
+                    )
+                }
             }
         }
     }
@@ -1770,15 +2311,20 @@ final class SignalFieldEngine: ObservableObject {
         for source in sources.values {
             source.step(dt: dt, isActive: isActive)
         }
-        particles = particles.compactMap { particle in
-            var particle = particle
-            particle.update(dt: dt, decay: decay)
-            if particle.isExpired(now: now) {
-                return nil
+        if linePulseOnly {
+            particles.removeAll(keepingCapacity: true)
+            pulses.removeAll(keepingCapacity: true)
+        } else {
+            particles = particles.compactMap { particle in
+                var particle = particle
+                particle.update(dt: dt, decay: decay)
+                if particle.isExpired(now: now) {
+                    return nil
+                }
+                return particle
             }
-            return particle
+            pulses = pulses.filter { now.timeIntervalSince($0.birth) <= $0.lifespan }
         }
-        pulses = pulses.filter { now.timeIntervalSince($0.birth) <= $0.lifespan }
     }
 
     private func applyAttraction() {
@@ -1792,7 +2338,7 @@ final class SignalFieldEngine: ObservableObject {
                 let delta = b.position - a.position
                 let dist2 = max(0.0001, delta.x * delta.x + delta.y * delta.y)
                 if dist2 > 0.08 && dist2 < 0.6 {
-                    let strength = (dist2 - 0.08) * 0.06
+                    let strength = (dist2 - 0.08) * 0.04
                     let dir = delta / sqrt(dist2)
                     a.velocity += dir * strength
                     b.velocity -= dir * strength
@@ -1811,7 +2357,7 @@ final class SignalFieldEngine: ObservableObject {
                 let delta = a.position - b.position
                 let dist2 = max(0.0001, delta.x * delta.x + delta.y * delta.y)
                 if dist2 < 0.18 {
-                    let strength = (0.18 - dist2) * 0.6
+                    let strength = (0.18 - dist2) * 0.34
                     let dir = delta / sqrt(dist2)
                     a.velocity += dir * strength
                     b.velocity -= dir * strength
@@ -1850,19 +2396,19 @@ final class SignalFieldEngine: ObservableObject {
             with: .radialGradient(coreVignette, center: center, startRadius: 0, endRadius: min(size.width, size.height) * 0.38)
         )
 
-        for ring in 1...3 {
+        for ring in 1...2 {
             let radius = min(size.width, size.height) * 0.12 * CGFloat(ring)
             let ringRect = CGRect(x: center.x - radius, y: center.y - radius, width: radius * 2, height: radius * 2)
             context.stroke(Path(ellipseIn: ringRect), with: .color(Color.white.opacity(0.02)), lineWidth: 1)
         }
 
-        let starCount = 42
+        let starCount = 16
         for i in 0..<starCount {
             let seed = Double(i) * 0.31
             let x = (sin(seed * 12.1) * 0.5 + 0.5) * size.width
             let y = (cos(seed * 9.7) * 0.5 + 0.5) * size.height
             let twinkle = sin(now.timeIntervalSince1970 * 0.2 + seed) * 0.5 + 0.5
-            let alpha = (isActive ? 0.06 : 0.03) + (isActive ? 0.05 : 0.02) * twinkle
+            let alpha = (isActive ? 0.02 : 0.01) + (isActive ? 0.018 : 0.008) * twinkle
             let rect = CGRect(x: x, y: y, width: 1.2, height: 1.2)
             context.fill(Path(ellipseIn: rect), with: .color(Color.white.opacity(alpha)))
         }
@@ -1921,7 +2467,8 @@ final class SignalFieldEngine: ObservableObject {
         selectedID: String?,
         focusID: String?,
         nodePresentations: [String: NodePresentation],
-        activityFade: CGFloat
+        activityFade: CGFloat,
+        targetSpotlight: Bool
     ) -> [ProjectedNode] {
         var projected: [ProjectedNode] = []
         for source in sources.values {
@@ -1949,7 +2496,7 @@ final class SignalFieldEngine: ObservableObject {
             let recency = exp(-age / 6.0)
             let vitality = max(0.12, min(1.0, 0.2 + recency * 0.6 + strengthNorm * 0.35))
             let vitalityScale = CGFloat(vitality)
-            let focusScale: CGFloat = dimmed ? 0.45 : 1.0
+            let focusScale: CGFloat = dimmed ? (targetSpotlight ? 0.26 : 0.45) : 1.0
             let alphaScale = activityFade * depthFade * focusScale * vitalityScale
             let glowBoost = CGFloat(0.55 + strengthNorm * 0.9)
             let glowAlpha = presentation?.shouldGlow == false ? 0.0 : (dimmed ? 0.08 : 0.2) * alphaScale * glowBoost
@@ -2000,105 +2547,32 @@ final class SignalFieldEngine: ObservableObject {
         return projected
     }
 
-    private func drawParticles(context: inout GraphicsContext, size: CGSize, now: Date, parallax: CGPoint, focusID: String?, activityFade: CGFloat, budget: Int) {
+    private func drawParticles(context: inout GraphicsContext, size: CGSize, now: Date, parallax: CGPoint, focusID: String?, activityFade: CGFloat, budget: Int, targetSpotlight: Bool) {
         for particle in particles.suffix(budget) {
             let dimmed = focusID != nil && focusID != particle.sourceID
-            particle.draw(context: &context, size: size, now: now, parallax: parallax, dimmed: dimmed, activityFade: activityFade)
-        }
-    }
-
-    private func drawConnections(context: inout GraphicsContext, focusID: String?, activityFade: CGFloat, intensity: SignalIntensity) {
-        guard lastProjected.count > 1 else { return }
-        let projectedByID: [String: ProjectedNode] = Dictionary(uniqueKeysWithValues: lastProjected.map { ($0.id, $0) })
-
-        // Explicit "connected" lines: connect each observed entity to its reporting node (when known).
-        // This makes the field read more like a living graph than a particle cloud.
-        var edgeCount = 0
-        for source in sources.values {
-            guard let nodeID = source.lastNodeID, !nodeID.isEmpty, nodeID != "unknown" else { continue }
-            let nodeKeyA = "node:\(nodeID)"
-            let nodeKeyB = nodeID
-            let node = projectedByID[nodeKeyA] ?? projectedByID[nodeKeyB]
-            guard let node else { continue }
-            guard let ent = projectedByID[source.id] else { continue }
-            if ent.id == node.id { continue }
-            if let focusID, focusID != node.id && focusID != ent.id { continue }
-
-            let dx = node.point.x - ent.point.x
-            let dy = node.point.y - ent.point.y
-            let dist = sqrt(dx * dx + dy * dy)
-            if dist > 520 { continue }
-
-            var path = Path()
-            path.move(to: node.point)
-            path.addLine(to: ent.point)
-
-            let strength = source.lastStrength ?? -70
-            let strengthNorm = clamp(((-strength) - 30.0) / 70.0)
-            let alpha = (0.035 + strengthNorm * 0.07) * activityFade
-            let line = CGFloat(0.8 + strengthNorm * 0.8)
-            let gradient = Gradient(colors: [Color(node.color).opacity(alpha), Color(ent.color).opacity(alpha)])
-            context.stroke(
-                path,
-                with: .linearGradient(gradient, startPoint: node.point, endPoint: ent.point),
-                lineWidth: line
+            particle.draw(
+                context: &context,
+                size: size,
+                now: now,
+                parallax: parallax,
+                dimmed: dimmed,
+                activityFade: activityFade,
+                dimFactor: targetSpotlight ? 0.45 : 1.0
             )
-
-            edgeCount += 1
-            if edgeCount >= (intensity.connectionStrokeCap / 3) { break }
-        }
-
-        // Connection lines are O(n^2). Keep them when n is modest, but degrade gracefully otherwise.
-        if let focusID {
-            guard let focus = lastProjected.first(where: { $0.id == focusID }) else { return }
-            let group = groupFor(id: focus.id)
-            var drawn = 0
-            for other in lastProjected {
-                if other.id == focus.id { continue }
-                if groupFor(id: other.id) != group { continue }
-                let dx = focus.point.x - other.point.x
-                let dy = focus.point.y - other.point.y
-                let dist = sqrt(dx * dx + dy * dy)
-                if dist > 260 { continue }
-                var path = Path()
-                path.move(to: focus.point)
-                path.addLine(to: other.point)
-                let alpha = (0.08 + (1.0 - min(1.0, dist / 260)) * 0.18) * activityFade
-                context.stroke(path, with: .color(Color(focus.color).opacity(alpha)), lineWidth: 1.0)
-                drawn += 1
-                if drawn >= intensity.focusConnectionCap { break }
-            }
-            return
-        }
-
-        if lastProjected.count > intensity.connectionNodeHardCap { return }
-
-        var total = 0
-        for i in 0..<(lastProjected.count - 1) {
-            for j in (i + 1)..<lastProjected.count {
-                let a = lastProjected[i]
-                let b = lastProjected[j]
-                if groupFor(id: a.id) != groupFor(id: b.id) { continue }
-                let dx = a.point.x - b.point.x
-                let dy = a.point.y - b.point.y
-                let dist = sqrt(dx * dx + dy * dy)
-                if dist > 220 { continue }
-                var path = Path()
-                path.move(to: a.point)
-                path.addLine(to: b.point)
-                let alpha = (0.08 + (1.0 - min(1.0, dist / 220)) * 0.18) * activityFade
-                context.stroke(path, with: .color(Color(a.color).opacity(alpha)), lineWidth: 1.0)
-                total += 1
-                if total >= intensity.connectionStrokeCap { return }
-            }
         }
     }
 
-    private func drawEdgePulses(context: inout GraphicsContext, now: Date, focusID: String?, activityFade: CGFloat, intensity: SignalIntensity) {
-        guard !edgePulses.isEmpty else { return }
+    private func drawConnections(
+        context: inout GraphicsContext,
+        focusID: String?,
+        activityFade: CGFloat,
+        intensity: SignalIntensity,
+        topologyClarity: Bool,
+        recentOnlyLinks: Bool,
+        now: Date
+    ) -> [ProjectedEdge] {
+        guard !edgeGraph.isEmpty, lastProjected.count > 1 else { return [] }
         let projectedByID: [String: ProjectedNode] = Dictionary(uniqueKeysWithValues: lastProjected.map { ($0.id, $0) })
-
-        edgePulses = edgePulses.filter { now.timeIntervalSince($0.birth) <= $0.lifespan }
 
         func resolveProjected(_ id: String) -> ProjectedNode? {
             if let direct = projectedByID[id] { return direct }
@@ -2106,82 +2580,501 @@ final class SignalFieldEngine: ObservableObject {
                 let raw = String(id.dropFirst("node:".count))
                 return projectedByID[raw] ?? projectedByID["node:\(raw)"]
             }
-            return projectedByID["node:\(id)"]
+            return projectedByID["node:\(id)"] ?? projectedByID[id.lowercased()]
         }
 
-        for pulse in edgePulses {
-            guard let from = resolveProjected(pulse.fromID) else { continue }
-            guard let to = resolveProjected(pulse.toID) else { continue }
-            if from.id == to.id { continue }
-            if let focusID, focusID != from.id && focusID != to.id { continue }
+        var projectedEdges: [ProjectedEdge] = []
+        for edge in edgeGraph {
+            if recentOnlyLinks, edge.lastSeenMs > 12_000 { continue }
+            guard let source = resolveProjected(edge.sourceID), let target = resolveProjected(edge.targetID) else { continue }
+            if source.id == target.id { continue }
+            if let focusID, focusID != source.id && focusID != target.id { continue }
 
-            let age = now.timeIntervalSince(pulse.birth)
-            let t = min(1.0, max(0.0, age / max(0.01, pulse.lifespan)))
-
-            // Move from from -> to with a slight ease-in/out.
-            let eased = t * t * (3 - 2 * t)
-            let x = from.point.x + (to.point.x - from.point.x) * CGFloat(eased)
-            let y = from.point.y + (to.point.y - from.point.y) * CGFloat(eased)
-
-            let strengthNorm = clamp(((-pulse.strength) - 30.0) / 70.0)
-            let fade = (1.0 - t)
-            let alpha = (0.14 + strengthNorm * 0.22) * fade * Double(activityFade)
-            let radius = CGFloat(2.2 + strengthNorm * 4.2)
-            let glowRadius = radius * 3.4
-
-            let color = Color(pulse.color)
-            let dx = to.point.x - from.point.x
-            let dy = to.point.y - from.point.y
-            let len = max(0.001, sqrt(dx * dx + dy * dy))
-            let ux = dx / len
-            let uy = dy / len
-
-            func drawDot(at px: CGFloat, _ py: CGFloat, r: CGFloat, a: Double) {
-                let g = r * 3.2
-                context.fill(Path(ellipseIn: CGRect(x: px - g, y: py - g, width: g * 2, height: g * 2)), with: .color(color.opacity(a * 0.22)))
-                context.fill(Path(ellipseIn: CGRect(x: px - r, y: py - r, width: r * 2, height: r * 2)), with: .color(color.opacity(a)))
+            let bytesScale = clamp(log10(1 + max(0, edge.bytesPerSec)) / 4.0)
+            let strengthBoost = Self.normalizeSignalStrength(edge.signalStrengthDbm)
+            let width = CGFloat(1.8 + bytesScale * 4.6 + strengthBoost * 2.2)
+            var opacity = edgeOpacity(edge.lastSeenMs, status: edge.status) * Double(activityFade)
+            opacity *= 0.72 + 0.5 * strengthBoost
+            opacity = min(1.0, opacity)
+            if edge.status == .error {
+                opacity *= 0.8 + 0.2 * (0.5 + 0.5 * sin(now.timeIntervalSinceReferenceDate * 7.0))
+            }
+            if topologyClarity && edge.status == .idle {
+                opacity *= 0.75
             }
 
-            switch pulse.renderKind {
+            let metrics = SpectrumEdgeMetrics(
+                rps: edge.rps,
+                bytesPerSec: edge.bytesPerSec,
+                latencyMs: edge.latencyMs,
+                lastSeenMs: edge.lastSeenMs,
+                lastSeenText: Self.formatLastSeen(ms: edge.lastSeenMs),
+                signalStrengthDbm: edge.signalStrengthDbm
+            )
+            projectedEdges.append(
+                ProjectedEdge(
+                    id: edge.id,
+                    sourceID: edge.sourceID,
+                    targetID: edge.targetID,
+                    sourceLabel: source.id,
+                    targetLabel: target.id,
+                    sourcePoint: source.point,
+                    targetPoint: target.point,
+                    signalType: edge.signalType,
+                    transport: edge.transport,
+                    status: edge.status,
+                    typeColor: edge.signalType.edgeColor,
+                    deviceTint: SignalColor.deviceColor(id: edge.sourceID),
+                    lineWidth: width,
+                    alpha: opacity,
+                    metrics: metrics
+                )
+            )
+        }
+
+        projectedEdges.sort { $0.alpha < $1.alpha }
+        let cap = max(80, intensity.connectionStrokeCap)
+        if projectedEdges.count > cap {
+            projectedEdges = Array(projectedEdges.suffix(cap))
+        }
+
+        for edge in projectedEdges {
+            var path = Path()
+            path.move(to: edge.sourcePoint)
+            path.addLine(to: edge.targetPoint)
+            let strengthBoost = Self.normalizeSignalStrength(edge.metrics.signalStrengthDbm)
+            let brightType = SignalColor.mix(edge.typeColor, NSColor.white, ratio: 0.06 + 0.26 * strengthBoost)
+            let typeColor = Color(brightType).opacity(edge.alpha)
+            let tintColor = Color(edge.deviceTint).opacity(edge.alpha * (0.28 + 0.22 * strengthBoost))
+            let width = max(0.8, edge.lineWidth)
+            let glowWidth = max(width * (1.7 + CGFloat(strengthBoost) * 0.6), width + 1.4)
+            let glowAlpha = min(1.0, edge.alpha * (0.18 + 0.32 * strengthBoost))
+            context.stroke(path, with: .color(Color(edge.typeColor).opacity(glowAlpha)), lineWidth: glowWidth)
+
+            switch edge.transport {
+            case .http, .unknown, .serial:
+                context.stroke(path, with: .color(typeColor), lineWidth: width)
+            case .livekit:
+                let dx = edge.targetPoint.x - edge.sourcePoint.x
+                let dy = edge.targetPoint.y - edge.sourcePoint.y
+                let len = max(0.001, sqrt(dx * dx + dy * dy))
+                let ux = dx / len
+                let uy = dy / len
+                let offset: CGFloat = 2.2
+                let ax = -uy * offset
+                let ay = ux * offset
+                var railA = Path()
+                railA.move(to: CGPoint(x: edge.sourcePoint.x + ax, y: edge.sourcePoint.y + ay))
+                railA.addLine(to: CGPoint(x: edge.targetPoint.x + ax, y: edge.targetPoint.y + ay))
+                var railB = Path()
+                railB.move(to: CGPoint(x: edge.sourcePoint.x - ax, y: edge.sourcePoint.y - ay))
+                railB.addLine(to: CGPoint(x: edge.targetPoint.x - ax, y: edge.targetPoint.y - ay))
+                context.stroke(railA, with: .color(typeColor), lineWidth: max(1.0, width * 0.85))
+                context.stroke(railB, with: .color(typeColor), lineWidth: max(1.0, width * 0.85))
+            case .ssh:
+                context.stroke(path, with: .color(typeColor), style: StrokeStyle(lineWidth: width, lineCap: .round, dash: [7, 5]))
             case .ble:
-                // Dotted pulse train along the link (head + small trailing dots).
-                let dotCount = 4
-                let spacing = CGFloat(10 + strengthNorm * 10)
-                for i in 0..<dotCount {
-                    let back = CGFloat(i) * spacing
-                    let px = x - ux * back
-                    let py = y - uy * back
-                    let a = alpha * (1.0 - Double(i) * 0.18)
-                    let r = max(1.4, radius * (1.0 - CGFloat(i) * 0.12))
-                    drawDot(at: px, py, r: r, a: a)
+                context.stroke(path, with: .color(typeColor), style: StrokeStyle(lineWidth: width, lineCap: .round, dash: [1, 5]))
+            case .wifiPassive:
+                context.stroke(path, with: .color(typeColor.opacity(0.65)), style: StrokeStyle(lineWidth: max(0.8, width * 0.8), lineCap: .round, dash: [1, 7]))
+            }
+            context.stroke(path, with: .color(tintColor), style: StrokeStyle(lineWidth: max(0.9, width * 0.7), lineCap: .round, dash: [2, 6]))
+        }
+
+        return projectedEdges
+    }
+
+    private func drawEdgePulses(
+        context: inout GraphicsContext,
+        now: Date,
+        focusID: String?,
+        activityFade: CGFloat,
+        intensity: SignalIntensity,
+        protocolLanes: Bool,
+        targetSpotlight: Bool
+    ) {
+        guard !lastProjectedEdges.isEmpty else { return }
+        let nowRef = now.timeIntervalSinceReferenceDate
+
+        for edge in lastProjectedEdges {
+            if let focusID, focusID != edge.sourceID && focusID != edge.targetID { continue }
+            let dx = edge.targetPoint.x - edge.sourcePoint.x
+            let dy = edge.targetPoint.y - edge.sourcePoint.y
+            let length = max(0.001, sqrt(dx * dx + dy * dy))
+            if length < 8 { continue }
+            let ux = dx / length
+            let uy = dy / length
+
+            let focusScale: Double = {
+                guard let focusID else { return 1.0 }
+                if focusID == edge.sourceID || focusID == edge.targetID { return 1.0 }
+                return targetSpotlight ? 0.45 : 0.7
+            }()
+            if edge.status == .idle && edge.metrics.lastSeenMs > 45_000 { continue }
+
+            let normalizedRate = clamp(log10(1.0 + max(0.0, edge.metrics.rps)) / 1.35)
+            let strengthBoost = Self.normalizeSignalStrength(edge.metrics.signalStrengthDbm)
+            let pulseCount: Int = {
+                if edge.status == .error { return 2 }
+                if edge.status == .idle { return 1 }
+                return 1 + Int(round(normalizedRate * 1.0))
+            }()
+            let latency = max(10, min(2_000, edge.metrics.latencyMs))
+            var speed = 0.16 + (2_000 - latency) / 2_000 * 0.42
+            if edge.status == .idle { speed *= 0.58 }
+            if edge.status == .error { speed *= 0.9 }
+
+            let laneOffset: CGFloat = {
+                guard protocolLanes else { return 0 }
+                switch edge.transport {
+                case .ble: return -3.0
+                case .ssh: return 2.8
+                case .livekit: return 3.4
+                case .serial: return -2.0
+                case .wifiPassive: return 1.5
+                default: return 0
                 }
-            case .wifi:
-                // Short waveform-ish segment (a bright moving "slice" of the link).
-                let seg = CGFloat(18 + strengthNorm * 26)
-                let half = seg * 0.5
-                let start = CGPoint(x: x - ux * half, y: y - uy * half)
-                let end = CGPoint(x: x + ux * half, y: y + uy * half)
-                var path = Path()
-                path.move(to: start)
-                path.addLine(to: end)
-                context.stroke(path, with: .color(color.opacity(alpha * 0.55)), lineWidth: max(1.2, radius * 0.75))
-                drawDot(at: x, y, r: radius * 0.8, a: alpha)
-            case .node:
-                // Slow thick heartbeat-like blob.
-                let beat = 0.6 + 0.4 * sin(now.timeIntervalSinceReferenceDate * 2.0)
-                drawDot(at: x, y, r: radius * CGFloat(1.25 + beat * 0.35), a: alpha)
-            case .tool:
-                // "Packet" — a bright head + a smaller tail, like command traffic moving with intent.
-                let tail = CGFloat(12 + strengthNorm * 18)
-                drawDot(at: x - ux * tail, y - uy * tail, r: max(1.4, radius * 0.75), a: alpha * 0.75)
-                drawDot(at: x, y, r: radius * 1.05, a: min(1.0, alpha * 1.15))
-            case .error:
-                // Hot flare: slightly larger + sharper.
-                drawDot(at: x, y, r: radius * 1.25, a: min(1.0, alpha * 1.2))
-            case .generic:
-                drawDot(at: x, y, r: radius, a: alpha)
+            }()
+            let laneX = -uy * laneOffset
+            let laneY = ux * laneOffset
+
+            for index in 0..<pulseCount {
+                let offset = Double(index) / Double(max(1, pulseCount))
+                var t = (nowRef * speed + offset).truncatingRemainder(dividingBy: 1.0)
+                if t < 0 { t += 1.0 }
+                if edge.status == .error {
+                    t = min(1.0, max(0.0, t + sin(nowRef * 8 + Double(index)) * 0.015))
+                }
+                let eased = t * t * (3 - 2 * t)
+                let px = edge.sourcePoint.x + dx * CGFloat(eased) + laneX
+                let py = edge.sourcePoint.y + dy * CGFloat(eased) + laneY
+                let centerWeight = 1.0 - abs(t - 0.5) * 1.6
+                let fade = max(0.28, min(1.0, centerWeight))
+                let alpha = min(1.0, edge.alpha * Double(activityFade) * fade * focusScale * (0.68 + 1.05 * strengthBoost))
+                let size = max(1.2, edge.lineWidth * CGFloat(0.72 + normalizedRate * 0.52 + strengthBoost * 0.5))
+
+                let brightPulse = SignalColor.mix(edge.typeColor, NSColor.white, ratio: 0.12 + 0.36 * strengthBoost)
+                let pulseColor = Color(brightPulse).opacity(alpha)
+                let glowColor = Color(edge.typeColor).opacity(alpha * (0.34 + 0.5 * strengthBoost))
+                let glowRadius = size * (2.8 + CGFloat(strengthBoost) * 1.2)
+                context.fill(
+                    Path(ellipseIn: CGRect(x: px - glowRadius, y: py - glowRadius, width: glowRadius * 2, height: glowRadius * 2)),
+                    with: .color(glowColor)
+                )
+
+                switch edge.transport {
+                case .serial:
+                    context.fill(
+                        Path(CGRect(x: px - size, y: py - size, width: size * 2, height: size * 2)),
+                        with: .color(pulseColor)
+                    )
+                default:
+                    context.fill(
+                        Path(ellipseIn: CGRect(x: px - size, y: py - size, width: size * 2, height: size * 2)),
+                        with: .color(pulseColor)
+                    )
+                }
+            }
+
+            if edge.status == .error {
+                let endpointAlpha = edge.alpha * Double(activityFade) * (0.55 + 0.45 * (0.5 + 0.5 * sin(nowRef * 11)))
+                context.fill(
+                    Path(ellipseIn: CGRect(x: edge.sourcePoint.x - 3, y: edge.sourcePoint.y - 3, width: 6, height: 6)),
+                    with: .color(Color(edge.typeColor).opacity(endpointAlpha))
+                )
+                context.fill(
+                    Path(ellipseIn: CGRect(x: edge.targetPoint.x - 3, y: edge.targetPoint.y - 3, width: 6, height: 6)),
+                    with: .color(Color(edge.typeColor).opacity(endpointAlpha))
+                )
             }
         }
+    }
+
+    private func refreshEdgeGraphIfNeeded(events: [NormalizedEvent], now: Date) {
+        let token = "\(events.count)|\(events.last?.id ?? "")|\(Int(now.timeIntervalSince1970))"
+        if token == edgeGraphToken && now.timeIntervalSince(lastEdgeGraphRefresh) < 1.0 {
+            return
+        }
+        edgeGraphToken = token
+        lastEdgeGraphRefresh = now
+        edgeGraph = buildEdgeGraph(events: events, now: now)
+    }
+
+    private func buildEdgeGraph(events: [NormalizedEvent], now: Date) -> [AggregatedEdge] {
+        let window: TimeInterval = 12.0
+        let cutoff = now.addingTimeInterval(-window)
+        struct Bucket {
+            var count: Int = 0
+            var bytes: Double = 0
+            var latencyTotal: Double = 0
+            var latencyCount: Int = 0
+            var strengthTotal: Double = 0
+            var strengthCount: Int = 0
+            var lastSeen: Date = .distantPast
+            var sawError = false
+            var signalType: SpectrumSignalType
+            var transport: SpectrumTransport
+            var sourceID: String
+            var targetID: String
+        }
+        var buckets: [String: Bucket] = [:]
+
+        for event in events.suffix(1_600) {
+            let eventTime = event.eventTs ?? event.recvTs ?? now
+            guard eventTime >= cutoff else { continue }
+            guard let sample = Self.classifyEdgeSample(from: event, now: now) else { continue }
+            let key = "\(sample.sourceID)|\(sample.targetID)|\(sample.signalType.rawValue)|\(sample.transport.rawValue)"
+            var bucket = buckets[key] ?? Bucket(
+                signalType: sample.signalType,
+                transport: sample.transport,
+                sourceID: sample.sourceID,
+                targetID: sample.targetID
+            )
+            bucket.count += 1
+            bucket.bytes += sample.bytes
+            if sample.latencyMs > 0 {
+                bucket.latencyTotal += sample.latencyMs
+                bucket.latencyCount += 1
+            }
+            if let strength = sample.signalStrengthDbm {
+                bucket.strengthTotal += strength
+                bucket.strengthCount += 1
+            }
+            if eventTime > bucket.lastSeen { bucket.lastSeen = eventTime }
+            if sample.status == .error || event.severity.lowercased() == "error" {
+                bucket.sawError = true
+            }
+            buckets[key] = bucket
+        }
+
+        var edges: [AggregatedEdge] = []
+        edges.reserveCapacity(buckets.count)
+        for (key, bucket) in buckets {
+            let ageMs = max(0, now.timeIntervalSince(bucket.lastSeen) * 1_000)
+            let rps = Double(bucket.count) / window
+            let latency = bucket.latencyCount > 0 ? (bucket.latencyTotal / Double(bucket.latencyCount)) : Self.defaultLatency(for: bucket.transport)
+            let bytesPerSec = bucket.bytes / window
+            let avgStrength = bucket.strengthCount > 0 ? (bucket.strengthTotal / Double(bucket.strengthCount)) : nil
+            let status: SpectrumEdgeStatus = bucket.sawError ? .error : (ageMs < 4_000 && rps > 0.05 ? .active : .idle)
+            edges.append(
+                AggregatedEdge(
+                    id: key,
+                    sourceID: bucket.sourceID,
+                    targetID: bucket.targetID,
+                    signalType: bucket.signalType,
+                    transport: bucket.transport,
+                    status: status,
+                    rps: rps,
+                    bytesPerSec: bytesPerSec,
+                    latencyMs: latency,
+                    lastSeenMs: ageMs,
+                    lastSeenText: Self.formatLastSeen(ms: ageMs),
+                    signalStrengthDbm: avgStrength
+                )
+            )
+        }
+        edges.sort { lhs, rhs in
+            if lhs.status != rhs.status {
+                return lhs.status.rawValue < rhs.status.rawValue
+            }
+            return lhs.rps > rhs.rps
+        }
+        return edges
+    }
+
+    private func ensureEdgeEndpoint(_ id: String, event: NormalizedEvent, now: Date) {
+        guard !id.isEmpty else { return }
+        if let source = sources[id] {
+            source.lastSeen = event.eventTs ?? event.recvTs ?? now
+            if source.lastKind == nil {
+                source.lastKind = event.kind
+            }
+            return
+        }
+        let created = SignalSource(id: id)
+        created.lastSeen = event.eventTs ?? event.recvTs ?? now
+        created.lastKind = event.kind
+        created.lastNodeID = event.nodeID
+        sources[id] = created
+    }
+
+    private static func defaultLatency(for transport: SpectrumTransport) -> Double {
+        switch transport {
+        case .livekit: return 90
+        case .ssh: return 180
+        case .ble: return 120
+        case .serial: return 20
+        case .wifiPassive: return 350
+        case .http, .unknown: return 160
+        }
+    }
+
+    private static func endpointID(from event: NormalizedEvent, keys: [String], preferNode: Bool) -> String? {
+        for key in keys {
+            if let value = event.data[key]?.stringValue?.trimmingCharacters(in: .whitespacesAndNewlines), !value.isEmpty {
+                return normalizeEndpointID(value, kind: event.kind, preferNode: preferNode)
+            }
+        }
+        if preferNode, event.nodeID != "unknown" && !event.nodeID.isEmpty {
+            return "node:\(event.nodeID)"
+        }
+        if !preferNode, let deviceID = event.deviceID?.trimmingCharacters(in: .whitespacesAndNewlines), !deviceID.isEmpty {
+            return normalizeEndpointID(deviceID, kind: event.kind, preferNode: false)
+        }
+        return nil
+    }
+
+    private static func normalizeEndpointID(_ value: String, kind: String, preferNode: Bool) -> String {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.hasPrefix("node:") || trimmed.hasPrefix("ble:") || trimmed.hasPrefix("service:") {
+            return trimmed
+        }
+        let lower = trimmed.lowercased()
+        if lower == "vault" || lower == "vault-ingest" {
+            return "service:vault"
+        }
+        if lower == "god-gateway" || lower == "gateway" {
+            return "service:god-gateway"
+        }
+        if kind.lowercased().contains("ble"), lower.contains(":") {
+            return "ble:\(lower)"
+        }
+        if preferNode && !lower.contains(".") && !lower.contains(":") {
+            return "node:\(trimmed)"
+        }
+        return trimmed
+    }
+
+    static func extractLatencyMs(from data: [String: JSONValue]) -> Double? {
+        let keys = ["latency_ms", "latencyMs", "duration_ms", "durationMs", "latency", "round_trip_ms"]
+        for key in keys {
+            if let number = data[key]?.doubleValue {
+                return number
+            }
+        }
+        return nil
+    }
+
+    static func estimateEventBytes(_ event: NormalizedEvent) -> Double {
+        var bytes = Double(event.kind.utf8.count + event.summary.utf8.count)
+        for (key, value) in event.data {
+            bytes += Double(key.utf8.count + (value.stringValue?.utf8.count ?? 12))
+        }
+        return max(32, bytes)
+    }
+
+    static func classifyEdgeSample(from event: NormalizedEvent, now: Date) -> SpectrumEdgeSample? {
+        let kind = event.kind.lowercased()
+        let eventTime = event.eventTs ?? event.recvTs ?? now
+
+        let signalType: SpectrumSignalType
+        if kind.hasPrefix("control.god_button") || kind.contains("god_button") || kind.hasPrefix("control.") {
+            signalType = .control
+        } else if kind.hasPrefix("agent.exec") || kind.hasPrefix("agent.ssh") || kind.contains("maintenance") || kind.contains("ops.") {
+            signalType = .mgmt
+        } else if kind.hasPrefix("node.health") || kind.contains("ble.") || kind.contains("wifi") {
+            signalType = .event
+        } else if kind.contains("vault") || kind.contains("ingest") || kind.contains("evidence") {
+            signalType = .evidence
+        } else if kind.contains("media") || kind.contains("audio") || kind.contains("video") || kind.contains("rtsp") {
+            signalType = .media
+        } else {
+            signalType = .event
+        }
+
+        let transport: SpectrumTransport = {
+            if kind.contains("ssh") { return .ssh }
+            if kind.contains("livekit") || kind.contains("god_button") || kind.contains("god.") { return .livekit }
+            if kind.contains("ble") { return .ble }
+            if kind.contains("serial") || kind.contains("usb") || kind.contains("tty") { return .serial }
+            if kind.contains("wifi.snapshot") || kind.contains("wifi.passive") { return .wifiPassive }
+            return .http
+        }()
+
+        let sourceID = endpointID(
+            from: event,
+            keys: ["src", "source", "from", "scanner_id", "origin", "node_id"],
+            preferNode: true
+        )
+        var targetID = endpointID(
+            from: event,
+            keys: ["target", "target_id", "targetNode", "to", "dst", "destination", "node_id", "device_id"],
+            preferNode: false
+        )
+        if signalType == .evidence {
+            targetID = "service:vault"
+        }
+        guard let src = sourceID, let dst = targetID, !src.isEmpty, !dst.isEmpty, src != dst else { return nil }
+        let latency = extractLatencyMs(from: event.data) ?? defaultLatency(for: transport)
+        let bytes = estimateEventBytes(event)
+        let status: SpectrumEdgeStatus = (event.severity.lowercased() == "error" || kind.contains("error")) ? .error : .active
+        return SpectrumEdgeSample(
+            sourceID: src,
+            targetID: dst,
+            signalType: signalType,
+            transport: transport,
+            status: status,
+            eventTime: eventTime,
+            latencyMs: latency,
+            bytes: bytes,
+            signalStrengthDbm: event.signal.strength
+        )
+    }
+
+    private static func normalizeSignalStrength(_ value: Double?) -> Double {
+        guard let value else { return 0.45 }
+        let clamped = max(-95.0, min(-35.0, value))
+        return (clamped + 95.0) / 60.0
+    }
+
+    private func edgeOpacity(_ ageMs: Double, status: SpectrumEdgeStatus) -> Double {
+        let recency = exp(-ageMs / 12_000.0)
+        let base = max(0.08, min(1.0, 0.16 + recency * 0.9))
+        switch status {
+        case .active: return base
+        case .idle: return base * 0.55
+        case .error: return max(0.25, base * 0.95)
+        }
+    }
+
+    private static func formatLastSeen(ms: Double) -> String {
+        if ms < 1_000 { return "now" }
+        if ms < 60_000 { return String(format: "%.0fs ago", ms / 1_000) }
+        return String(format: "%.1fm ago", ms / 60_000)
+    }
+
+    private func isCommandLike(kind: String) -> Bool {
+        let lowered = kind.lowercased()
+        return lowered.contains("tool")
+            || lowered.contains("action")
+            || lowered.contains("command")
+            || lowered.contains("runbook")
+            || lowered.contains("god")
+            || lowered.contains("control")
+    }
+
+    private func edgeLaneKey(for event: NormalizedEvent) -> String {
+        let kind = event.kind.lowercased()
+        if kind.contains("ble") { return "ble" }
+        if kind.contains("wifi") {
+            if let ch = Int(event.signal.channel ?? "") {
+                return ch >= 30 ? "wifi-5g" : "wifi-2g"
+            }
+            return "wifi"
+        }
+        if kind.contains("tool") || kind.contains("action") || kind.contains("command") || kind.contains("god") || kind.contains("control") {
+            return "cmd"
+        }
+        if kind.contains("error") { return "error" }
+        return "signal"
+    }
+
+    private func edgeLaneKey(for frame: SignalFrame) -> String {
+        if frame.source == "ble" { return "ble" }
+        if frame.source == "wifi" {
+            return frame.channel >= 30 ? "wifi-5g" : "wifi-2g"
+        }
+        return frame.source
     }
 
     private func groupFor(id: String) -> String {
@@ -2220,9 +3113,9 @@ final class SignalFieldEngine: ObservableObject {
         }
     }
 
-    private func drawPulses(context: inout GraphicsContext, size: CGSize, now: Date, parallax: CGPoint, focusID: String?, activityFade: CGFloat) {
+    private func drawPulses(context: inout GraphicsContext, size: CGSize, now: Date, parallax: CGPoint, focusID: String?, activityFade: CGFloat, targetSpotlight: Bool) {
         for pulse in pulses {
-            let focusScale: CGFloat = (focusID == nil || focusID == pulse.sourceID) ? 1.0 : 0.2
+            let focusScale: CGFloat = (focusID == nil || focusID == pulse.sourceID) ? 1.0 : (targetSpotlight ? 0.08 : 0.2)
             let age = now.timeIntervalSince(pulse.birth)
             let progress = min(1.0, age / max(0.01, pulse.lifespan))
             let alpha = (1.0 - progress) * pulse.strength
@@ -2341,6 +3234,45 @@ final class SignalFieldEngine: ObservableObject {
         }
         return bestDist < 2400 ? best : nil
     }
+
+    func nearestEdge(to point: CGPoint) -> ProjectedEdge? {
+        guard !lastProjectedEdges.isEmpty else { return nil }
+        var best: ProjectedEdge?
+        var bestDistance = CGFloat.greatestFiniteMagnitude
+        for edge in lastProjectedEdges {
+            let dist = distanceToSegment(point: point, start: edge.sourcePoint, end: edge.targetPoint)
+            if dist < bestDistance {
+                bestDistance = dist
+                best = edge
+            }
+        }
+        return bestDistance <= 12 ? best : nil
+    }
+
+    private func distanceToSegment(point: CGPoint, start: CGPoint, end: CGPoint) -> CGFloat {
+        let vx = end.x - start.x
+        let vy = end.y - start.y
+        let wx = point.x - start.x
+        let wy = point.y - start.y
+        let c1 = vx * wx + vy * wy
+        if c1 <= 0 {
+            let dx = point.x - start.x
+            let dy = point.y - start.y
+            return sqrt(dx * dx + dy * dy)
+        }
+        let c2 = vx * vx + vy * vy
+        if c2 <= c1 {
+            let dx = point.x - end.x
+            let dy = point.y - end.y
+            return sqrt(dx * dx + dy * dy)
+        }
+        let b = c1 / c2
+        let px = start.x + b * vx
+        let py = start.y + b * vy
+        let dx = point.x - px
+        let dy = point.y - py
+        return sqrt(dx * dx + dy * dy)
+    }
 }
 
 final class SignalSource: Hashable {
@@ -2411,15 +3343,15 @@ final class SignalSource: Hashable {
     }
 
     func step(dt: Double, isActive: Bool) {
-        let damping: Double = isActive ? 0.82 : 0.9
+        let damping: Double = isActive ? 0.88 : 0.93
         if isActive {
-            let swirl = SIMD3<Double>(-position.y, position.x, 0) * 0.12
-            let spring = SIMD3<Double>(repeating: 1.6)
+            let swirl = SIMD3<Double>(-position.y, position.x, 0) * 0.05
+            let spring = SIMD3<Double>(repeating: 1.15)
             let delta = target - position
             velocity += (delta * spring + swirl) * dt
         } else {
             let delta = target - position
-            velocity += delta * dt * 0.3
+            velocity += delta * dt * 0.2
         }
         velocity *= SIMD3<Double>(repeating: damping)
         position += velocity * dt
@@ -2491,7 +3423,7 @@ struct SignalParticle: Hashable {
         now.timeIntervalSince(birth) > lifespan
     }
 
-    func draw(context: inout GraphicsContext, size: CGSize, now: Date, parallax: CGPoint, dimmed: Bool, activityFade: CGFloat) {
+    func draw(context: inout GraphicsContext, size: CGSize, now: Date, parallax: CGPoint, dimmed: Bool, activityFade: CGFloat, dimFactor: CGFloat) {
         let age = now.timeIntervalSince(birth)
         let progress = min(1.0, age / max(0.01, lifespan))
         let alpha = 1.0 - progress
@@ -2512,7 +3444,8 @@ struct SignalParticle: Hashable {
             }
         }()
         let depthFadeValue = depthFade(for: depth)
-        let alphaScale = CGFloat(alpha) * (dimmed ? 0.25 : 0.9) * activityFade * depthFadeValue
+        let dimmedAlphaBase = dimmed ? 0.25 * dimFactor : 0.9
+        let alphaScale = CGFloat(alpha) * dimmedAlphaBase * activityFade * depthFadeValue
         let drawColor = Color(accentColor).opacity(Double(alphaScale))
 
         switch kind {
@@ -2522,7 +3455,7 @@ struct SignalParticle: Hashable {
             if glowStrength > 0.05 {
                 let glowRadius = radius * (1.6 + CGFloat(glowStrength) * 2.4)
                 let glowRect = CGRect(x: basePoint.x - glowRadius / 2, y: basePoint.y - glowRadius / 2, width: glowRadius, height: glowRadius)
-                context.fill(Path(ellipseIn: glowRect), with: .color(drawColor.opacity((dimmed ? 0.06 : 0.18) + CGFloat(glowStrength) * 0.35)))
+                context.fill(Path(ellipseIn: glowRect), with: .color(drawColor.opacity((dimmed ? 0.06 * dimFactor : 0.18) + CGFloat(glowStrength) * 0.35)))
             }
             if renderKind == .node {
                 context.fill(diamondPath(in: rect), with: .color(drawColor))
@@ -2672,93 +3605,93 @@ enum SignalIntensity: String, CaseIterable, Identifiable {
 
     var multiplier: Double {
         switch self {
-        case .calm: return 0.35
-        case .storm: return 1.1
+        case .calm: return 0.48
+        case .storm: return 0.7
         }
     }
 
     // Performance/clarity budgets. These intentionally make Calm *much* calmer.
     var particleCap: Int {
         switch self {
-        case .calm: return 520
-        case .storm: return 1700
+        case .calm: return 220
+        case .storm: return 320
         }
     }
 
     var eventTailLimit: Int {
         switch self {
-        case .calm: return 600
-        case .storm: return 1600
+        case .calm: return 420
+        case .storm: return 600
         }
     }
 
     var frameBinLimit: Int {
         switch self {
-        case .calm: return 60
-        case .storm: return 100
+        case .calm: return 42
+        case .storm: return 56
         }
     }
 
     var pulseMinInterval: TimeInterval {
         switch self {
-        case .calm: return 0.36
-        case .storm: return 0.18
+        case .calm: return 0.48
+        case .storm: return 0.36
         }
     }
 
     var pulseCap: Int {
         switch self {
-        case .calm: return 44
-        case .storm: return 110
+        case .calm: return 18
+        case .storm: return 28
         }
     }
 
     var ghostFlushInterval: TimeInterval {
         switch self {
-        case .calm: return 0.2
-        case .storm: return 0.12
+        case .calm: return 0.26
+        case .storm: return 0.22
         }
     }
 
     var ghostCap: Int {
         switch self {
-        case .calm: return 120
-        case .storm: return 220
+        case .calm: return 80
+        case .storm: return 100
         }
     }
 
     var focusConnectionCap: Int {
         switch self {
-        case .calm: return 14
-        case .storm: return 28
+        case .calm: return 10
+        case .storm: return 14
         }
     }
 
     var connectionNodeHardCap: Int {
         switch self {
-        case .calm: return 100
-        case .storm: return 160
+        case .calm: return 64
+        case .storm: return 82
         }
     }
 
     var connectionStrokeCap: Int {
         switch self {
-        case .calm: return 220
-        case .storm: return 520
+        case .calm: return 120
+        case .storm: return 170
         }
     }
 
     var edgePulseMinInterval: TimeInterval {
         switch self {
-        case .calm: return 0.28
-        case .storm: return 0.14
+        case .calm: return 0.45
+        case .storm: return 0.34
         }
     }
 
     var edgePulseCap: Int {
         switch self {
-        case .calm: return 40
-        case .storm: return 120
+        case .calm: return 24
+        case .storm: return 34
         }
     }
 }

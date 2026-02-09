@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Snapshot (Tier1)
+Exec=/opt/strangelab/bin/sl-god snapshot tier1
+Icon=/opt/strangelab/icons/snapshot.svg
+Terminal=true
+Categories=System;

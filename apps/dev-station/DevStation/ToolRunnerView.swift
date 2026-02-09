@@ -53,9 +53,22 @@ struct ToolRunnerView: View {
             }
 
             HStack(spacing: 8) {
-                Button(isRunning ? "Running..." : "Run") { runTool() }
-                    .buttonStyle(PrimaryActionButtonStyle())
-                    .disabled(isRunning)
+                Text("Run")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                Button { runTool() } label: {
+                    if isRunning {
+                        ProgressView()
+                            .controlSize(.small)
+                    } else {
+                        Image(systemName: "play.circle")
+                            .font(.system(size: 12, weight: .semibold))
+                    }
+                }
+                .buttonStyle(PrimaryActionButtonStyle())
+                .disabled(isRunning)
+                .help(isRunning ? "Running..." : "Run")
+                .accessibilityLabel(Text(isRunning ? "Running..." : "Run"))
                 Spacer()
             }
 

@@ -1,0 +1,18 @@
+[Unit]
+Description=StrangeLab LiveKit Token Server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+WorkingDirectory=/opt/strangelab
+ExecStart=/usr/bin/node /opt/strangelab/token-server.mjs
+Restart=always
+RestartSec=2
+Environment=NODE_ENV=production
+Environment=LIVEKIT_API_KEY=devkey
+Environment=LIVEKIT_API_SECRET=secret
+Environment=PORT=9123
+Environment=HOST=0.0.0.0
+
+[Install]
+WantedBy=multi-user.target

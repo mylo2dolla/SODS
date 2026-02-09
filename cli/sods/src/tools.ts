@@ -9,10 +9,17 @@ export type ToolDef = ToolEntry;
 
 type RunResult = { ok: boolean; output: string; duration_ms: number; data?: Record<string, unknown> };
 
-const repoRoot = resolve(new URL("../../../..", import.meta.url).pathname);
+const repoRoot = resolve(new URL("../../..", import.meta.url).pathname);
 
 function repoPath(...parts: string[]) {
   return join(repoRoot, ...parts);
+}
+
+function defaultStationURL() {
+  const env = process.env;
+  const port = env.SODS_PORT || "9123";
+  const raw = env.SODS_STATION_URL || env.SODS_BASE_URL || env.SODS_STATION || env.STATION_URL || `http://localhost:${port}`;
+  return raw.replace(/\/+$/, "");
 }
 
 export function listTools(): ToolDef[] {
@@ -27,14 +34,14 @@ export async function runTool(
 ): Promise<RunResult> {
   const start = performance.now();
   if (name === "station.portal_state") {
-    const station = input.station_url ?? "http://localhost:9123";
+    const station = input.station_url ?? defaultStationURL();
     const res = await fetch(`${station}/api/portal/state`, { method: "GET" });
     if (!res.ok) throw new Error(`station responded ${res.status}`);
     const json = await res.json();
     return { ok: true, output: JSON.stringify(json), data: json, duration_ms: performance.now() - start };
   }
   if (name === "station.frames_health") {
-    const station = input.station_url ?? "http://localhost:9123";
+    const station = input.station_url ?? defaultStationURL();
     const res = await fetch(`${station}/api/portal/state`, { method: "GET" });
     if (!res.ok) throw new Error(`station responded ${res.status}`);
     const json = await res.json();
@@ -133,6 +140,22 @@ export async function runTool(
     if (!station) throw new Error("station_url is required");
     const res = await fetch(`${station}/api/flash`, { method: "GET" });
     if (!res.ok) throw new Error(`station responded ${res.status}`);
+    const json = await res.json();
+    return { ok: true, output: JSON.stringify(json), data: json, duration_ms: performance.now() - start };
+  }
+  if (name === "p4.status") {
+    const ip = input.ip;
+    if (!ip) throw new Error("ip is required");
+    const res = await fetch(`http://${ip}/status`, { method: "GET" });
+    if (!res.ok) throw new Error(`p4 responded ${res.status}`);
+    const json = await res.json();
+    return { ok: true, output: JSON.stringify(json), data: json, duration_ms: performance.now() - start };
+  }
+  if (name === "p4.god") {
+    const ip = input.ip;
+    if (!ip) throw new Error("ip is required");
+    const res = await fetch(`http://${ip}/god`, { method: "POST" });
+    if (!res.ok) throw new Error(`p4 responded ${res.status}`);
     const json = await res.json();
     return { ok: true, output: JSON.stringify(json), data: json, duration_ms: performance.now() - start };
   }

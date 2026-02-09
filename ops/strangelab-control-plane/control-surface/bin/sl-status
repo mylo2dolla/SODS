@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+
+echo "== Rollcall =="
+"$ROOT/sl-god" rollcall
+echo
+echo "== Snapshot =="
+"$ROOT/sl-god" snapshot tier1

@@ -37,6 +37,7 @@ final class NodeRegistry: ObservableObject {
             let payload = try decoder.decode(NodeRegistryPayload.self, from: data)
             let records = payload.nodes
             nodesByID = Dictionary(uniqueKeysWithValues: records.map { ($0.id, $0) })
+            pruneUnresolvableOfflineNodes()
             refreshNodes()
         } catch {
             LogStore.logAsync(.error, "Node registry load failed: \(error.localizedDescription)")
@@ -256,19 +257,48 @@ final class NodeRegistry: ObservableObject {
             let (data, response) = try await URLSession.shared.data(for: request)
             let status = (response as? HTTPURLResponse)?.statusCode ?? -1
             guard status >= 200 && status < 300 else {
-                return ManualRegisterResult(nodeID: nil, error: "Whoami failed: HTTP \(status)")
+                let fallbackID = registerFallbackHost(trimmed, preferredLabel: preferredLabel)
+                return ManualRegisterResult(nodeID: fallbackID, error: nil)
             }
             let text = String(data: data, encoding: .utf8)
             guard let payload = WhoamiParser.parse(text) else {
-                return ManualRegisterResult(nodeID: nil, error: "Whoami returned unreadable payload.")
+                let fallbackID = registerFallbackHost(trimmed, preferredLabel: preferredLabel)
+                return ManualRegisterResult(nodeID: fallbackID, error: nil)
             }
             guard let nodeID = registerFromWhoami(host: trimmed, payload: payload, preferredLabel: preferredLabel) else {
-                return ManualRegisterResult(nodeID: nil, error: "Whoami did not include node identity.")
+                let fallbackID = registerFallbackHost(trimmed, preferredLabel: preferredLabel)
+                return ManualRegisterResult(nodeID: fallbackID, error: nil)
             }
             return ManualRegisterResult(nodeID: nodeID, error: nil)
         } catch {
-            return ManualRegisterResult(nodeID: nil, error: "Whoami failed: \(error.localizedDescription)")
+            let fallbackID = registerFallbackHost(trimmed, preferredLabel: preferredLabel)
+            return ManualRegisterResult(nodeID: fallbackID, error: nil)
         }
+    }
+
+    private func registerFallbackHost(_ host: String, preferredLabel: String?) -> String {
+        let preferred = preferredLabel?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let id = (!preferred.isEmpty ? preferred : host)
+            .replacingOccurrences(of: "http://", with: "")
+            .replacingOccurrences(of: "https://", with: "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let label = !preferred.isEmpty ? preferred : id
+        let record = NodeRecord(
+            id: id,
+            label: label,
+            type: .unknown,
+            capabilities: [],
+            lastSeen: Date(),
+            lastHeartbeat: nil,
+            connectionState: .idle,
+            isScanning: false,
+            lastError: nil,
+            ip: host,
+            hostname: nil,
+            mac: nil
+        )
+        upsert(record, allowStateUpdate: true)
+        return id
     }
 
     private func upsert(_ record: NodeRecord, allowStateUpdate: Bool) {
@@ -349,8 +379,25 @@ final class NodeRegistry: ObservableObject {
             }
         }
         if changed {
+            pruneUnresolvableOfflineNodes()
             refreshNodes()
             persist()
+        }
+    }
+
+    private func pruneUnresolvableOfflineNodes() {
+        let now = Date()
+        nodesByID = nodesByID.filter { _, record in
+            let host = (record.ip ?? record.hostname ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            if !host.isEmpty { return true }
+            if let mac = record.mac?.trimmingCharacters(in: .whitespacesAndNewlines), !mac.isEmpty { return true }
+            guard record.connectionState == .offline else { return true }
+            let age = now.timeIntervalSince(record.lastSeen ?? .distantPast)
+            let unresolved = (record.lastError ?? "").localizedCaseInsensitiveContains("no ip/hostname")
+            if unresolved && age > 300 {
+                return false
+            }
+            return true
         }
     }
 

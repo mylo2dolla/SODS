@@ -39,10 +39,12 @@ expect_dir "docs"
 
 expect_file "tools/sods"
 expect_file "tools/devstation"
+expect_file "tools/station"
 expect_file "tools/cockpit"
 expect_file "tools/permfix.sh"
 expect_exec "tools/sods"
 expect_exec "tools/devstation"
+expect_exec "tools/station"
 expect_exec "tools/cockpit"
 expect_exec "tools/permfix.sh"
 

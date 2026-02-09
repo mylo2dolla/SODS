@@ -3,8 +3,9 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+source "$SCRIPT_DIR/_env.sh"
 
-STATION_URL="${SODS_STATION_URL:-http://localhost:9123}"
+STATION_URL="${STATION_URL:-$SODS_STATION_URL}"
 
 cat <<EOF
 SODS Ops Portal (CYD) flash help
