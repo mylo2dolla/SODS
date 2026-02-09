@@ -17,20 +17,20 @@ check_remote_active() {
 
 echo "== C + D + F) Control Plane / Agents / God Path =="
 
-if ssh "$AUX_SSH" "sudo docker ps --format '{{.Names}}' | grep -qi livekit"; then
+if ssh "$AUX_SSH_TARGET" "sudo docker ps --format '{{.Names}}' | grep -qi livekit"; then
   pass "LiveKit container running"
 else
   fail_msg "LiveKit container not running"
 fi
 
-if ssh "$AUX_SSH" "sudo ss -lntp | grep -q ':7880\\b'"; then
+if ssh "$AUX_SSH_TARGET" "sudo ss -lntp | grep -q ':7880\\b'"; then
   pass "LiveKit listens on :7880"
 else
   fail_msg "LiveKit not listening on :7880"
 fi
 
 for svc in strangelab-token strangelab-god-gateway; do
-  status="$(check_remote_active "$AUX_SSH" "$svc")"
+  status="$(check_remote_active "$AUX_SSH_TARGET" "$svc")"
   if [[ "$status" == "active" ]]; then
     pass "${svc} active"
   else
@@ -38,7 +38,7 @@ for svc in strangelab-token strangelab-god-gateway; do
   fi
 done
 
-ops_feed_status="$(check_remote_active "$AUX_SSH" "strangelab-ops-feed")"
+ops_feed_status="$(check_remote_active "$AUX_SSH_TARGET" "strangelab-ops-feed")"
 if [[ "$ops_feed_status" == "active" ]]; then
   pass "strangelab-ops-feed active"
 else
@@ -68,11 +68,11 @@ else
   fail_msg "god gateway structured action failed"
 fi
 
-aux_exec_status="$(check_remote_active "$AUX_SSH" "strangelab-exec-agent@pi-aux")"
+aux_exec_status="$(check_remote_active "$AUX_SSH_TARGET" "strangelab-exec-agent@pi-aux")"
 if [[ "$aux_exec_status" == "active" ]]; then
   pass "exec-agent active on pi-aux"
 else
-  fallback="$(check_remote_active "$AUX_SSH" "strangelab-exec-agent")"
+  fallback="$(check_remote_active "$AUX_SSH_TARGET" "strangelab-exec-agent")"
   if [[ "$fallback" == "active" ]]; then
     pass "exec-agent active on pi-aux (fallback unit name)"
   else
@@ -80,11 +80,11 @@ else
   fi
 fi
 
-log_exec_status="$(check_remote_active "$LOGGER_SSH" "strangelab-exec-agent@pi-logger")"
+log_exec_status="$(check_remote_active "$VAULT_SSH_TARGET" "strangelab-exec-agent@pi-logger")"
 if [[ "$log_exec_status" == "active" ]]; then
   pass "exec-agent active on pi-logger"
 else
-  fallback="$(check_remote_active "$LOGGER_SSH" "strangelab-exec-agent")"
+  fallback="$(check_remote_active "$VAULT_SSH_TARGET" "strangelab-exec-agent")"
   if [[ "$fallback" == "active" ]]; then
     pass "exec-agent active on pi-logger (fallback unit name)"
   else

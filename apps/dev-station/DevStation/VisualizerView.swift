@@ -211,7 +211,7 @@ struct VisualizerView: View {
                         .frame(width: 70, alignment: .leading)
                     TextField("", text: $baseURLText)
                         .textFieldStyle(.roundedBorder)
-                    Button("Apply") {
+                    Button {
                         if store.updateBaseURL(baseURLText) {
                             baseURLValidationMessage = nil
                             baseURLText = store.baseURL
@@ -221,15 +221,26 @@ struct VisualizerView: View {
                             baseURLText = store.baseURL
                             showBaseURLToast(message)
                         }
+                    } label: {
+                        Image(systemName: "checkmark.circle")
+                            .font(.system(size: 13, weight: .semibold))
                     }
                     .buttonStyle(SecondaryActionButtonStyle())
-                    Button("Reset") {
+                    .help("Apply")
+                    .accessibilityLabel(Text("Apply"))
+
+                    Button {
                         store.resetBaseURL()
                         baseURLText = store.baseURL
                         baseURLValidationMessage = nil
                         showBaseURLToast("Base URL reset to \(store.baseURL)")
+                    } label: {
+                        Image(systemName: "arrow.counterclockwise")
+                            .font(.system(size: 13, weight: .semibold))
                     }
                     .buttonStyle(SecondaryActionButtonStyle())
+                    .help("Reset")
+                    .accessibilityLabel(Text("Reset"))
                 }
                 if let message = baseURLValidationMessage {
                     Text(message)
@@ -237,10 +248,13 @@ struct VisualizerView: View {
                         .foregroundColor(.red)
                 }
                 HStack(spacing: 8) {
-                    Button(paused ? "Play" : "Pause") {
-                        paused.toggle()
+                    Button { paused.toggle() } label: {
+                        Image(systemName: paused ? "play.fill" : "pause.fill")
+                            .font(.system(size: 13, weight: .semibold))
                     }
                     .buttonStyle(PrimaryActionButtonStyle())
+                    .help(paused ? "Play" : "Pause")
+                    .accessibilityLabel(Text(paused ? "Play" : "Pause"))
                     Picker("Intensity", selection: $intensityMode) {
                         ForEach(SignalIntensity.allCases) { mode in
                             Text(mode.label).tag(mode)
@@ -255,26 +269,49 @@ struct VisualizerView: View {
                     sliderRow(title: "Particles", value: $maxParticles, range: 600...2400, format: "%.0f")
                 }
                 HStack(spacing: 8) {
-                    Button(store.isRecording ? "Stop Recording" : "Start Recording") {
+                    Button {
                         if store.isRecording {
                             store.stopRecording()
                         } else {
                             store.startRecording()
                         }
+                    } label: {
+                        Image(systemName: store.isRecording ? "stop.circle.fill" : "record.circle")
+                            .font(.system(size: 13, weight: .semibold))
                     }
                     .buttonStyle(PrimaryActionButtonStyle())
-                    Button("Clear Recording") {
+                    .help(store.isRecording ? "Stop Recording" : "Start Recording")
+                    .accessibilityLabel(Text(store.isRecording ? "Stop Recording" : "Start Recording"))
+
+                    Button {
                         store.clearRecording()
+                    } label: {
+                        Image(systemName: "trash")
+                            .font(.system(size: 12, weight: .semibold))
                     }
                     .buttonStyle(SecondaryActionButtonStyle())
-                    Button("Save Recording") {
+                    .help("Clear Recording")
+                    .accessibilityLabel(Text("Clear Recording"))
+
+                    Button {
                         saveRecording()
+                    } label: {
+                        Image(systemName: "square.and.arrow.down")
+                            .font(.system(size: 12, weight: .semibold))
                     }
                     .buttonStyle(SecondaryActionButtonStyle())
-                    Button("Load Recording") {
+                    .help("Save Recording")
+                    .accessibilityLabel(Text("Save Recording"))
+
+                    Button {
                         loadRecording()
+                    } label: {
+                        Image(systemName: "folder")
+                            .font(.system(size: 12, weight: .semibold))
                     }
                     .buttonStyle(SecondaryActionButtonStyle())
+                    .help("Load Recording")
+                    .accessibilityLabel(Text("Load Recording"))
                     Text("\(store.recordedEvents.count) events")
                         .font(.system(size: 10))
                         .foregroundColor(.secondary)
@@ -533,27 +570,47 @@ struct VisualizerView: View {
         guard !recent.isEmpty else { return [] }
         return recent.suffix(140).compactMap { event in
             let ts = event.eventTs ?? event.recvTs ?? now
-            let deviceID = event.deviceID ?? event.nodeID
             let kind = event.kind.lowercased()
-            let source: String = {
-                if kind.contains("ble") { return "ble" }
-                if kind.contains("wifi") { return "wifi" }
-                if kind.contains("rf") { return "rf" }
-                if kind.contains("gps") { return "gps" }
-                if kind.contains("node") { return "node" }
-                return "event"
+
+            // Honesty rule: only derive fallback frames from actual signal events with real signal fields.
+            // No default RSSI/channel/device fallbacks.
+            let source: String
+            if kind.contains("ble") {
+                source = "ble"
+            } else if kind.contains("wifi") {
+                source = "wifi"
+            } else {
+                return nil
+            }
+
+            guard let deviceID = event.deviceID, !deviceID.isEmpty else { return nil }
+            guard let strength = event.signal.strength else { return nil }
+            guard let channelRaw = event.signal.channel, let channel = Int(channelRaw), channel > 0 else { return nil }
+
+            let frequency: Int = {
+                if source == "ble" {
+                    if channel == 37 { return 2402 }
+                    if channel == 38 { return 2426 }
+                    if channel == 39 { return 2480 }
+                    return 0
+                }
+                // Wi-Fi: support common 2.4GHz + 5GHz channels only.
+                if channel >= 1 && channel <= 13 { return 2412 + (channel - 1) * 5 }
+                if channel == 14 { return 2484 }
+                if channel >= 36 && channel <= 165 { return 5000 + channel * 5 }
+                return 0
             }()
+            guard frequency > 0 else { return nil }
+
             let style = SignalVisualStyle.from(event: event, now: now)
             let (nx, ny, nz) = normalizedFramePosition(for: event)
-            let channel = Int(Double(event.signal.channel ?? "") ?? 0)
-            let strength = event.signal.strength ?? -65
             return SignalFrame(
                 t: Int(ts.timeIntervalSince1970 * 1000),
                 source: source,
                 nodeID: event.nodeID,
                 deviceID: deviceID,
                 channel: channel,
-                frequency: 0,
+                frequency: frequency,
                 rssi: strength,
                 x: nx,
                 y: ny,
@@ -818,19 +875,44 @@ struct NodeRow: View {
                     .foregroundColor(presentation.isOffline ? Theme.muted : (node.isStale ? .orange : .green))
             }
             HStack(spacing: 6) {
-                Button(selected ? "Hide" : "Show") { onToggle() }
+                Button { onToggle() } label: {
+                    Image(systemName: selected ? "eye.slash" : "eye")
+                        .font(.system(size: 12, weight: .semibold))
+                }
                     .buttonStyle(SecondaryActionButtonStyle())
-                Button("Whoami") { onOpenWhoami() }
+                    .help(selected ? "Hide" : "Show")
+                    .accessibilityLabel(Text(selected ? "Hide" : "Show"))
+                Button { onOpenWhoami() } label: {
+                    Image(systemName: "person.crop.circle")
+                        .font(.system(size: 12, weight: .semibold))
+                }
                     .buttonStyle(SecondaryActionButtonStyle())
+                    .help("Whoami")
+                    .accessibilityLabel(Text("Whoami"))
                     .disabled(node.ip == nil)
-                Button("Health") { onOpenHealth() }
+                Button { onOpenHealth() } label: {
+                    Image(systemName: "heart.text.square")
+                        .font(.system(size: 12, weight: .semibold))
+                }
                     .buttonStyle(SecondaryActionButtonStyle())
+                    .help("Health")
+                    .accessibilityLabel(Text("Health"))
                     .disabled(node.ip == nil)
-                Button("Metrics") { onOpenMetrics() }
+                Button { onOpenMetrics() } label: {
+                    Image(systemName: "chart.bar")
+                        .font(.system(size: 12, weight: .semibold))
+                }
                     .buttonStyle(SecondaryActionButtonStyle())
+                    .help("Metrics")
+                    .accessibilityLabel(Text("Metrics"))
                     .disabled(node.ip == nil)
-                Button("Tools") { onOpenTools() }
+                Button { onOpenTools() } label: {
+                    Image(systemName: "wrench.and.screwdriver")
+                        .font(.system(size: 12, weight: .semibold))
+                }
                     .buttonStyle(SecondaryActionButtonStyle())
+                    .help("Tools")
+                    .accessibilityLabel(Text("Tools"))
                 Spacer()
             }
         }
@@ -1283,7 +1365,7 @@ struct SignalFieldView: View {
         var actions: [SignalAction] = [
             SignalAction(title: "Tools", enabled: true, action: { onOpenTools() }),
             SignalAction(title: "God Button", enabled: true, action: {
-                NotificationCenter.default.post(name: .openGodMenuCommand, object: detail.nodeID ?? detail.id)
+                NotificationCenter.default.post(name: .targetLockNodeCommand, object: detail.nodeID ?? detail.id)
             })
         ]
         guard let nodeID = detail.nodeID else { return actions }
@@ -1479,8 +1561,13 @@ struct PinnedNodesView: View {
                 Text("Pinned")
                     .font(.system(size: 11, weight: .semibold))
                 Spacer()
-                Button("Clear") { onClear() }
-                    .buttonStyle(SecondaryActionButtonStyle())
+                Button { onClear() } label: {
+                    Image(systemName: "xmark.circle")
+                        .font(.system(size: 12, weight: .semibold))
+                }
+                .buttonStyle(SecondaryActionButtonStyle())
+                .help("Clear")
+                .accessibilityLabel(Text("Clear"))
             }
             ForEach(pinned, id: \.self) { id in
                 HStack(spacing: 6) {
@@ -1488,8 +1575,13 @@ struct PinnedNodesView: View {
                         .font(.system(size: 10, design: .monospaced))
                         .foregroundColor(.secondary)
                     Spacer()
-                    Button("Focus") { onFocus(id) }
-                        .buttonStyle(SecondaryActionButtonStyle())
+                    Button { onFocus(id) } label: {
+                        Image(systemName: "scope")
+                            .font(.system(size: 12, weight: .semibold))
+                    }
+                    .buttonStyle(SecondaryActionButtonStyle())
+                    .help("Focus")
+                    .accessibilityLabel(Text("Focus"))
                 }
             }
         }
@@ -1625,9 +1717,14 @@ struct EdgeTracePanelView: View {
                         .foregroundColor(.secondary)
                 }
                 Spacer()
-                Button("Close") { onClose() }
-                    .buttonStyle(SecondaryActionButtonStyle())
-                    .keyboardShortcut(.cancelAction)
+                Button { onClose() } label: {
+                    Image(systemName: "xmark.circle")
+                        .font(.system(size: 12, weight: .semibold))
+                }
+                .buttonStyle(SecondaryActionButtonStyle())
+                .help("Close")
+                .accessibilityLabel(Text("Close"))
+                .keyboardShortcut(.cancelAction)
             }
             if traces.isEmpty {
                 Text("No matching traces in current event window.")
@@ -1701,9 +1798,14 @@ struct NodeInspectorView: View {
                 Text("Node Inspector")
                     .font(.system(size: 12, weight: .semibold))
                 Spacer()
-                Button("Close") { onClose() }
-                    .buttonStyle(SecondaryActionButtonStyle())
-                    .keyboardShortcut(.cancelAction)
+                Button { onClose() } label: {
+                    Image(systemName: "xmark.circle")
+                        .font(.system(size: 12, weight: .semibold))
+                }
+                .buttonStyle(SecondaryActionButtonStyle())
+                .help("Close")
+                .accessibilityLabel(Text("Close"))
+                .keyboardShortcut(.cancelAction)
             }
             HStack(spacing: 8) {
                 Circle()
@@ -1779,16 +1881,36 @@ struct NodeInspectorView: View {
                         }
                     }
                 }
-                Button("Save Alias") { onSaveAlias(aliasText) }
-                    .buttonStyle(SecondaryActionButtonStyle())
+                Button { onSaveAlias(aliasText) } label: {
+                    Image(systemName: "checkmark.circle")
+                        .font(.system(size: 12, weight: .semibold))
+                }
+                .buttonStyle(SecondaryActionButtonStyle())
+                .help("Save Alias")
+                .accessibilityLabel(Text("Save Alias"))
             }
             if !actions.isEmpty {
                 let columns = [GridItem(.adaptive(minimum: 132), spacing: 8)]
                 LazyVGrid(columns: columns, alignment: .leading, spacing: 8) {
                     ForEach(actions) { action in
-                        Button(action.title) { action.action() }
+                        HStack(spacing: 8) {
+                            Text(action.title)
+                                .font(.system(size: 11))
+                                .foregroundColor(action.enabled ? Theme.textPrimary : Theme.textSecondary)
+                            Spacer()
+                            Button { action.action() } label: {
+                                Image(systemName: "arrow.right.circle")
+                                    .font(.system(size: 12, weight: .semibold))
+                            }
                             .buttonStyle(SecondaryActionButtonStyle())
                             .disabled(!action.enabled)
+                            .help(action.title)
+                            .accessibilityLabel(Text(action.title))
+                        }
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 6)
+                        .background(Theme.panelAlt)
+                        .cornerRadius(8)
                     }
                 }
             } else {
@@ -1800,10 +1922,21 @@ struct NodeInspectorView: View {
                 .font(.system(size: 10, design: .monospaced))
                 .foregroundColor(.secondary)
             HStack(spacing: 8) {
-                Button(focused ? "Unfocus" : "Focus") { onFocus() }
-                    .buttonStyle(PrimaryActionButtonStyle())
-                Button(pinned ? "Unpin" : "Pin") { onPin() }
-                    .buttonStyle(SecondaryActionButtonStyle())
+                Button { onFocus() } label: {
+                    Image(systemName: focused ? "scope" : "scope")
+                        .font(.system(size: 12, weight: .semibold))
+                }
+                .buttonStyle(PrimaryActionButtonStyle())
+                .help(focused ? "Unfocus" : "Focus")
+                .accessibilityLabel(Text(focused ? "Unfocus" : "Focus"))
+
+                Button { onPin() } label: {
+                    Image(systemName: pinned ? "pin.slash" : "pin")
+                        .font(.system(size: 12, weight: .semibold))
+                }
+                .buttonStyle(SecondaryActionButtonStyle())
+                .help(pinned ? "Unpin" : "Pin")
+                .accessibilityLabel(Text(pinned ? "Unpin" : "Pin"))
             }
         }
         .padding(16)

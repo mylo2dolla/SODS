@@ -13,10 +13,9 @@ BUILD="${DEVSTATION_BUILD:-1}"
 
 mkdir -p "$LOG_DIR"
 
-if ! curl -fsS "http://localhost:${PORT}/api/status" >/dev/null 2>&1; then
-  echo "Starting station on http://localhost:${PORT}"
-  nohup "$REPO_ROOT/tools/sods" start --pi-logger "$PI_LOGGER" --port "$PORT" >>"$LOG_FILE" 2>&1 &
-  sleep 1
+STATION_URL="${SODS_STATION_URL:-http://127.0.0.1:${PORT}}"
+if ! curl -fsS "${STATION_URL%/}/api/status" >/dev/null 2>&1; then
+  "$REPO_ROOT/tools/station" start
 fi
 
 if [[ "${BUILD}" != "0" ]] || [[ ! -d "$APP_PATH" ]]; then

@@ -4,7 +4,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-APP_NAME="${APP_NAME:-SODS Launcher}"
+APP_NAME="${APP_NAME:-Devstation}"
 TARGET_DIR="/Applications"
 if [[ ! -w "$TARGET_DIR" ]]; then
   TARGET_DIR="$HOME/Applications"
@@ -22,7 +22,7 @@ APPLESCRIPT_FILE="$TMP_DIR/launcher.applescript"
 cat > "$APPLESCRIPT_FILE" <<EOF
 on run
   set repoRoot to "${REPO_ROOT}"
-  set startupCmd to repoRoot & "/tools/devstation up >> \$HOME/Library/Logs/SODS/launcher.log 2>&1 &"
+  set startupCmd to repoRoot & "/tools/launcher-up.sh >> \$HOME/Library/Logs/SODS/launcher.log 2>&1 &"
   set launcherCmd to "/bin/bash -lc " & quoted form of startupCmd
   do shell script launcherCmd
   display notification "Dev Station startup launched" with title "SODS Launcher"

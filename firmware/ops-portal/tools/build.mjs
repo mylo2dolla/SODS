@@ -23,8 +23,11 @@ try {
   const targets = selectBoards(args, SUPPORTED);
   for (const boardId of targets) {
     if (!boards.has(boardId)) fail(`board_id missing from firmware/boards.json: ${boardId}`);
-    logInfo(`[build] ops-portal ${boardId} (pio env: ops-portal)`);
-    run("pio", ["run", "-e", "ops-portal"], { cwd: appRoot });
+    const envs = ["ops-portal", "ops-portal-rstminus1", "ops-portal-st7789"];
+    for (const envName of envs) {
+      logInfo(`[build] ops-portal ${boardId} (pio env: ${envName})`);
+      run("pio", ["run", "-e", envName], { cwd: appRoot });
+    }
   }
 } catch (error) {
   process.stderr.write(`${String(error?.message || error)}\n`);

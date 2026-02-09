@@ -5,12 +5,14 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 source "$REPO_ROOT/tools/_env.sh"
 
-if [[ $# -lt 1 ]]; then
-  echo "usage: $0 <mac2_host_or_ip>"
+if [[ $# -gt 1 ]]; then
+  echo "usage: $0 [mac2_host_or_ip]"
   exit 1
 fi
 
-MAC2_HOST="$1"
+if [[ $# -eq 1 ]]; then
+  MAC2_HOST="$1"
+fi
 CTRL_KEY="$HOME/.ssh/strangelab_controller"
 CONFIG_FILE="$HOME/.ssh/config"
 
@@ -42,6 +44,19 @@ CFG
 append_host "strangelab-pi-aux" "$AUX_HOST"
 append_host "strangelab-pi-logger" "$LOGGER_HOST"
 append_host "strangelab-mac-2" "$MAC2_HOST"
+
+# Human-friendly aliases (same controller key + ssh-guard user).
+# These do not replace the canonical "strangelab-*" aliases, they just add shortcuts.
+append_host "aux" "$AUX_HOST"
+append_host "aux-5g" "$AUX_5G_HOST"
+append_host "aux-24g" "$AUX_24G_HOST"
+
+append_host "vault" "$VAULT_HOST"
+append_host "vault-eth" "$VAULT_ETH_HOST"
+append_host "vault-wifi" "$VAULT_WIFI_HOST"
+
+append_host "mac16" "$MAC16_HOST"
+append_host "mac8" "$MAC8_HOST"
 chmod 600 "$CONFIG_FILE"
 
 mkdir -p "$HOME/.local/bin"
@@ -83,5 +98,5 @@ chmod +x "$HOME/.local/bin/sl-ssh"
 
 echo "controller ready"
 echo "public key: $CTRL_KEY.pub"
-echo "use aliases: strangelab-pi-aux, strangelab-pi-logger, strangelab-mac-2"
+echo "use aliases: strangelab-pi-aux, strangelab-pi-logger, strangelab-mac-2, aux, aux-5g, aux-24g, vault, vault-eth, vault-wifi, mac16, mac8"
 echo "sl-ssh: $HOME/.local/bin/sl-ssh"

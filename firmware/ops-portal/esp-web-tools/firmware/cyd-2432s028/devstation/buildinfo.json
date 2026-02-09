@@ -2,10 +2,12 @@
   "app": "ops-portal",
   "board_id": "cyd-2432s028",
   "version": "devstation",
-  "git_commit": "1a76b4015d6c85afc76bfb9b62daad27a1db290b",
-  "build_ts_ms": 1770567979154,
+  "git_commit": "9ded7092d3b41a222111aad55af5b8e2c42e515b",
+  "build_ts_ms": 1770616417895,
   "idf_version": "unknown",
   "esptool_version": "esptool v5.1.0",
+  "variant": "ili9341",
+  "variant_label": "ILI9341 (RST=4)",
   "control_plane_url": "http://192.168.8.114:8099/god",
   "binaries": [
     {
@@ -33,8 +35,8 @@
       "name": "firmware.bin",
       "offset": 65536,
       "path": "firmware/cyd-2432s028/devstation/firmware.bin",
-      "sha256": "16355f8f847af567df01657310d8ccb54bde9198ddef02c87dee719531f7ec79",
-      "size_bytes": 1063984
+      "sha256": "887cadd8bf82fd610b427ce8be05c91ae3203c593ea116d63ff10513640eccba",
+      "size_bytes": 1064160
     }
   ]
 }

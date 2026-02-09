@@ -12,8 +12,13 @@ struct RunbookListView: View {
                 Text("Runbooks")
                     .font(.system(size: 16, weight: .semibold))
                 Spacer()
-                Button("View JSON") { onInspect() }
+                Button { onInspect() } label: {
+                    Image(systemName: "doc.text.magnifyingglass")
+                        .font(.system(size: 12, weight: .semibold))
+                }
                     .buttonStyle(SecondaryActionButtonStyle())
+                    .help("View JSON")
+                    .accessibilityLabel(Text("View JSON"))
             }
 
             TextField("Search runbooks", text: $searchText)

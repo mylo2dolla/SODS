@@ -29,52 +29,58 @@ function verifyBoard(boardId, version) {
   const manifest = readJson(manifestPath, "manifest");
   const builds = Array.isArray(manifest?.builds) ? manifest.builds : [];
   if (builds.length === 0) fail(`manifest has no builds: ${manifestPath}`);
-  const parts = Array.isArray(builds[0]?.parts) ? builds[0].parts : [];
-  if (parts.length === 0) fail(`manifest has no parts: ${manifestPath}`);
 
-  const expectedPrefix = `firmware/${boardId}/${version}/`;
-  for (const part of parts) {
-    const rel = String(part.path || "");
-    if (!rel.startsWith(expectedPrefix)) {
-      fail(`manifest part path drift (${boardId}): expected prefix ${expectedPrefix}, got ${rel}`);
+  for (const build of builds) {
+    const parts = Array.isArray(build?.parts) ? build.parts : [];
+    if (parts.length === 0) fail(`manifest build has no parts: ${manifestPath}`);
+
+    const versionPrefix = `firmware/${boardId}/${version}`;
+    for (const part of parts) {
+      const rel = String(part.path || "");
+      if (!rel.startsWith(`firmware/${boardId}/`)) {
+        fail(`manifest part path drift (${boardId}): expected firmware/${boardId}/..., got ${rel}`);
+      }
+      // Require the "devstation" base prefix, allowing variant prefixes like "_devstation-st7789".
+      if (!(rel.startsWith(`${versionPrefix}/`) || rel.startsWith(`firmware/${boardId}/_${version}-`))) {
+        fail(`manifest part path drift (${boardId}): expected prefix ${versionPrefix}/ or firmware/${boardId}/_${version}-..., got ${rel}`);
+      }
+      requireFile(path.join(webToolsRoot, rel), `artifact (${rel})`);
     }
-    requireFile(path.join(webToolsRoot, rel), `artifact (${rel})`);
-  }
 
-  const meta = manifest?.metadata || {};
-  const buildInfoRel = String(meta.buildinfo_path || "");
-  const shaRel = String(meta.sha256sums_path || "");
-  if (!buildInfoRel || !shaRel) fail(`manifest metadata missing buildinfo/sha paths: ${manifestPath}`);
-  const buildInfoPath = path.join(webToolsRoot, buildInfoRel);
-  const shaPath = path.join(webToolsRoot, shaRel);
-  requireFile(buildInfoPath, "buildinfo");
-  requireFile(shaPath, "sha256sums");
+    // Validate buildinfo + sha256sums alongside the first part directory for this build.
+    const firstRel = String(parts[0]?.path || "");
+    const dirRel = firstRel.split("/").slice(0, -1).join("/");
+    const buildInfoPath = path.join(webToolsRoot, dirRel, "buildinfo.json");
+    const shaPath = path.join(webToolsRoot, dirRel, "sha256sums.txt");
+    requireFile(buildInfoPath, "buildinfo");
+    requireFile(shaPath, "sha256sums");
 
-  const buildInfo = readJson(buildInfoPath, "buildinfo");
-  const binaries = Array.isArray(buildInfo?.binaries) ? buildInfo.binaries : [];
-  if (binaries.length < 4) fail(`buildinfo missing binaries list: ${buildInfoPath}`);
+    const buildInfo = readJson(buildInfoPath, "buildinfo");
+    const binaries = Array.isArray(buildInfo?.binaries) ? buildInfo.binaries : [];
+    if (binaries.length < 4) fail(`buildinfo missing binaries list: ${buildInfoPath}`);
 
-  const shaLines = String(fs.readFileSync(shaPath, "utf8")).split(/\r?\n/).filter(Boolean);
-  const shaMap = new Map();
-  for (const line of shaLines) {
-    const partsLine = line.trim().split(/\s+/);
-    if (partsLine.length < 2) continue;
-    shaMap.set(partsLine[partsLine.length - 1], partsLine[0]);
-  }
-
-  for (const binary of binaries) {
-    const rel = String(binary.path || "");
-    const name = String(binary.name || "");
-    if (!rel || !name) fail(`invalid binary entry in buildinfo: ${buildInfoPath}`);
-    const abs = path.join(webToolsRoot, rel);
-    requireFile(abs, `buildinfo artifact (${rel})`);
-    const digest = sha256File(abs);
-    if (digest !== String(binary.sha256 || "")) {
-      fail(`sha mismatch for ${rel}: buildinfo=${binary.sha256} actual=${digest}`);
+    const shaLines = String(fs.readFileSync(shaPath, "utf8")).split(/\r?\n/).filter(Boolean);
+    const shaMap = new Map();
+    for (const line of shaLines) {
+      const partsLine = line.trim().split(/\s+/);
+      if (partsLine.length < 2) continue;
+      shaMap.set(partsLine[partsLine.length - 1], partsLine[0]);
     }
-    const shaName = shaMap.get(name);
-    if (!shaName) fail(`sha256sums missing ${name} in ${shaPath}`);
-    if (shaName !== digest) fail(`sha256sums mismatch for ${name}: listed=${shaName} actual=${digest}`);
+
+    for (const binary of binaries) {
+      const rel = String(binary.path || "");
+      const name = String(binary.name || "");
+      if (!rel || !name) fail(`invalid binary entry in buildinfo: ${buildInfoPath}`);
+      const abs = path.join(webToolsRoot, rel);
+      requireFile(abs, `buildinfo artifact (${rel})`);
+      const digest = sha256File(abs);
+      if (digest !== String(binary.sha256 || "")) {
+        fail(`sha mismatch for ${rel}: buildinfo=${binary.sha256} actual=${digest}`);
+      }
+      const shaName = shaMap.get(name);
+      if (!shaName) fail(`sha256sums missing ${name} in ${shaPath}`);
+      if (shaName !== digest) fail(`sha256sums mismatch for ${name}: listed=${shaName} actual=${digest}`);
+    }
   }
   logInfo(`[verify] ops-portal ${boardId} OK`);
 }

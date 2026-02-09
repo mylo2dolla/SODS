@@ -27,7 +27,7 @@ echo "== A) Network & Host Identity =="
 check_cmd "ping pi-aux (${AUX_HOST})" ping -c 1 "$AUX_HOST"
 check_cmd "ping pi-logger (${LOGGER_HOST})" ping -c 1 "$LOGGER_HOST"
 
-aux_hostname="$(ssh "$AUX_SSH" 'hostname' 2>/tmp/sods-verify-aux.err || true)"
+aux_hostname="$(ssh "$AUX_SSH_TARGET" 'hostname' 2>/tmp/sods-verify-aux.err || true)"
 if [[ "$aux_hostname" == "pi-aux" ]]; then
   pass "pi-aux hostname is pi-aux"
 else
@@ -35,7 +35,7 @@ else
   cat /tmp/sods-verify-aux.err || true
 fi
 
-logger_hostname="$(ssh "$LOGGER_SSH" 'hostname' 2>/tmp/sods-verify-logger.err || true)"
+logger_hostname="$(ssh "$VAULT_SSH_TARGET" 'hostname' 2>/tmp/sods-verify-logger.err || true)"
 if [[ "$logger_hostname" == "pi-logger" ]]; then
   pass "pi-logger hostname is pi-logger"
 else

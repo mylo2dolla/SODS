@@ -1,0 +1,151 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+source "$SCRIPT_DIR/_env.sh"
+
+RUNNER="$REPO_ROOT/tools/_sods_cli.sh"
+PORT="${PORT:-$SODS_PORT}"
+PI_LOGGER="${PI_LOGGER:-$PI_LOGGER_URL}"
+LOG_DIR="$HOME/Library/Logs/SODS"
+LOG_FILE="${STATION_LOG_FILE:-$LOG_DIR/station.log}"
+
+usage() {
+  cat <<USAGE
+station (server) commands:
+  station start           Start Station backend (port=$PORT)
+  station stop            Stop Station backend (best-effort)
+  station status          GET /api/status from Station
+  station logs [n]        Tail Station log (default: 120)
+  station smoke           Run local Station API smoke test
+  station spectrum        Open spectrum web UI (uses station URL)
+  station sods ...        Run raw SODS CLI command
+
+Notes:
+  - DevStation = the macOS app UI (use: ./tools/devstation ...)
+  - Station = the backend server ("spine/cockpit") (use: ./tools/station ...)
+USAGE
+}
+
+mkdir -p "$LOG_DIR"
+
+station_local_ok() {
+  curl -fsS --max-time 2 "http://127.0.0.1:${PORT}/api/status" >/dev/null 2>&1
+}
+
+station_url_ok() {
+  curl -fsS --max-time 2 "${SODS_STATION_URL%/}/api/status" >/dev/null 2>&1
+}
+
+wait_station() {
+  local max_s="${1:-10}"
+  local start
+  start="$(date +%s)"
+  while true; do
+    if station_local_ok || station_url_ok; then
+      return 0
+    fi
+    local now
+    now="$(date +%s)"
+    if (( now - start >= max_s )); then
+      return 1
+    fi
+    sleep 0.4
+  done
+}
+
+start_station() {
+  if station_local_ok || station_url_ok; then
+    echo "Station already running at ${SODS_STATION_URL%/}"
+    return 0
+  fi
+
+if [[ ! -x "$REPO_ROOT/tools/sods" ]]; then
+  echo "station: missing executable: $REPO_ROOT/tools/sods" >&2
+  exit 2
+fi
+
+  echo "Starting Station at ${SODS_STATION_URL%/} (port=$PORT)"
+  nohup "$REPO_ROOT/tools/sods" start --pi-logger "$PI_LOGGER" --port "$PORT" >>"$LOG_FILE" 2>&1 &
+  if ! wait_station 10; then
+    echo "station: failed to start (see $LOG_FILE)" >&2
+    exit 2
+  fi
+  echo "Station ready: ${SODS_STATION_URL%/}"
+}
+
+stop_station() {
+  pkill -f 'dist/cli.js start' >/dev/null 2>&1 || true
+  if command -v lsof >/dev/null 2>&1; then
+    pids="$(lsof -ti tcp:${PORT} || true)"
+    if [[ -n "${pids}" ]]; then
+      kill ${pids} >/dev/null 2>&1 || true
+    fi
+  fi
+  echo "Station stop requested"
+}
+
+show_status() {
+  local url="${STATION_URL:-${SODS_STATION_URL%/}}"
+  curl -fsS "${url%/}/api/status" || {
+    echo "station: not reachable at ${url%/} (tip: run ./tools/station start)" >&2
+    exit 2
+  }
+  echo
+}
+
+tail_logs() {
+  mkdir -p "$(dirname "$LOG_FILE")"
+  touch "$LOG_FILE"
+  tail -n "${1:-120}" "$LOG_FILE"
+}
+
+cmd="${1:-}"
+case "$cmd" in
+  start)
+    shift
+    start_station
+    ;;
+  stop)
+    shift
+    stop_station
+    ;;
+  status)
+    shift
+    show_status
+    ;;
+  logs)
+    shift
+    tail_logs "${1:-120}"
+    ;;
+  smoke)
+    shift
+    exec "$REPO_ROOT/tools/smoke-station.sh" "$@"
+    ;;
+  spectrum)
+    shift
+    if [[ ! -x "$RUNNER" ]]; then
+      echo "station: missing runner at $RUNNER" >&2
+      exit 2
+    fi
+    exec "$RUNNER" spectrum --station "${SODS_STATION_URL%/}" "$@"
+    ;;
+  sods)
+    shift
+    if [[ ! -x "$RUNNER" ]]; then
+      echo "station: missing runner at $RUNNER" >&2
+      exit 2
+    fi
+    exec "$RUNNER" "$@"
+    ;;
+  help|-h|--help|"")
+    usage
+    ;;
+  *)
+    echo "station: unknown command: $cmd" >&2
+    usage
+    exit 2
+    ;;
+esac
+

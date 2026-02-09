@@ -27,6 +27,6 @@
     "board_id": "waveshare-esp32p4",
     "buildinfo_path": "firmware/waveshare-esp32p4/devstation/buildinfo.json",
     "sha256sums_path": "firmware/waveshare-esp32p4/devstation/sha256sums.txt",
-    "generated_ts_ms": 1770567981779
+    "generated_ts_ms": 1770616419293
   }
 }

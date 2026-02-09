@@ -140,6 +140,15 @@ export class SODSServer {
     if (url.pathname === "/api/nodes") {
       return this.respondJson(res, this.buildNodePresence());
     }
+    if (url.pathname === "/api/registry/nodes") {
+      return this.handleRegistryNodes(res);
+    }
+    if (url.pathname === "/api/registry/nodes/forget" && req.method === "POST") {
+      return this.handleRegistryForget(req, res);
+    }
+    if (url.pathname === "/api/registry/nodes/factory-reset" && req.method === "POST") {
+      return this.handleRegistryFactoryReset(req, res);
+    }
     if (url.pathname === "/api/node/connect" && req.method === "POST") {
       return this.handleNodeConnect(req, res);
     }
@@ -959,20 +968,37 @@ export class SODSServer {
     });
 
     if (name === "net.wifi_scan") {
-      const lines = (result.result_json as any)?.lines ?? result.stdout?.split("\n") ?? [];
-      for (const line of lines) {
-        const macMatch = String(line).match(/([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}/);
-        if (!macMatch) continue;
-        const ssid = String(line).split(macMatch[0])[0].trim();
-        const channelMatch = String(line).match(/\bch(?:annel)?\s*:?(\d{1,3})\b/i) ?? String(line).match(/\s(\d{1,3})\s*$/);
-        const rssiMatch = String(line).match(/-?\d{2,3}\b/);
+      const stdout = result.stdout ?? "";
+      // Honesty rule: system_profiler output is not a scan. Do not synthesize wifi.scan from it.
+      if (/^Wi-Fi:\s*$/m.test(stdout) || /CoreWLAN:\s*\d+/i.test(stdout) || /Other Local Wi-Fi Networks:/i.test(stdout)) {
+        emit("wifi.scan.unavailable", {
+          ok: false,
+          reason: "no_scan_tool",
+          detail: "tools/wifi-scan.sh could not access a real scan backend (airport/wdutil).",
+        });
+        return;
+      }
+
+      const lines = (result.result_json as any)?.lines ?? stdout.split("\n");
+      for (const rawLine of lines) {
+        const line = String(rawLine);
+        // Expected "airport -s" rows (SSID may contain spaces; BSSID is MAC; then RSSI then channel).
+        const m = line.match(/^(.*?)([0-9A-Fa-f]{2}(?::[0-9A-Fa-f]{2}){5})\s+(-?\d{2,3})\s+(\d{1,3})\b/);
+        if (!m) continue;
+        const ssid = m[1].trim();
+        const bssid = m[2];
+        const rssi = Number(m[3]);
+        const channel = Number(m[4]);
+        if (!Number.isFinite(rssi) || rssi > 0 || rssi < -120) continue;
+        if (!Number.isFinite(channel) || channel <= 0 || channel > 233) continue;
+
         emit("wifi.scan", {
-          bssid: macMatch[0],
+          bssid,
           ssid: ssid || undefined,
-          channel: channelMatch ? Number(channelMatch[1]) : undefined,
-          rssi: rssiMatch ? Number(rssiMatch[0]) : undefined,
+          channel,
+          rssi,
           line,
-          device_id: macMatch[0],
+          device_id: bssid,
         });
       }
     }
@@ -1349,6 +1375,154 @@ export class SODSServer {
     return addr === "127.0.0.1" || addr === "::1" || addr === "::ffff:127.0.0.1";
   }
 
+  private registryNodesPath() {
+    const repoRoot = resolve(new URL("../../..", import.meta.url).pathname);
+    return join(repoRoot, "workspace", "registry", "nodes.json");
+  }
+
+  private readRegistryNodes(): { version: string; nodes: any[] } {
+    const path = this.registryNodesPath();
+    if (!existsSync(path)) return { version: "1.0", nodes: [] };
+    try {
+      const raw = JSON.parse(readFileSync(path, "utf8"));
+      const nodes = Array.isArray(raw?.nodes) ? raw.nodes : [];
+      const version = typeof raw?.version === "string" ? raw.version : "1.0";
+      return { version, nodes };
+    } catch {
+      return { version: "1.0", nodes: [] };
+    }
+  }
+
+  private writeRegistryNodes(payload: { version: string; nodes: any[] }) {
+    const path = this.registryNodesPath();
+    mkdirSync(resolve(path, ".."), { recursive: true });
+    writeFileSync(path, JSON.stringify(payload, null, 2));
+  }
+
+  private handleRegistryNodes(res: http.ServerResponse) {
+    return this.respondJson(res, { ok: true, ...this.readRegistryNodes() });
+  }
+
+  private handleRegistryForget(req: http.IncomingMessage, res: http.ServerResponse) {
+    if (!this.isLocalRequest(req)) {
+      res.writeHead(403);
+      res.end("node registry edits allowed only on localhost station");
+      return;
+    }
+    let body = "";
+    req.on("data", (chunk) => body += chunk);
+    req.on("end", () => {
+      try {
+        const payload = body ? JSON.parse(body) : {};
+        const nodeID = String(payload.node_id ?? "").trim();
+        if (!nodeID) {
+          res.writeHead(400);
+          res.end("missing node_id");
+          return;
+        }
+        const current = this.readRegistryNodes();
+        const nextNodes = current.nodes.filter((n: any) => String(n?.id ?? "").trim() !== nodeID);
+        this.writeRegistryNodes({ version: current.version ?? "1.0", nodes: nextNodes });
+        return this.respondJson(res, { ok: true, version: current.version ?? "1.0", nodes: nextNodes });
+      } catch (err: any) {
+        res.writeHead(400);
+        res.end(err?.message ?? "registry forget error");
+      }
+    });
+  }
+
+  private vaultIngestURL() {
+    const explicit = (process.env.VAULT_INGEST_URL ?? "").trim();
+    if (explicit) return explicit;
+    const loggerHost = (process.env.LOGGER_HOST ?? "192.168.8.160").trim() || "192.168.8.160";
+    return `http://${loggerHost}:8088/v1/ingest`;
+  }
+
+  private async vaultIngest(event: any) {
+    const url = this.vaultIngestURL();
+    const r = await fetch(url, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(event),
+    });
+    if (!r.ok) {
+      const t = await r.text().catch(() => "");
+      throw new Error(`vault ingest failed: ${r.status} ${t}`);
+    }
+  }
+
+  private async handleRegistryFactoryReset(req: http.IncomingMessage, res: http.ServerResponse) {
+    if (!this.isLocalRequest(req)) {
+      res.writeHead(403);
+      res.end("factory reset allowed only on localhost station");
+      return;
+    }
+    let body = "";
+    req.on("data", (chunk) => body += chunk);
+    req.on("end", async () => {
+      const started = Date.now();
+      try {
+        const payload = body ? JSON.parse(body) : {};
+        const nodeID = String(payload.node_id ?? "").trim();
+        const host = String(payload.host ?? "").trim();
+        if (!nodeID) {
+          res.writeHead(400);
+          res.end("missing node_id");
+          return;
+        }
+        if (!host) {
+          res.writeHead(400);
+          res.end("missing host");
+          return;
+        }
+        if (host.includes("localhost") || host.startsWith("127.") || host.startsWith("::1")) {
+          res.writeHead(400);
+          res.end("refusing localhost host");
+          return;
+        }
+
+        const requestId = `factory-reset-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+        await this.vaultIngest({
+          type: "node.maintenance.intent",
+          src: "station",
+          ts_ms: Date.now(),
+          data: { request_id: requestId, op: "factory_reset_networking", node_id: nodeID, host },
+        });
+
+        const targetBase = host.startsWith("http://") || host.startsWith("https://") ? host : `http://${host}`;
+        const targetURL = `${targetBase.replace(/\/+$/, "")}/api/factory-reset`;
+        const rsp = await fetch(targetURL, { method: "POST" });
+        const text = await rsp.text().catch(() => "");
+
+        await this.vaultIngest({
+          type: "node.maintenance.result",
+          src: "station",
+          ts_ms: Date.now(),
+          data: {
+            request_id: requestId,
+            op: "factory_reset_networking",
+            node_id: nodeID,
+            host,
+            ok: rsp.ok,
+            status: rsp.status,
+            body: text.slice(0, 2048),
+            duration_ms: Date.now() - started,
+          },
+        });
+
+        if (!rsp.ok) {
+          res.writeHead(502);
+          res.end(`device refused: HTTP ${rsp.status} ${text}`);
+          return;
+        }
+        return this.respondJson(res, { ok: true });
+      } catch (err: any) {
+        res.writeHead(503);
+        res.end(err?.message ?? "factory reset failed");
+      }
+    });
+  }
+
   private buildFlashInfo(req: http.IncomingMessage) {
     const host = req.headers.host ?? "localhost:9123";
     const base = `http://${host}`;
@@ -1432,7 +1606,10 @@ export class SODSServer {
       let manifestExists = false;
       let manifestOk = false;
       let manifestError = "";
-      let parts: Array<{ path: string; offset: number; file_exists: boolean; abs_path: string }> = [];
+      type FlashPart = { path: string; offset: number; file_exists: boolean; abs_path: string };
+      type FlashBuildInfo = { name: string | null; ready: boolean; issues: string[]; parts: FlashPart[] };
+      let parts: FlashPart[] = [];
+      let buildInfos: FlashBuildInfo[] = [];
       let buildVersion = "";
 
       if (!rootDir) {
@@ -1446,27 +1623,50 @@ export class SODSServer {
         try {
           const parsed = JSON.parse(readFileSync(manifestFile, "utf8"));
           const builds = Array.isArray(parsed?.builds) ? parsed.builds : [];
-          const rawParts = Array.isArray(builds[0]?.parts) ? builds[0].parts : [];
           buildVersion = String(parsed?.version || "");
-          if (rawParts.length === 0) {
-            issues.push("manifest has no parts");
+          if (builds.length === 0) {
+            issues.push("manifest has no builds");
           } else {
-            parts = rawParts.map((part: any) => {
-              const rel = String(part?.path || "");
-              const abs = rootDir ? resolve(join(rootDir, rel)) : "";
-              const exists = !!abs && existsSync(abs);
-              if (!exists) {
-                issues.push(`missing artifact: ${rel}`);
+            buildInfos = builds.map((build: any): FlashBuildInfo => {
+              const buildIssues: string[] = [];
+              const name = String(build?.name || build?.label || "");
+              const rawParts = Array.isArray(build?.parts) ? build.parts : [];
+              if (rawParts.length === 0) {
+                buildIssues.push("build has no parts");
               }
+              const buildParts: FlashPart[] = rawParts.map((part: any): FlashPart => {
+                const rel = String(part?.path || "");
+                const abs = rootDir ? resolve(join(rootDir, rel)) : "";
+                const exists = !!abs && existsSync(abs);
+                if (!exists) {
+                  buildIssues.push(`missing artifact: ${rel}`);
+                }
+                return {
+                  path: rel,
+                  offset: Number(part?.offset || 0),
+                  file_exists: exists,
+                  abs_path: abs,
+                };
+              });
               return {
-                path: rel,
-                offset: Number(part?.offset || 0),
-                file_exists: exists,
-                abs_path: abs,
+                name: name || null,
+                ready: buildIssues.length === 0 && buildParts.length > 0 && buildParts.every((p: FlashPart) => p.file_exists),
+                issues: buildIssues,
+                parts: buildParts,
               };
             });
+
+            const anyReady = buildInfos.some((b: FlashBuildInfo) => b.ready);
+            // Backward compatibility: keep top-level `parts` as the first build's parts.
+            parts = buildInfos[0]?.parts || [];
+
+            if (!anyReady) {
+              const firstIssue = buildInfos.flatMap((b: FlashBuildInfo) => b.issues).find(Boolean);
+              if (firstIssue) issues.push(firstIssue);
+            }
+
+            manifestOk = true;
           }
-          manifestOk = issues.length === 0;
         } catch (error: any) {
           manifestError = String(error?.message || error);
           issues.push("manifest parse failed");
@@ -1486,8 +1686,11 @@ export class SODSServer {
         manifest_ok: manifestOk,
         manifest_error: manifestError || null,
         version: buildVersion || null,
-        ready: manifestOk && parts.length > 0 && parts.every((part) => part.file_exists),
+        ready: (manifestOk && buildInfos.length > 0)
+          ? buildInfos.some((b) => b.ready)
+          : (manifestOk && parts.length > 0 && parts.every((part) => part.file_exists)),
         parts,
+        builds: buildInfos.length ? buildInfos : null,
         issues,
       };
     });

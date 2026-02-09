@@ -12,18 +12,11 @@ LOG_FILE="${HOME}/Library/Logs/SODS/station.log"
 usage() {
   cat <<USAGE
 cockpit commands:
-  cockpit up|all      Alias of: devstation rebuild
-  cockpit rebuild     Alias of: devstation rebuild
-  cockpit run         Alias of: devstation run
-  cockpit build       Alias of: devstation build
-  cockpit install     Alias of: devstation install
-  cockpit start       Start station on http://localhost:${PORT}
-  cockpit stop        Stop station process
-  cockpit status      Query station /api/status
-  cockpit logs        Tail station log
-  cockpit spectrum    Open spectrum web UI
-  cockpit sods ...    Run raw SODS CLI command
-  cockpit ...         Falls through to SODS CLI
+  cockpit ...         Deprecated alias of: station
+
+Use instead:
+  ./tools/station start|stop|status|logs|smoke|spectrum
+  ./tools/devstation build|run|rebuild|install
 USAGE
 }
 
@@ -64,64 +57,10 @@ show_status() {
 
 cmd="${1:-}"
 case "$cmd" in
-  up|all|rebuild)
-    shift
-    exec "$REPO_ROOT/tools/devstation" rebuild "$@"
-    ;;
-  run)
-    shift
-    exec "$REPO_ROOT/tools/devstation" run "$@"
-    ;;
-  build)
-    shift
-    exec "$REPO_ROOT/tools/devstation" build "$@"
-    ;;
-  install)
-    shift
-    exec "$REPO_ROOT/tools/devstation" install "$@"
-    ;;
-  start)
-    shift
-    start_station
-    ;;
-  stop)
-    shift
-    stop_station
-    ;;
-  status)
-    shift
-    show_status
-    ;;
-  logs)
-    shift
-    mkdir -p "$(dirname "$LOG_FILE")"
-    touch "$LOG_FILE"
-    tail -n "${1:-100}" "$LOG_FILE"
-    ;;
-  spectrum)
-    shift
-    if [[ ! -x "$RUNNER" ]]; then
-      echo "cockpit: missing runner at $RUNNER" >&2
-      exit 2
-    fi
-    exec "$RUNNER" spectrum "$@"
-    ;;
-  sods)
-    shift
-    if [[ ! -x "$RUNNER" ]]; then
-      echo "cockpit: missing runner at $RUNNER" >&2
-      exit 2
-    fi
-    exec "$RUNNER" "$@"
-    ;;
   help|-h|--help)
     usage
     ;;
   *)
-    if [[ ! -x "$RUNNER" ]]; then
-      echo "cockpit: missing runner at $RUNNER" >&2
-      exit 2
-    fi
-    exec "$RUNNER" "$@"
+    exec "$REPO_ROOT/tools/station" "$@"
     ;;
 esac

@@ -24,9 +24,19 @@ struct FindDeviceView: View {
             HStack(spacing: 8) {
                 TextField("Node ID (optional)", text: $nodeID)
                     .textFieldStyle(.roundedBorder)
-                Button(isRunning ? "Scanning..." : "Run Scan") { runScan() }
-                    .buttonStyle(PrimaryActionButtonStyle())
-                    .disabled(isRunning)
+                Button { runScan() } label: {
+                    if isRunning {
+                        ProgressView()
+                            .controlSize(.small)
+                    } else {
+                        Image(systemName: "magnifyingglass")
+                            .font(.system(size: 12, weight: .semibold))
+                    }
+                }
+                .buttonStyle(PrimaryActionButtonStyle())
+                .disabled(isRunning)
+                .help(isRunning ? "Scanning..." : "Run Scan")
+                .accessibilityLabel(Text(isRunning ? "Scanning..." : "Run Scan"))
                 Spacer()
             }
 
@@ -90,10 +100,15 @@ struct FindDeviceView: View {
                     .foregroundColor(Theme.textSecondary)
             }
             HStack(spacing: 8) {
-                Button("Bind as Node") {
+                Button {
                     bindCandidate(candidate)
+                } label: {
+                    Image(systemName: "link.badge.plus")
+                        .font(.system(size: 12, weight: .semibold))
                 }
                 .buttonStyle(PrimaryActionButtonStyle())
+                .help("Bind as Node")
+                .accessibilityLabel(Text("Bind as Node"))
                 Spacer()
             }
         }

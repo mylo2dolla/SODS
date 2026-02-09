@@ -1,0 +1,42 @@
+{
+  "app": "ops-portal",
+  "board_id": "cyd-2432s028",
+  "version": "_devstation-st7789",
+  "git_commit": "9ded7092d3b41a222111aad55af5b8e2c42e515b",
+  "build_ts_ms": 1770616418437,
+  "idf_version": "unknown",
+  "esptool_version": "esptool v5.1.0",
+  "variant": "st7789",
+  "variant_label": "ST7789",
+  "control_plane_url": "http://192.168.8.114:8099/god",
+  "binaries": [
+    {
+      "name": "bootloader.bin",
+      "offset": 4096,
+      "path": "firmware/cyd-2432s028/_devstation-st7789/bootloader.bin",
+      "sha256": "3d234a7471f67b013686dabd4dee7c1fa915c9928463616a94bc9297acf1abf8",
+      "size_bytes": 17536
+    },
+    {
+      "name": "partition-table.bin",
+      "offset": 32768,
+      "path": "firmware/cyd-2432s028/_devstation-st7789/partition-table.bin",
+      "sha256": "148b959cbff1c38aa8e1d5c0ba9d612c54997b945e56a63f41223eef650653a1",
+      "size_bytes": 3072
+    },
+    {
+      "name": "boot_app0.bin",
+      "offset": 57344,
+      "path": "firmware/cyd-2432s028/_devstation-st7789/boot_app0.bin",
+      "sha256": "f94c5d786a7a8fab06ac5d10e33bf37711a6697636dc037559ea19cc410a17f0",
+      "size_bytes": 8192
+    },
+    {
+      "name": "firmware.bin",
+      "offset": 65536,
+      "path": "firmware/cyd-2432s028/_devstation-st7789/firmware.bin",
+      "sha256": "bebd196e9b2d91291208fa144ed74bf5446b26b718b46aa6baaed5fdaf1acfc6",
+      "size_bytes": 1064128
+    }
+  ]
+}

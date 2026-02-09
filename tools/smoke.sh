@@ -7,6 +7,7 @@ source "$SCRIPT_DIR/_env.sh"
 LOG_DIR="$REPO_ROOT/data/logs"
 PORT="${PORT:-$SODS_PORT}"
 PI_LOGGER="${PI_LOGGER:-$PI_LOGGER_URL}"
+STATION_URL="${SODS_STATION_URL:-http://127.0.0.1:${PORT}}"
 
 mkdir -p "$LOG_DIR"
 
@@ -17,24 +18,24 @@ source "$REPO_ROOT/tools/_app_bundle.sh"
 echo "Validating Dev Station app bundle..."
 validate_app_bundle "$REPO_ROOT/dist/DevStation.app"
 
-if ! curl -fsS "http://localhost:${PORT}/api/status" >/dev/null 2>&1; then
-  echo "Starting station on http://localhost:${PORT}"
+if ! curl -fsS "${STATION_URL%/}/api/status" >/dev/null 2>&1; then
+  echo "Starting station on ${STATION_URL%/}"
   nohup "$REPO_ROOT/tools/sods" start --pi-logger "$PI_LOGGER" --port "$PORT" >>"$LOG_DIR/station.smoke.log" 2>&1 &
   sleep 1
 fi
 
 echo "Checking /api/status"
-curl -fsS "http://localhost:${PORT}/api/status" | head -n 5
+curl -fsS "${STATION_URL%/}/api/status" | head -n 5
 echo "Checking /api/tools"
-curl -fsS "http://localhost:${PORT}/api/tools" | head -n 5
+curl -fsS "${STATION_URL%/}/api/tools" | head -n 5
 echo "Checking /api/nodes"
-curl -fsS "http://localhost:${PORT}/api/nodes" | head -n 5
+curl -fsS "${STATION_URL%/}/api/nodes" | head -n 5
 echo "Checking /api/flash"
-curl -fsS "http://localhost:${PORT}/api/flash"
+curl -fsS "${STATION_URL%/}/api/flash"
 echo "Checking /api/presets"
-curl -fsS "http://localhost:${PORT}/api/presets" | head -n 5
+curl -fsS "${STATION_URL%/}/api/presets" | head -n 5
 echo "Checking /api/runbooks"
-curl -fsS "http://localhost:${PORT}/api/runbooks" | head -n 5
+curl -fsS "${STATION_URL%/}/api/runbooks" | head -n 5
 
 echo "Audit: internal URLs should not use NSWorkspace.open (flash is allowed)"
 HTTP_OPENS="$(rg -n "NSWorkspace\\.shared\\.open\\(.*http" "$REPO_ROOT/apps/dev-station/DevStation" || true)"

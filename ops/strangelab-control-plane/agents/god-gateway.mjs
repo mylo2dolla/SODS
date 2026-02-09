@@ -207,10 +207,8 @@ async function dispatchGod(input) {
   const started = Date.now();
   const request = normalizeRequest(input);
 
-  await vaultIngest(envelope("router.intent", { request }));
-
   if (requestSeen.has(request.request_id)) {
-    await vaultIngest(envelope("router.denied", {
+    await vaultIngest(envelope("control.god_button.denied", {
       request_id: request.request_id,
       action: request.action,
       denied_reason: "duplicate request_id",
@@ -220,7 +218,7 @@ async function dispatchGod(input) {
   requestSeen.set(request.request_id, Date.now());
 
   if (!request.action || !ACTION_ALLOWLIST.has(request.action)) {
-    await vaultIngest(envelope("router.denied", {
+    await vaultIngest(envelope("control.god_button.denied", {
       request_id: request.request_id,
       action: request.action,
       denied_reason: "action missing or not allowlisted",
@@ -230,7 +228,7 @@ async function dispatchGod(input) {
 
   const rl = enforceRateLimit(request.action);
   if (!rl.ok) {
-    await vaultIngest(envelope("router.denied", {
+    await vaultIngest(envelope("control.god_button.denied", {
       request_id: request.request_id,
       action: request.action,
       denied_reason: rl.reason,
@@ -240,7 +238,7 @@ async function dispatchGod(input) {
 
   const routedTopic = routeTopic(request.action);
   if (!routedTopic) {
-    await vaultIngest(envelope("router.denied", {
+    await vaultIngest(envelope("control.god_button.denied", {
       request_id: request.request_id,
       action: request.action,
       denied_reason: "unable to route action topic",
@@ -256,13 +254,6 @@ async function dispatchGod(input) {
   await publish("god.button", request);
   await publish(routedTopic, request);
 
-  await vaultIngest(envelope("router.route.result", {
-    request_id: request.request_id,
-    action: request.action,
-    routed_topic: routedTopic,
-    ok: true,
-  }));
-
   const result = {
     ok: true,
     handled_by: IDENTITY,
@@ -271,11 +262,15 @@ async function dispatchGod(input) {
     routed_topic: routedTopic,
   };
 
-  await vaultIngest(envelope("control.god_button.result", {
+  // Do not block the HTTP response on the result log.
+  // Intent was already written to Vault (fail-closed), and publish succeeded.
+  void vaultIngest(envelope("control.god_button.result", {
     request_id: request.request_id,
     action: request.action,
     result,
-  }));
+  })).catch((e) => {
+    console.error(`vault result ingest failed: ${String(e?.message || e)}`);
+  });
 
   return { request, result };
 }

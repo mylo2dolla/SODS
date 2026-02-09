@@ -25,8 +25,9 @@ export class FrameEngine {
 
     const source = deriveSource(ev.kind);
     const rssi = normalizeRssi(ev.data);
-    const channel = deriveChannel(ev.data, source);
-    const frequency = channelToFrequency(channel, source);
+    if (rssi == null) return;
+    const channel = deriveChannel(ev.data);
+    const frequency = channel != null ? channelToFrequency(channel, source) : 0;
     const now = Date.now();
     const key = device_id;
 
@@ -35,7 +36,7 @@ export class FrameEngine {
       device_id,
       node_id: ev.node_id,
       source,
-      channel,
+      channel: channel ?? 0,
       frequency,
       rssi,
       persistence: 0.4,
@@ -45,7 +46,7 @@ export class FrameEngine {
 
     next.node_id = ev.node_id;
     next.source = source;
-    next.channel = channel;
+    next.channel = channel ?? 0;
     next.frequency = frequency;
     next.rssi = rssi;
     next.hitScore = Math.min(12, next.hitScore + 1.2);
@@ -135,7 +136,6 @@ function deriveDeviceId(ev: CanonicalEvent): string | null {
       return v;
     }
   }
-  if (ev.node_id && ev.node_id !== "unknown") return `node:${ev.node_id}`;
   return null;
 }
 
@@ -145,20 +145,19 @@ function deriveSource(kind: string): SignalSource {
   return "esp";
 }
 
-function normalizeRssi(data: Record<string, unknown>): number {
+function normalizeRssi(data: Record<string, unknown>): number | null {
   const keys = ["rssi", "RSSI", "signal", "strength", "dbm", "level"];
   for (const key of keys) {
     const n = asNumber((data as any)[key], NaN);
     if (Number.isFinite(n)) return n;
   }
-  return -60;
+  return null;
 }
 
-function deriveChannel(data: Record<string, unknown>, source: SignalSource): number {
+function deriveChannel(data: Record<string, unknown>): number | null {
   const raw = asNumber((data as any)["channel"], NaN);
   if (Number.isFinite(raw)) return raw;
-  if (source === "ble") return 37;
-  return 1;
+  return null;
 }
 
 function channelToFrequency(channel: number, source: SignalSource): number {

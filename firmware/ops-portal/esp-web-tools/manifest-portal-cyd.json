@@ -5,6 +5,7 @@
   "builds": [
     {
       "chipFamily": "ESP32",
+      "name": "CYD ILI9341 (RST=4)",
       "parts": [
         {
           "path": "firmware/cyd-2432s028/devstation/bootloader.bin",
@@ -23,13 +24,79 @@
           "offset": 65536
         }
       ]
+    },
+    {
+      "chipFamily": "ESP32",
+      "name": "CYD ILI9341 (RST=-1)",
+      "parts": [
+        {
+          "path": "firmware/cyd-2432s028/_devstation-ili9341-rstminus1/bootloader.bin",
+          "offset": 4096
+        },
+        {
+          "path": "firmware/cyd-2432s028/_devstation-ili9341-rstminus1/partition-table.bin",
+          "offset": 32768
+        },
+        {
+          "path": "firmware/cyd-2432s028/_devstation-ili9341-rstminus1/boot_app0.bin",
+          "offset": 57344
+        },
+        {
+          "path": "firmware/cyd-2432s028/_devstation-ili9341-rstminus1/firmware.bin",
+          "offset": 65536
+        }
+      ]
+    },
+    {
+      "chipFamily": "ESP32",
+      "name": "CYD ST7789",
+      "parts": [
+        {
+          "path": "firmware/cyd-2432s028/_devstation-st7789/bootloader.bin",
+          "offset": 4096
+        },
+        {
+          "path": "firmware/cyd-2432s028/_devstation-st7789/partition-table.bin",
+          "offset": 32768
+        },
+        {
+          "path": "firmware/cyd-2432s028/_devstation-st7789/boot_app0.bin",
+          "offset": 57344
+        },
+        {
+          "path": "firmware/cyd-2432s028/_devstation-st7789/firmware.bin",
+          "offset": 65536
+        }
+      ]
+    },
+    {
+      "chipFamily": "ESP32",
+      "name": "CYD ILI9341 (Sunton HSPI 14/12/13/15)",
+      "parts": [
+        {
+          "path": "firmware/cyd-2432s028/_devstation-sunton-hspi/bootloader.bin",
+          "offset": 4096
+        },
+        {
+          "path": "firmware/cyd-2432s028/_devstation-sunton-hspi/partition-table.bin",
+          "offset": 32768
+        },
+        {
+          "path": "firmware/cyd-2432s028/_devstation-sunton-hspi/boot_app0.bin",
+          "offset": 57344
+        },
+        {
+          "path": "firmware/cyd-2432s028/_devstation-sunton-hspi/firmware.bin",
+          "offset": 65536
+        }
+      ]
     }
   ],
   "metadata": {
     "app": "ops-portal",
     "board_id": "cyd-2432s028",
     "buildinfo_path": "firmware/cyd-2432s028/devstation/buildinfo.json",
-    "sha256sums_path": "firmware/cyd-2432s028/devstation/sha256sums.txt",
-    "generated_ts_ms": 1770567979817
+    "default_variant_version": "devstation",
+    "generated_ts_ms": 1770616418821
   }
 }

@@ -1,0 +1,42 @@
+{
+  "app": "ops-portal",
+  "board_id": "cyd-2432s028",
+  "version": "_devstation-ili9341-rstminus1",
+  "git_commit": "9ded7092d3b41a222111aad55af5b8e2c42e515b",
+  "build_ts_ms": 1770616418186,
+  "idf_version": "unknown",
+  "esptool_version": "esptool v5.1.0",
+  "variant": "ili9341-rstminus1",
+  "variant_label": "ILI9341 (RST=-1)",
+  "control_plane_url": "http://192.168.8.114:8099/god",
+  "binaries": [
+    {
+      "name": "bootloader.bin",
+      "offset": 4096,
+      "path": "firmware/cyd-2432s028/_devstation-ili9341-rstminus1/bootloader.bin",
+      "sha256": "3d234a7471f67b013686dabd4dee7c1fa915c9928463616a94bc9297acf1abf8",
+      "size_bytes": 17536
+    },
+    {
+      "name": "partition-table.bin",
+      "offset": 32768,
+      "path": "firmware/cyd-2432s028/_devstation-ili9341-rstminus1/partition-table.bin",
+      "sha256": "148b959cbff1c38aa8e1d5c0ba9d612c54997b945e56a63f41223eef650653a1",
+      "size_bytes": 3072
+    },
+    {
+      "name": "boot_app0.bin",
+      "offset": 57344,
+      "path": "firmware/cyd-2432s028/_devstation-ili9341-rstminus1/boot_app0.bin",
+      "sha256": "f94c5d786a7a8fab06ac5d10e33bf37711a6697636dc037559ea19cc410a17f0",
+      "size_bytes": 8192
+    },
+    {
+      "name": "firmware.bin",
+      "offset": 65536,
+      "path": "firmware/cyd-2432s028/_devstation-ili9341-rstminus1/firmware.bin",
+      "sha256": "19f21f48edd8df1d1058c1335c3712b007d95054f8cf305f4b91518ede530248",
+      "size_bytes": 1064096
+    }
+  ]
+}

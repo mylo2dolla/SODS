@@ -9,13 +9,15 @@ usage() {
   cat <<'USAGE'
 devstation commands:
   devstation build      Build DevStation.app into dist/
-  devstation run        Ensure station is running and launch app
-  devstation rebuild    Clean + build + install + start station + launch app
+  devstation run        Ensure Station is running and launch app
+  devstation rebuild    Clean + build + install + ensure Station + launch app
   devstation up         Alias of rebuild
   devstation all        Alias of rebuild
   devstation install    Install dist/DevStation.app to /Applications
-  devstation sods ...   Run raw SODS CLI command
-  devstation ...        If unknown, falls through to SODS CLI
+  devstation sods ...   Run raw SODS CLI command (advanced)
+
+Station (backend server) is separate:
+  ./tools/station start|status|logs|smoke|spectrum
 USAGE
 }
 
@@ -54,10 +56,8 @@ case "$cmd" in
     exit 0
     ;;
   *)
-    if [[ ! -x "$RUNNER" ]]; then
-      echo "devstation: missing runner at $RUNNER" >&2
-      exit 2
-    fi
-    exec "$RUNNER" "$@"
+    echo "devstation: unknown command: $cmd" >&2
+    usage
+    exit 2
     ;;
 esac

@@ -7,6 +7,7 @@ source "$SCRIPT_DIR/_env.sh"
 SL_SSH_BIN="${SL_SSH_BIN:-$HOME/.local/bin/sl-ssh}"
 CONTROLLER_KEY="${CONTROLLER_KEY:-$HOME/.ssh/strangelab_controller}"
 CONTROLLER_PUB="${CONTROLLER_PUB:-$HOME/.ssh/strangelab_controller.pub}"
+SSH_CONFIG="${SSH_CONFIG:-$HOME/.ssh/config}"
 SSH_FLAGS=(
   -o BatchMode=yes
   -o ConnectTimeout=6
@@ -18,6 +19,31 @@ pass() { printf '[PASS] %s\n' "$1"; }
 fail_msg() { printf '[FAIL] %s\n' "$1"; fail=1; }
 
 echo "== G + H + I) SSH Guard / Allowlist / Capabilities =="
+
+has_ssh_host() {
+  local host="$1"
+  [[ -f "$SSH_CONFIG" ]] || return 1
+  grep -Eq "^[[:space:]]*Host[[:space:]]+${host}([[:space:]]|\$)" "$SSH_CONFIG"
+}
+
+build_host_list() {
+  local default_hosts=(strangelab-pi-aux strangelab-pi-logger strangelab-mac-2)
+
+  if [[ -n "${SODS_SSH_GUARD_HOSTS:-}" ]]; then
+    # Space-separated list.
+    echo "$SODS_SSH_GUARD_HOSTS"
+    return 0
+  fi
+
+  local extra=(vault vault-eth vault-wifi aux aux-5g aux-24g mac16 mac8)
+  local out=()
+  for h in "${default_hosts[@]}"; do out+=("$h"); done
+  for h in "${extra[@]}"; do
+    if has_ssh_host "$h"; then out+=("$h"); fi
+  done
+
+  printf '%s ' "${out[@]}"
+}
 
 if [[ -f "$CONTROLLER_KEY" && -f "$CONTROLLER_PUB" ]]; then
   pass "controller keypair present"
@@ -32,7 +58,7 @@ else
 fi
 
 if [[ -x "$SL_SSH_BIN" ]]; then
-  for host in strangelab-pi-aux strangelab-pi-logger strangelab-mac-2; do
+  for host in $(build_host_list); do
     req="verify-uptime-${host}"
     if "$SL_SSH_BIN" "$host" "$req" /usr/bin/uptime >/tmp/sods-ssh-${host}.out 2>/tmp/sods-ssh-${host}.err; then
       pass "roving uptime works on ${host}"
@@ -45,11 +71,12 @@ if [[ -x "$SL_SSH_BIN" ]]; then
 fi
 
 set +e
-deny_out="$(echo '{"id":"verify-deny","cmd":"/bin/bash","args":[],"cwd":".","timeout_ms":1000}' | ssh "${SSH_FLAGS[@]}" strangelab-pi-aux 2>/tmp/sods-ssh-deny.err)"
+deny_host="${SODS_SSH_GUARD_DENY_HOST:-strangelab-pi-aux}"
+deny_out="$(echo '{"id":"verify-deny","cmd":"/bin/bash","args":[],"cwd":".","timeout_ms":1000}' | ssh "${SSH_FLAGS[@]}" "${deny_host}" 2>/tmp/sods-ssh-deny.err)"
 deny_rc=$?
 set -e
 if echo "$deny_out" | rg -q '"code"\s*:\s*"NOT_ALLOWED"'; then
-  pass "deny test returns NOT_ALLOWED (rc=${deny_rc})"
+  pass "deny test returns NOT_ALLOWED on ${deny_host} (rc=${deny_rc})"
 else
   fail_msg "deny test did not return NOT_ALLOWED"
   echo "$deny_out"

@@ -6,10 +6,8 @@ enum StationEndpointResolver {
     private static let piLoggerURLKey = "PiLoggerURL"
     private static func defaultLoggerChain(env: [String: String]) -> String {
         let aux = env["AUX_HOST"]?.trimmingCharacters(in: .whitespacesAndNewlines)
-        let logger = env["LOGGER_HOST"]?.trimmingCharacters(in: .whitespacesAndNewlines)
         let auxHost = (aux?.isEmpty == false) ? aux! : "192.168.8.114"
-        let loggerHost = (logger?.isEmpty == false) ? logger! : "192.168.8.160"
-        return "http://\(auxHost):9101,http://pi-logger.local:8088,http://\(loggerHost):8088"
+        return "http://\(auxHost):9101"
     }
 
     static func stationBaseURL(defaults: UserDefaults = .standard) -> String {
@@ -20,7 +18,18 @@ enum StationEndpointResolver {
         }
         if let saved = defaults.string(forKey: stationBaseURLKey),
            let normalized = normalizeBaseURL(saved) {
-            return normalized
+            // Migration guard: older builds sometimes used the Pi-Aux control server port (8787/8788) as the Station port.
+            // That conflicts with Dev Station's own control plane listener and causes the Station auto-start loop to thrash.
+            if let url = URL(string: normalized),
+               let host = url.host,
+               isLoopbackHost(host),
+               let port = url.port,
+               (port == 8787 || port == 8788) {
+                // Reset persisted bad value so future runs don't regress.
+                defaults.removeObject(forKey: stationBaseURLKey)
+            } else {
+                return normalized
+            }
         }
         let port = Int(env["SODS_PORT"] ?? "") ?? 9123
         return "http://127.0.0.1:\(port)"
@@ -29,20 +38,13 @@ enum StationEndpointResolver {
     static func loggerURL(baseURL: String? = nil, defaults: UserDefaults = .standard) -> String {
         let env = ProcessInfo.processInfo.environment
         let fallback = defaultLoggerChain(env: env)
-        if let fromEnv = firstNonEmpty(env["PI_LOGGER_URL"], env["SODS_LOGGER_URL"]),
+        if let fromEnv = firstNonEmpty(env["PI_LOGGER_URL"], env["PI_LOGGER"]),
            let normalized = sanitizeLoggerList(normalizeURLList(fromEnv)) {
             return normalized
         }
         if let saved = defaults.string(forKey: piLoggerURLKey),
            let normalized = sanitizeLoggerList(normalizeURLList(saved)) {
             return normalized
-        }
-        let station = baseURL ?? stationBaseURL(defaults: defaults)
-        if let stationURL = URL(string: station), let host = stationURL.host, !host.isEmpty {
-            if isLoopbackHost(host) {
-                return fallback
-            }
-            return "http://\(host):8088"
         }
         return fallback
     }
@@ -137,7 +139,7 @@ enum StationEndpointResolver {
                 }
                 guard let host = url.host, !host.isEmpty else { return false }
                 let port = url.port ?? (scheme == "https" ? 443 : 80)
-                return port == 9101 || port == 8088
+                return port == 9101
             }
         let unique = Array(NSOrderedSet(array: cleaned)) as? [String] ?? cleaned
         return unique.isEmpty ? nil : unique.joined(separator: ",")

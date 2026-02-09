@@ -46,9 +46,16 @@ Build:
 ./tools/devstation-build.sh
 ```
 
-Run (starts station if needed and launches the app):
+Run (starts Station backend if needed and launches the app):
 ```bash
 ./tools/devstation-run.sh
+```
+
+Run Station backend only (no UI):
+```bash
+./tools/station start
+./tools/station status
+./tools/station logs
 ```
 
 Install:
@@ -106,7 +113,7 @@ Examples:
 
 ## Dev Station App Flow
 
-- App connects to the local station at `http://localhost:9123`.
+- App connects to Station at `SODS_STATION_URL` (default `http://192.168.8.214:9123`).
 - If the station is not running, the app launches it as a child process.
 - Tools load from `/api/tools`.
 - Visualizer streams from `/ws/frames`.
@@ -209,6 +216,9 @@ Legacy aliases remain:
 
 Canonical CLI:
 - `tools/sods`
+
+Canonical Station backend entrypoint:
+- `tools/station`
 
 ## Environment Override
 

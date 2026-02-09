@@ -14,10 +14,10 @@ const env = process.env;
 const defaultPort = env.SODS_PORT || "9123";
 const auxHost = env.AUX_HOST || "192.168.8.114";
 const loggerHost = env.LOGGER_HOST || "192.168.8.160";
-const fallbackPiLoggerList = `http://${auxHost}:9101,http://pi-logger.local:8088,http://${loggerHost}:8088`;
-const defaultPiLoggerList = env.PI_LOGGER_URL || env.SODS_LOGGER_URL || env.PI_LOGGER || fallbackPiLoggerList;
+const fallbackPiLoggerList = `http://${auxHost}:9101`;
+const defaultPiLoggerList = env.PI_LOGGER_URL || env.PI_LOGGER || fallbackPiLoggerList;
 const defaultStationURL = (env.SODS_STATION_URL || env.SODS_BASE_URL || env.SODS_STATION || env.STATION_URL || `http://localhost:${defaultPort}`).replace(/\/+$/, "");
-const defaultLoggerURL = (env.SODS_LOGGER_URL || env.PI_LOGGER_URL || env.PI_LOGGER || `http://${loggerHost}:8088`).split(",")[0].trim().replace(/\/+$/, "");
+const defaultLoggerURL = (env.PI_LOGGER_URL || env.PI_LOGGER || defaultPiLoggerList).split(",")[0].trim().replace(/\/+$/, "");
 
 function getArg(flag: string, fallback?: string) {
   const idx = args.indexOf(flag);

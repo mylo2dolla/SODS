@@ -47,7 +47,8 @@ export class Ingestor {
 
   constructor(baseURL: string, limit = 500, pollIntervalMs = 1400) {
     this.baseURLs = buildBaseURLList(baseURL);
-    this.activeBaseURL = this.baseURLs[0] ?? "http://pi-logger.local:8088";
+    const auxHost = process.env.AUX_HOST || "192.168.8.114";
+    this.activeBaseURL = this.baseURLs[0] ?? `http://${auxHost}:9101`;
     this.limit = limit;
     this.pollIntervalMs = pollIntervalMs;
   }
@@ -249,10 +250,12 @@ export class Ingestor {
 }
 
 function buildBaseURLList(value: string): string[] {
-  const envList = process.env.PI_LOGGER_URL || process.env.SODS_LOGGER_URL || process.env.PI_LOGGER || "";
+  // IMPORTANT: Keep the pi-logger events feed separate from Vault ingest.
+  // Vault ingest (e.g. :8088/v1/ingest) is authoritative append-only storage, not an events API.
+  const envList = process.env.PI_LOGGER_URL || process.env.PI_LOGGER || "";
   const auxHost = process.env.AUX_HOST || "192.168.8.114";
-  const loggerHost = process.env.LOGGER_HOST || "192.168.8.160";
-  const raw = [value, envList, `http://${auxHost}:9101`, "http://pi-logger.local:8088", `http://${loggerHost}:8088`]
+  // Only include event-feed sources by default. Vault ingest (:8088) is not an events API and causes noisy 404s.
+  const raw = [value, envList, `http://${auxHost}:9101`]
     .join(",")
     .split(",")
     .map((s) => s.trim())

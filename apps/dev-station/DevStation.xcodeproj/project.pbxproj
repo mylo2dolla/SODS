@@ -43,6 +43,9 @@
 		A1A1A1A1A1A1A1A1A1A1A1C0 /* VaultTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1D0 /* VaultTransport.swift */; };
 		A1A1A1A1A1A1A1A1A1A1A1C1 /* BLEUUIDDisplay.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1D1 /* BLEUUIDDisplay.swift */; };
 		A1A1A1A1A1A1A1A1A1A1A1D2 /* PiAuxStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1D2 /* PiAuxStore.swift */; };
+		A7B6CDA11F5F4E0FA1D5D0A1 /* ControlPlaneStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7B6CDA11F5F4E0FA1D5D0A2 /* ControlPlaneStore.swift */; };
+		A7B6CDA11F5F4E0FA1D5D0A3 /* GodGatewayClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7B6CDA11F5F4E0FA1D5D0A4 /* GodGatewayClient.swift */; };
+		A7B6CDA11F5F4E0FA1D5D0A5 /* ActionRateLimiter.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7B6CDA11F5F4E0FA1D5D0A6 /* ActionRateLimiter.swift */; };
 		A1A1A1A1A1A1A1A1A1A1A1D3 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1D3 /* Theme.swift */; };
 		A1A1A1A1A1A1A1A1A1A1A1D4 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1D4 /* DashboardView.swift */; };
 		A1A1A1A1A1A1A1A1A1A1A1D5 /* VisualizerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1D5 /* VisualizerView.swift */; };
@@ -110,6 +113,9 @@
 		B1B1B1B1B1B1B1B1B1B1B1D0 /* VaultTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VaultTransport.swift; sourceTree = "<group>"; };
 		B1B1B1B1B1B1B1B1B1B1B1D1 /* BLEUUIDDisplay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BLEUUIDDisplay.swift; sourceTree = "<group>"; };
 		B1B1B1B1B1B1B1B1B1B1B1D2 /* PiAuxStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PiAuxStore.swift; sourceTree = "<group>"; };
+		B7B6CDA11F5F4E0FA1D5D0A2 /* ControlPlaneStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControlPlaneStore.swift; sourceTree = "<group>"; };
+		B7B6CDA11F5F4E0FA1D5D0A4 /* GodGatewayClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GodGatewayClient.swift; sourceTree = "<group>"; };
+		B7B6CDA11F5F4E0FA1D5D0A6 /* ActionRateLimiter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActionRateLimiter.swift; sourceTree = "<group>"; };
 		B1B1B1B1B1B1B1B1B1B1B1D3 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		B1B1B1B1B1B1B1B1B1B1B1D4 /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
 		B1B1B1B1B1B1B1B1B1B1B1D5 /* VisualizerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisualizerView.swift; sourceTree = "<group>"; };
@@ -201,6 +207,9 @@
 				B1B1B1B1B1B1B1B1B1B1B1C2 /* BLEProber.swift */,
 				B1B1B1B1B1B1B1B1B1B1B1C3 /* BLEMetadataStore.swift */,
 				B1B1B1B1B1B1B1B1B1B1B1D2 /* PiAuxStore.swift */,
+				B7B6CDA11F5F4E0FA1D5D0A2 /* ControlPlaneStore.swift */,
+				B7B6CDA11F5F4E0FA1D5D0A4 /* GodGatewayClient.swift */,
+				B7B6CDA11F5F4E0FA1D5D0A6 /* ActionRateLimiter.swift */,
 				B1B1B1B1B1B1B1B1B1B1B1C7 /* RTSPHardProbe.swift */,
 				B1B1B1B1B1B1B1B1B1B1B1C8 /* AppTruth.swift */,
 				B1B1B1B1B1B1B1B1B1B1B1C9 /* Payloads.swift */,
@@ -361,6 +370,9 @@
 				A1A1A1A1A1A1A1A1A1A1A1B1 /* BLEProber.swift in Sources */,
 				A1A1A1A1A1A1A1A1A1A1A1B2 /* BLEMetadataStore.swift in Sources */,
 				A1A1A1A1A1A1A1A1A1A1A1D2 /* PiAuxStore.swift in Sources */,
+				A7B6CDA11F5F4E0FA1D5D0A1 /* ControlPlaneStore.swift in Sources */,
+				A7B6CDA11F5F4E0FA1D5D0A3 /* GodGatewayClient.swift in Sources */,
+				A7B6CDA11F5F4E0FA1D5D0A5 /* ActionRateLimiter.swift in Sources */,
 				A1A1A1A1A1A1A1A1A1A1A1B7 /* RTSPHardProbe.swift in Sources */,
 				A1A1A1A1A1A1A1A1A1A1A1B8 /* AppTruth.swift in Sources */,
 				A1A1A1A1A1A1A1A1A1A1A1B9 /* Payloads.swift in Sources */,

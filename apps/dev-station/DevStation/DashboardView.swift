@@ -1,4 +1,6 @@
 import SwiftUI
+import Foundation
+import AppKit
 
 struct DashboardView: View {
     @ObservedObject var scanner: NetworkScanner
@@ -6,6 +8,7 @@ struct DashboardView: View {
     @ObservedObject var piAuxStore: PiAuxStore
     @ObservedObject var entityStore: EntityStore
     @ObservedObject var sodsStore: SODSStore
+    @ObservedObject var controlPlane: ControlPlaneStore
     @ObservedObject var vaultTransport: VaultTransport
     let connectingNodeIDs: Set<String>
     let inboxStatus: InboxStatus
@@ -33,6 +36,7 @@ struct DashboardView: View {
     @State private var showRF = true
     @State private var showGPS = true
     @State private var showStationOverlay = false
+    @State private var showControlPlaneOverlay = false
     @State private var showScanSystemsOverlay = false
     @State private var showScanSummaryOverlay = false
     @State private var showPiAuxOverlay = false
@@ -68,6 +72,25 @@ struct DashboardView: View {
                 .popover(isPresented: $showStationOverlay, arrowEdge: .bottom) {
                     dashboardPopover(title: "Station", onClose: { showStationOverlay = false }, sections: stationActionSections()) {
                         stationDetailView()
+                    }
+                }
+
+                statusCard(title: "Control Plane", onOpen: { showControlPlaneOverlay = true }) {
+                    statusLine("Vault", controlPlane.vault?.ok == true)
+                    statusLine("Token", controlPlane.token?.ok == true)
+                    statusLine("God Gateway", controlPlane.gateway?.ok == true)
+                    statusLine("Ops Feed", controlPlane.opsFeed?.ok == true)
+                    controlPlaneQuickActions()
+                    if let detail = firstControlPlaneDetail() {
+                        Text(detail)
+                            .font(.system(size: 11))
+                            .foregroundColor(Theme.textSecondary)
+                            .lineLimit(2)
+                    }
+                }
+                .popover(isPresented: $showControlPlaneOverlay, arrowEdge: .bottom) {
+                    dashboardPopover(title: "Control Plane", onClose: { showControlPlaneOverlay = false }, sections: []) {
+                        controlPlaneDetailView()
                     }
                 }
 
@@ -204,6 +227,7 @@ struct DashboardView: View {
                                 actions: dashboardActions(for: node),
                                 isScannerNode: isScannerNode,
                                 isConnecting: connectingNodeIDs.contains(node.id),
+                                stationBaseURL: sodsStore.baseURL,
                                 onRefresh: {
                                     NodeRegistry.shared.setConnecting(nodeID: node.id, connecting: true)
                                     sodsStore.connectNode(node.id)
@@ -227,8 +251,13 @@ struct DashboardView: View {
                     Toggle("RF", isOn: $showRF)
                     Toggle("GPS", isOn: $showGPS)
                     Spacer()
-                    Button("Open Nodes") { onOpenNodes() }
+                    Button { onOpenNodes() } label: {
+                        Image(systemName: "square.grid.2x2")
+                            .font(.system(size: 12, weight: .semibold))
+                    }
                         .buttonStyle(SecondaryActionButtonStyle())
+                        .help("Open Nodes")
+                        .accessibilityLabel(Text("Open Nodes"))
                 }
                 .font(.system(size: 11))
                 .toggleStyle(SwitchToggleStyle(tint: Theme.accent))
@@ -251,8 +280,13 @@ struct DashboardView: View {
                                     .font(.system(size: 10))
                                     .foregroundColor(Theme.textSecondary)
                                 Spacer()
-                                Button("Go to Nodes") { onOpenNodes() }
+                                Button { onOpenNodes() } label: {
+                                    Image(systemName: "arrow.right.circle")
+                                        .font(.system(size: 12, weight: .semibold))
+                                }
                                     .buttonStyle(SecondaryActionButtonStyle())
+                                    .help("Go to Nodes")
+                                    .accessibilityLabel(Text("Go to Nodes"))
                             }
                         }
                     }
@@ -274,8 +308,13 @@ struct DashboardView: View {
                     .font(.system(size: 13, weight: .semibold))
                 Spacer()
                 if let onOpen {
-                    Button("Details") { onOpen() }
+                    Button { onOpen() } label: {
+                        Image(systemName: "info.circle")
+                            .font(.system(size: 12, weight: .semibold))
+                    }
                         .buttonStyle(SecondaryActionButtonStyle())
+                        .help("Details")
+                        .accessibilityLabel(Text("Details"))
                 }
             }
             .contentShape(Rectangle())
@@ -312,8 +351,13 @@ struct DashboardView: View {
             }
             HStack {
                 Spacer()
-                Button("Close") { onClose() }
+                Button { onClose() } label: {
+                    Image(systemName: "xmark.circle")
+                        .font(.system(size: 12, weight: .semibold))
+                }
                     .buttonStyle(SecondaryActionButtonStyle())
+                    .help("Close")
+                    .accessibilityLabel(Text("Close"))
             }
         }
         .padding(12)
@@ -464,8 +508,13 @@ struct DashboardView: View {
                 Toggle("RF", isOn: $showRF)
                 Toggle("GPS", isOn: $showGPS)
                 Spacer()
-                Button("Open Nodes") { onOpenNodes() }
-                    .buttonStyle(SecondaryActionButtonStyle())
+                Button { onOpenNodes() } label: {
+                    Image(systemName: "square.grid.2x2")
+                        .font(.system(size: 12, weight: .semibold))
+                }
+                .buttonStyle(SecondaryActionButtonStyle())
+                .help("Open Nodes")
+                .accessibilityLabel(Text("Open Nodes"))
             }
             .font(.system(size: 11))
             .toggleStyle(SwitchToggleStyle(tint: Theme.accent))
@@ -489,8 +538,13 @@ struct DashboardView: View {
                                     .font(.system(size: 10))
                                     .foregroundColor(Theme.textSecondary)
                                 Spacer()
-                                Button("Go to Nodes") { onOpenNodes() }
-                                    .buttonStyle(SecondaryActionButtonStyle())
+                                Button { onOpenNodes() } label: {
+                                    Image(systemName: "arrow.right.circle")
+                                        .font(.system(size: 12, weight: .semibold))
+                                }
+                                .buttonStyle(SecondaryActionButtonStyle())
+                                .help("Go to Nodes")
+                                .accessibilityLabel(Text("Go to Nodes"))
                             }
                         }
                     }
@@ -521,7 +575,6 @@ struct DashboardView: View {
         let supportsBLEControl = node.type == .mac || node.capabilities.contains("ble")
         let supportsReport = node.type == .mac || node.capabilities.contains("report")
         let supportsProbe = node.capabilities.contains("probe")
-        let supportsPing = node.capabilities.contains("ping")
         let hostHint = nodeEndpointHint(for: node)
         let canRouteToNode = hostHint != nil
 
@@ -541,8 +594,8 @@ struct DashboardView: View {
                 }
             }))
         }
-        items.append(NodeAction(title: "Target + God Button", action: {
-            NotificationCenter.default.post(name: .openGodMenuCommand, object: node.id)
+        items.append(NodeAction(title: "Target Lock", action: {
+            NotificationCenter.default.post(name: .targetLockNodeCommand, object: node.id)
         }))
         if canRouteToNode {
             items.append(NodeAction(title: "Connect Node", action: {
@@ -561,11 +614,14 @@ struct DashboardView: View {
         }
         if supportsProbe {
             items.append(NodeAction(title: "Probe", action: {
-                LogStore.shared.log(.info, "Probe action requested for node \(node.id)")
+                // Keep this as a real action: ask Station to connect+identify (updates registry + errors).
+                if canRouteToNode {
+                    NodeRegistry.shared.setConnecting(nodeID: node.id, connecting: true)
+                    sodsStore.connectNode(node.id, hostHint: hostHint)
+                }
+                sodsStore.identifyNode(node.id, hostHint: hostHint)
+                sodsStore.refreshStatus()
             }))
-        }
-        if supportsPing {
-            items.append(NodeAction(title: "Ping", action: { piAuxStore.pingNode(node.id) }))
         }
         if supportsReport {
             items.append(NodeAction(title: "Generate Report", action: { onGenerateScanReport() }))
@@ -674,6 +730,172 @@ struct DashboardView: View {
             return true
         case .offline, .error:
             return false
+        }
+    }
+
+    private func firstControlPlaneDetail() -> String? {
+        let items: [ControlPlaneStore.CheckResult?] = [controlPlane.vault, controlPlane.token, controlPlane.gateway, controlPlane.opsFeed]
+        if let bad = items.compactMap({ $0 }).first(where: { $0.ok == false }) {
+            return "\(bad.label): \(bad.detail)"
+        }
+        if let good = items.compactMap({ $0 }).first(where: { $0.ok == true }) {
+            let stamp = good.checkedAt.formatted(date: .omitted, time: .shortened)
+            return "Last check: \(stamp)"
+        }
+        return nil
+    }
+
+    private func openURL(_ url: URL) {
+        NSWorkspace.shared.open(url)
+    }
+
+    private func controlPlaneQuickActions() -> some View {
+        let eps = controlPlane.endpoints()
+        let vaultOk = controlPlane.vault?.ok == true
+        let tokenOk = controlPlane.token?.ok == true
+        let gatewayOk = controlPlane.gateway?.ok == true
+        let opsOk = controlPlane.opsFeed?.ok == true
+
+        return HStack(spacing: 8) {
+            Button { controlPlane.refresh() } label: {
+                Image(systemName: "arrow.clockwise")
+                    .font(.system(size: 12, weight: .semibold))
+            }
+            .buttonStyle(SecondaryActionButtonStyle())
+            .help("Retry control plane checks")
+            .accessibilityLabel(Text("Retry control plane checks"))
+
+            Button { controlPlane.probeTokenOnce() } label: {
+                Image(systemName: "key.fill")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(tokenOk ? Theme.muted : Theme.accent)
+            }
+            .buttonStyle(SecondaryActionButtonStyle())
+            .help("Probe token server (POST /token)")
+            .accessibilityLabel(Text("Probe token server"))
+
+            Button { controlPlane.probeGatewayOnce() } label: {
+                Image(systemName: "bolt.fill")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(gatewayOk ? Theme.muted : Theme.accent)
+            }
+            .buttonStyle(SecondaryActionButtonStyle())
+            .help("Probe God Gateway (/god ritual.rollcall)")
+            .accessibilityLabel(Text("Probe God Gateway"))
+
+            Button { openURL(eps.vaultHealth) } label: {
+                Image(systemName: "archivebox")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(vaultOk ? Theme.muted : Theme.accent)
+            }
+            .buttonStyle(SecondaryActionButtonStyle())
+            .help("Open Vault health")
+            .accessibilityLabel(Text("Open Vault health"))
+
+            Button { openURL(eps.tokenEndpoint) } label: {
+                Image(systemName: "key")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(tokenOk ? Theme.muted : Theme.accent)
+            }
+            .buttonStyle(SecondaryActionButtonStyle())
+            .help("Open Token endpoint")
+            .accessibilityLabel(Text("Open Token endpoint"))
+
+            Button { openURL(eps.gatewayHealth) } label: {
+                Image(systemName: "bolt")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(gatewayOk ? Theme.muted : Theme.accent)
+            }
+            .buttonStyle(SecondaryActionButtonStyle())
+            .help("Open God Gateway health")
+            .accessibilityLabel(Text("Open God Gateway health"))
+
+            Button { openURL(eps.opsFeedHealth) } label: {
+                Image(systemName: "dot.radiowaves.left.and.right")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(opsOk ? Theme.muted : Theme.accent)
+            }
+            .buttonStyle(SecondaryActionButtonStyle())
+            .help("Open Ops Feed health")
+            .accessibilityLabel(Text("Open Ops Feed health"))
+
+            Spacer()
+        }
+        .padding(.top, 2)
+    }
+
+    private func controlPlaneDetailView() -> some View {
+        let eps = controlPlane.endpoints()
+        let items: [(label: String, result: ControlPlaneStore.CheckResult?, url: URL, icon: String)] = [
+            ("Vault", controlPlane.vault, eps.vaultHealth, "archivebox"),
+            ("Token", controlPlane.token, eps.tokenEndpoint, "key"),
+            ("God Gateway", controlPlane.gateway, eps.gatewayHealth, "bolt"),
+            ("Ops Feed", controlPlane.opsFeed, eps.opsFeedHealth, "dot.radiowaves.left.and.right"),
+        ]
+
+        return VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
+                Button { controlPlane.refresh() } label: {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.system(size: 12, weight: .semibold))
+                }
+                .buttonStyle(SecondaryActionButtonStyle())
+                .help("Retry")
+                .accessibilityLabel(Text("Retry"))
+
+                Spacer()
+            }
+
+            ForEach(Array(items.enumerated()), id: \.offset) { _, item in
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(spacing: 8) {
+                        Image(systemName: item.icon)
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(Theme.textSecondary)
+                        Text(item.label)
+                            .font(.system(size: 11, weight: .semibold))
+                        Spacer()
+                        Circle()
+                            .fill((item.result?.ok == true) ? Theme.accent : Theme.muted)
+                            .frame(width: 8, height: 8)
+                        Text((item.result?.ok == true) ? "On" : "Off")
+                            .font(.system(size: 11))
+                            .foregroundColor(Theme.textSecondary)
+                        Button { openURL(item.url) } label: {
+                            Image(systemName: "safari")
+                                .font(.system(size: 12, weight: .semibold))
+                        }
+                        .buttonStyle(SecondaryActionButtonStyle())
+                        .help("Open")
+                        .accessibilityLabel(Text("Open"))
+                    }
+
+                    Text(item.url.absoluteString)
+                        .font(.system(size: 10, design: .monospaced))
+                        .foregroundColor(Theme.muted)
+
+                    if let result = item.result {
+                        Text(result.detail)
+                            .font(.system(size: 11))
+                            .foregroundColor(Theme.textSecondary)
+                            .lineLimit(3)
+                        Text("Checked: \(result.checkedAt.formatted(date: .omitted, time: .shortened))")
+                            .font(.system(size: 10))
+                            .foregroundColor(Theme.muted)
+                    } else {
+                        Text("Not checked yet.")
+                            .font(.system(size: 11))
+                            .foregroundColor(Theme.textSecondary)
+                    }
+                }
+                .padding(10)
+                .background(Theme.panelAlt)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10)
+                        .stroke(Theme.border, lineWidth: 1)
+                )
+                .cornerRadius(10)
+            }
         }
     }
 }
