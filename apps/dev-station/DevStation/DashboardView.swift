@@ -2,6 +2,15 @@ import SwiftUI
 import Foundation
 import AppKit
 
+struct FleetTargetStatusRow: Identifiable, Hashable {
+    let name: String
+    let reachable: Bool
+    let ok: Bool
+    let detail: String
+
+    var id: String { name }
+}
+
 struct DashboardView: View {
     @ObservedObject var stationProcess: StationProcessManager
     @ObservedObject var scanner: NetworkScanner
@@ -22,6 +31,11 @@ struct DashboardView: View {
     let safeModeEnabled: Bool
     let onlyLocalSubnet: Bool
     let stackReconnectInFlight: Bool
+    let fullFleetReconnectInFlight: Bool
+    let fleetStatusOverall: String
+    let fleetStatusUpdatedAt: Date?
+    let fleetStatusDetail: String
+    let fleetTargetRows: [FleetTargetStatusRow]
     let onOpenNodes: () -> Void
     let onStartScan: () -> Void
     let onStopScan: () -> Void
@@ -31,6 +45,8 @@ struct DashboardView: View {
     let onReconnectControlPlane: () -> Void
     let onRestartRelay: () -> Void
     let onReconnectStack: () -> Void
+    let onReconnectFullFleet: () -> Void
+    let onRefreshFleetStatus: () -> Void
     let stationActionSections: () -> [ActionMenuSection]
     let scanActionSections: () -> [ActionMenuSection]
     let eventsActionSections: () -> [ActionMenuSection]
@@ -106,8 +122,9 @@ struct DashboardView: View {
                     statusLine("Pi-Aux Relay", piAuxStore.isRunning)
                     statusLine("Pi-Logger", sodsStore.loggerStatus?.ok == true)
                     statusLine("Control Plane", controlPlane.vault?.ok == true && controlPlane.token?.ok == true && controlPlane.gateway?.ok == true && controlPlane.opsFeed?.ok == true)
+                    statusLine("Fleet Auto-Heal", fleetStatusOverall.lowercased() == "ok")
                     stackQuickActions()
-                    if stackReconnectInFlight || stationProcess.isStarting {
+                    if stackReconnectInFlight || stationProcess.isStarting || fullFleetReconnectInFlight {
                         Text("Reconnecting stack...")
                             .font(.system(size: 11, weight: .semibold))
                             .foregroundColor(Theme.accent)
@@ -776,8 +793,11 @@ struct DashboardView: View {
     }
 
     private func firstStackIssueDetail() -> String? {
-        if stackReconnectInFlight || stationProcess.isStarting {
+        if stackReconnectInFlight || stationProcess.isStarting || fullFleetReconnectInFlight {
             return "Reconnect in progress."
+        }
+        if fleetStatusOverall.lowercased() != "ok" {
+            return "Fleet: \(fleetStatusDetail)"
         }
         if let error = stationProcess.lastStartError, !error.isEmpty {
             return "Station: \(error)"
@@ -796,7 +816,7 @@ struct DashboardView: View {
     }
 
     private func stackQuickActions() -> some View {
-        let busy = stackReconnectInFlight || stationProcess.isStarting
+        let busy = stackReconnectInFlight || stationProcess.isStarting || fullFleetReconnectInFlight
         return HStack(spacing: 8) {
             Button { onReconnectStack() } label: {
                 Image(systemName: "arrow.triangle.2.circlepath.circle.fill")
@@ -807,6 +827,23 @@ struct DashboardView: View {
             .help("Reconnect entire stack")
             .accessibilityLabel(Text("Reconnect entire stack"))
             .disabled(busy)
+
+            Button { onReconnectFullFleet() } label: {
+                Image(systemName: "network")
+                    .font(.system(size: 12, weight: .semibold))
+            }
+            .buttonStyle(SecondaryActionButtonStyle())
+            .help("Reconnect Full Fleet")
+            .accessibilityLabel(Text("Reconnect Full Fleet"))
+            .disabled(fullFleetReconnectInFlight)
+
+            Button { onRefreshFleetStatus() } label: {
+                Image(systemName: "doc.text.magnifyingglass")
+                    .font(.system(size: 12, weight: .semibold))
+            }
+            .buttonStyle(SecondaryActionButtonStyle())
+            .help("View Fleet Status")
+            .accessibilityLabel(Text("View Fleet Status"))
 
             Button { onReconnectStation() } label: {
                 Image(systemName: "dot.radiowaves.left.and.right")
@@ -845,6 +882,7 @@ struct DashboardView: View {
         let loggerOk = sodsStore.loggerStatus?.ok == true
         let relayOk = piAuxStore.isRunning
         let controlOk = controlPlane.vault?.ok == true && controlPlane.token?.ok == true && controlPlane.gateway?.ok == true && controlPlane.opsFeed?.ok == true
+        let fleetOk = fleetStatusOverall.lowercased() == "ok"
 
         let stationDetail: String = {
             if let error = stationProcess.lastStartError, !error.isEmpty { return error }
@@ -873,12 +911,30 @@ struct DashboardView: View {
         }()
 
         let controlDetail = firstControlPlaneDetail() ?? "No control plane checks yet."
+        let fleetDetail: String = {
+            if let updatedAt = fleetStatusUpdatedAt {
+                return "\(fleetStatusDetail) • Updated \(updatedAt.formatted(date: .omitted, time: .shortened))"
+            }
+            return fleetStatusDetail
+        }()
 
         return VStack(alignment: .leading, spacing: 10) {
             stackServiceRow(label: "Station", ok: stationOk, detail: stationDetail)
             stackServiceRow(label: "Pi-Logger", ok: loggerOk, detail: loggerDetail)
             stackServiceRow(label: "Pi-Aux Relay", ok: relayOk, detail: relayDetail)
             stackServiceRow(label: "Control Plane", ok: controlOk, detail: controlDetail)
+            stackServiceRow(label: "Fleet Auto-Heal", ok: fleetOk, detail: fleetDetail)
+
+            if !fleetTargetRows.isEmpty {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Fleet Targets")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundColor(Theme.textSecondary)
+                    ForEach(fleetTargetRows) { target in
+                        fleetTargetRow(target)
+                    }
+                }
+            }
 
             if let attempt = stationProcess.lastStartAttempt {
                 Text("Last station start attempt: \(attempt.formatted(date: .omitted, time: .shortened))")
@@ -887,6 +943,26 @@ struct DashboardView: View {
             }
 
             stackQuickActions()
+        }
+    }
+
+    private func fleetTargetRow(_ target: FleetTargetStatusRow) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            HStack(spacing: 8) {
+                Circle()
+                    .fill(target.ok ? Theme.accent : Theme.muted)
+                    .frame(width: 7, height: 7)
+                Text(target.name)
+                    .font(.system(size: 10, weight: .semibold))
+                Spacer()
+                Text(target.reachable ? "reachable" : "unreachable")
+                    .font(.system(size: 10))
+                    .foregroundColor(Theme.muted)
+            }
+            Text(target.detail)
+                .font(.system(size: 10))
+                .foregroundColor(Theme.textSecondary)
+                .lineLimit(2)
         }
     }
 

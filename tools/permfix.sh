@@ -26,6 +26,8 @@ targets=(
   "$TOOLS_DIR/devstation-package.sh"
   "$TOOLS_DIR/devstation-rebuild.sh"
   "$TOOLS_DIR/launcher-up.sh"
+  "$TOOLS_DIR/control-plane-up.sh"
+  "$TOOLS_DIR/control-plane-status.sh"
   "$TOOLS_DIR/install-devstation-launcher.sh"
   "$TOOLS_DIR/cleanup-old-devstation-assets.sh"
   "$TOOLS_DIR/audit-tools.sh"

@@ -23,6 +23,19 @@ if [[ -x "$REPO_ROOT/tools/cleanup-old-devstation-assets.sh" ]]; then
   "$REPO_ROOT/tools/cleanup-old-devstation-assets.sh"
 fi
 
+REQUIRED_SCRIPTS=(
+  "$REPO_ROOT/tools/launcher-up.sh"
+  "$REPO_ROOT/tools/control-plane-up.sh"
+  "$REPO_ROOT/tools/control-plane-status.sh"
+)
+for script_path in "${REQUIRED_SCRIPTS[@]}"; do
+  if [[ ! -f "$script_path" ]]; then
+    echo "missing required script: $script_path" >&2
+    exit 2
+  fi
+  chmod +x "$script_path"
+done
+
 TMP_DIR="$(mktemp -d)"
 trap 'rm -rf "$TMP_DIR"' EXIT
 
@@ -72,3 +85,4 @@ fi
 echo "Installed launcher: $APP_PATH"
 echo "Desktop shortcuts: $SHORTCUT_DIR"
 echo "Pin $APP_PATH in the Dock to start the full Dev Station stack."
+echo "Launcher now runs full-fleet auto-heal with timeout before opening Dev Station."
