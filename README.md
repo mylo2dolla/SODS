@@ -10,6 +10,9 @@ SODS is the spine: it ingests pi-logger events, normalizes into canonical events
 - `tools` (repo-wide scripts + compatibility shims)
 - `docs` (progress + architecture)
 
+Operational requirements:
+- `docs/devstation-stack-requirements.md`
+
 ## Build/Run
 
 **Spine + CLI**
@@ -62,6 +65,32 @@ Install:
 ```bash
 ./tools/devstation-install.sh
 ```
+
+Package + launcher (build app, install app, install one-click stack launcher):
+```bash
+./tools/devstation-package.sh
+```
+
+Install launcher only (includes cleanup of old launcher artifacts and creates Desktop aliases):
+```bash
+./tools/install-devstation-launcher.sh
+```
+
+Start the full local stack from the launcher script (Station bootstrap + control-plane probes + app launch):
+```bash
+./tools/launcher-up.sh
+```
+
+Clean old launcher/app artifacts:
+```bash
+./tools/cleanup-old-devstation-assets.sh
+```
+
+The Dashboard now includes a **Stack Status** panel with reconnect actions:
+- Reconnect Station
+- Restart Pi-Aux relay
+- Reconnect control-plane checks
+- Reconnect entire stack
 
 **Ops Portal (CYD)**
 ```bash

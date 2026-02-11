@@ -182,6 +182,7 @@ struct ContentView: View {
     @StateObject private var aliasStore = SODSStore.shared
     @StateObject private var nodeRegistry = NodeRegistry.shared
     @StateObject private var controlPlaneStore = ControlPlaneStore.shared
+    @StateObject private var stationProcessManager = StationProcessManager.shared
     @AppStorage("consentAcknowledged") private var consentAcknowledged = false
     @AppStorage("bleFindFingerprintID") private var bleFindFingerprintID = ""
 
@@ -236,6 +237,8 @@ struct ContentView: View {
     @State private var flashLifecycleStage: DeviceLifecycleStage?
     @State private var flashLifecycleTarget: FlashTarget?
     @State private var flashLifecycleNodeID: String?
+    @State private var didBootstrapStack = false
+    @State private var stackReconnectInFlight = false
     @AppStorage("TargetLockNodeID") private var targetLockNodeID: String = ""
     @StateObject private var rateLimiter = ActionRateLimiter.shared
 
@@ -502,9 +505,8 @@ struct ContentView: View {
                 if flashManager.prepStatus.isReady, flashLifecycleStage == nil {
                     flashLifecycleStage = .staged
                 }
-                StationProcessManager.shared.ensureRunning(baseURL: sodsStore.baseURL)
+                bootstrapStackOnLaunchIfNeeded()
                 kickoffRoundupIfRequested()
-                controlPlaneStore.refresh()
                 Task.detached {
                     await ArtifactStore.shared.runCleanup(log: logStore)
                 }
@@ -825,6 +827,7 @@ struct ContentView: View {
     private var contentSection: some View {
         if viewMode == .dashboard {
                     DashboardView(
+                        stationProcess: stationProcessManager,
                         scanner: scanner,
                         bleScanner: bleScanner,
                         piAuxStore: piAuxStore,
@@ -842,6 +845,7 @@ struct ContentView: View {
                 bleDiscoveryEnabled: bleScanner.isScanning,
                 safeModeEnabled: scanner.safeModeEnabled,
                 onlyLocalSubnet: onlyLocalSubnet,
+                stackReconnectInFlight: stackReconnectInFlight,
                 onOpenNodes: {
                     viewMode = .nodes
                 },
@@ -859,6 +863,18 @@ struct ContentView: View {
                 },
                 onStartStation: {
                     startStationFromDashboard()
+                },
+                onReconnectStation: {
+                    reconnectStationFromDashboard()
+                },
+                onReconnectControlPlane: {
+                    reconnectControlPlaneFromDashboard()
+                },
+                onRestartRelay: {
+                    restartPiAuxRelayFromDashboard()
+                },
+                onReconnectStack: {
+                    reconnectEntireStackFromDashboard()
                 },
                 stationActionSections: { dashboardStationSections() },
                 scanActionSections: { dashboardScanSections() },
@@ -2364,7 +2380,7 @@ struct ContentView: View {
         let base = sodsStore.baseURL.trimmingCharacters(in: .whitespacesAndNewlines)
         let target = flashTarget(from: path)
         markFlashStarted(target: target)
-        StationProcessManager.shared.ensureRunning(baseURL: base)
+        stationProcessManager.ensureRunning(baseURL: base)
         Task {
             if await waitForStation(baseURL: base, timeout: 6.0) {
                 if let url = URL(string: base + path) {
@@ -2420,7 +2436,7 @@ struct ContentView: View {
 
     private func startStationFromDashboard() {
         let base = sodsStore.baseURL.trimmingCharacters(in: .whitespacesAndNewlines)
-        StationProcessManager.shared.ensureRunning(baseURL: base)
+        stationProcessManager.ensureRunning(baseURL: base)
         Task {
             let ready = await waitForStation(baseURL: base, timeout: 10.0)
             await MainActor.run {
@@ -2432,6 +2448,95 @@ struct ContentView: View {
                 } else {
                     showBaseURLToast("Station start attempted. Verify SODS root and port 9123.")
                     logStore.log(.warn, "Dashboard start station timed out at \(base)")
+                }
+            }
+        }
+    }
+
+    private func bootstrapStackOnLaunchIfNeeded() {
+        guard !didBootstrapStack else { return }
+        didBootstrapStack = true
+
+        let base = sodsStore.baseURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        stationProcessManager.ensureRunning(baseURL: base)
+        if !piAuxStore.isRunning {
+            piAuxStore.start()
+        }
+        piAuxStore.refreshLocalNodeHeartbeat()
+        controlPlaneStore.refresh()
+
+        Task {
+            let ready = await waitForStation(baseURL: base, timeout: 8.0)
+            await MainActor.run {
+                if ready {
+                    sodsStore.connect()
+                    sodsStore.refreshStatus()
+                }
+                controlPlaneStore.refresh()
+            }
+        }
+    }
+
+    private func reconnectStationFromDashboard() {
+        let base = sodsStore.baseURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        stationProcessManager.reconnect(baseURL: base)
+        Task {
+            let ready = await waitForStation(baseURL: base, timeout: 10.0)
+            await MainActor.run {
+                sodsStore.connect()
+                sodsStore.refreshStatus()
+                if ready {
+                    showBaseURLToast("Station reconnected.")
+                    logStore.log(.info, "Dashboard reconnect station succeeded at \(base)")
+                } else {
+                    showBaseURLToast("Station reconnect timed out.")
+                    logStore.log(.warn, "Dashboard reconnect station timed out at \(base)")
+                }
+            }
+        }
+    }
+
+    private func reconnectControlPlaneFromDashboard() {
+        controlPlaneStore.refresh()
+        controlPlaneStore.probeTokenOnce()
+        controlPlaneStore.probeGatewayOnce()
+        showBaseURLToast("Control plane checks refreshed.")
+        logStore.log(.info, "Dashboard requested control-plane reconnect probes")
+    }
+
+    private func restartPiAuxRelayFromDashboard() {
+        piAuxStore.start()
+        piAuxStore.refreshLocalNodeHeartbeat()
+        showBaseURLToast("Pi-Aux relay restarted.")
+        logStore.log(.info, "Dashboard restarted Pi-Aux relay")
+    }
+
+    private func reconnectEntireStackFromDashboard() {
+        guard !stackReconnectInFlight else { return }
+        stackReconnectInFlight = true
+        showBaseURLToast("Reconnecting stack...")
+
+        let base = sodsStore.baseURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        stationProcessManager.reconnect(baseURL: base)
+        piAuxStore.start()
+        piAuxStore.refreshLocalNodeHeartbeat()
+        controlPlaneStore.refresh()
+        controlPlaneStore.probeTokenOnce()
+        controlPlaneStore.probeGatewayOnce()
+
+        Task {
+            let stationReady = await waitForStation(baseURL: base, timeout: 12.0)
+            await MainActor.run {
+                sodsStore.connect()
+                sodsStore.refreshStatus()
+                controlPlaneStore.refresh()
+                stackReconnectInFlight = false
+                if stationReady {
+                    showBaseURLToast("Stack reconnected.")
+                    logStore.log(.info, "Dashboard full stack reconnect succeeded at \(base)")
+                } else {
+                    showBaseURLToast("Stack reconnect finished with station still offline.")
+                    logStore.log(.warn, "Dashboard full stack reconnect timed out at \(base)")
                 }
             }
         }
