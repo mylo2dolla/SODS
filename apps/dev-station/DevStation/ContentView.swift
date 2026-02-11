@@ -182,6 +182,7 @@ struct ContentView: View {
     @StateObject private var aliasStore = SODSStore.shared
     @StateObject private var nodeRegistry = NodeRegistry.shared
     @StateObject private var controlPlaneStore = ControlPlaneStore.shared
+    @StateObject private var stationProcessManager = StationProcessManager.shared
     @AppStorage("consentAcknowledged") private var consentAcknowledged = false
     @AppStorage("bleFindFingerprintID") private var bleFindFingerprintID = ""
 
@@ -236,6 +237,13 @@ struct ContentView: View {
     @State private var flashLifecycleStage: DeviceLifecycleStage?
     @State private var flashLifecycleTarget: FlashTarget?
     @State private var flashLifecycleNodeID: String?
+    @State private var didBootstrapStack = false
+    @State private var stackReconnectInFlight = false
+    @State private var fullFleetReconnectInFlight = false
+    @State private var fleetStatusOverall = "offline"
+    @State private var fleetStatusUpdatedAt: Date?
+    @State private var fleetStatusDetail = "No fleet status yet."
+    @State private var fleetTargetRows: [FleetTargetStatusRow] = []
     @AppStorage("TargetLockNodeID") private var targetLockNodeID: String = ""
     @StateObject private var rateLimiter = ActionRateLimiter.shared
 
@@ -502,9 +510,8 @@ struct ContentView: View {
                 if flashManager.prepStatus.isReady, flashLifecycleStage == nil {
                     flashLifecycleStage = .staged
                 }
-                StationProcessManager.shared.ensureRunning(baseURL: sodsStore.baseURL)
+                bootstrapStackOnLaunchIfNeeded()
                 kickoffRoundupIfRequested()
-                controlPlaneStore.refresh()
                 Task.detached {
                     await ArtifactStore.shared.runCleanup(log: logStore)
                 }
@@ -825,6 +832,7 @@ struct ContentView: View {
     private var contentSection: some View {
         if viewMode == .dashboard {
                     DashboardView(
+                        stationProcess: stationProcessManager,
                         scanner: scanner,
                         bleScanner: bleScanner,
                         piAuxStore: piAuxStore,
@@ -842,6 +850,12 @@ struct ContentView: View {
                 bleDiscoveryEnabled: bleScanner.isScanning,
                 safeModeEnabled: scanner.safeModeEnabled,
                 onlyLocalSubnet: onlyLocalSubnet,
+                stackReconnectInFlight: stackReconnectInFlight,
+                fullFleetReconnectInFlight: fullFleetReconnectInFlight,
+                fleetStatusOverall: fleetStatusOverall,
+                fleetStatusUpdatedAt: fleetStatusUpdatedAt,
+                fleetStatusDetail: fleetStatusDetail,
+                fleetTargetRows: fleetTargetRows,
                 onOpenNodes: {
                     viewMode = .nodes
                 },
@@ -859,6 +873,24 @@ struct ContentView: View {
                 },
                 onStartStation: {
                     startStationFromDashboard()
+                },
+                onReconnectStation: {
+                    reconnectStationFromDashboard()
+                },
+                onReconnectControlPlane: {
+                    reconnectControlPlaneFromDashboard()
+                },
+                onRestartRelay: {
+                    restartPiAuxRelayFromDashboard()
+                },
+                onReconnectStack: {
+                    reconnectEntireStackFromDashboard()
+                },
+                onReconnectFullFleet: {
+                    reconnectFullFleetFromDashboard()
+                },
+                onRefreshFleetStatus: {
+                    refreshFleetStatusFromDashboard()
                 },
                 stationActionSections: { dashboardStationSections() },
                 scanActionSections: { dashboardScanSections() },
@@ -2364,7 +2396,7 @@ struct ContentView: View {
         let base = sodsStore.baseURL.trimmingCharacters(in: .whitespacesAndNewlines)
         let target = flashTarget(from: path)
         markFlashStarted(target: target)
-        StationProcessManager.shared.ensureRunning(baseURL: base)
+        stationProcessManager.ensureRunning(baseURL: base)
         Task {
             if await waitForStation(baseURL: base, timeout: 6.0) {
                 if let url = URL(string: base + path) {
@@ -2420,7 +2452,7 @@ struct ContentView: View {
 
     private func startStationFromDashboard() {
         let base = sodsStore.baseURL.trimmingCharacters(in: .whitespacesAndNewlines)
-        StationProcessManager.shared.ensureRunning(baseURL: base)
+        stationProcessManager.ensureRunning(baseURL: base)
         Task {
             let ready = await waitForStation(baseURL: base, timeout: 10.0)
             await MainActor.run {
@@ -2432,6 +2464,220 @@ struct ContentView: View {
                 } else {
                     showBaseURLToast("Station start attempted. Verify SODS root and port 9123.")
                     logStore.log(.warn, "Dashboard start station timed out at \(base)")
+                }
+            }
+        }
+    }
+
+    private func bootstrapStackOnLaunchIfNeeded() {
+        guard !didBootstrapStack else { return }
+        didBootstrapStack = true
+
+        let base = sodsStore.baseURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        stationProcessManager.ensureRunning(baseURL: base)
+        if !piAuxStore.isRunning {
+            piAuxStore.start()
+        }
+        piAuxStore.refreshLocalNodeHeartbeat()
+        controlPlaneStore.refresh()
+        refreshFleetStatusFromDisk()
+
+        Task {
+            let ready = await waitForStation(baseURL: base, timeout: 8.0)
+            await MainActor.run {
+                if ready {
+                    sodsStore.connect()
+                    sodsStore.refreshStatus()
+                }
+                controlPlaneStore.refresh()
+                refreshFleetStatusFromDisk()
+            }
+        }
+    }
+
+    private func reconnectStationFromDashboard() {
+        let base = sodsStore.baseURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        stationProcessManager.reconnect(baseURL: base)
+        Task {
+            let ready = await waitForStation(baseURL: base, timeout: 10.0)
+            await MainActor.run {
+                sodsStore.connect()
+                sodsStore.refreshStatus()
+                if ready {
+                    showBaseURLToast("Station reconnected.")
+                    logStore.log(.info, "Dashboard reconnect station succeeded at \(base)")
+                } else {
+                    showBaseURLToast("Station reconnect timed out.")
+                    logStore.log(.warn, "Dashboard reconnect station timed out at \(base)")
+                }
+            }
+        }
+    }
+
+    private func reconnectControlPlaneFromDashboard() {
+        controlPlaneStore.refresh()
+        controlPlaneStore.probeTokenOnce()
+        controlPlaneStore.probeGatewayOnce()
+        showBaseURLToast("Control plane checks refreshed.")
+        logStore.log(.info, "Dashboard requested control-plane reconnect probes")
+    }
+
+    private func restartPiAuxRelayFromDashboard() {
+        piAuxStore.start()
+        piAuxStore.refreshLocalNodeHeartbeat()
+        showBaseURLToast("Pi-Aux relay restarted.")
+        logStore.log(.info, "Dashboard restarted Pi-Aux relay")
+    }
+
+    private func reconnectEntireStackFromDashboard() {
+        guard !stackReconnectInFlight else { return }
+        stackReconnectInFlight = true
+        showBaseURLToast("Reconnecting stack...")
+
+        let base = sodsStore.baseURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        stationProcessManager.reconnect(baseURL: base)
+        piAuxStore.start()
+        piAuxStore.refreshLocalNodeHeartbeat()
+        controlPlaneStore.refresh()
+        controlPlaneStore.probeTokenOnce()
+        controlPlaneStore.probeGatewayOnce()
+
+        Task {
+            let stationReady = await waitForStation(baseURL: base, timeout: 12.0)
+            await MainActor.run {
+                sodsStore.connect()
+                sodsStore.refreshStatus()
+                controlPlaneStore.refresh()
+                stackReconnectInFlight = false
+                refreshFleetStatusFromDisk()
+                if stationReady {
+                    showBaseURLToast("Stack reconnected.")
+                    logStore.log(.info, "Dashboard full stack reconnect succeeded at \(base)")
+                } else {
+                    showBaseURLToast("Stack reconnect finished with station still offline.")
+                    logStore.log(.warn, "Dashboard full stack reconnect timed out at \(base)")
+                }
+            }
+        }
+    }
+
+    private func fleetStatusFileURL() -> URL {
+        FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Library/Logs/SODS/control-plane-status.json")
+    }
+
+    private func refreshFleetStatusFromDashboard() {
+        refreshFleetStatusFromDisk()
+        let summary = "Fleet status: \(fleetStatusOverall)"
+        showBaseURLToast(summary)
+        logStore.log(.info, summary)
+    }
+
+    private func refreshFleetStatusFromDisk() {
+        let url = fleetStatusFileURL()
+        guard let data = try? Data(contentsOf: url),
+              let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            fleetStatusOverall = "offline"
+            fleetStatusUpdatedAt = nil
+            fleetStatusDetail = "No fleet status file. Run full fleet reconnect."
+            fleetTargetRows = []
+            return
+        }
+
+        let overall = (obj["overall"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() ?? "offline"
+        fleetStatusOverall = overall.isEmpty ? "offline" : overall
+
+        if let ts = obj["ts"] as? String, !ts.isEmpty {
+            fleetStatusUpdatedAt = ISO8601DateFormatter().date(from: ts)
+        } else {
+            fleetStatusUpdatedAt = nil
+        }
+
+        let targets = (obj["targets"] as? [[String: Any]]) ?? []
+        var rows: [FleetTargetStatusRow] = []
+        rows.reserveCapacity(targets.count)
+        var failedTargets = 0
+        for item in targets {
+            let name = (item["name"] as? String) ?? "unknown"
+            let reachable = (item["reachable"] as? Bool) ?? false
+            let ok = (item["ok"] as? Bool) ?? false
+            let services = (item["services"] as? [[String: Any]]) ?? []
+            let failedChecks = services.filter { (($0["ok"] as? Bool) ?? false) == false }.count
+            let actions = (item["actions"] as? [String]) ?? []
+            let lastAction = actions.last ?? ""
+            var detail = reachable ? "reachable" : "unreachable"
+            if failedChecks > 0 {
+                detail = "\(failedChecks) failed checks"
+            } else if ok {
+                detail = "all checks passed"
+            }
+            if !lastAction.isEmpty {
+                detail += " • \(lastAction)"
+            }
+            rows.append(FleetTargetStatusRow(name: name, reachable: reachable, ok: ok, detail: detail))
+            if !ok {
+                failedTargets += 1
+            }
+        }
+
+        fleetTargetRows = rows.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        if rows.isEmpty {
+            fleetStatusDetail = "No target entries in fleet status."
+        } else if failedTargets == 0 {
+            fleetStatusDetail = "All fleet targets healthy."
+        } else {
+            fleetStatusDetail = "\(failedTargets) fleet targets degraded."
+        }
+    }
+
+    private func reconnectFullFleetFromDashboard() {
+        guard !fullFleetReconnectInFlight else { return }
+        fullFleetReconnectInFlight = true
+        showBaseURLToast("Running full fleet reconnect...")
+        refreshFleetStatusFromDisk()
+
+        let root = StoragePaths.sodsRootPath()
+        let scriptPath = "\(root)/tools/control-plane-up.sh"
+        guard FileManager.default.isExecutableFile(atPath: scriptPath) else {
+            fullFleetReconnectInFlight = false
+            showBaseURLToast("Missing script: tools/control-plane-up.sh")
+            logStore.log(.error, "Full fleet reconnect script missing at \(scriptPath)")
+            return
+        }
+
+        DispatchQueue.global(qos: .userInitiated).async { [scriptPath] in
+            let process = Process()
+            process.executableURL = URL(fileURLWithPath: "/bin/zsh")
+            process.arguments = ["-lc", "\"\(scriptPath)\""]
+
+            do {
+                try process.run()
+            } catch {
+                DispatchQueue.main.async {
+                    self.fullFleetReconnectInFlight = false
+                    self.showBaseURLToast("Fleet reconnect failed to start.")
+                    self.logStore.log(.error, "Fleet reconnect start failed: \(error.localizedDescription)")
+                }
+                return
+            }
+
+            while process.isRunning {
+                Thread.sleep(forTimeInterval: 1.0)
+                DispatchQueue.main.async {
+                    self.refreshFleetStatusFromDisk()
+                }
+            }
+            process.waitUntilExit()
+
+            DispatchQueue.main.async {
+                self.fullFleetReconnectInFlight = false
+                self.refreshFleetStatusFromDisk()
+                if process.terminationStatus == 0 && self.fleetStatusOverall == "ok" {
+                    self.showBaseURLToast("Full fleet reconnect complete.")
+                    self.logStore.log(.info, "Full fleet reconnect succeeded.")
+                } else {
+                    self.showBaseURLToast("Full fleet reconnect completed with degraded status.")
+                    self.logStore.log(.warn, "Full fleet reconnect finished with status=\(self.fleetStatusOverall), exit=\(process.terminationStatus)")
                 }
             }
         }
