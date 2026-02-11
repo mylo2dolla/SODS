@@ -1,16 +1,32 @@
 {
   "name": "SODS P4 God Button",
-  "version": "0.1.0",
+  "version": "devstation",
   "chipFamily": "ESP32-P4",
   "new_install_prompt_erase": true,
   "builds": [
     {
       "chipFamily": "ESP32-P4",
       "parts": [
-        { "path": "firmware/p4/bootloader.bin", "offset": 4096 },
-        { "path": "firmware/p4/partitions.bin", "offset": 32768 },
-        { "path": "firmware/p4/firmware.bin", "offset": 65536 }
+        {
+          "path": "firmware/waveshare-esp32p4/devstation/bootloader.bin",
+          "offset": 4096
+        },
+        {
+          "path": "firmware/waveshare-esp32p4/devstation/partition-table.bin",
+          "offset": 32768
+        },
+        {
+          "path": "firmware/waveshare-esp32p4/devstation/firmware.bin",
+          "offset": 65536
+        }
       ]
     }
-  ]
+  ],
+  "metadata": {
+    "app": "sods-p4-godbutton",
+    "board_id": "waveshare-esp32p4",
+    "buildinfo_path": "firmware/waveshare-esp32p4/devstation/buildinfo.json",
+    "sha256sums_path": "firmware/waveshare-esp32p4/devstation/sha256sums.txt",
+    "generated_ts_ms": 1770618351233
+  }
 }

@@ -3,6 +3,7 @@ import SwiftUI
 struct PresetButtonsView: View {
     @ObservedObject var registry: PresetRegistry
     let onRunPreset: (PresetDefinition) -> Void
+    let onOpenRunner: (PresetDefinition) -> Void
     let onOpenBuilder: () -> Void
     @State private var searchText = ""
 
@@ -12,8 +13,13 @@ struct PresetButtonsView: View {
                 Text("Buttons")
                     .font(.system(size: 16, weight: .semibold))
                 Spacer()
-                Button("New Preset") { onOpenBuilder() }
+                Button { onOpenBuilder() } label: {
+                    Image(systemName: "plus.circle")
+                        .font(.system(size: 12, weight: .semibold))
+                }
                     .buttonStyle(PrimaryActionButtonStyle())
+                    .help("New Preset")
+                    .accessibilityLabel(Text("New Preset"))
             }
 
             TextField("Search presets", text: $searchText)
@@ -53,6 +59,11 @@ struct PresetButtonsView: View {
                                     .stroke(Theme.border, lineWidth: 1)
                             )
                             .shadow(color: Theme.accent.opacity(0.2), radius: 6, x: 0, y: 3)
+                        }
+                        .contextMenu {
+                            Button { onOpenRunner(preset) } label: {
+                                Label("Open Runner", systemImage: "play.circle")
+                            }
                         }
                         .buttonStyle(.plain)
                     }

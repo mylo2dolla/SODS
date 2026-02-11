@@ -1,8 +1,10 @@
 #include "scan_wifi.h"
 #include "event_emit.h"
 #include "time_sync.h"
-#include "esp_wifi.h"
 #include "esp_log.h"
+#if defined(CONFIG_ESP_WIFI_ENABLED) && CONFIG_ESP_WIFI_ENABLED
+#include "esp_wifi.h"
+#endif
 #include <string.h>
 
 static const char *TAG = "scan_wifi";
@@ -18,6 +20,7 @@ void scan_wifi_init(wifi_scan_state_t *state) {
 bool scan_wifi_run(wifi_scan_state_t *state) {
   if (!state) return false;
   if (!g_state) g_state = state;
+#if defined(CONFIG_ESP_WIFI_ENABLED) && CONFIG_ESP_WIFI_ENABLED
   wifi_scan_config_t cfg = {
     .ssid = NULL,
     .bssid = NULL,
@@ -74,6 +77,10 @@ bool scan_wifi_run(wifi_scan_state_t *state) {
   state->last_count = ap_count;
   event_emit_line("wifi", "scan.summary", "{\"ok\":true}");
   return true;
+#else
+  event_emit_line("wifi", "scan.summary", "{\"ok\":false,\"error\":\"wifi_disabled\"}");
+  return false;
+#endif
 }
 
 const wifi_scan_state_t *scan_wifi_state(void) {

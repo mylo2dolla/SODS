@@ -1,0 +1,12 @@
+{
+  "node_id": "exec-mac-2",
+  "roles": ["control", "observer"],
+  "capabilities": {
+    "panic": { "enabled": true, "scopes": ["all", "node"] },
+    "snapshot": { "enabled": true, "scopes": ["all", "node"] },
+    "maint": { "enabled": false },
+    "scan": { "enabled": false },
+    "build": { "enabled": false },
+    "ritual": { "enabled": true, "scopes": ["all"] }
+  }
+}

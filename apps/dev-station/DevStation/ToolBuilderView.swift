@@ -75,9 +75,25 @@ struct ToolBuilderView: View {
                     .foregroundColor(.red)
             }
 
-            Button(isSaving ? "Saving..." : "Save Tool") { saveTool() }
+            HStack(spacing: 10) {
+                Text("Save Tool")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                Spacer()
+                Button { saveTool() } label: {
+                    if isSaving {
+                        ProgressView()
+                            .controlSize(.small)
+                    } else {
+                        Image(systemName: "square.and.arrow.down")
+                            .font(.system(size: 12, weight: .semibold))
+                    }
+                }
                 .buttonStyle(PrimaryActionButtonStyle())
                 .disabled(isSaving)
+                .help(isSaving ? "Saving..." : "Save Tool")
+                .accessibilityLabel(Text(isSaving ? "Saving..." : "Save Tool"))
+            }
         }
         .padding(16)
         .frame(minWidth: 720, minHeight: 520)

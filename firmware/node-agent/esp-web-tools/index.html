@@ -87,21 +87,77 @@
           status.className = "status " + (ok ? "ok" : "err");
           if (!ok) button.classList.add("disabled");
         };
+        const checkDiagnostics = async (targetId) => {
+          const rsp = await fetch("/api/flash/diagnostics", { cache: "no-store" });
+          if (!rsp.ok) throw new Error("diagnostics unavailable");
+          const payload = await rsp.json();
+          const item = Array.isArray(payload.items) ? payload.items.find((entry) => entry.id === targetId) : null;
+          if (!item) throw new Error("target diagnostics missing");
+          if (!item.ready) {
+            const issue = Array.isArray(item.issues) && item.issues.length ? item.issues[0] : "artifacts not ready";
+            throw new Error(issue);
+          }
+        };
 
         const params = new URLSearchParams(window.location.search);
-        const chipParam = (params.get("chip") || "").toLowerCase();
-        const isC3 = chipParam === "esp32c3";
-        const isEsp32 = chipParam === "" || chipParam === "esp32";
-        const manifestName = isC3 ? "manifest-esp32c3.json" : "manifest.json";
-        chipLabel.textContent = isC3 ? "chip: ESP32-C3" : "chip: ESP32";
-        profileLabel.textContent = isC3 ? "profile: esp32c3" : "profile: esp32dev";
-        if (!isC3 && !isEsp32) {
-          setStatus("Unknown chip. Use ?chip=esp32 or ?chip=esp32c3.", false);
+        const chipParam = (params.get("chip") || "esp32").toLowerCase();
+        const profiles = {
+          esp32: {
+            chipText: "chip: ESP32",
+            profileText: "profile: esp32dev",
+            manifestPath: "./manifest.json"
+          },
+          esp32c3: {
+            chipText: "chip: ESP32-C3",
+            profileText: "profile: esp32c3",
+            manifestPath: "./manifest-esp32c3.json"
+          },
+          "portal-cyd": {
+            chipText: "chip: ESP32",
+            profileText: "profile: portal-cyd",
+            manifestPath: "/flash-portal/manifest-portal-cyd.json"
+          },
+          esp32p4: {
+            chipText: "chip: ESP32-P4",
+            profileText: "profile: p4",
+            manifestPath: "/flash-p4/manifest-p4.json"
+          },
+          p4: {
+            chipText: "chip: ESP32-P4",
+            profileText: "profile: p4",
+            manifestPath: "/flash-p4/manifest-p4.json"
+          }
+        };
+        const aliasMap = {
+          portal: "portal-cyd",
+          cyd: "portal-cyd",
+          "portal_cyd": "portal-cyd",
+          "esp32-2432s028": "portal-cyd",
+          "esp32-2432s028r": "portal-cyd",
+          "cheap-yellow-display": "portal-cyd",
+          "esp32-p4": "esp32p4"
+        };
+        const normalizedChip = aliasMap[chipParam] || chipParam;
+        const selected = profiles[normalizedChip];
+        const chipToTargetId = { esp32: "esp32", esp32c3: "esp32c3", "portal-cyd": "portal-cyd", esp32p4: "esp32p4", p4: "esp32p4" };
+        if (!selected) {
+          setStatus("Unknown chip. Use ?chip=esp32, ?chip=esp32c3, ?chip=portal-cyd, or ?chip=esp32p4.", false);
           return;
         }
-        button.setAttribute("manifest", `./${manifestName}`);
+        chipLabel.textContent = selected.chipText;
+        profileLabel.textContent = selected.profileText;
+        button.setAttribute("manifest", selected.manifestPath);
+        button.setAttribute("baud-rate", normalizedChip === "esp32p4" ? "115200" : "460800");
 
-        const manifestUrl = new URL(`./${manifestName}`, window.location.href);
+        try {
+          await checkDiagnostics(chipToTargetId[normalizedChip] || normalizedChip);
+        } catch (err) {
+          setStatus(`Diagnostics failed: ${String(err && err.message ? err.message : err)}`, false);
+          return;
+        }
+
+        const manifestUrl = new URL(selected.manifestPath, window.location.href);
+        const manifestName = manifestUrl.pathname.split("/").pop() || "manifest.json";
         let manifest;
         try {
           const res = await fetch(manifestUrl.toString(), { cache: "no-store" });
@@ -127,7 +183,7 @@
         const missing = [];
         await Promise.all(
           parts.map(async (part) => {
-            const url = new URL(part.path, window.location.href);
+            const url = new URL(part.path, manifestUrl);
             try {
               const res = await fetch(url.toString(), { method: "HEAD", cache: "no-store" });
               if (!res.ok) missing.push(part.path);

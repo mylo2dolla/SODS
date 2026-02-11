@@ -38,14 +38,36 @@ struct RunbookRunnerView: View {
             }
 
             HStack(spacing: 8) {
-                Button(isRunning ? "Running..." : "Run") { runRunbook() }
+                Button { runRunbook() } label: {
+                    if isRunning {
+                        ProgressView()
+                            .progressViewStyle(.circular)
+                            .controlSize(.small)
+                            .frame(width: 14, height: 14)
+                    } else {
+                        Image(systemName: "play.fill")
+                            .font(.system(size: 12, weight: .semibold))
+                    }
+                }
                     .buttonStyle(PrimaryActionButtonStyle())
                     .disabled(isRunning)
-                Button("Stop") { stopRunbook() }
+                    .help(isRunning ? "Running..." : "Run")
+                    .accessibilityLabel(Text(isRunning ? "Running..." : "Run"))
+                Button { stopRunbook() } label: {
+                    Image(systemName: "stop.fill")
+                        .font(.system(size: 12, weight: .semibold))
+                }
                     .buttonStyle(SecondaryActionButtonStyle())
                     .disabled(!isRunning)
-                Button("Copy Report") { copyReport() }
+                    .help("Stop")
+                    .accessibilityLabel(Text("Stop"))
+                Button { copyReport() } label: {
+                    Image(systemName: "doc.on.doc")
+                        .font(.system(size: 12, weight: .semibold))
+                }
                     .buttonStyle(SecondaryActionButtonStyle())
+                    .help("Copy Report")
+                    .accessibilityLabel(Text("Copy Report"))
                 Spacer()
             }
 
@@ -110,8 +132,13 @@ struct RunbookRunnerView: View {
                                         .font(.system(size: 10, design: .monospaced))
                                         .foregroundColor(Theme.textPrimary)
                                     if let urls = result.urls, let first = urls.first, let url = URL(string: first) {
-                                        Button("Open Viewer") { onOpenViewer(url) }
+                                        Button { onOpenViewer(url) } label: {
+                                            Image(systemName: "arrow.up.right.square")
+                                                .font(.system(size: 12, weight: .semibold))
+                                        }
                                             .buttonStyle(SecondaryActionButtonStyle())
+                                            .help("Open Viewer")
+                                            .accessibilityLabel(Text("Open Viewer"))
                                     }
                                 }
                                 .padding(8)

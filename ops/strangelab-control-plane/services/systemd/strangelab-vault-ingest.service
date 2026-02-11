@@ -1,0 +1,21 @@
+[Unit]
+Description=StrangeLab Vault Ingest API
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi
+Group=pi
+WorkingDirectory=/opt/strangelab
+ExecStart=/usr/bin/node /opt/strangelab/vault-ingest.mjs
+Restart=always
+RestartSec=2
+Environment=NODE_ENV=production
+Environment=HOST=0.0.0.0
+Environment=PORT=8088
+Environment=VAULT_DATA_ROOT=/var/sods/vault
+Environment=BLE_REGISTRY_DB=/var/sods/registry.sqlite
+
+[Install]
+WantedBy=multi-user.target

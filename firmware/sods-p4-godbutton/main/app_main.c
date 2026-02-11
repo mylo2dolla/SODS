@@ -35,6 +35,7 @@ static void ip_event_handler(void *arg, esp_event_base_t event_base, int32_t eve
 }
 
 static void wifi_init(void) {
+#if defined(CONFIG_ESP_WIFI_ENABLED) && CONFIG_ESP_WIFI_ENABLED
   ESP_ERROR_CHECK(esp_netif_init());
   ESP_ERROR_CHECK(esp_event_loop_create_default());
   esp_netif_create_default_wifi_sta();
@@ -53,6 +54,9 @@ static void wifi_init(void) {
   ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
   ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
   ESP_ERROR_CHECK(esp_wifi_start());
+#else
+  ESP_LOGW(TAG, "Wi-Fi disabled in sdkconfig; skipping station init");
+#endif
 }
 
 void app_main(void) {
@@ -80,8 +84,12 @@ void app_main(void) {
     god_context_t ctx = *god_button_context();
     ctx.buffer_count = (uint32_t)ring_buffer_count(&g_ring);
     ctx.buffer_pressure = ctx.buffer_count > (uint32_t)(CONFIG_SODS_RING_CAPACITY * 8 / 10);
+#if defined(CONFIG_ESP_WIFI_ENABLED) && CONFIG_ESP_WIFI_ENABLED
     wifi_ap_record_t ap_info;
     ctx.wifi_connected = (esp_wifi_sta_get_ap_info(&ap_info) == ESP_OK);
+#else
+    ctx.wifi_connected = false;
+#endif
     uint32_t last_wifi = g_wifi_state.last_scan_ms;
     uint32_t last_ble = g_ble_state.last_scan_ms;
     ctx.last_scan_ms = last_wifi > last_ble ? last_wifi : last_ble;

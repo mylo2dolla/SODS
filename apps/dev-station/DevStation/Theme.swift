@@ -34,31 +34,38 @@ enum Theme {
 }
 
 struct PrimaryActionButtonStyle: ButtonStyle {
+    @Environment(\.isEnabled) private var isEnabled
+
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.system(size: 12, weight: .semibold))
             .padding(.horizontal, 14)
             .padding(.vertical, 7)
-            .background(Theme.accent.opacity(configuration.isPressed ? 0.7 : 0.9))
-            .foregroundColor(.white)
+            .background((isEnabled ? Theme.accent : Theme.muted).opacity(configuration.isPressed ? 0.7 : 0.9))
+            .foregroundColor(isEnabled ? .white : Theme.panel)
             .clipShape(Capsule())
-            .shadow(color: Theme.accent.opacity(0.5), radius: 8, x: 0, y: 2)
+            .shadow(color: isEnabled ? Theme.accent.opacity(0.5) : .clear, radius: 8, x: 0, y: 2)
     }
 }
 
 struct SecondaryActionButtonStyle: ButtonStyle {
+    @Environment(\.isEnabled) private var isEnabled
+
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.system(size: 12, weight: .semibold))
             .padding(.horizontal, 14)
             .padding(.vertical, 7)
-            .background(Theme.panelAlt.opacity(configuration.isPressed ? 0.8 : 1.0))
-            .foregroundColor(Theme.textPrimary)
+            .background(
+                (isEnabled ? Theme.accent : Theme.panelAlt)
+                    .opacity(configuration.isPressed ? (isEnabled ? 0.72 : 0.8) : (isEnabled ? 0.9 : 1.0))
+            )
+            .foregroundColor(isEnabled ? .white : Theme.muted)
             .clipShape(Capsule())
             .overlay(
                 Capsule()
-                    .stroke(Theme.border, lineWidth: 1)
+                    .stroke(isEnabled ? Theme.accent.opacity(0.7) : Theme.border, lineWidth: 1)
             )
-            .shadow(color: Theme.accent.opacity(0.25), radius: 6, x: 0, y: 2)
+            .shadow(color: isEnabled ? Theme.accent.opacity(0.35) : .clear, radius: 6, x: 0, y: 2)
     }
 }

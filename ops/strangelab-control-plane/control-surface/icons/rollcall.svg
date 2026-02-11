@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <rect width="256" height="256" rx="32" fill="#0e1525"/>
+  <circle cx="72" cy="88" r="22" fill="#46c2ff"/>
+  <circle cx="128" cy="72" r="22" fill="#7c63ff"/>
+  <circle cx="184" cy="88" r="22" fill="#44e07e"/>
+  <rect x="48" y="144" width="160" height="56" rx="12" fill="#182138"/>
+  <text x="128" y="180" fill="#ffffff" text-anchor="middle" font-family="Arial" font-size="22">ROLLCALL</text>
+</svg>

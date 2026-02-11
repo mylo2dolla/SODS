@@ -18,12 +18,27 @@ struct AliasManagerView: View {
             HStack {
                 TextField("Search", text: $searchText)
                     .textFieldStyle(.roundedBorder)
-                Button("Export") { exportAliases() }
+                Button { exportAliases() } label: {
+                    Image(systemName: "square.and.arrow.up")
+                        .font(.system(size: 12, weight: .semibold))
+                }
                     .buttonStyle(SecondaryActionButtonStyle())
-                Button("Import") { showImport = true }
+                    .help("Export")
+                    .accessibilityLabel(Text("Export"))
+                Button { showImport = true } label: {
+                    Image(systemName: "square.and.arrow.down")
+                        .font(.system(size: 12, weight: .semibold))
+                }
                     .buttonStyle(SecondaryActionButtonStyle())
-                Button("Close") { onClose() }
+                    .help("Import")
+                    .accessibilityLabel(Text("Import"))
+                Button { onClose() } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 12, weight: .semibold))
+                }
                     .buttonStyle(SecondaryActionButtonStyle())
+                    .help("Close")
+                    .accessibilityLabel(Text("Close"))
             }
             ScrollView {
                 VStack(alignment: .leading, spacing: 8) {
@@ -55,10 +70,20 @@ struct AliasManagerView: View {
                             .stroke(Theme.border, lineWidth: 1)
                     )
                 HStack {
-                    Button("Apply") { importAliases() }
+                    Button { importAliases() } label: {
+                        Image(systemName: "checkmark.circle")
+                            .font(.system(size: 12, weight: .semibold))
+                    }
                         .buttonStyle(PrimaryActionButtonStyle())
-                    Button("Cancel") { showImport = false }
+                        .help("Apply")
+                        .accessibilityLabel(Text("Apply"))
+                    Button { showImport = false } label: {
+                        Image(systemName: "xmark.circle")
+                            .font(.system(size: 12, weight: .semibold))
+                    }
                         .buttonStyle(SecondaryActionButtonStyle())
+                        .help("Cancel")
+                        .accessibilityLabel(Text("Cancel"))
                 }
                 Spacer()
             }
@@ -115,10 +140,20 @@ struct AliasRow: View {
                 TextField("alias", text: $text)
                     .textFieldStyle(.roundedBorder)
                     .onAppear { text = alias }
-                Button("Save") { onSave(text) }
+                Button { onSave(text) } label: {
+                    Image(systemName: "tray.and.arrow.down")
+                        .font(.system(size: 12, weight: .semibold))
+                }
                     .buttonStyle(SecondaryActionButtonStyle())
-                Button("Delete") { onDelete() }
+                    .help("Save")
+                    .accessibilityLabel(Text("Save"))
+                Button { onDelete() } label: {
+                    Image(systemName: "trash")
+                        .font(.system(size: 12, weight: .semibold))
+                }
                     .buttonStyle(SecondaryActionButtonStyle())
+                    .help("Delete")
+                    .accessibilityLabel(Text("Delete"))
             }
             Divider().opacity(0.2)
         }

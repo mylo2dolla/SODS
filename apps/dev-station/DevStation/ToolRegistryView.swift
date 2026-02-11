@@ -20,20 +20,49 @@ struct ToolRegistryView: View {
             HStack(spacing: 10) {
                 TextField("Search tools", text: $searchText)
                     .textFieldStyle(.roundedBorder)
-                Button("View JSON") {
+                Button {
                     onInspect(.tools)
+                } label: {
+                    Image(systemName: "doc.text.magnifyingglass")
+                        .font(.system(size: 12, weight: .semibold))
                 }
                 .buttonStyle(SecondaryActionButtonStyle())
-                Button("Flash") {
+                .help("View JSON")
+                .accessibilityLabel(Text("View JSON"))
+
+                Button {
                     onFlash()
+                } label: {
+                    Image(systemName: "bolt.circle")
+                        .font(.system(size: 12, weight: .semibold))
                 }
                 .buttonStyle(PrimaryActionButtonStyle())
-                Button("Build Tool") { onBuildTool() }
+                .help("Flash")
+                .accessibilityLabel(Text("Flash"))
+
+                Button { onBuildTool() } label: {
+                    Image(systemName: "hammer")
+                        .font(.system(size: 12, weight: .semibold))
+                }
                     .buttonStyle(SecondaryActionButtonStyle())
-                Button("Build Preset") { onBuildPreset() }
+                    .help("Build Tool")
+                    .accessibilityLabel(Text("Build Tool"))
+
+                Button { onBuildPreset() } label: {
+                    Image(systemName: "slider.horizontal.3")
+                        .font(.system(size: 12, weight: .semibold))
+                }
                     .buttonStyle(SecondaryActionButtonStyle())
-                Button("Scratchpad") { onScratchpad() }
+                    .help("Build Preset")
+                    .accessibilityLabel(Text("Build Preset"))
+
+                Button { onScratchpad() } label: {
+                    Image(systemName: "square.and.pencil")
+                        .font(.system(size: 12, weight: .semibold))
+                }
                     .buttonStyle(SecondaryActionButtonStyle())
+                    .help("Scratchpad")
+                    .accessibilityLabel(Text("Scratchpad"))
             }
 
             if let note = registry.policyNote {
@@ -120,10 +149,20 @@ private struct ToolRow: View {
             }
 
             HStack(spacing: 8) {
-                Button("Run") { onRun() }
+                Button { onRun() } label: {
+                    Image(systemName: "play.fill")
+                        .font(.system(size: 12, weight: .semibold))
+                }
                     .buttonStyle(PrimaryActionButtonStyle())
-                Button("View JSON") { onInspect() }
+                    .help("Run")
+                    .accessibilityLabel(Text("Run"))
+                Button { onInspect() } label: {
+                    Image(systemName: "doc.text.magnifyingglass")
+                        .font(.system(size: 12, weight: .semibold))
+                }
                     .buttonStyle(SecondaryActionButtonStyle())
+                    .help("View JSON")
+                    .accessibilityLabel(Text("View JSON"))
                 Spacer()
             }
         }

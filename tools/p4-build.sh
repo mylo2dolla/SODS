@@ -17,6 +17,7 @@ if [[ -z "${IDF_PATH:-}" ]]; then
   exit 2
 fi
 
+idf.py set-target esp32p4
 idf.py build
 
 echo "Build output: $PROJ_DIR/build"

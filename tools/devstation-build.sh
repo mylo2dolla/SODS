@@ -20,6 +20,14 @@ if [[ ! -d "$PROJECT" ]]; then
   exit 2
 fi
 
+echo "Running runtime data checks..."
+"$REPO_ROOT/tools/check-dynamic-data.sh"
+"$REPO_ROOT/tools/check-visualizer-sync.sh"
+if [[ "${SODS_SKIP_FIRMWARE_CHECK:-0}" != "1" ]]; then
+  echo "Running firmware integrity checks..."
+  "$REPO_ROOT/tools/check-firmware.sh"
+fi
+
 if [[ "$DERIVED" == "/path/you/want" || "$DERIVED" == *"/path/you/want"* ]]; then
   echo "devstation-build: DEVSTATION_DERIVED_PATH is a placeholder ('$DERIVED'); falling back to a temp path." >&2
   DERIVED="${TMPDIR:-/tmp}/devstation-derived"

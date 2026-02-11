@@ -82,29 +82,46 @@ static unsigned long lastFrameMs = 0;
 static Preferences prefs;
 static WebServer configServer(80);
 static bool configMode = false;
+static bool apiRoutesReady = false;
+static bool setupRoutesReady = false;
+static bool configServerStarted = false;
 static unsigned long lastConfigDrawMs = 0;
-static const char *mockStatusJson = R"json(
-{
-  "station": {
-    "ok": false,
-    "uptime_ms": 0,
-    "last_ingest_ms": 0,
-    "last_error": "mock",
-    "pi_logger": "mock",
-    "nodes_total": 6,
-    "nodes_online": 3,
-    "tools": 3
-  },
-  "logger": { "ok": false, "status": "offline" },
-  "tools": {
-    "items": [
-      { "name": "net.wifi_scan", "kind": "passive" },
-      { "name": "net.arp", "kind": "passive" },
-      { "name": "camera.viewer", "kind": "passive" }
-    ]
+static unsigned long bootMs = 0;
+
+static void factoryResetNetworking() {
+  prefs.begin("sods", false);
+  prefs.clear();
+  prefs.end();
+  WiFi.disconnect(true, true);
+  delay(100);
+  ESP.restart();
+}
+
+static void ensureConfigServer() {
+  if (!apiRoutesReady) {
+    configServer.on("/api/factory-reset", HTTP_POST, []() {
+      configServer.send(200, "application/json", "{\"ok\":true}");
+      delay(150);
+      factoryResetNetworking();
+    });
+    configServer.on("/api/health", HTTP_GET, []() {
+      configServer.send(200, "application/json", "{\"ok\":true}");
+    });
+    apiRoutesReady = true;
+  }
+  if (!configServerStarted) {
+    configServer.begin();
+    configServerStarted = true;
   }
 }
-)json";
+
+static String setupSsid() {
+  uint64_t mac = ESP.getEfuseMac();
+  uint32_t tail = (uint32_t)(mac & 0xFFFFFFu);
+  char buf[48];
+  snprintf(buf, sizeof(buf), "SODS-Portal-Setup-%06X", tail);
+  return String(buf);
+}
 
 static void loadConfig() {
   prefs.begin("sods", true);
@@ -152,39 +169,42 @@ static void startConfigPortal() {
   if (configMode) return;
   configMode = true;
   WiFi.mode(WIFI_AP);
-  WiFi.softAP("SODS-Portal-Setup");
-  configServer.on("/", HTTP_GET, []() {
-    String stationValue = sodsBaseUrl.length() ? sodsBaseUrl : String("http://pi-logger.local:9123");
-    String loggerValue = sodsLoggerUrl.length() ? sodsLoggerUrl : String("http://pi-logger.local:8088");
-    String page =
-      "<!doctype html><html><head><meta charset='utf-8'/>"
-      "<meta name='viewport' content='width=device-width, initial-scale=1'/>"
-      "<title>SODS Portal Setup</title></head><body>"
-      "<h2>SODS Ops Portal Setup</h2>"
-      "<form method='POST' action='/save'>"
-      "Wi-Fi SSID<br/><input name='ssid' /><br/>"
-      "Wi-Fi Password<br/><input name='pass' type='password' /><br/>"
-      "Station URL<br/><input name='station' value='" + stationValue + "' /><br/>"
-      "Logger URL<br/><input name='logger' value='" + loggerValue + "' /><br/>"
-      "<button type='submit'>Save</button>"
-      "</form></body></html>";
-    configServer.send(200, "text/html", page);
-  });
-  configServer.on("/save", HTTP_POST, []() {
-    String ssid = configServer.arg("ssid");
-    String pass = configServer.arg("pass");
-    String station = configServer.arg("station");
-    String logger = configServer.arg("logger");
-    if (ssid.length() == 0 || station.length() == 0) {
-      configServer.send(400, "text/plain", "SSID and Station URL required.");
-      return;
-    }
-    saveConfig(ssid, pass, station, logger);
-    configServer.send(200, "text/plain", "Saved. Rebooting.");
-    delay(300);
-    ESP.restart();
-  });
-  configServer.begin();
+  WiFi.softAP(setupSsid().c_str());
+  if (!setupRoutesReady) {
+    configServer.on("/", HTTP_GET, []() {
+      String stationValue = sodsBaseUrl.length() ? sodsBaseUrl : String(SODS_BASE_URL);
+      String loggerValue = sodsLoggerUrl.length() ? sodsLoggerUrl : String(SODS_LOGGER_URL);
+      String page =
+        "<!doctype html><html><head><meta charset='utf-8'/>"
+        "<meta name='viewport' content='width=device-width, initial-scale=1'/>"
+        "<title>SODS Portal Setup</title></head><body>"
+        "<h2>SODS Ops Portal Setup</h2>"
+        "<form method='POST' action='/save'>"
+        "Wi-Fi SSID<br/><input name='ssid' /><br/>"
+        "Wi-Fi Password<br/><input name='pass' type='password' /><br/>"
+        "Station URL<br/><input name='station' value='" + stationValue + "' /><br/>"
+        "Logger URL<br/><input name='logger' value='" + loggerValue + "' /><br/>"
+        "<button type='submit'>Save</button>"
+        "</form></body></html>";
+      configServer.send(200, "text/html", page);
+    });
+    configServer.on("/save", HTTP_POST, []() {
+      String ssid = configServer.arg("ssid");
+      String pass = configServer.arg("pass");
+      String station = configServer.arg("station");
+      String logger = configServer.arg("logger");
+      if (ssid.length() == 0 || station.length() == 0) {
+        configServer.send(400, "text/plain", "SSID and Station URL required.");
+        return;
+      }
+      saveConfig(ssid, pass, station, logger);
+      configServer.send(200, "text/plain", "Saved. Rebooting.");
+      delay(300);
+      ESP.restart();
+    });
+    setupRoutesReady = true;
+  }
+  ensureConfigServer();
   drawConfigScreen();
 }
 
@@ -563,9 +583,14 @@ static void parsePresets(const String &json) {
 }
 
 static void pollPortalState() {
+  PortalState &state = core.state();
   if (sodsBaseUrl.length() == 0) {
-    parsePortalState(String(mockStatusJson));
-    core.state().connOk = false;
+    state.connOk = false;
+    state.connErr = "station_url_missing";
+    state.loggerOk = false;
+    state.loggerStatus = "unconfigured";
+    state.nodesOnline = 0;
+    state.nodesTotal = 0;
     return;
   }
   HTTPClient http;
@@ -579,6 +604,10 @@ static void pollPortalState() {
     lastStationOkMs = millis();
   } else {
     stationOk = false;
+    state.connOk = false;
+    state.connErr = String("station_http_") + String(code);
+    state.loggerOk = false;
+    state.loggerStatus = "error";
   }
   http.end();
 }
@@ -661,8 +690,10 @@ static void ensureWiFi() {
 void PortalDeviceCYD::setup() {
   Serial.begin(115200);
   delay(200);
+  bootMs = millis();
 
   loadConfig();
+  ensureConfigServer();
 
   tft.init();
   tft.setRotation(PORTAL_ROTATION);
@@ -693,8 +724,8 @@ void PortalDeviceCYD::setup() {
 
 void PortalDeviceCYD::loop() {
   unsigned long now = millis();
+  configServer.handleClient();
   if (configMode) {
-    configServer.handleClient();
     drawConfigScreen();
     delay(20);
     return;
@@ -714,6 +745,11 @@ void PortalDeviceCYD::loop() {
   }
   stationReachable = stationOk;
   if (!stationReachable) {
+    // If we can't reach station after a reasonable boot window, open the setup AP.
+    // This keeps the device claimable even if the display is misconfigured or station URL is wrong.
+    if (now - bootMs > 15000 && !configMode) {
+      startConfigPortal();
+    }
     drawConfigScreen();
     delay(20);
     return;

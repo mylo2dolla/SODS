@@ -14,6 +14,7 @@ targets=(
   "$TOOLS_DIR/_sods_cli.sh"
   "$TOOLS_DIR/sods"
   "$TOOLS_DIR/devstation"
+  "$TOOLS_DIR/station"
   "$TOOLS_DIR/cockpit"
   "$TOOLS_DIR/camutil"
   "$TOOLS_DIR/permfix.sh"

@@ -97,7 +97,7 @@ static unsigned long loopMaxMs = 0;
 static uint32_t eventInvalidCount = 0;
 
 static const char *kDefaultNodeId = "node-unknown";
-static const char *kDefaultIngestUrl = "http://pi-logger.local:8088/v1/ingest";
+static const char *kDefaultIngestUrl = "";
 
 static String nodeId;
 static String ingestUrl;
@@ -139,6 +139,8 @@ static WifiApSeenCache wifiApCache[WIFI_AP_MAX_RESULTS];
 
 static String runtimeSsid;
 static String runtimePass;
+static String storedNodeId;
+static String storedIngestUrl;
 
 static NimBLEScan *bleScan = nullptr;
 
@@ -442,9 +444,18 @@ static void emitAnnounce() {
 }
 
 static void handlePortalRoot() {
+  String nodeValue = nodeId.length() ? nodeId : storedNodeId;
+  if (nodeValue.length() == 0) nodeValue = String(NODE_ID);
+  if (nodeValue.length() == 0) nodeValue = String(kDefaultNodeId);
+  String ingestValue = ingestUrl.length() ? ingestUrl : storedIngestUrl;
+  if (ingestValue.length() == 0) ingestValue = String(INGEST_URL);
+  String ssidValue = runtimeSsid.length() ? runtimeSsid : String(WIFI_SSID);
+
   String page = "<html><body><h2>Strange Lab Node Setup</h2>"
                 "<form method='POST' action='/save'>"
-                "Wi-Fi SSID:<br><input name='ssid'><br>"
+                "Node ID:<br><input name='node_id' value='" + nodeValue + "'><br>"
+                "Ingest URL:<br><input name='ingest_url' value='" + ingestValue + "'><br>"
+                "Wi-Fi SSID:<br><input name='ssid' value='" + ssidValue + "'><br>"
                 "Wi-Fi Password:<br><input name='pass' type='password'><br><br>"
                 "<button type='submit'>Save</button>"
                 "</form></body></html>";
@@ -452,13 +463,18 @@ static void handlePortalRoot() {
 }
 
 static void handlePortalSave() {
+  String nextNodeId = server.arg("node_id");
+  String nextIngestUrl = server.arg("ingest_url");
   String ssid = server.arg("ssid");
   String pass = server.arg("pass");
-  if (ssid.length() == 0) {
-    server.send(400, "text/plain", "SSID required");
-    return;
-  }
+
+  nextNodeId.trim();
+  nextIngestUrl.trim();
+  ssid.trim();
+
   prefs.begin("wifi", false);
+  prefs.putString("node_id", nextNodeId);
+  prefs.putString("ingest_url", nextIngestUrl);
   prefs.putString("ssid", ssid);
   prefs.putString("pass", pass);
   prefs.end();
@@ -476,7 +492,7 @@ static void handleHealth() {
   String out = "{";
   bool ok = WiFi.isConnected() && serverStarted;
   out += "\"ok\":" + jsonBool(ok);
-  out += ",\"node_id\":\"" + String(NODE_ID) + "\"";
+  out += ",\"node_id\":\"" + nodeId + "\"";
   out += ",\"uptime_ms\":" + String(millis());
   out += ",\"heap_free\":" + String(ESP.getFreeHeap());
 
@@ -558,11 +574,11 @@ static void handleMetrics() {
 
 static void handleConfig() {
   String out = "{";
-  out += "\"node_id\":\"" + String(NODE_ID) + "\"";
+  out += "\"node_id\":\"" + nodeId + "\"";
   out += ",\"fw_version\":\"" + String(FW_VERSION) + "\"";
   out += ",\"ingest_url\":\"" + ingestUrl + "\"";
-  out += ",\"wifi_ssid\":\"" + String(WIFI_SSID) + "\"";
-  out += ",\"wifi_pass_masked\":\"" + maskSecret(String(WIFI_PASS)) + "\"";
+  out += ",\"wifi_ssid\":\"" + runtimeSsid + "\"";
+  out += ",\"wifi_pass_masked\":\"" + maskSecret(runtimePass) + "\"";
   out += ",\"hostname\":\"" + hostname + "\"";
   out += ",\"event_schema_version\":" + String(EVENT_SCHEMA_VERSION);
   out += ",\"ingest_batch_size\":" + String(INGEST_BATCH_SIZE);
@@ -581,7 +597,7 @@ static void handleWhoami() {
   String dns1 = ipToString(WiFi.dnsIP(1));
   String out = "{";
   out += "\"ok\":true";
-  out += ",\"node_id\":\"" + String(NODE_ID) + "\"";
+  out += ",\"node_id\":\"" + nodeId + "\"";
   out += ",\"ip\":\"" + ipToString(WiFi.localIP()) + "\"";
   out += ",\"gw\":\"" + ipToString(WiFi.gatewayIP()) + "\"";
   out += ",\"mask\":\"" + ipToString(WiFi.subnetMask()) + "\"";
@@ -923,8 +939,10 @@ static void applyWifiConfig() {
 #endif
 }
 
-static void loadRuntimeCreds() {
+static void loadRuntimeConfig() {
   prefs.begin("wifi", true);
+  storedNodeId = prefs.getString("node_id", "");
+  storedIngestUrl = prefs.getString("ingest_url", "");
   runtimeSsid = prefs.getString("ssid", "");
   runtimePass = prefs.getString("pass", "");
   prefs.end();
@@ -1014,6 +1032,14 @@ static void logBatchIfNeeded(size_t batch) {
 static void trySendQueued() {
   if (queue.empty()) return;
   if (millis() < nextSendAtMs) return;
+
+  if (ingestUrl.length() == 0) {
+    logBatchIfNeeded(1);
+    failCount = min<uint8_t>(failCount + 1, 6);
+    nextSendAtMs = millis() + computeBackoffMs();
+    markIngestErr("ingest_url_missing");
+    return;
+  }
 
   if (!WiFi.isConnected()) {
     logBatchIfNeeded(1);
@@ -1196,13 +1222,20 @@ void setup() {
   randomSeed((uint32_t)esp_random());
   registerStatusRoutes();
   WiFi.onEvent(handleWifiEvent);
+  loadRuntimeConfig();
+
   String compileNodeId = String(NODE_ID);
-  nodeId = compileNodeId.length() > 0 ? compileNodeId : String(kDefaultNodeId);
+  nodeId = storedNodeId.length() > 0
+               ? storedNodeId
+               : (compileNodeId.length() > 0 ? compileNodeId : String(kDefaultNodeId));
   hostname = sanitizeHostname(nodeId);
+
   String compileIngest = String(INGEST_URL);
-  ingestUrl = compileIngest.length() > 0 ? compileIngest : String(kDefaultIngestUrl);
-  loadRuntimeCreds();
-  if (String(WIFI_SSID).length() > 0) {
+  ingestUrl = storedIngestUrl.length() > 0
+                  ? storedIngestUrl
+                  : (compileIngest.length() > 0 ? compileIngest : String(kDefaultIngestUrl));
+
+  if (runtimeSsid.length() == 0 && String(WIFI_SSID).length() > 0) {
     runtimeSsid = WIFI_SSID;
     runtimePass = WIFI_PASS;
   }

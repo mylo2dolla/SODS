@@ -1,38 +1,58 @@
 # SODS Firmware
 
-This folder contains SODS firmware projects. Each device is modular and replaceable.
+Canonical firmware contract lives here and is board-driven by:
 
-## Node Agent
+- `firmware/boards.json`
 
-Path: `firmware/node-agent`
+Each app stages web-flash artifacts under:
 
-Build + stage for ESP Web Tools:
+- `firmware/<app>/esp-web-tools/firmware/<board_id>/<version>/`
+
+with required files:
+
+- `bootloader.bin`
+- `partition-table.bin`
+- `firmware.bin`
+- `buildinfo.json`
+- `sha256sums.txt`
+
+Legacy non-versioned stage folders are still generated for compatibility with existing flash pages.
+
+## One-command staging
+
+From `firmware/`:
+
 ```bash
-cd firmware/node-agent
-./tools/build-stage-esp32dev.sh
-./tools/build-stage-esp32c3.sh
+npm run fw:stage:all -- --version devstation
 ```
 
-## Ops Portal (CYD)
+This builds/stages:
 
-Architecture:
-- `firmware/ops-portal/portal-core`: device-agnostic portal logic (state + render)
-- `firmware/ops-portal/portal-device-cyd`: CYD-specific drivers + network
+- Node Agent (`esp32-devkitv1`, `esp32-c3`)
+- Ops Portal CYD (`cyd-2432s028`)
+- P4 God Button (`waveshare-esp32p4`)
 
-Build:
+## Verification
+
+From `firmware/`:
+
 ```bash
-cd firmware/ops-portal
-pio run -e ops-portal
+npm run fw:verify
 ```
 
-Stage for web flashing:
+Or from repo root:
+
 ```bash
-/Users/letsdev/sods/SODS/tools/portal-cyd-stage.sh
+./tools/check-firmware.sh
 ```
 
-Station flash page:
-- `http://localhost:9123/flash/portal-cyd`
+## Flash preflight (no write)
 
-Notes:
-- The CYD connects to Station for `/api/status`, `/api/tools`, and `/ws/frames`.
-- Orientation controls mode: landscape = utility, portrait = watch.
+From repo root:
+
+```bash
+./tools/flash-diagnose.sh esp32
+./tools/flash-diagnose.sh esp32c3
+./tools/flash-diagnose.sh portal-cyd
+./tools/flash-diagnose.sh p4
+```

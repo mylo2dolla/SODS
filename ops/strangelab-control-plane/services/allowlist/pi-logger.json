@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "host": "exec-pi-logger",
+  "rules": [
+    { "cmd": "/usr/bin/uptime", "maxArgs": 0, "cwd": ["."] },
+    { "cmd": "/usr/bin/whoami", "maxArgs": 0, "cwd": ["."] },
+    { "cmd": "/bin/df", "maxArgs": 4, "allowedFlags": ["-h"], "cwd": ["."] },
+    {
+      "cmd": "/bin/ls",
+      "maxArgs": 4,
+      "allowedFlags": ["-1"],
+      "allowedPathPrefixes": ["/var/sods/vault/events"],
+      "cwd": ["."]
+    },
+    {
+      "cmd": "/usr/bin/tail",
+      "maxArgs": 4,
+      "allowedFlags": ["-n"],
+      "allowedPathPrefixes": ["/var/sods/vault/events"],
+      "cwd": ["."]
+    },
+    {
+      "cmd": "/bin/systemctl",
+      "maxArgs": 6,
+      "subcommands": ["status", "restart"],
+      "allowedUnits": ["strangelab-exec-agent.service", "strangelab-vault-ingest.service"],
+      "allowedFlags": ["--no-pager"],
+      "cwd": ["."]
+    }
+  ]
+}

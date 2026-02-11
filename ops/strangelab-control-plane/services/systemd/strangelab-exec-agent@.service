@@ -1,0 +1,18 @@
+[Unit]
+Description=StrangeLab Exec Agent (%i)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+WorkingDirectory=/opt/strangelab
+ExecStart=/usr/bin/node /opt/strangelab/exec-agent.mjs
+Restart=always
+RestartSec=2
+Environment=LIVEKIT_URL=ws://192.168.8.114:7880
+Environment=TOKEN_ENDPOINT=http://192.168.8.114:9123/token
+Environment=ROOM_NAME=strangelab
+Environment=VAULT_INGEST_URL=http://192.168.8.160:8088/v1/ingest
+EnvironmentFile=-/etc/strangelab/exec-agent-%i.env
+
+[Install]
+WantedBy=multi-user.target

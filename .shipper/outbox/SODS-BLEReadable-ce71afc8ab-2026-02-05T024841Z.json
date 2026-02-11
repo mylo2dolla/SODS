@@ -1,0 +1,67 @@
+{
+  "confidence" : {
+    "level" : "Low",
+    "reasons" : [
+      "Service UUIDs present (+10)",
+      "Connectable advertisement (+10)"
+    ],
+    "score" : 20
+  },
+  "decoded" : {
+    "company" : {
+      "name" : "Unknown"
+    },
+    "services" : [
+
+    ],
+    "unknownServices" : [
+      "1827"
+    ],
+    "unknownServicesNormalized" : [
+      "0x1827 → 00001827-0000-1000-8000-00805F9B34FB"
+    ]
+  },
+  "glossary" : [
+    {
+      "meaning" : "Received Signal Strength Indicator; higher (less negative) means closer.",
+      "term" : "RSSI"
+    },
+    {
+      "meaning" : "A BLE advertising pattern such as iBeacon or Eddystone.",
+      "term" : "Beacon"
+    },
+    {
+      "meaning" : "Bluetooth SIG registered UUIDs and company identifiers used to decode common services.",
+      "term" : "Assigned Numbers"
+    }
+  ],
+  "meta" : {
+    "fingerprintID" : "ce71afc8ab",
+    "isoTimestamp" : "2026-02-05T024841Z",
+    "label" : "Unlabeled"
+  },
+  "proximity" : {
+    "bucket" : "Same Room (-60 to -75 dBm)",
+    "note" : "RSSI is noisy; bucket is an approximate proximity hint.",
+    "rssiRaw" : -65,
+    "rssiSmoothed" : -65.0224469957879
+  },
+  "raw" : {
+    "advertisementBytes" : "",
+    "fingerprintID" : "ce71afc8ab",
+    "manufacturerData" : "",
+    "rssi" : -65,
+    "serviceUUIDs" : [
+      "1827"
+    ]
+  },
+  "rawRef" : {
+    "filename" : "SODS-BLERaw-ce71afc8ab-2026-02-05T024841Z.json"
+  },
+  "recommendations" : [
+    "Label the device for local tracking.",
+    "Observe RSSI changes to understand proximity.",
+    "If authorized, identify the device owner in your environment."
+  ],
+  "summary" : "Company ID not available. No standard beacon hint detected. No standard services decoded."
+}

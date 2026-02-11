@@ -1,17 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-BASE_URL="${1:-http://localhost:9123}"
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 
-check() {
-  local path="$1"
-  local url="$BASE_URL$path"
-  echo "Checking $url"
-  curl -fsS "$url" >/dev/null
-}
+"$SCRIPT_DIR/verify-all.sh"
 
-check "/health"
-check "/metrics"
-check "/nodes"
-
-echo "verify ok"
+echo "verify: PASS"

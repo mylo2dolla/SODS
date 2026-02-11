@@ -17,13 +17,19 @@ struct SODSApp: App {
         }
         .commands {
             CommandMenu("Nodes") {
-                Button("Connect Node") {
+                Button {
                     NotificationCenter.default.post(name: .connectNodeCommand, object: nil)
+                } label: {
+                    Image(systemName: "link.circle")
                 }
+                .help("Connect Node")
                 .keyboardShortcut("c", modifiers: [.command, .shift])
-                Button("Flash Firmware") {
+                Button {
                     NotificationCenter.default.post(name: .flashNodeCommand, object: nil)
+                } label: {
+                    Image(systemName: "bolt.circle")
                 }
+                .help("Flash Firmware")
                 .keyboardShortcut("f", modifiers: [.command, .shift])
             }
         }

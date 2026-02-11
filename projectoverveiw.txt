@@ -1,0 +1,111 @@
+# PROJECT STATE — CANONICAL CONTEXT (LOCKED)
+
+## Status
+The architecture is no longer hypothetical: the core ingest → vault pipeline is **live, stable, and verified**.
+
+This is a **working, local-first forensic system** — not a prototype.
+
+## Canonical Principle
+**The Mac thinks.  
+The Pis remember.  
+The sensors observe.**
+
+This principle governs responsibilities, trust boundaries, and data ownership.
+
+## Tier Model (LOCKED)
+
+### Tier 0 — Mac (Brain / Cockpit)
+- CLI-first operator interface
+- Generates reports, analysis, and enriched artifacts
+- Performs interpretation and curation
+- **Does not own long-term truth or raw evidence**
+
+### Tier 1 — pi-aux (Sensor Node)
+- Emits raw events (currently BLE)
+- Writes append-only NDJSON locally
+- Ships events upstream
+- Treated as an **untrusted witness**
+- Never authoritative
+
+### Tier 1 — pi-logger (Vault / Authority)
+- Sole canonical persistence point
+- FastAPI ingest + SQLite append-only store
+- Survives Mac sleep/crashes/replacement
+- **This is the source of truth**
+
+These roles are no longer up for debate.
+
+## BLE → Vault Pipeline (PRODUCTION-SAFE)
+
+### pi-aux
+- BLE scanning via `btmgmt`
+- Continuous discovery
+- Append-only NDJSON
+- Forwarder POSTs events upstream (single or batched)
+
+### pi-logger
+- Ingest API on `0.0.0.0:8088`
+- Accepts single events and batched envelopes
+- Normalizes schema correctly
+- Stores:
+  - `raw_json` (immutable, never rewritten)
+  - parsed fields (`kind`, `summary`, `event_ts`, etc.)
+- systemd-managed, restart-safe
+- DB growth verified; live queries return real BLE sightings
+- No cloud dependency; no UI dependency
+
+## Ingest & Schema Rules (Forensic-Correct)
+
+### Bug found + fixed
+Batched envelopes wrapped real events under `events[]`, causing ingest to read only top-level fields → `kind=unknown`.
+
+### Fix
+- Detect `events[]`
+- Extract inner events
+- Preserve full `raw_json`
+- Store **one normalized row per event**
+
+### Rule
+- **Never rewrite history**
+- Historical unknown rows remain by design
+
+## Network & Identity (CANONICAL)
+
+### pi-logger
+- `192.168.8.160` — Ethernet (preferred)
+- `192.168.8.169` — Wi-Fi (fallback)
+- Ingest: `http://192.168.8.160:8088`
+
+### pi-aux
+- `192.168.8.114` — 5 GHz (preferred)
+- `192.168.8.140` — 2.4 GHz (fallback)
+
+Routing intent is explicit, documented, and enforced.
+
+## Storage & Evidence Model (LOCKED)
+- Nodes emit **events**, not reports
+- Vault stores **evidence**, not opinions
+- Reports are **derived, reproducible artifacts**
+- UI state ≠ truth
+- Truth lives only in the vault’s append-only store
+
+## Staging Model (FORWARD-COMPATIBLE)
+Conceptual split to prevent staging sprawl:
+
+- **Inbox** → append-only intake (canonical evidence)
+- **Workspace / Cases** → curated operator focus (no mutation of original evidence)
+- **Reports** → derived artifacts (rebuildable at any time)
+
+This is additive and forward-compatible.
+
+## One-Line System Definition
+A **boot-persistent, cloud-free, append-only BLE telemetry system** feeding a **canonical vault**, with strict separation between **observation**, **storage**, and **interpretation**.
+
+## Usage Rule
+This document is drop-in context.
+
+Any future work must start from this state and may only evolve it forward without violating:
+- append-only evidence
+- tier trust boundaries
+- vault authority
+- reproducibility of reports

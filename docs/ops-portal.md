@@ -33,7 +33,7 @@ pio run -e ops-portal
 
 Stage:
 ```bash
-/Users/letsdev/sods/SODS/tools/portal-cyd-stage.sh
+./tools/portal-cyd-stage.sh
 ```
 
 Flash via Station:
@@ -45,7 +45,7 @@ If the portal cannot connect, it starts a local setup AP:
 - SSID: `SODS-Portal-Setup`
 - Open `http://192.168.4.1` and enter:
   - Wi-Fi SSID / password
-  - Station URL (e.g. `http://<mac-ip>:9123`)
-  - Logger URL (e.g. `http://pi-logger.local:8088`)
+  - Station URL (e.g. `http://192.168.8.214:9123`)
+  - Logger URL (e.g. `http://192.168.8.160:8088`)
 
 Credentials and URLs persist in device storage.

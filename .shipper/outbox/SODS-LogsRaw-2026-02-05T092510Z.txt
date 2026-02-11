@@ -1,0 +1,415 @@
+02:06:11 [INFO] BLE manager init: auth=allowedAlways, state=unknown
+02:06:11 [ERROR] OUI watcher failed to open directory: /Users/letsdev/SODS/oui
+02:06:11 [INFO] Pi-Aux server listening on 127.0.0.1:8787
+02:06:11 [INFO] BLE company map entries: 164
+02:06:11 [INFO] BLE assigned numbers entries: 212
+02:06:11 [INFO] BLE state: poweredOn
+02:06:11 [INFO] CBCentralManager didUpdateState: poweredOn, auth=allowedAlways
+02:06:11 [INFO] BLE scan started
+02:06:11 [INFO] BLE first device discovered
+02:06:11 [INFO] BLE device D4E0E17A-2FEA-4DBC-5256-94BAEA3C902A name= company=Apple, Inc. beacon= services=0
+02:06:11 [INFO] BLE device D6F40FC2-76BF-A21D-FE26-82338DDA284B name=Pod company=Apple, Inc. beacon= services=0
+02:06:11 [INFO] BLE device D8A9C9AA-F783-39FF-AEC3-1A0ECE6F4C09 name= company=Microsoft beacon= services=0
+02:06:11 [INFO] OUI import loaded 39045 entries
+02:06:11 [INFO] BLE device B3FF0FC5-AC63-2C49-92BC-2B675641491B name=Quest 3S company= beacon= services=1
+02:06:11 [INFO] BLE device 87558E5D-70D8-1351-7F62-A891707AB701 name= company=Apple, Inc. beacon= services=0
+02:06:11 [INFO] BLE device 65EF4B7B-64BF-C660-C9CF-9CF9010B87AE name= company=Apple, Inc. beacon= services=0
+02:06:11 [INFO] BLE device BE41CE22-2FC6-9EB8-5AA1-A4EE3EF9C355 name= company=Apple, Inc. beacon= services=0
+02:06:12 [INFO] BLE device 0F786E01-3C43-6D3E-8424-275F9490A8A0 name=macgr3y company=Apple, Inc. beacon= services=0
+02:06:12 [INFO] BLE device 4B77B051-861F-BB07-66C9-3081A362B737 name= company=Apple, Inc. beacon= services=0
+02:06:12 [INFO] BLE device 3CE66F91-F236-7AA4-A0A8-412EC92C35B3 name=PHONE company=Apple, Inc. beacon= services=0
+02:06:13 [INFO] BLE device 10AD8F32-F96F-EF57-FDDD-A48F9EB339B7 name= company=Apple, Inc. beacon= services=0
+02:06:13 [INFO] BLE device E193BCC6-2EDC-4BEE-0750-AEEC60F2B7E3 name=Mini7 company=Apple, Inc. beacon= services=0
+02:06:14 [INFO] BLE device 4E05E497-0C83-F708-14CB-77CAB1EC2DD8 name= company=Apple, Inc. beacon= services=0
+02:06:14 [INFO] BLE device A6C9839A-ECA0-3F20-158F-E86A31CFFBA5 name=Base company=Apple, Inc. beacon= services=0
+02:06:15 [INFO] BLE device 7611D33A-672A-0E96-10DC-FDA5BDF7F057 name= company=Apple, Inc. beacon= services=0
+02:06:16 [INFO] BLE device E70ABBF9-A4FC-FF40-FBE0-5EE9FC9C49B8 name=SYLVANIA BR30 C-M942A company= beacon= services=0
+02:06:17 [INFO] BLE device 4BEA2FCE-1913-3761-4037-EDE968C0452D name= company=Apple, Inc. beacon= services=0
+02:06:32 [INFO] BLE device 9507729D-13EB-C172-54DF-FE1B401F3FB9 name= company=Apple, Inc. beacon= services=0
+02:06:57 [INFO] BLE device 00A31217-B941-B04F-0260-BB9AED2E5BD6 name= company=Microsoft beacon= services=0
+02:07:00 [INFO] BLE device AB32528D-0E56-A460-634B-F1F09E572D74 name= company=Apple, Inc. beacon= services=0
+02:07:15 [INFO] BLE device 1B59E8F7-C28B-CBF4-1626-2C7348975EB9 name=Crusher Evo company= beacon= services=4
+02:07:34 [INFO] BLE scan requested
+02:07:42 [INFO] BLE toggle off
+02:07:42 [INFO] BLE scan stopped
+02:07:42 [INFO] BLE peripherals discovered: 21
+02:07:42 [INFO] Scored BLE: 21 (high: 0, med: 0, low: 21)
+02:07:42 [INFO] BLE toggle off
+02:07:44 [INFO] BLE scan requested
+02:07:44 [INFO] BLE scan started
+02:07:52 [INFO] BLE toggle off
+02:07:52 [INFO] BLE scan stopped
+02:07:52 [INFO] BLE peripherals discovered: 21
+02:07:52 [INFO] Scored BLE: 21 (high: 0, med: 0, low: 21)
+02:07:52 [INFO] BLE toggle off
+02:09:29 [INFO] BLE scan requested
+02:09:30 [INFO] BLE scan started
+02:09:31 [INFO] BLE toggle off
+02:09:31 [INFO] BLE scan stopped
+02:09:31 [INFO] BLE peripherals discovered: 21
+02:09:31 [INFO] Scored BLE: 21 (high: 0, med: 0, low: 21)
+02:09:31 [INFO] BLE toggle off
+02:09:50 [INFO] BLE scan requested
+02:09:50 [INFO] BLE scan started
+02:09:58 [INFO] BLE toggle off
+02:09:58 [INFO] BLE scan stopped
+02:09:58 [INFO] BLE peripherals discovered: 21
+02:09:58 [INFO] Scored BLE: 21 (high: 0, med: 0, low: 21)
+02:09:58 [INFO] BLE toggle off
+02:11:51 [WARN] No scan snapshot available for scan report
+02:11:55 [INFO] Scan started (ONVIF discovery enabled, service discovery enabled, ARP warmup enabled, safe mode on)
+02:11:55 [INFO] Scan scope: 192.168.8.142/24
+02:11:55 [INFO] Total IPs to scan: 254
+02:11:55 [INFO] ARP warmup started: 254 IPs
+02:11:56 [INFO] ARP warmup finished
+02:11:56 [INFO] ARP parsed entries: 18
+02:11:57 [INFO] ARP hosts with MAC: 15
+02:11:57 [INFO] ARP marked alive: 14
+02:11:57 [INFO] OUI vendor hits: 7, misses: 8
+02:11:57 [INFO] ARP vendor scoring: hosts scored 7, high-confidence 0; devices scored 0, high-confidence 0
+02:11:58 [INFO] SSDP discovery started
+02:11:58 [INFO] Bonjour discovery started
+02:11:58 [INFO] WS-Discovery started (timeout 3.0s)
+02:12:00 [INFO] WS-Discovery found device 192.168.8.119
+02:12:00 [INFO] WS-Discovery found device 192.168.8.171
+02:12:00 [INFO] WS-Discovery found device 192.168.8.234
+02:12:00 [INFO] WS-Discovery found device 192.168.8.247
+02:12:01 [INFO] WS-Discovery finished: found 4 device(s)
+02:12:01 [INFO] SSDP responses: 0
+02:12:01 [INFO] Bonjour services: 3
+02:13:00 [INFO] Scan finished: alive 16 / 255
+02:13:00 [INFO] Scan complete
+02:13:00 [INFO] Hostname lookups started
+02:13:01 [INFO] Scan scope: 192.168.8.142/24
+02:13:01 [INFO] Total IPs to scan: 254
+02:13:01 [INFO] ARP warmup started: 254 IPs
+02:13:01 [INFO] ARP warmup finished
+02:13:01 [INFO] ARP parsed entries: 18
+02:13:05 [INFO] ARP hosts with MAC: 15
+02:13:05 [INFO] ARP marked alive: 14
+02:13:05 [INFO] OUI vendor hits: 7, misses: 8
+02:13:05 [INFO] ARP vendor scoring: hosts scored 7, high-confidence 0; devices scored 4, high-confidence 0
+02:13:05 [INFO] SSDP discovery started
+02:13:05 [INFO] Bonjour discovery started
+02:13:05 [INFO] WS-Discovery started (timeout 3.0s)
+02:13:06 [INFO] Hostname lookups finished
+02:13:07 [INFO] ARP parsed entries: 18
+02:13:08 [INFO] WS-Discovery found device 192.168.8.119
+02:13:08 [INFO] WS-Discovery found device 192.168.8.171
+02:13:08 [INFO] WS-Discovery found device 192.168.8.234
+02:13:08 [INFO] WS-Discovery found device 192.168.8.247
+02:13:08 [INFO] WS-Discovery finished: found 4 device(s)
+02:13:08 [INFO] SSDP responses: 0
+02:13:08 [INFO] Bonjour services: 3
+02:13:09 [INFO] ARP hosts with MAC: 15
+02:13:09 [INFO] ARP marked alive: 0
+02:13:09 [INFO] OUI vendor hits: 7, misses: 8
+02:13:09 [INFO] ARP vendor scoring: hosts scored 7, high-confidence 0; devices scored 4, high-confidence 0
+02:14:03 [INFO] Scan finished: alive 16 / 255
+02:14:03 [INFO] Scan complete
+02:14:03 [INFO] Hostname lookups started
+02:14:04 [INFO] Scan scope: 192.168.8.142/24
+02:14:04 [INFO] Total IPs to scan: 254
+02:14:04 [INFO] ARP warmup started: 254 IPs
+02:14:04 [INFO] Hostname lookups finished
+02:14:04 [INFO] ARP parsed entries: 17
+02:14:04 [INFO] ARP warmup finished
+02:14:04 [INFO] ARP parsed entries: 17
+02:14:05 [INFO] ARP hosts with MAC: 14
+02:14:05 [INFO] ARP marked alive: 11
+02:14:05 [INFO] OUI vendor hits: 7, misses: 7
+02:14:05 [INFO] ARP vendor scoring: hosts scored 7, high-confidence 0; devices scored 4, high-confidence 0
+02:14:06 [INFO] ARP hosts with MAC: 14
+02:14:06 [INFO] ARP marked alive: 2
+02:14:06 [INFO] OUI vendor hits: 7, misses: 7
+02:14:06 [INFO] ARP vendor scoring: hosts scored 7, high-confidence 0; devices scored 4, high-confidence 0
+02:14:06 [INFO] SSDP discovery started
+02:14:06 [INFO] Bonjour discovery started
+02:14:06 [INFO] WS-Discovery started (timeout 3.0s)
+02:14:09 [INFO] WS-Discovery found device 192.168.8.119
+02:14:09 [INFO] WS-Discovery found device 192.168.8.171
+02:14:09 [INFO] WS-Discovery found device 192.168.8.234
+02:14:09 [INFO] WS-Discovery found device 192.168.8.247
+02:14:09 [INFO] WS-Discovery finished: found 4 device(s)
+02:14:09 [INFO] SSDP responses: 0
+02:14:09 [INFO] Bonjour services: 3
+02:15:03 [INFO] Scan finished: alive 15 / 255
+02:15:03 [INFO] Scan complete
+02:15:03 [INFO] Hostname lookups started
+02:15:03 [INFO] Scan scope: 192.168.8.142/24
+02:15:03 [INFO] Total IPs to scan: 254
+02:15:03 [INFO] ARP warmup started: 254 IPs
+02:15:04 [INFO] ARP warmup finished
+02:15:04 [INFO] ARP parsed entries: 17
+02:15:06 [INFO] ARP hosts with MAC: 14
+02:15:06 [INFO] ARP marked alive: 13
+02:15:06 [INFO] OUI vendor hits: 7, misses: 7
+02:15:06 [INFO] ARP vendor scoring: hosts scored 7, high-confidence 0; devices scored 4, high-confidence 0
+02:15:06 [INFO] SSDP discovery started
+02:15:06 [INFO] Bonjour discovery started
+02:15:06 [INFO] WS-Discovery started (timeout 3.0s)
+02:15:07 [INFO] Hostname lookups finished
+02:15:07 [INFO] ARP parsed entries: 17
+02:15:07 [INFO] ARP hosts with MAC: 14
+02:15:07 [INFO] ARP marked alive: 0
+02:15:07 [INFO] OUI vendor hits: 7, misses: 7
+02:15:07 [INFO] ARP vendor scoring: hosts scored 7, high-confidence 0; devices scored 4, high-confidence 0
+02:15:09 [INFO] WS-Discovery found device 192.168.8.119
+02:15:09 [INFO] WS-Discovery found device 192.168.8.171
+02:15:09 [INFO] WS-Discovery found device 192.168.8.234
+02:15:09 [INFO] WS-Discovery found device 192.168.8.247
+02:15:09 [INFO] WS-Discovery finished: found 4 device(s)
+02:15:09 [INFO] SSDP responses: 0
+02:15:09 [INFO] Bonjour services: 3
+02:16:03 [INFO] Scan finished: alive 15 / 255
+02:16:03 [INFO] Scan complete
+02:16:03 [INFO] Hostname lookups started
+02:16:03 [INFO] Scan scope: 192.168.8.142/24
+02:16:03 [INFO] Total IPs to scan: 254
+02:16:03 [INFO] ARP warmup started: 254 IPs
+02:16:04 [INFO] ARP warmup finished
+02:16:04 [INFO] ARP parsed entries: 17
+02:16:06 [INFO] ARP hosts with MAC: 14
+02:16:06 [INFO] ARP marked alive: 13
+02:16:06 [INFO] OUI vendor hits: 7, misses: 7
+02:16:06 [INFO] ARP vendor scoring: hosts scored 7, high-confidence 0; devices scored 4, high-confidence 0
+02:16:06 [INFO] SSDP discovery started
+02:16:06 [INFO] Bonjour discovery started
+02:16:06 [INFO] WS-Discovery started (timeout 3.0s)
+02:16:06 [INFO] Hostname lookups finished
+02:16:07 [INFO] ARP parsed entries: 17
+02:16:07 [INFO] ARP hosts with MAC: 14
+02:16:07 [INFO] ARP marked alive: 0
+02:16:07 [INFO] OUI vendor hits: 7, misses: 7
+02:16:07 [INFO] ARP vendor scoring: hosts scored 7, high-confidence 0; devices scored 4, high-confidence 0
+02:16:09 [INFO] WS-Discovery found device 192.168.8.119
+02:16:09 [INFO] WS-Discovery found device 192.168.8.171
+02:16:09 [INFO] WS-Discovery found device 192.168.8.234
+02:16:09 [INFO] WS-Discovery found device 192.168.8.247
+02:16:09 [INFO] WS-Discovery finished: found 4 device(s)
+02:16:09 [INFO] SSDP responses: 0
+02:16:09 [INFO] Bonjour services: 3
+02:17:03 [INFO] Scan finished: alive 15 / 255
+02:17:03 [INFO] Scan complete
+02:17:03 [INFO] Hostname lookups started
+02:17:03 [INFO] Scan scope: 192.168.8.142/24
+02:17:03 [INFO] Total IPs to scan: 254
+02:17:03 [INFO] ARP warmup started: 254 IPs
+02:17:04 [INFO] Hostname lookups finished
+02:17:04 [INFO] ARP parsed entries: 17
+02:17:04 [INFO] ARP warmup finished
+02:17:05 [INFO] ARP parsed entries: 17
+02:17:07 [INFO] ARP hosts with MAC: 14
+02:17:07 [INFO] ARP marked alive: 11
+02:17:07 [INFO] OUI vendor hits: 7, misses: 7
+02:17:07 [INFO] ARP vendor scoring: hosts scored 7, high-confidence 0; devices scored 4, high-confidence 0
+02:17:08 [INFO] ARP hosts with MAC: 14
+02:17:08 [INFO] ARP marked alive: 2
+02:17:08 [INFO] OUI vendor hits: 7, misses: 7
+02:17:08 [INFO] ARP vendor scoring: hosts scored 7, high-confidence 0; devices scored 4, high-confidence 0
+02:17:08 [INFO] SSDP discovery started
+02:17:08 [INFO] Bonjour discovery started
+02:17:08 [INFO] WS-Discovery started (timeout 3.0s)
+02:17:11 [INFO] WS-Discovery found device 192.168.8.119
+02:17:11 [INFO] WS-Discovery found device 192.168.8.171
+02:17:11 [INFO] WS-Discovery found device 192.168.8.234
+02:17:11 [INFO] WS-Discovery found device 192.168.8.247
+02:17:11 [INFO] WS-Discovery finished: found 4 device(s)
+02:17:11 [INFO] SSDP responses: 0
+02:17:11 [INFO] Bonjour services: 3
+02:18:05 [INFO] Scan finished: alive 15 / 255
+02:18:06 [INFO] Scan complete
+02:18:06 [INFO] Hostname lookups started
+02:18:06 [INFO] Scan scope: 192.168.8.142/24
+02:18:06 [INFO] Total IPs to scan: 254
+02:18:06 [INFO] ARP warmup started: 254 IPs
+02:18:07 [INFO] ARP warmup finished
+02:18:07 [INFO] ARP parsed entries: 17
+02:18:09 [INFO] ARP hosts with MAC: 14
+02:18:09 [INFO] ARP marked alive: 13
+02:18:09 [INFO] OUI vendor hits: 7, misses: 7
+02:18:09 [INFO] ARP vendor scoring: hosts scored 7, high-confidence 0; devices scored 4, high-confidence 0
+02:18:09 [INFO] SSDP discovery started
+02:18:09 [INFO] Bonjour discovery started
+02:18:09 [INFO] WS-Discovery started (timeout 3.0s)
+02:18:10 [INFO] Hostname lookups finished
+02:18:10 [INFO] ARP parsed entries: 17
+02:18:12 [INFO] ARP hosts with MAC: 14
+02:18:12 [INFO] ARP marked alive: 0
+02:18:12 [INFO] OUI vendor hits: 7, misses: 7
+02:18:12 [INFO] ARP vendor scoring: hosts scored 7, high-confidence 0; devices scored 4, high-confidence 0
+02:18:12 [INFO] WS-Discovery found device 192.168.8.119
+02:18:12 [INFO] WS-Discovery found device 192.168.8.171
+02:18:12 [INFO] WS-Discovery found device 192.168.8.234
+02:18:12 [INFO] WS-Discovery found device 192.168.8.247
+02:18:12 [INFO] WS-Discovery finished: found 4 device(s)
+02:18:12 [INFO] SSDP responses: 0
+02:18:12 [INFO] Bonjour services: 3
+02:19:07 [INFO] Scan finished: alive 15 / 255
+02:19:07 [INFO] Scan complete
+02:19:07 [INFO] Hostname lookups started
+02:19:07 [INFO] Scan scope: 192.168.8.142/24
+02:19:07 [INFO] Total IPs to scan: 254
+02:19:07 [INFO] ARP warmup started: 254 IPs
+02:19:07 [INFO] Hostname lookups finished
+02:19:07 [INFO] ARP parsed entries: 17
+02:19:08 [INFO] ARP warmup finished
+02:19:08 [INFO] ARP parsed entries: 17
+02:19:10 [INFO] ARP hosts with MAC: 14
+02:19:10 [INFO] ARP marked alive: 8
+02:19:10 [INFO] OUI vendor hits: 7, misses: 7
+02:19:10 [INFO] ARP vendor scoring: hosts scored 7, high-confidence 0; devices scored 4, high-confidence 0
+02:19:10 [INFO] ARP hosts with MAC: 14
+02:19:10 [INFO] ARP marked alive: 5
+02:19:10 [INFO] OUI vendor hits: 7, misses: 7
+02:19:10 [INFO] ARP vendor scoring: hosts scored 7, high-confidence 0; devices scored 4, high-confidence 0
+02:19:10 [INFO] SSDP discovery started
+02:19:10 [INFO] Bonjour discovery started
+02:19:10 [INFO] WS-Discovery started (timeout 3.0s)
+02:19:13 [INFO] WS-Discovery found device 192.168.8.119
+02:19:13 [INFO] WS-Discovery found device 192.168.8.171
+02:19:13 [INFO] WS-Discovery found device 192.168.8.234
+02:19:13 [INFO] WS-Discovery found device 192.168.8.247
+02:19:13 [INFO] WS-Discovery finished: found 4 device(s)
+02:19:14 [INFO] SSDP responses: 0
+02:19:14 [INFO] Bonjour services: 3
+02:20:08 [INFO] Scan finished: alive 15 / 255
+02:20:08 [INFO] Scan complete
+02:20:08 [INFO] Hostname lookups started
+02:20:09 [INFO] Scan scope: 192.168.8.142/24
+02:20:09 [INFO] Total IPs to scan: 254
+02:20:09 [INFO] ARP warmup started: 254 IPs
+02:20:09 [INFO] ARP warmup finished
+02:20:10 [INFO] ARP parsed entries: 16
+02:20:12 [INFO] ARP hosts with MAC: 14
+02:20:12 [INFO] ARP marked alive: 13
+02:20:12 [INFO] OUI vendor hits: 7, misses: 7
+02:20:12 [INFO] ARP vendor scoring: hosts scored 7, high-confidence 0; devices scored 4, high-confidence 0
+02:20:12 [INFO] SSDP discovery started
+02:20:12 [INFO] Bonjour discovery started
+02:20:12 [INFO] WS-Discovery started (timeout 3.0s)
+02:20:13 [INFO] Hostname lookups finished
+02:20:13 [INFO] ARP parsed entries: 16
+02:20:15 [INFO] WS-Discovery found device 192.168.8.119
+02:20:15 [INFO] WS-Discovery found device 192.168.8.171
+02:20:15 [INFO] WS-Discovery found device 192.168.8.234
+02:20:15 [INFO] WS-Discovery found device 192.168.8.247
+02:20:15 [INFO] WS-Discovery finished: found 4 device(s)
+02:20:15 [INFO] SSDP responses: 0
+02:20:15 [INFO] ARP hosts with MAC: 14
+02:20:15 [INFO] ARP marked alive: 0
+02:20:15 [INFO] OUI vendor hits: 7, misses: 7
+02:20:15 [INFO] ARP vendor scoring: hosts scored 7, high-confidence 0; devices scored 4, high-confidence 0
+02:20:15 [INFO] Bonjour services: 3
+02:21:10 [INFO] Scan finished: alive 15 / 255
+02:21:11 [INFO] Scan complete
+02:21:11 [INFO] Hostname lookups started
+02:21:11 [INFO] Scan scope: 192.168.8.142/24
+02:21:11 [INFO] Total IPs to scan: 254
+02:21:11 [INFO] ARP warmup started: 254 IPs
+02:21:11 [INFO] Hostname lookups finished
+02:21:11 [INFO] ARP parsed entries: 17
+02:21:12 [INFO] ARP warmup finished
+02:21:12 [INFO] ARP parsed entries: 17
+02:21:14 [INFO] ARP hosts with MAC: 14
+02:21:14 [INFO] ARP marked alive: 9
+02:21:14 [INFO] OUI vendor hits: 7, misses: 7
+02:21:14 [INFO] ARP vendor scoring: hosts scored 7, high-confidence 0; devices scored 4, high-confidence 0
+02:21:14 [INFO] ARP hosts with MAC: 14
+02:21:14 [INFO] ARP marked alive: 4
+02:21:14 [INFO] OUI vendor hits: 7, misses: 7
+02:21:14 [INFO] ARP vendor scoring: hosts scored 7, high-confidence 0; devices scored 4, high-confidence 0
+02:21:14 [INFO] SSDP discovery started
+02:21:14 [INFO] Bonjour discovery started
+02:21:14 [INFO] WS-Discovery started (timeout 3.0s)
+02:21:17 [INFO] WS-Discovery found device 192.168.8.119
+02:21:17 [INFO] WS-Discovery found device 192.168.8.171
+02:21:17 [INFO] WS-Discovery found device 192.168.8.234
+02:21:17 [INFO] WS-Discovery found device 192.168.8.247
+02:21:17 [INFO] WS-Discovery finished: found 4 device(s)
+02:21:18 [INFO] SSDP responses: 0
+02:21:18 [INFO] Bonjour services: 3
+02:22:12 [INFO] Scan finished: alive 15 / 255
+02:22:12 [INFO] Scan complete
+02:22:12 [INFO] Hostname lookups started
+02:22:13 [INFO] Scan scope: 192.168.8.142/24
+02:22:13 [INFO] Total IPs to scan: 254
+02:22:13 [INFO] ARP warmup started: 254 IPs
+02:22:14 [INFO] ARP warmup finished
+02:22:14 [INFO] ARP parsed entries: 17
+02:22:16 [INFO] ARP hosts with MAC: 14
+02:22:16 [INFO] ARP marked alive: 13
+02:22:16 [INFO] OUI vendor hits: 7, misses: 7
+02:22:16 [INFO] ARP vendor scoring: hosts scored 7, high-confidence 0; devices scored 4, high-confidence 0
+02:22:17 [INFO] SSDP discovery started
+02:22:17 [INFO] Bonjour discovery started
+02:22:17 [INFO] WS-Discovery started (timeout 3.0s)
+02:22:18 [INFO] Hostname lookups finished
+02:22:18 [INFO] ARP parsed entries: 17
+02:22:20 [INFO] WS-Discovery found device 192.168.8.119
+02:22:20 [INFO] WS-Discovery found device 192.168.8.171
+02:22:20 [INFO] WS-Discovery found device 192.168.8.234
+02:22:20 [INFO] WS-Discovery found device 192.168.8.247
+02:22:20 [INFO] WS-Discovery finished: found 4 device(s)
+02:22:20 [INFO] ARP hosts with MAC: 14
+02:22:20 [INFO] ARP marked alive: 0
+02:22:20 [INFO] OUI vendor hits: 7, misses: 7
+02:22:20 [INFO] ARP vendor scoring: hosts scored 7, high-confidence 0; devices scored 4, high-confidence 0
+02:22:20 [INFO] SSDP responses: 0
+02:22:20 [INFO] Bonjour services: 3
+02:23:15 [INFO] Scan finished: alive 15 / 255
+02:23:15 [INFO] Scan complete
+02:23:15 [INFO] Hostname lookups started
+02:23:16 [INFO] Scan scope: 192.168.8.142/24
+02:23:16 [INFO] Total IPs to scan: 254
+02:23:16 [INFO] ARP warmup started: 254 IPs
+02:23:16 [INFO] Hostname lookups finished
+02:23:16 [INFO] ARP parsed entries: 17
+02:23:17 [INFO] ARP warmup finished
+02:23:17 [INFO] ARP parsed entries: 17
+02:23:19 [INFO] ARP hosts with MAC: 14
+02:23:19 [INFO] ARP marked alive: 8
+02:23:19 [INFO] OUI vendor hits: 7, misses: 7
+02:23:19 [INFO] ARP vendor scoring: hosts scored 7, high-confidence 0; devices scored 4, high-confidence 0
+02:23:19 [INFO] ARP hosts with MAC: 14
+02:23:19 [INFO] ARP marked alive: 5
+02:23:19 [INFO] OUI vendor hits: 7, misses: 7
+02:23:19 [INFO] ARP vendor scoring: hosts scored 7, high-confidence 0; devices scored 4, high-confidence 0
+02:23:19 [INFO] SSDP discovery started
+02:23:19 [INFO] Bonjour discovery started
+02:23:19 [INFO] WS-Discovery started (timeout 3.0s)
+02:23:22 [INFO] WS-Discovery found device 192.168.8.119
+02:23:22 [INFO] WS-Discovery found device 192.168.8.171
+02:23:22 [INFO] WS-Discovery found device 192.168.8.234
+02:23:22 [INFO] WS-Discovery found device 192.168.8.247
+02:23:22 [INFO] WS-Discovery finished: found 4 device(s)
+02:23:22 [INFO] SSDP responses: 0
+02:23:22 [INFO] Bonjour services: 3
+02:24:17 [INFO] Scan finished: alive 15 / 255
+02:24:17 [INFO] Scan complete
+02:24:17 [INFO] Hostname lookups started
+02:24:18 [INFO] Scan scope: 192.168.8.142/24
+02:24:18 [INFO] Total IPs to scan: 254
+02:24:18 [INFO] ARP warmup started: 254 IPs
+02:24:19 [INFO] ARP warmup finished
+02:24:19 [INFO] ARP parsed entries: 17
+02:24:21 [INFO] ARP hosts with MAC: 14
+02:24:21 [INFO] ARP marked alive: 13
+02:24:21 [INFO] OUI vendor hits: 7, misses: 7
+02:24:21 [INFO] ARP vendor scoring: hosts scored 7, high-confidence 0; devices scored 4, high-confidence 0
+02:24:21 [INFO] SSDP discovery started
+02:24:21 [INFO] Bonjour discovery started
+02:24:21 [INFO] WS-Discovery started (timeout 3.0s)
+02:24:23 [INFO] Hostname lookups finished
+02:24:23 [INFO] ARP parsed entries: 17
+02:24:24 [INFO] WS-Discovery found device 192.168.8.119
+02:24:24 [INFO] WS-Discovery found device 192.168.8.171
+02:24:24 [INFO] WS-Discovery found device 192.168.8.234
+02:24:24 [INFO] WS-Discovery found device 192.168.8.247
+02:24:24 [INFO] WS-Discovery finished: found 4 device(s)
+02:24:25 [INFO] SSDP responses: 0
+02:24:25 [INFO] Bonjour services: 3
+02:24:25 [INFO] ARP hosts with MAC: 14
+02:24:25 [INFO] ARP marked alive: 0
+02:24:25 [INFO] OUI vendor hits: 7, misses: 7
+02:24:25 [INFO] ARP vendor scoring: hosts scored 7, high-confidence 0; devices scored 4, high-confidence 0

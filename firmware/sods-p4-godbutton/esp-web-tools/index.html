@@ -86,8 +86,28 @@
           if (!ok) button.classList.add("disabled");
         };
 
+        try {
+          const diagRsp = await fetch("/api/flash/diagnostics", { cache: "no-store" });
+          if (!diagRsp.ok) {
+            throw new Error("diagnostics unavailable");
+          }
+          const diag = await diagRsp.json();
+          const item = Array.isArray(diag.items) ? diag.items.find((entry) => entry.id === "esp32p4") : null;
+          if (!item) {
+            throw new Error("target diagnostics missing");
+          }
+          if (!item.ready) {
+            const issue = Array.isArray(item.issues) && item.issues.length ? item.issues[0] : "artifacts not ready";
+            throw new Error(issue);
+          }
+        } catch (err) {
+          setStatus(`Diagnostics failed: ${String(err && err.message ? err.message : err)}`, false);
+          return;
+        }
+
         const manifestName = "manifest-p4.json";
         button.setAttribute("manifest", `./${manifestName}`);
+        button.setAttribute("baud-rate", "115200");
 
         const manifestUrl = new URL(`./${manifestName}`, window.location.href);
         try {

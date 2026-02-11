@@ -72,6 +72,16 @@ tools/p4-flash.sh
 tools/p4-monitor.sh
 ```
 
+Preflight only (no write):
+
+```
+tools/p4-flash.sh --dry-run
+tools/flash-diagnose.sh p4
+```
+
+`tools/p4-build.sh` compiles the project.
+`tools/p4-flash.sh` flashes staged firmware artifacts from `esp-web-tools/firmware/waveshare-esp32p4/<version>/`.
+
 ## Defaults
 
 Defaults live in `sdkconfig.defaults`:

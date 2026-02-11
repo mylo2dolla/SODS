@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=PANIC Freeze Agents
+Exec=/opt/strangelab/bin/sl-panic
+Icon=/opt/strangelab/icons/panic.svg
+Terminal=true
+Categories=System;

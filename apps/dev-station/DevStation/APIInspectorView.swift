@@ -26,11 +26,28 @@ struct APIInspectorView: View {
                 Toggle("Auto-refresh", isOn: $autoRefresh)
                     .toggleStyle(SwitchToggleStyle(tint: Theme.accent))
                     .font(.system(size: 11))
-                Button("Refresh") { fetch() }
+                Button { fetch() } label: {
+                    if isLoading {
+                        ProgressView()
+                            .progressViewStyle(.circular)
+                            .controlSize(.small)
+                            .frame(width: 14, height: 14)
+                    } else {
+                        Image(systemName: "arrow.clockwise")
+                            .font(.system(size: 12, weight: .semibold))
+                    }
+                }
                     .buttonStyle(SecondaryActionButtonStyle())
+                    .help("Refresh")
+                    .accessibilityLabel(Text("Refresh"))
                     .keyboardShortcut("r", modifiers: [.command])
-                Button("Copy JSON") { copyJSON() }
+                Button { copyJSON() } label: {
+                    Image(systemName: "doc.on.doc")
+                        .font(.system(size: 12, weight: .semibold))
+                }
                     .buttonStyle(SecondaryActionButtonStyle())
+                    .help("Copy JSON")
+                    .accessibilityLabel(Text("Copy JSON"))
                 Spacer()
             }
 

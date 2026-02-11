@@ -44,9 +44,25 @@ struct PresetRunnerView: View {
                     .foregroundColor(Theme.textSecondary)
             }
 
-            Button(isRunning ? "Running..." : "Run Preset") { runPreset() }
+            HStack(spacing: 10) {
+                Text("Run Preset")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                Spacer()
+                Button { runPreset() } label: {
+                    if isRunning {
+                        ProgressView()
+                            .controlSize(.small)
+                    } else {
+                        Image(systemName: "play.circle")
+                            .font(.system(size: 12, weight: .semibold))
+                    }
+                }
                 .buttonStyle(PrimaryActionButtonStyle())
                 .disabled(isRunning)
+                .help(isRunning ? "Running..." : "Run Preset")
+                .accessibilityLabel(Text(isRunning ? "Running..." : "Run Preset"))
+            }
 
             if let lastError {
                 Text(lastError)
@@ -66,8 +82,13 @@ struct PresetRunnerView: View {
                                         .font(.system(size: 10, design: .monospaced))
                                         .foregroundColor(Theme.textPrimary)
                                     if let urls = result.urls, let first = urls.first, let url = URL(string: first) {
-                                        Button("Open Viewer") { onOpenViewer(url) }
+                                        Button { onOpenViewer(url) } label: {
+                                            Image(systemName: "arrow.up.right.square")
+                                                .font(.system(size: 12, weight: .semibold))
+                                        }
                                             .buttonStyle(SecondaryActionButtonStyle())
+                                            .help("Open Viewer")
+                                            .accessibilityLabel(Text("Open Viewer"))
                                     }
                                 }
                                 .padding(8)

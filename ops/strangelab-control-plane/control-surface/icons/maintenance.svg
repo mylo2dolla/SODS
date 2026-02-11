@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <rect width="256" height="256" rx="32" fill="#101b2b"/>
+  <path d="M82 72l22-20 70 70-22 20z" fill="#ffd26a"/>
+  <circle cx="88" cy="80" r="20" fill="#ffd26a"/>
+  <circle cx="172" cy="164" r="20" fill="#ffd26a"/>
+  <rect x="44" y="200" width="168" height="34" rx="10" fill="#1d2a40"/>
+  <text x="128" y="223" fill="#ffffff" text-anchor="middle" font-family="Arial" font-size="18">MAINT</text>
+</svg>

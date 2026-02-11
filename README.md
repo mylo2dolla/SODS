@@ -21,11 +21,11 @@ npm run dev -- --pi-logger http://pi-logger.local:8088 --port 9123
 
 Optional local capture (append-only NDJSON):
 ```bash
-SODS_LOCAL_LOG_PATH="/Users/letsdev/sods/SODS/data/local-events.ndjson" ./tools/sods start --pi-logger http://pi-logger.local:8088 --port 9123
+SODS_LOCAL_LOG_PATH="./data/logs/local-events.ndjson" ./tools/sods start --pi-logger http://pi-logger.local:8088 --port 9123
 ```
 
 Tools are runnable from any working directory. Use an absolute path or `cd` to the repo root before running `./tools/...`.
-If executables lose their permissions, run `/Users/letsdev/sods/SODS/tools/permfix.sh`.
+If executables lose their permissions, run `./tools/permfix.sh`.
 
 Build + run:
 ```bash
@@ -43,19 +43,25 @@ Open spectrum:
 **Dev Station (macOS app)**
 Build:
 ```bash
-/Users/letsdev/sods/SODS/tools/devstation-build.sh
+./tools/devstation-build.sh
 ```
 
-Run (starts station if needed and launches the app):
+Run (starts Station backend if needed and launches the app):
 ```bash
-/Users/letsdev/sods/SODS/tools/devstation-run.sh
+./tools/devstation-run.sh
+```
+
+Run Station backend only (no UI):
+```bash
+./tools/station start
+./tools/station status
+./tools/station logs
 ```
 
 Install:
 ```bash
-/Users/letsdev/sods/SODS/tools/devstation-install.sh
+./tools/devstation-install.sh
 ```
-Fast rebuild: tools/devstation-rebuild.sh
 
 **Ops Portal (CYD)**
 ```bash
@@ -76,9 +82,17 @@ Launch local ESP Web Tools:
 ./tools/flash-esp32c3.sh
 ```
 
+CLI preflight (no write):
+```bash
+./tools/flash-diagnose.sh esp32
+./tools/flash-diagnose.sh esp32c3
+./tools/flash-diagnose.sh portal-cyd
+./tools/flash-diagnose.sh p4
+```
+
 Stage Ops Portal CYD for station flashing:
 ```bash
-/Users/letsdev/sods/SODS/tools/portal-cyd-stage.sh
+./tools/portal-cyd-stage.sh
 ```
 Docs:
 - `docs/ops-portal.md`
@@ -99,7 +113,7 @@ Examples:
 
 ## Dev Station App Flow
 
-- App connects to the local station at `http://localhost:9123`.
+- App connects to Station at `SODS_STATION_URL` (default `http://192.168.8.214:9123`).
 - If the station is not running, the app launches it as a child process.
 - Tools load from `/api/tools`.
 - Visualizer streams from `/ws/frames`.
@@ -107,34 +121,36 @@ Examples:
   - `http://localhost:9123/flash/esp32`
   - `http://localhost:9123/flash/esp32c3`
   - `http://localhost:9123/flash/portal-cyd`
+  - `http://localhost:9123/flash/p4`
+- Flash diagnostics API: `http://localhost:9123/api/flash/diagnostics`
 - Internal station views (tools/status) open inside the app; only Flash opens a browser window.
 
 ## Station LaunchAgent (optional)
 
 Enable on login:
 ```bash
-/Users/letsdev/sods/SODS/tools/launchagent-install.sh
+./tools/launchagent-install.sh
 ```
 
 Disable:
 ```bash
-/Users/letsdev/sods/SODS/tools/launchagent-uninstall.sh
+./tools/launchagent-uninstall.sh
 ```
 
 Status:
 ```bash
-/Users/letsdev/sods/SODS/tools/launchagent-status.sh
+./tools/launchagent-status.sh
 ```
 
 Logs:
-- `/Users/letsdev/sods/SODS/data/logs/station.launchd.log`
+- `./data/logs/station.launchd.log`
 
 ## Wi-Fi Scan (macOS)
 
 Scan nearby SSIDs (uses `airport` when present, falls back to `wdutil`):
 ```bash
-/Users/letsdev/sods/SODS/tools/sods wifi-scan
-/Users/letsdev/sods/SODS/tools/sods wifi-scan --pattern 'esp|espgo|c3|sods|portal|ops'
+./tools/sods wifi-scan
+./tools/sods wifi-scan --pattern 'esp|espgo|c3|sods|portal|ops'
 ```
 
 ## Tool Registry
@@ -182,12 +198,6 @@ Dev Station stores local artifacts under `~/SODS`:
 - `~/SODS/.shipper`
 - `~/SODS/oui/oui_combined.txt`
 
-## Demo/Replays
-```bash
-./tools/sods stream --frames --out ./cli/sods/public/demo.ndjson
-open "http://localhost:9123/?demo=1"
-```
-
 ## Flashing Paths
 
 - Manifests:
@@ -207,6 +217,9 @@ Legacy aliases remain:
 Canonical CLI:
 - `tools/sods`
 
+Canonical Station backend entrypoint:
+- `tools/station`
+
 ## Environment Override
 
-The Dev Station app resolves the repo root from `SODS_ROOT` if set. Default fallback is `~/sods/SODS`.
+The Dev Station app resolves the repo root from `SODS_ROOT` if set. Default fallbacks include `~/SODS-main` and the current working directory.

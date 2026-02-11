@@ -47,7 +47,7 @@
       "description": "Validate portal state + frames + flash targets.",
       "kind": "runbook",
       "vars": {
-        "station_url": "http://localhost:9123",
+        "station_url": "http://192.168.8.214:9123",
         "logger_host": "pi-logger.local"
       },
       "steps": [

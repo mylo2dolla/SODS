@@ -37,7 +37,6 @@ Audit and fixes across Station, Dev Station, Ops Portal, tools, and spectrum pip
 - Added runbook registry/runner endpoints and report artifacts.
 - Added runbook UI in Dev Station and wired to Station.
 - Added runbook support to Ops Portal actions.
-- Added simulated frames toggle in Dev Station for visualizer testing.
 - Added tool coverage audit script.
 - Added runbook user registry ignore to `.gitignore`.
 
@@ -61,17 +60,16 @@ open http://localhost:9123/flash/esp32c3
 
 Tool coverage:
 ```bash
-/Users/letsdev/sods/SODS/tools/audit-tools.sh
+./tools/audit-tools.sh
 ```
 
 Repo integrity:
 ```bash
-/Users/letsdev/sods/SODS/tools/audit-repo.sh
+./tools/audit-repo.sh
 ```
 
 Dev Station visualizer:
 - Open **Spectrum** view.
-- Toggle **Simulate frames (dev)** if no live frames.
 
 Runbook:
 ```bash

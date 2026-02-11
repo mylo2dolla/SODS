@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Scan LAN Now
+Exec=/opt/strangelab/bin/sl-scan-lan-now
+Icon=/opt/strangelab/icons/scan.svg
+Terminal=true
+Categories=System;

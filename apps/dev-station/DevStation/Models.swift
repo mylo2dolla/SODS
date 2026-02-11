@@ -16,6 +16,47 @@ enum NodeType: String, Codable, CaseIterable {
     case unknown = "unknown"
 }
 
+enum NodeFirmwareProfile: String, Codable, CaseIterable {
+    case nodeAgentESP32Dev = "node-agent-esp32dev"
+    case nodeAgentESP32C3 = "node-agent-esp32c3"
+    case opsPortalCYD = "ops-portal-cyd"
+    case p4GodButton = "sods-p4-godbutton"
+    case unknown = "unknown"
+
+    static func infer(nodeID: String, hostname: String?, capabilities: [String]) -> NodeFirmwareProfile {
+        let id = nodeID.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let host = (hostname ?? "").trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let capSet = Set(capabilities.map { $0.lowercased() })
+
+        if id.hasPrefix("p4-") || id.contains("esp32-p4") || host.contains("p4") {
+            return .p4GodButton
+        }
+        if id.contains("portal") || id.contains("cyd") || host.contains("portal") || host.contains("cyd") {
+            return .opsPortalCYD
+        }
+        if id.contains("c3") || host.contains("c3") {
+            return .nodeAgentESP32C3
+        }
+        if id.contains("esp32") || id.contains("node") || capSet.contains("probe") || capSet.contains("ping") {
+            return .nodeAgentESP32Dev
+        }
+        return .unknown
+    }
+
+    var defaultCapabilities: [String] {
+        switch self {
+        case .nodeAgentESP32Dev, .nodeAgentESP32C3:
+            return ["scan", "probe", "ping", "identify"]
+        case .opsPortalCYD:
+            return ["portal", "identify"]
+        case .p4GodButton:
+            return ["scan", "probe", "god", "identify", "frames"]
+        case .unknown:
+            return []
+        }
+    }
+}
+
 enum NodeConnectionState: String, Codable {
     case connected
     case idle

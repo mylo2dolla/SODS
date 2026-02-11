@@ -12,10 +12,10 @@ dependencies:
   idf:
     source:
       type: idf
-    version: 6.1.0
+    version: 5.3.2
 direct_dependencies:
 - espressif/cjson
 - idf
 manifest_hash: 626fd43651c3fd7f446de49c6321e4d29d1ea2ce423ef88701f30386e340d0f8
-target: esp32
+target: esp32p4
 version: 2.0.0

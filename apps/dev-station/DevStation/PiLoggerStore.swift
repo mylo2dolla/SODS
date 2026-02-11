@@ -24,7 +24,7 @@ final class SODSStore: ObservableObject {
     @Published private(set) var aliasOverrides: [String: String] = [:]
 
     private let baseURLKey = "SODSBaseURL"
-    static let defaultBaseURL = "http://localhost:9123"
+    static var defaultBaseURL: String { StationEndpointResolver.stationBaseURL() }
 
     private var wsTask: URLSessionWebSocketTask?
     private var wsFramesTask: URLSessionWebSocketTask?
@@ -73,7 +73,7 @@ final class SODSStore: ObservableObject {
 
     func resetBaseURL() {
         baseURLError = nil
-        baseURL = Self.defaultBaseURL
+        baseURL = StationEndpointResolver.stationBaseURL()
         UserDefaults.standard.set(baseURL, forKey: baseURLKey)
         StationProcessManager.shared.ensureRunning(baseURL: baseURL)
         connect()
@@ -358,10 +358,14 @@ final class SODSStore: ObservableObject {
         NotificationCenter.default.post(name: .sodsOpenURLInApp, object: url)
     }
 
-    func connectNode(_ nodeID: String) {
+    func connectNode(_ nodeID: String, hostHint: String? = nil) {
         guard let url = makeURL(path: "/api/node/connect") else { return }
         lastError = nil
-        let payload = ["node_id": nodeID]
+        var payload: [String: String] = ["node_id": nodeID]
+        let trimmedHint = hostHint?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if !trimmedHint.isEmpty {
+            payload["host"] = trimmedHint
+        }
         guard let body = try? JSONSerialization.data(withJSONObject: payload) else { return }
         var req = URLRequest(url: url)
         req.httpMethod = "POST"
@@ -402,9 +406,13 @@ final class SODSStore: ObservableObject {
         Task { await pollStatusAndNodes() }
     }
 
-    func identifyNode(_ nodeID: String) {
+    func identifyNode(_ nodeID: String, hostHint: String? = nil) {
         guard let url = makeURL(path: "/api/node/identify") else { return }
-        let payload = ["node_id": nodeID]
+        var payload: [String: String] = ["node_id": nodeID]
+        let trimmedHint = hostHint?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if !trimmedHint.isEmpty {
+            payload["host"] = trimmedHint
+        }
         guard let body = try? JSONSerialization.data(withJSONObject: payload) else { return }
         var req = URLRequest(url: url)
         req.httpMethod = "POST"
@@ -438,6 +446,219 @@ final class SODSStore: ObservableObject {
                 }
             }
         }.resume()
+    }
+
+    func setNodeCapability(nodeID: String, capability: String, enabled: Bool) {
+        let trimmedID = nodeID.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedCapability = capability.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !trimmedID.isEmpty, !trimmedCapability.isEmpty else { return }
+        lastError = nil
+
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            let state = enabled ? "start" : "stop"
+            let profile = self.inferFirmwareProfile(nodeID: trimmedID)
+            let candidates: [(String, [String: Any])] = [
+                ("/api/node/control", ["node_id": trimmedID, "capability": trimmedCapability, "enabled": enabled]),
+                ("/api/node/capability", ["node_id": trimmedID, "capability": trimmedCapability, "enabled": enabled]),
+                ("/api/node/action", ["node_id": trimmedID, "action": state, "capability": trimmedCapability]),
+                ("/api/node/\(trimmedCapability)", ["node_id": trimmedID, "enabled": enabled]),
+                ("/api/node/god", ["node_id": trimmedID, "enabled": enabled])
+            ]
+
+            for (path, payload) in candidates {
+                if await postJSON(path: path, payload: payload) {
+                    self.refreshStatus()
+                    return
+                }
+            }
+
+            let boolString = enabled ? "true" : "false"
+            let toolNames = [
+                "node.capability.toggle",
+                "node.\(trimmedCapability).\(state)",
+                "node.\(state).\(trimmedCapability)"
+            ]
+            for tool in toolNames {
+                let toolPayload: [String: Any] = [
+                    "name": tool,
+                    "input": [
+                        "node_id": trimmedID,
+                        "capability": trimmedCapability,
+                        "enabled": boolString,
+                        "action": state
+                    ]
+                ]
+                if await postJSON(path: "/api/tool/run", payload: toolPayload) {
+                    self.refreshStatus()
+                    return
+                }
+            }
+            if await self.postDirectNodeControl(nodeID: trimmedID, capability: trimmedCapability, enabled: enabled, profile: profile) {
+                self.refreshStatus()
+                return
+            }
+            self.lastError = "No control endpoint available for \(trimmedCapability) on \(trimmedID)"
+            NodeRegistry.shared.recordLastError(nodeID: trimmedID, message: self.lastError)
+        }
+    }
+
+    private func postJSON(path: String, payload: [String: Any]) async -> Bool {
+        guard let url = makeURL(path: path),
+              let body = try? JSONSerialization.data(withJSONObject: payload, options: []) else {
+            return false
+        }
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.httpBody = body
+        do {
+            let (data, response) = try await URLSession.shared.data(for: req)
+            let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+            guard (200...299).contains(status) else { return false }
+            if let result = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let ok = result["ok"] as? Bool {
+                return ok
+            }
+            return true
+        } catch {
+            return false
+        }
+    }
+
+    private func inferFirmwareProfile(nodeID: String) -> NodeFirmwareProfile {
+        let presence = nodePresence[nodeID]
+        let explicitCaps = nodeCapabilitiesFromPresence(presence?.capabilities)
+        return NodeFirmwareProfile.infer(nodeID: nodeID, hostname: presence?.hostname, capabilities: explicitCaps)
+    }
+
+    private func nodeCapabilitiesFromPresence(_ caps: NodeCapabilities?) -> [String] {
+        guard let caps else { return [] }
+        var out: [String] = []
+        if caps.canScanWifi == true || caps.canScanBle == true { out.append("scan") }
+        if caps.canFrames == true { out.append("frames") }
+        if caps.canWhoami == true { out.append("identify") }
+        if caps.canFlash == true { out.append("flash") }
+        return out
+    }
+
+    private func postDirectNodeControl(nodeID: String, capability: String, enabled: Bool, profile: NodeFirmwareProfile) async -> Bool {
+        guard let presence = nodePresence[nodeID],
+              let ip = presence.ip?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !ip.isEmpty else {
+            return false
+        }
+        guard let base = URL(string: "http://\(ip)") else { return false }
+
+        switch profile {
+        case .p4GodButton:
+            return await postDirectP4Control(base: base, capability: capability, enabled: enabled)
+        case .nodeAgentESP32Dev, .nodeAgentESP32C3:
+            return await postDirectNodeAgentControl(base: base, capability: capability, enabled: enabled)
+        case .opsPortalCYD:
+            if capability == "god" || capability == "scan" {
+                return await postDirectJSON(to: base, path: "/api/tool/run", payload: [
+                    "name": "net.wifi_scan",
+                    "input": ["enabled": enabled]
+                ])
+            }
+            return false
+        case .unknown:
+            return await postDirectNodeAgentControl(base: base, capability: capability, enabled: enabled)
+        }
+    }
+
+    private func postDirectP4Control(base: URL, capability: String, enabled: Bool) async -> Bool {
+        switch capability {
+        case "god":
+            if enabled {
+                return await postDirectJSON(to: base, path: "/god", payload: [
+                    "op": "whoami",
+                    "action": "ritual.rollcall",
+                    "scope": "all",
+                    "reason": "app-god-button"
+                ])
+            }
+            return await postDirectJSON(to: base, path: "/mode/set", payload: ["mode": "idle"])
+        case "scan":
+            if enabled {
+                return await postDirectJSON(to: base, path: "/scan/once", payload: [
+                    "domains": ["wifi", "ble"],
+                    "duration_ms": 5000
+                ])
+            }
+            return await postDirectJSON(to: base, path: "/mode/set", payload: ["mode": "idle"])
+        case "frames":
+            let mode = enabled ? "relay" : "field"
+            return await postDirectJSON(to: base, path: "/mode/set", payload: ["mode": mode])
+        case "probe", "ping":
+            return await getDirectOK(base: base, path: "/status")
+        default:
+            return false
+        }
+    }
+
+    private func postDirectNodeAgentControl(base: URL, capability: String, enabled: Bool) async -> Bool {
+        switch capability {
+        case "scan":
+            let wifiPath = enabled ? "/scan/wifi/start" : "/scan/wifi/stop"
+            let blePath = enabled ? "/scan/ble/start" : "/scan/ble/stop"
+            let wifiOk = await postDirectJSON(to: base, path: wifiPath, payload: [:])
+            let bleOk = await postDirectJSON(to: base, path: blePath, payload: [:])
+            return wifiOk || bleOk
+        case "probe", "god":
+            guard enabled else { return true }
+            let host = URL(string: baseURL)?.host ?? "1.1.1.1"
+            return await postDirectJSON(to: base, path: "/probe", payload: [
+                "dns": ["1.1.1.1", "8.8.8.8"],
+                "http": ["http://\(host):9123/health"],
+                "emit": true
+            ])
+        case "ping":
+            return await getDirectOK(base: base, path: "/health")
+        case "identify":
+            return await getDirectOK(base: base, path: "/whoami")
+        default:
+            return false
+        }
+    }
+
+    private func postDirectJSON(to base: URL, path: String, payload: [String: Any]) async -> Bool {
+        guard let url = URL(string: path, relativeTo: base),
+              let body = try? JSONSerialization.data(withJSONObject: payload, options: []) else {
+            return false
+        }
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.timeoutInterval = 2.5
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.httpBody = body
+        do {
+            let (data, response) = try await URLSession.shared.data(for: req)
+            let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+            guard (200...299).contains(status) else { return false }
+            if let result = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let ok = result["ok"] as? Bool {
+                return ok
+            }
+            return true
+        } catch {
+            return false
+        }
+    }
+
+    private func getDirectOK(base: URL, path: String) async -> Bool {
+        guard let url = URL(string: path, relativeTo: base) else { return false }
+        var req = URLRequest(url: url)
+        req.httpMethod = "GET"
+        req.timeoutInterval = 2.5
+        do {
+            let (_, response) = try await URLSession.shared.data(for: req)
+            let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+            return (200...299).contains(status)
+        } catch {
+            return false
+        }
     }
 
     func setAlias(id: String, alias: String) {

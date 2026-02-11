@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <rect width="256" height="256" rx="32" fill="#101b2b"/>
+  <rect x="56" y="72" width="32" height="92" rx="8" fill="#48d382"/>
+  <rect x="112" y="96" width="32" height="68" rx="8" fill="#46c2ff"/>
+  <rect x="168" y="56" width="32" height="108" rx="8" fill="#7c63ff"/>
+  <rect x="44" y="200" width="168" height="34" rx="10" fill="#1d2a40"/>
+  <text x="128" y="223" fill="#ffffff" text-anchor="middle" font-family="Arial" font-size="20">STATUS</text>
+</svg>

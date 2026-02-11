@@ -1,0 +1,62 @@
+{
+  "version": 1,
+  "boards": [
+    {
+      "board_id": "esp32-devkitv1",
+      "chip": "esp32",
+      "flash_mode": "dio",
+      "flash_freq": "40m",
+      "flash_size": "4MB",
+      "default_baud": 921600,
+      "offsets": {
+        "bootloader": 4096,
+        "partition-table": 32768,
+        "firmware": 65536
+      },
+      "legacy_stage_dir": "esp32dev"
+    },
+    {
+      "board_id": "esp32-c3",
+      "chip": "esp32c3",
+      "flash_mode": "dio",
+      "flash_freq": "80m",
+      "flash_size": "4MB",
+      "default_baud": 460800,
+      "offsets": {
+        "bootloader": 4096,
+        "partition-table": 32768,
+        "firmware": 65536
+      },
+      "legacy_stage_dir": "esp32c3"
+    },
+    {
+      "board_id": "cyd-2432s028",
+      "chip": "esp32",
+      "flash_mode": "dio",
+      "flash_freq": "40m",
+      "flash_size": "4MB",
+      "default_baud": 115200,
+      "offsets": {
+        "bootloader": 4096,
+        "partition-table": 32768,
+        "boot_app0": 57344,
+        "firmware": 65536
+      },
+      "legacy_stage_dir": "portal-cyd"
+    },
+    {
+      "board_id": "waveshare-esp32p4",
+      "chip": "esp32p4",
+      "flash_mode": "dio",
+      "flash_freq": "80m",
+      "flash_size": "16MB",
+      "default_baud": 115200,
+      "offsets": {
+        "bootloader": 4096,
+        "partition-table": 32768,
+        "firmware": 65536
+      },
+      "legacy_stage_dir": "p4"
+    }
+  ]
+}

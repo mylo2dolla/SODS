@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Maintenance Sweep
+Exec=/opt/strangelab/bin/sl-maint-now
+Icon=/opt/strangelab/icons/maintenance.svg
+Terminal=true
+Categories=System;

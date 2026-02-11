@@ -1,5 +1,6 @@
 import Foundation
 import AppKit
+import Darwin
 
 @MainActor
 final class StationProcessManager: ObservableObject {
@@ -27,8 +28,17 @@ final class StationProcessManager: ObservableObject {
 
     private func shouldManage(baseURL: String) -> Bool {
         guard let url = URL(string: baseURL) else { return false }
-        let host = url.host ?? ""
-        return host == "localhost" || host == "127.0.0.1"
+        let host = (url.host ?? "").trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !host.isEmpty else { return false }
+        if host == "localhost" || host == "127.0.0.1" { return true }
+        if host == "::1" { return true }
+
+        // DevStation commonly uses a LAN-reachable Station URL (e.g. http://192.168.8.214:9123)
+        // so other nodes can call back. If the host resolves to *this* Mac, we should still
+        // manage the local Station process.
+        if LocalHostInfo.shared.isLocalHost(host) { return true }
+
+        return false
     }
 
     private func tryEnsure(baseURL: String) async {
@@ -79,11 +89,16 @@ final class StationProcessManager: ObservableObject {
         stopProcess()
         guard let url = URL(string: baseURL) else { return }
         let port = url.port ?? 9123
-        let piLogger = ProcessInfo.processInfo.environment["SODS_LOGGER_URL"] ?? "http://pi-logger.local:8088"
+        // Do not try to run Station on the Pi-Aux control plane listener port.
+        // That port is owned by Dev Station (PiAuxServer) and will always EADDRINUSE.
+        if port == PiAuxStore.shared.port {
+            return
+        }
+        let piLogger = StationEndpointResolver.loggerURL(baseURL: baseURL)
         let root = sodsRootPath()
         let sodsTool = "\(root)/tools/sods"
         let logDir = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Logs/SODS")
-        let logFile = logDir.appendingPathComponent("station.log")
+        let logFile = logDir.appendingPathComponent("station.\(port).log")
         try? FileManager.default.createDirectory(at: logDir, withIntermediateDirectories: true)
         if !FileManager.default.fileExists(atPath: logFile.path) {
             FileManager.default.createFile(atPath: logFile.path, contents: nil)
@@ -119,9 +134,79 @@ final class StationProcessManager: ObservableObject {
 }
 
 private func sodsRootPath() -> String {
-    if let env = ProcessInfo.processInfo.environment["SODS_ROOT"], !env.isEmpty {
-        return env
+    StoragePaths.sodsRootPath()
+}
+
+private final class LocalHostInfo {
+    static let shared = LocalHostInfo()
+
+    private let lock = NSLock()
+    private var cached: Set<String>?
+
+    private init() {}
+
+    func isLocalHost(_ host: String) -> Bool {
+        let cleaned = host.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !cleaned.isEmpty else { return false }
+        let snapshot = knownLocalHosts()
+        return snapshot.contains(cleaned)
     }
-    let home = FileManager.default.homeDirectoryForCurrentUser.path
-    return "\(home)/sods/SODS"
+
+    private func knownLocalHosts() -> Set<String> {
+        lock.lock()
+        defer { lock.unlock() }
+        if let cached { return cached }
+
+        var out: Set<String> = []
+        out.insert("localhost")
+        out.insert("127.0.0.1")
+        out.insert("::1")
+
+        // Hostnames
+        if let name = Host.current().localizedName?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(),
+           !name.isEmpty {
+            out.insert(name)
+            out.insert("\(name).local")
+        }
+        if let envHost = ProcessInfo.processInfo.environment["HOSTNAME"]?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(),
+           !envHost.isEmpty {
+            out.insert(envHost)
+        }
+
+        // Interface IPs
+        for ip in LocalIPResolver.ipv4Addresses() {
+            out.insert(ip.lowercased())
+        }
+
+        cached = out
+        return out
+    }
+}
+
+private enum LocalIPResolver {
+    static func ipv4Addresses() -> [String] {
+        var result: [String] = []
+        var ifaddr: UnsafeMutablePointer<ifaddrs>?
+        guard getifaddrs(&ifaddr) == 0, let first = ifaddr else { return [] }
+        defer { freeifaddrs(ifaddr) }
+
+        var ptr: UnsafeMutablePointer<ifaddrs>? = first
+        while let current = ptr {
+            let flags = Int32(current.pointee.ifa_flags)
+            let isUp = (flags & IFF_UP) != 0
+            let isLoop = (flags & IFF_LOOPBACK) != 0
+            if isUp, let addr = current.pointee.ifa_addr, addr.pointee.sa_family == UInt8(AF_INET), !isLoop {
+                let addrIn = addr.withMemoryRebound(to: sockaddr_in.self, capacity: 1) { $0.pointee }
+                var buf = [CChar](repeating: 0, count: Int(INET_ADDRSTRLEN))
+                var ip = addrIn.sin_addr
+                if inet_ntop(AF_INET, &ip, &buf, socklen_t(INET_ADDRSTRLEN)) != nil {
+                    let s = String(cString: buf)
+                    if !s.isEmpty { result.append(s) }
+                }
+            }
+            ptr = current.pointee.ifa_next
+        }
+
+        return Array(Set(result)).sorted()
+    }
 }

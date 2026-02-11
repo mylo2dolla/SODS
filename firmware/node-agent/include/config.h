@@ -1,7 +1,7 @@
 #pragma once
 
 #ifndef NODE_ID
-#define NODE_ID "lab-esp32-01"
+#define NODE_ID ""
 #endif
 
 #ifndef FW_VERSION
@@ -9,15 +9,15 @@
 #endif
 
 #ifndef INGEST_URL
-#define INGEST_URL "http://pi-logger.local:8088/v1/ingest"
+#define INGEST_URL ""
 #endif
 
 #ifndef WIFI_SSID
-#define WIFI_SSID "espgo"
+#define WIFI_SSID ""
 #endif
 
 #ifndef WIFI_PASS
-#define WIFI_PASS "12345678"
+#define WIFI_PASS ""
 #endif
 
 #ifndef EVENT_SCHEMA_VERSION

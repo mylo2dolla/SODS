@@ -71,9 +71,25 @@ struct PresetBuilderView: View {
                     .foregroundColor(.red)
             }
 
-            Button(isSaving ? "Saving..." : "Save Preset") { savePreset() }
+            HStack(spacing: 10) {
+                Text("Save Preset")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                Spacer()
+                Button { savePreset() } label: {
+                    if isSaving {
+                        ProgressView()
+                            .controlSize(.small)
+                    } else {
+                        Image(systemName: "square.and.arrow.down")
+                            .font(.system(size: 12, weight: .semibold))
+                    }
+                }
                 .buttonStyle(PrimaryActionButtonStyle())
                 .disabled(isSaving)
+                .help(isSaving ? "Saving..." : "Save Preset")
+                .accessibilityLabel(Text(isSaving ? "Saving..." : "Save Preset"))
+            }
         }
         .padding(16)
         .frame(minWidth: 720, minHeight: 520)

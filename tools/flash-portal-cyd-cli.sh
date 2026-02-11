@@ -3,35 +3,50 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-FIRMWARE_DIR="$REPO_ROOT/firmware/ops-portal/esp-web-tools/firmware/portal-cyd"
+APP_DIR="$REPO_ROOT/firmware/ops-portal"
+BOARD="cyd-2432s028"
 
-PORT="${PORT:-}"
-BAUD="${ESPTOOL_BAUD:-921600}"
+VERSION="${FW_VERSION:-}"
+PORT_ARG="${PORT:-auto}"
+ERASE=0
+DRY_RUN=0
 
-if [[ -z "$PORT" ]]; then
-  PORT="$(ls /dev/tty.usbmodem* /dev/tty.usbserial* /dev/ttyACM* 2>/dev/null | head -n 1 || true)"
-fi
-if [[ -z "$PORT" ]]; then
-  echo "flash-portal-cyd-cli: no serial port found. Set PORT=/dev/tty.usbmodemXXXX" >&2
-  exit 2
-fi
-
-for f in bootloader.bin partitions.bin boot_app0.bin firmware.bin; do
-  if [[ ! -f "$FIRMWARE_DIR/$f" ]]; then
-    echo "flash-portal-cyd-cli: missing $FIRMWARE_DIR/$f. Run tools/portal-cyd-stage.sh" >&2
-    exit 2
-  fi
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --version)
+      VERSION="${2:-}"
+      shift 2
+      ;;
+    --port)
+      PORT_ARG="${2:-auto}"
+      shift 2
+      ;;
+    --erase)
+      ERASE=1
+      shift
+      ;;
+    --dry-run)
+      DRY_RUN=1
+      shift
+      ;;
+    *)
+      echo "flash-portal-cyd-cli: unknown arg '$1'" >&2
+      echo "usage: $0 [--version <ver>] [--port <tty|auto>] [--erase] [--dry-run]" >&2
+      exit 64
+      ;;
+  esac
 done
 
-if ! python3 -c "import esptool" >/dev/null 2>&1; then
-  echo "flash-portal-cyd-cli: esptool not installed. Install via 'python3 -m pip install esptool'." >&2
-  exit 2
+ARGS=(./tools/flash.mjs --board "$BOARD" --port "$PORT_ARG")
+if [[ -n "$VERSION" ]]; then
+  ARGS+=(--version "$VERSION")
+fi
+if [[ "$ERASE" -eq 1 ]]; then
+  ARGS+=(--erase)
+fi
+if [[ "$DRY_RUN" -eq 1 ]]; then
+  ARGS+=(--dry-run)
 fi
 
-python3 -m esptool --chip esp32 --port "$PORT" --baud "$BAUD" write_flash -z \
-  0x1000 "$FIRMWARE_DIR/bootloader.bin" \
-  0x8000 "$FIRMWARE_DIR/partitions.bin" \
-  0xE000 "$FIRMWARE_DIR/boot_app0.bin" \
-  0x10000 "$FIRMWARE_DIR/firmware.bin"
-
-echo "Flashed Ops Portal CYD via $PORT"
+cd "$APP_DIR"
+node "${ARGS[@]}"

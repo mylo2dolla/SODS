@@ -70,9 +70,11 @@ final class EntityStore: ObservableObject {
     func ingestBLE(_ items: [BLEPeripheral]) {
         blePeripherals = items.sorted { $0.lastSeen > $1.lastSeen }
         for peripheral in items {
-            let label = peripheral.name ?? peripheral.fingerprintID
+            let label = IdentityResolver.bleDisplayLabel(for: peripheral)
             recordObservation(kind: .ble, id: peripheral.fingerprintID, label: label, meta: [
-                "fingerprint": peripheral.fingerprintID
+                "fingerprint": peripheral.fingerprintID,
+                "company": peripheral.fingerprint.manufacturerCompanyName ?? "",
+                "beacon": peripheral.fingerprint.beaconHint ?? ""
             ])
         }
         IdentityResolver.shared.updateFromBLE(items)

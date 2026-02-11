@@ -10,22 +10,47 @@ if [[ ! -d "$PROJ_DIR" ]]; then
   exit 2
 fi
 
-if [[ -z "${IDF_PATH:-}" ]]; then
-  echo "p4-flash: IDF_PATH is not set. Source the ESP-IDF export script first." >&2
-  exit 2
-fi
+VERSION="${FW_VERSION:-}"
+PORT_ARG="${PORT:-auto}"
+ERASE=0
+DRY_RUN=0
 
-PORT="${PORT:-}"
-if [[ -z "$PORT" ]]; then
-  PORT="$(ls /dev/tty.usbmodem* /dev/tty.usbserial* /dev/ttyACM* 2>/dev/null | head -n 1 || true)"
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --version)
+      VERSION="${2:-}"
+      shift 2
+      ;;
+    --port)
+      PORT_ARG="${2:-auto}"
+      shift 2
+      ;;
+    --erase)
+      ERASE=1
+      shift
+      ;;
+    --dry-run)
+      DRY_RUN=1
+      shift
+      ;;
+    *)
+      echo "p4-flash: unknown arg '$1'" >&2
+      echo "usage: $0 [--version <ver>] [--port <tty|auto>] [--erase] [--dry-run]" >&2
+      exit 64
+      ;;
+  esac
+done
+
+ARGS=(./tools/flash.mjs --board waveshare-esp32p4 --port "$PORT_ARG")
+if [[ -n "$VERSION" ]]; then
+  ARGS+=(--version "$VERSION")
 fi
-if [[ -z "$PORT" ]]; then
-  echo "p4-flash: no serial port found. Set PORT=/dev/tty.usbmodemXXXX" >&2
-  exit 2
+if [[ "$ERASE" -eq 1 ]]; then
+  ARGS+=(--erase)
+fi
+if [[ "$DRY_RUN" -eq 1 ]]; then
+  ARGS+=(--dry-run)
 fi
 
 cd "$PROJ_DIR"
-idf.py -p "$PORT" flash
-
-echo "Flashed via $PORT"
-echo "Build output: $PROJ_DIR/build"
+node "${ARGS[@]}"

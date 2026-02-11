@@ -51,19 +51,13 @@ if [[ -n "$AIRPORT" ]]; then
   }
 else
   output="$("$WDUTIL" scan 2>&1)" || true
-  if echo "$output" | grep -qi "^usage: sudo wdutil"; then
-    output="$(system_profiler SPAirPortDataType 2>&1)" || {
-      echo "$output" >&2
-      exit 1
-    }
+  if echo "$output" | grep -qi "^usage: sudo wdutil\\b"; then
+    echo "wifi-scan: wdutil requires sudo on this macOS build" >&2
+    echo "wifi-scan: run with sudo or grant permissions (do not fall back to system_profiler, it is not a scan)" >&2
+    exit 2
   elif echo "$output" | grep -qi "permission\\|not authorized\\|not permitted"; then
-    output="$(sudo "$WDUTIL" scan 2>&1)" || true
-    if echo "$output" | grep -qi "^usage: sudo wdutil\\|sudo:"; then
-      output="$(system_profiler SPAirPortDataType 2>&1)" || {
-        echo "$output" >&2
-        exit 1
-      }
-    fi
+    echo "wifi-scan: wdutil scan not permitted (requires sudo/entitlement)" >&2
+    exit 2
   fi
 fi
 

@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+TARGET="${TARGET_NODE:-exec-pi-aux}"
+
+for svc in strangelab-token strangelab-god-gateway strangelab-exec-agent@pi-aux strangelab-ops-feed; do
+  echo "== status ${svc} =="
+  "$ROOT/sl-god" status "$TARGET" "$svc"
+  echo
+done
