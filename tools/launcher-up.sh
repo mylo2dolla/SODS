@@ -13,13 +13,16 @@ source "$REPO_ROOT/tools/_env.sh"
 SODS_PORT="${SODS_PORT:-9123}"
 SODS_BASE_URL="${SODS_BASE_URL:-${SODS_STATION_URL:-http://127.0.0.1:${SODS_PORT}}}"
 LOCAL_READY_URL="http://127.0.0.1:${SODS_PORT}"
+CONTROL_PLANE_UP_SCRIPT="$REPO_ROOT/tools/control-plane-up.sh"
+CONTROL_PLANE_STATUS_SCRIPT="$REPO_ROOT/tools/control-plane-status.sh"
+CONTROL_PLANE_TIMEOUT_S="${CONTROL_PLANE_TIMEOUT_S:-20}"
 
 APP_PATH="${DEVSTATION_APP_PATH:-$REPO_ROOT/dist/DevStation.app}"
 START_VIEW="${DEVSTATION_START_VIEW:-dashboard}"
 ROUNDUP_MODE="${DEVSTATION_ROUNDUP_MODE:-connect-identify}"
 
 exec >>"$LOG_FILE" 2>&1
-echo "=== launcher-up $(date -Is) ==="
+echo "=== launcher-up $(date -u '+%Y-%m-%dT%H:%M:%SZ') ==="
 echo "repo=$REPO_ROOT"
 echo "station=$SODS_BASE_URL"
 echo "port=$SODS_PORT"
@@ -51,9 +54,51 @@ wait_station() {
   done
 }
 
+run_with_timeout() {
+  local timeout_s="$1"
+  shift
+  "$@" &
+  local cmd_pid=$!
+  local start_ts
+  start_ts="$(date +%s)"
+  while kill -0 "$cmd_pid" >/dev/null 2>&1; do
+    local now_ts
+    now_ts="$(date +%s)"
+    if (( now_ts - start_ts >= timeout_s )); then
+      kill -TERM "$cmd_pid" >/dev/null 2>&1 || true
+      sleep 1
+      kill -KILL "$cmd_pid" >/dev/null 2>&1 || true
+      wait "$cmd_pid" >/dev/null 2>&1 || true
+      return 124
+    fi
+    sleep 1
+  done
+  wait "$cmd_pid"
+}
+
+run_control_plane_bootstrap() {
+  if [[ ! -x "$CONTROL_PLANE_UP_SCRIPT" ]]; then
+    echo "WARN control-plane bootstrap script missing: $CONTROL_PLANE_UP_SCRIPT"
+    return 1
+  fi
+  echo "running full-fleet auto-heal (timeout=${CONTROL_PLANE_TIMEOUT_S}s)..."
+  local rc=0
+  run_with_timeout "$CONTROL_PLANE_TIMEOUT_S" "$CONTROL_PLANE_UP_SCRIPT" || rc=$?
+  if [[ "$rc" -eq 0 ]]; then
+    echo "control-plane-up completed"
+    return 0
+  fi
+  if [[ "$rc" -eq 124 ]]; then
+    echo "WARN control-plane-up timed out after ${CONTROL_PLANE_TIMEOUT_S}s"
+  else
+    echo "WARN control-plane-up exited with code $rc"
+  fi
+  return "$rc"
+}
+
 if ! station_ok; then
-  echo "station not responding; starting via tools/sods..."
-  nohup "$REPO_ROOT/tools/sods" start --pi-logger "$PI_LOGGER_URL" --port "$SODS_PORT" >>"$LOG_DIR/station.log" 2>&1 &
+  echo "station not responding; starting via tools/station..."
+  "$REPO_ROOT/tools/station" start || true
 fi
 
 if ! wait_station 10; then
@@ -65,6 +110,12 @@ fi
 if [[ ! -d "$APP_PATH" ]]; then
   echo "Dev Station app missing at $APP_PATH; building..."
   "$REPO_ROOT/tools/devstation-build.sh"
+fi
+
+run_control_plane_bootstrap || true
+if [[ -x "$CONTROL_PLANE_STATUS_SCRIPT" ]]; then
+  cp_status="$("$CONTROL_PLANE_STATUS_SCRIPT" || true)"
+  echo "control-plane-status=${cp_status:-offline}"
 fi
 
 echo "opening Dev Station..."

@@ -10,6 +10,9 @@ SODS is the spine: it ingests pi-logger events, normalizes into canonical events
 - `tools` (repo-wide scripts + compatibility shims)
 - `docs` (progress + architecture)
 
+Operational requirements:
+- `docs/devstation-stack-requirements.md`
+
 ## Build/Run
 
 **Spine + CLI**
@@ -61,6 +64,63 @@ Run Station backend only (no UI):
 Install:
 ```bash
 ./tools/devstation-install.sh
+```
+
+Package + launcher (build app, install app, install one-click stack launcher):
+```bash
+./tools/devstation-package.sh
+```
+
+Install launcher only (includes cleanup of old launcher artifacts and creates Desktop aliases):
+```bash
+./tools/install-devstation-launcher.sh
+```
+
+Start the full local stack from the launcher script (Station bootstrap + full-fleet auto-heal + app launch):
+```bash
+./tools/launcher-up.sh
+```
+
+Run full-fleet recovery directly:
+```bash
+./tools/control-plane-up.sh
+```
+
+Read compact fleet status (`ok`, `degraded`, `offline`):
+```bash
+./tools/control-plane-status.sh
+echo $?
+```
+
+Status/log artifacts:
+- `~/Library/Logs/SODS/control-plane-status.json`
+- `~/Library/Logs/SODS/control-plane-up.log`
+- `~/Library/Logs/SODS/launcher.log`
+
+Clean old launcher/app artifacts:
+```bash
+./tools/cleanup-old-devstation-assets.sh
+```
+
+The Dashboard now includes a **Stack Status** panel with reconnect actions:
+- Reconnect Station
+- Restart Pi-Aux relay
+- Reconnect control-plane checks
+- Reconnect entire stack
+- Reconnect Full Fleet
+- View Fleet Status
+
+Manual full-fleet recovery commands:
+```bash
+ssh -o ConnectTimeout=5 pi@192.168.8.114 'sudo systemctl restart strangelab-token.service strangelab-god-gateway.service strangelab-ops-feed.service strangelab-exec-agent@pi-aux.service && sudo systemctl --no-pager --full status strangelab-token.service strangelab-god-gateway.service strangelab-ops-feed.service | sed -n "1,120p"'
+
+cd /Users/letsdev/SODS-main/ops/strangelab-control-plane
+./scripts/push-and-install-remote.sh pi@192.168.8.114 pi-aux
+./scripts/push-and-install-remote.sh pi@192.168.8.160 pi-logger
+
+cd /Users/letsdev/SODS-main
+./tools/verify-control-plane.sh
+./tools/verify-all.sh
 ```
 
 **Ops Portal (CYD)**

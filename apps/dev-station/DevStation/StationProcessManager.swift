@@ -7,8 +7,11 @@ final class StationProcessManager: ObservableObject {
     static let shared = StationProcessManager()
 
     private var process: Process?
-    private var isStarting = false
-    private var lastStartAttempt: Date?
+    @Published private(set) var isStarting = false
+    @Published private(set) var lastStartAttempt: Date?
+    @Published private(set) var lastReadyAt: Date?
+    @Published private(set) var lastStartError: String?
+    @Published private(set) var managedBaseURL: String?
 
     private init() {
         NotificationCenter.default.addObserver(
@@ -21,8 +24,17 @@ final class StationProcessManager: ObservableObject {
 
     func ensureRunning(baseURL: String) {
         guard shouldManage(baseURL: baseURL) else { return }
+        managedBaseURL = baseURL
         Task.detached {
             await self.tryEnsure(baseURL: baseURL)
+        }
+    }
+
+    func reconnect(baseURL: String) {
+        guard shouldManage(baseURL: baseURL) else { return }
+        managedBaseURL = baseURL
+        Task.detached {
+            await self.forceRestart(baseURL: baseURL)
         }
     }
 
@@ -43,6 +55,10 @@ final class StationProcessManager: ObservableObject {
 
     private func tryEnsure(baseURL: String) async {
         if await pingStatus(baseURL: baseURL) {
+            await MainActor.run {
+                self.lastReadyAt = Date()
+                self.lastStartError = nil
+            }
             return
         }
         await MainActor.run {
@@ -52,6 +68,7 @@ final class StationProcessManager: ObservableObject {
             }
             self.isStarting = true
             self.lastStartAttempt = Date()
+            self.lastStartError = nil
             self.startProcess(baseURL: baseURL)
         }
 
@@ -60,6 +77,8 @@ final class StationProcessManager: ObservableObject {
             if await pingStatus(baseURL: baseURL) {
                 await MainActor.run {
                     self.isStarting = false
+                    self.lastReadyAt = Date()
+                    self.lastStartError = nil
                 }
                 return
             }
@@ -67,6 +86,36 @@ final class StationProcessManager: ObservableObject {
 
         await MainActor.run {
             self.isStarting = false
+            if self.lastStartError == nil {
+                self.lastStartError = "Station start timed out."
+            }
+        }
+    }
+
+    private func forceRestart(baseURL: String) async {
+        await MainActor.run {
+            self.stopProcess()
+            self.isStarting = true
+            self.lastStartAttempt = Date()
+            self.lastStartError = nil
+            self.startProcess(baseURL: baseURL)
+        }
+        for _ in 0..<12 {
+            try? await Task.sleep(nanoseconds: 500_000_000)
+            if await pingStatus(baseURL: baseURL) {
+                await MainActor.run {
+                    self.isStarting = false
+                    self.lastReadyAt = Date()
+                    self.lastStartError = nil
+                }
+                return
+            }
+        }
+        await MainActor.run {
+            self.isStarting = false
+            if self.lastStartError == nil {
+                self.lastStartError = "Station reconnect timed out."
+            }
         }
     }
 
@@ -97,6 +146,10 @@ final class StationProcessManager: ObservableObject {
         let piLogger = StationEndpointResolver.loggerURL(baseURL: baseURL)
         let root = sodsRootPath()
         let sodsTool = "\(root)/tools/sods"
+        guard FileManager.default.isExecutableFile(atPath: sodsTool) else {
+            lastStartError = "Missing executable: \(sodsTool)"
+            return
+        }
         let logDir = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Logs/SODS")
         let logFile = logDir.appendingPathComponent("station.\(port).log")
         try? FileManager.default.createDirectory(at: logDir, withIntermediateDirectories: true)
@@ -118,8 +171,10 @@ final class StationProcessManager: ObservableObject {
         do {
             try process.run()
             self.process = process
+            self.lastStartError = nil
         } catch {
             self.process = nil
+            self.lastStartError = error.localizedDescription
         }
     }
 

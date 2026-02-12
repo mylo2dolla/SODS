@@ -4,16 +4,37 @@ set -euo pipefail
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-APP_NAME="${APP_NAME:-Devstation}"
+APP_NAME="${APP_NAME:-DevStation Stack}"
 TARGET_DIR="/Applications"
 if [[ ! -w "$TARGET_DIR" ]]; then
   TARGET_DIR="$HOME/Applications"
 fi
 mkdir -p "$TARGET_DIR"
 APP_PATH="$TARGET_DIR/${APP_NAME}.app"
+SHORTCUT_DIR="$HOME/Desktop/DevStation Launchers"
+SHORTCUT_PATH="$SHORTCUT_DIR/${APP_NAME}.app"
+MAIN_APP_PATH="/Applications/Dev Station.app"
+MAIN_SHORTCUT_PATH="$SHORTCUT_DIR/Dev Station.app"
 
 LOG_DIR="$HOME/Library/Logs/SODS"
 mkdir -p "$LOG_DIR"
+
+if [[ -x "$REPO_ROOT/tools/cleanup-old-devstation-assets.sh" ]]; then
+  "$REPO_ROOT/tools/cleanup-old-devstation-assets.sh"
+fi
+
+REQUIRED_SCRIPTS=(
+  "$REPO_ROOT/tools/launcher-up.sh"
+  "$REPO_ROOT/tools/control-plane-up.sh"
+  "$REPO_ROOT/tools/control-plane-status.sh"
+)
+for script_path in "${REQUIRED_SCRIPTS[@]}"; do
+  if [[ ! -f "$script_path" ]]; then
+    echo "missing required script: $script_path" >&2
+    exit 2
+  fi
+  chmod +x "$script_path"
+done
 
 TMP_DIR="$(mktemp -d)"
 trap 'rm -rf "$TMP_DIR"' EXIT
@@ -53,5 +74,15 @@ fi
 xattr -dr com.apple.quarantine "$APP_PATH" >/dev/null 2>&1 || true
 codesign --force --deep --sign - "$APP_PATH" >/dev/null 2>&1 || true
 
+mkdir -p "$SHORTCUT_DIR"
+rm -f "$SHORTCUT_PATH"
+ln -s "$APP_PATH" "$SHORTCUT_PATH"
+if [[ -d "$MAIN_APP_PATH" ]]; then
+  rm -f "$MAIN_SHORTCUT_PATH"
+  ln -s "$MAIN_APP_PATH" "$MAIN_SHORTCUT_PATH"
+fi
+
 echo "Installed launcher: $APP_PATH"
-echo "Click this app (and pin it to Dock) to run full DevStation startup."
+echo "Desktop shortcuts: $SHORTCUT_DIR"
+echo "Pin $APP_PATH in the Dock to start the full Dev Station stack."
+echo "Launcher now runs full-fleet auto-heal with timeout before opening Dev Station."
