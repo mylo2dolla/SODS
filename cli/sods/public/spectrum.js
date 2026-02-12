@@ -198,9 +198,31 @@ function connectWS() {
     statusEl.textContent = "disconnected";
   });
   ws.addEventListener("message", (event) => {
-    const payload = JSON.parse(event.data);
-    const frames = payload.frames ?? [];
+    let payload;
+    try {
+      payload = JSON.parse(event.data);
+    } catch (error) {
+      statusEl.textContent = "invalid message payload";
+      console.warn("Failed to parse WS frame payload", error);
+      return;
+    }
+
+    const frames = payload?.frames;
+    if (!Array.isArray(frames)) {
+      statusEl.textContent = "invalid frame batch";
+      console.warn("Received payload with non-array frames", payload);
+      return;
+    }
+
     for (const frame of frames) {
+      const hasRequiredFrameFields =
+        frame &&
+        typeof frame === "object" &&
+        typeof frame.device_id === "string" &&
+        Number.isFinite(frame.frequency) &&
+        Number.isFinite(frame.rssi) &&
+        Number.isFinite(frame.t);
+      if (!hasRequiredFrameFields) continue;
       if (nodeFilter && frame.node_id !== nodeFilter) continue;
       pushTrail(frame);
     }
