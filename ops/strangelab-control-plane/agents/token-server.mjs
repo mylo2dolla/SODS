@@ -8,6 +8,7 @@ const PORT = Number(process.env.PORT || 9123);
 const HOST = process.env.HOST || "0.0.0.0";
 const TOKEN_COMPAT_SECRET = (process.env.TOKEN_COMPAT_SECRET || "strangelab-token-compat-v1").trim();
 const FED_GATEWAY_HEALTH_URL = process.env.FED_GATEWAY_HEALTH_URL || "http://127.0.0.1:9777/v1/health";
+const FED_GATEWAY_BEARER = (process.env.FED_GATEWAY_BEARER || "").trim();
 const TOKEN_HEALTH_TIMEOUT_MS = Number(process.env.TOKEN_HEALTH_TIMEOUT_MS || 2500);
 
 function nowMs() {
@@ -23,9 +24,11 @@ function withTimeoutSignal(ms) {
 async function gatewayHealth() {
   const { controller, timer } = withTimeoutSignal(TOKEN_HEALTH_TIMEOUT_MS);
   try {
+    const headers = { accept: "application/json" };
+    if (FED_GATEWAY_BEARER) headers.authorization = `Bearer ${FED_GATEWAY_BEARER}`;
     const response = await fetch(FED_GATEWAY_HEALTH_URL, {
       method: "GET",
-      headers: { accept: "application/json" },
+      headers,
       signal: controller.signal,
     });
     const text = await response.text();

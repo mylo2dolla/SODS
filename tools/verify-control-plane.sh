@@ -52,11 +52,18 @@ else
   fail_msg "federation action contract validation failed"
 fi
 
-tunnel_rsp="$(ssh "$AUX_SSH_TARGET" "curl -fsS --max-time 8 '${FED_GATEWAY_HEALTH_URL}'" 2>/dev/null || true)"
-if json_has_ok_true "$tunnel_rsp"; then
-  pass "codegatchi gateway reachable from aux tunnel (${FED_GATEWAY_HEALTH_URL})"
+tunnel_code="$(ssh "$AUX_SSH_TARGET" "curl -sS -o /dev/null -w '%{http_code}' --max-time 8 '${FED_GATEWAY_HEALTH_URL}'" 2>/dev/null || true)"
+if [[ "$tunnel_code" == "401" ]]; then
+  pass "codegatchi gateway reachable from aux tunnel (${FED_GATEWAY_HEALTH_URL}, auth required)"
+elif [[ "$tunnel_code" == "200" ]]; then
+  tunnel_rsp="$(ssh "$AUX_SSH_TARGET" "curl -fsS --max-time 8 '${FED_GATEWAY_HEALTH_URL}'" 2>/dev/null || true)"
+  if json_has_ok_true "$tunnel_rsp"; then
+    pass "codegatchi gateway reachable from aux tunnel (${FED_GATEWAY_HEALTH_URL})"
+  else
+    fail_msg "codegatchi gateway health response invalid from aux tunnel"
+  fi
 else
-  fail_msg "codegatchi gateway unreachable from aux tunnel"
+  fail_msg "codegatchi gateway unreachable from aux tunnel (http=${tunnel_code:-none})"
 fi
 
 token_health_rsp="$(curl --max-time 8 -fsS "$TOKEN_HEALTH_URL" 2>/dev/null || true)"

@@ -514,9 +514,13 @@ async function federationHealth() {
   const { mapping, mapping_error, target_file } = currentFederationState();
 
   try {
+    const healthHeaders = { accept: "application/json" };
+    if (FED_GATEWAY_BEARER) {
+      healthHeaders.authorization = `Bearer ${FED_GATEWAY_BEARER}`;
+    }
     const { response, text } = await fetchText(
       FED_GATEWAY_HEALTH_URL,
-      { method: "GET", headers: { accept: "application/json" } },
+      { method: "GET", headers: healthHeaders },
       Math.max(2500, Math.min(FED_DISPATCH_TIMEOUT_MS, 7000)),
     );
     const body = parsedJSON(text);

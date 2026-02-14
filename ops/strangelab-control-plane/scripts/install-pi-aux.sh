@@ -52,6 +52,10 @@ if [[ -n "$federation_bearer" ]]; then
     echo "FED_GATEWAY_HEALTH_URL=${FED_GATEWAY_HEALTH_URL:-http://127.0.0.1:9777/v1/health}"
     echo "FED_TARGETS_FILE=/opt/strangelab/federation-targets.json"
   } | sudo tee /etc/strangelab/god-gateway.env >/dev/null
+  {
+    echo "FED_GATEWAY_BEARER=$federation_bearer"
+    echo "FED_GATEWAY_HEALTH_URL=${FED_GATEWAY_HEALTH_URL:-http://127.0.0.1:9777/v1/health}"
+  } | sudo tee /etc/strangelab/token.env >/dev/null
 else
   echo "warn: unable to fetch Codegatchi gateway bearer token; set FED_GATEWAY_BEARER in /etc/strangelab/god-gateway.env" >&2
 fi
@@ -82,7 +86,15 @@ sudo systemctl --no-pager --full status strangelab-token.service | sed -n '1,40p
 sudo systemctl --no-pager --full status strangelab-god-gateway.service | sed -n '1,40p'
 sudo systemctl --no-pager --full status strangelab-ops-feed.service | sed -n '1,40p'
 
-curl -fsS --max-time 8 http://127.0.0.1:9777/v1/health >/dev/null
+if [[ -n "$federation_bearer" ]]; then
+  curl -fsS --max-time 8 -H "Authorization: Bearer ${federation_bearer}" http://127.0.0.1:9777/v1/health >/dev/null
+else
+  health_code="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 8 http://127.0.0.1:9777/v1/health || true)"
+  if [[ "$health_code" != "200" && "$health_code" != "401" ]]; then
+    echo "error: codegatchi health probe failed (http=${health_code:-none})" >&2
+    exit 22
+  fi
+fi
 curl -fsS --max-time 8 http://127.0.0.1:9123/health >/dev/null
 curl -fsS --max-time 8 http://127.0.0.1:8099/health >/dev/null
 

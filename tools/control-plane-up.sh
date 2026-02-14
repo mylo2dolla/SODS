@@ -233,13 +233,20 @@ check_remote_health_endpoint() {
     add_service_line "$services_file" "$name" "0" "url-not-configured"
     return 1
   fi
-  local response
-  response="$(remote_cmd "$target" "curl -fsS --max-time 5 '$url'" 2>/dev/null || true)"
-  if json_payload_ok "$response"; then
+  local response code body
+  response="$(remote_cmd "$target" "curl -sS --max-time 5 -w '\n__HTTP_CODE__:%{http_code}' '$url'" 2>/dev/null || true)"
+  code="$(printf '%s\n' "$response" | sed -n 's/^__HTTP_CODE__:\([0-9][0-9][0-9]\)$/\1/p' | tail -n 1)"
+  body="$(printf '%s\n' "$response" | sed '/^__HTTP_CODE__:[0-9][0-9][0-9]$/d')"
+
+  if [[ "$code" == "401" ]]; then
+    add_service_line "$services_file" "$name" "1" "$url auth-required"
+    return 0
+  fi
+  if [[ "$code" == "200" ]] && json_payload_ok "$body"; then
     add_service_line "$services_file" "$name" "1" "$url"
     return 0
   fi
-  add_service_line "$services_file" "$name" "0" "$url invalid-or-unreachable"
+  add_service_line "$services_file" "$name" "0" "$url invalid-or-unreachable http=${code:-none}"
   return 1
 }
 
