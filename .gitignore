@@ -40,3 +40,8 @@ reports/
 inbox/
 recordings/
 .shipper/
+strange/
+**/__MACOSX/**
+**/._*
+**/*.old
+**/*.bak
