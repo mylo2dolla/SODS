@@ -26,6 +26,33 @@ type ServerOptions = {
   localLogPath?: string;
 };
 
+type CoreNodeId = "exec-pi-aux" | "exec-pi-logger" | "mac16";
+type NodePresenceState = "online" | "idle" | "scanning" | "connecting" | "error" | "offline";
+type NodePresenceSource = "events" | "control-plane" | "manual-override";
+type NodePresenceReason = "event-recent" | "control-plane-health" | "manual-override" | "stale-events";
+type LoggerHealth = { ok: boolean; status: string; detail?: any; url?: string };
+type CorePresenceHints = {
+  now: number;
+  auxHealthy: boolean;
+  loggerHealthy: boolean;
+  macHealthy: boolean;
+};
+
+const CORE_NODE_DEFAULTS: Record<CoreNodeId, { hostname: string; confidence: number }> = {
+  "exec-pi-aux": { hostname: "pi-aux.local", confidence: 0.6 },
+  "exec-pi-logger": { hostname: "pi-logger.local", confidence: 0.6 },
+  "mac16": { hostname: "mac16.local", confidence: 0.6 },
+};
+
+const CORE_NODE_IDS = Object.keys(CORE_NODE_DEFAULTS) as CoreNodeId[];
+
+function readMsEnv(name: string, fallback: number) {
+  const raw = process.env[name];
+  if (!raw) return fallback;
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : fallback;
+}
+
 export class SODSServer {
   private ingestor: Ingestor;
   private frameEngine = new FrameEngine(30);
@@ -44,6 +71,16 @@ export class SODSServer {
   private wssFrames?: WebSocketServer;
   private frameTimer?: NodeJS.Timeout;
   private localLogStream?: ReturnType<typeof createWriteStream>;
+  private lastLoggerHealthSuccessAt = 0;
+  private lastAuxHealthSuccessAt = 0;
+  private lastVaultHealthSuccessAt = 0;
+  private lastCodegatchiHealthSuccessAt = 0;
+  private readonly coreHealthFreshMs = readMsEnv("SODS_CORE_HEALTH_FRESH_MS", 90_000);
+  private readonly fleetHintFreshMs = readMsEnv("SODS_FLEET_HINT_FRESH_MS", 300_000);
+  private readonly fleetStatusPath = process.env.SODS_FLEET_STATUS_PATH ?? join(os.homedir(), "Library", "Logs", "SODS", "control-plane-status.json");
+  private readonly codegatchiHealthURL = process.env.SODS_CODEGATCHI_HEALTH_URL ?? "http://127.0.0.1:9777/v1/health";
+  private readonly auxHealthURL = process.env.GOD_HEALTH_URL ?? "http://pi-aux.local:8099/health";
+  private readonly vaultHealthURL = process.env.VAULT_HEALTH_URL ?? "http://pi-logger.local:8088/health";
 
   constructor(private options: ServerOptions) {
     this.ingestor = new Ingestor(options.piLoggerBase, 500, 1400);
@@ -138,7 +175,8 @@ export class SODSServer {
       return this.respondJson(res, this.buildToolRegistry());
     }
     if (url.pathname === "/api/nodes") {
-      return this.respondJson(res, this.buildNodePresence());
+      void this.handleNodes(res);
+      return;
     }
     if (url.pathname === "/api/registry/nodes") {
       return this.handleRegistryNodes(res);
@@ -467,21 +505,27 @@ export class SODSServer {
     };
   }
 
+  private async handleNodes(res: http.ServerResponse) {
+    const logger = await this.fetchLoggerHealth();
+    const hints = await this.computeCorePresenceHints(logger);
+    this.respondJson(res, this.buildNodePresence(hints));
+  }
+
   private async handleStatus(res: http.ServerResponse) {
-    const counters = this.ingestor.getCounters();
-    const nodes = this.ingestor.getNodes();
+    const logger = await this.fetchLoggerHealth();
+    const hints = await this.computeCorePresenceHints(logger);
+    const presence = this.buildNodePresence(hints);
     const station = {
       ok: true,
       uptime_ms: Math.floor(process.uptime() * 1000),
       last_ingest_ms: this.lastIngestAt,
       last_error: this.lastError ?? "",
       pi_logger: this.ingestor.getActiveBaseURL(),
-      nodes_total: nodes.length,
-      nodes_online: nodes.filter((n) => nowMs() - n.last_seen < 60_000).length,
+      nodes_total: presence.items.length,
+      nodes_online: this.countOnlineEquivalentNodes(presence.items),
       tools: listTools().length,
     };
 
-    const logger = await this.fetchLoggerHealth();
     this.respondJson(res, { station, logger });
   }
 
@@ -490,6 +534,9 @@ export class SODSServer {
     const nodes = this.ingestor.getNodes();
     const stationVersion = this.readStationVersion();
     const logger = await this.fetchLoggerHealth();
+    const hints = await this.computeCorePresenceHints(logger);
+    const presence = this.buildNodePresence(hints);
+    const nodesOnline = this.countOnlineEquivalentNodes(presence.items);
     const lastEventTs = this.lastEvent?.event_ts ?? null;
     const lastEventMs = lastEventTs ? Date.parse(lastEventTs) : 0;
 
@@ -542,8 +589,8 @@ export class SODSServer {
         last_ingest_ms: this.lastIngestAt,
         last_error: this.lastError ?? "",
         pi_logger: this.ingestor.getActiveBaseURL(),
-        nodes_total: nodes.length,
-        nodes_online: nodes.filter((n) => now - n.last_seen < 60_000).length,
+        nodes_total: presence.items.length,
+        nodes_online: nodesOnline,
         tools: listTools().length,
       },
       logger: {
@@ -554,7 +601,7 @@ export class SODSServer {
         last_event_ms: lastEventMs,
       },
       nodes: {
-        active_count: nodes.filter((n) => now - n.last_seen < 60_000).length,
+        active_count: nodesOnline,
         last_seen_by_node_id: lastSeenByNode,
         top_nodes: topNodes,
       },
@@ -612,9 +659,9 @@ export class SODSServer {
     ];
   }
 
-  private buildNodePresence() {
+  private buildNodePresence(hints?: CorePresenceHints) {
     const nodes = this.ingestor.getNodes();
-    const now = nowMs();
+    const now = hints?.now ?? nowMs();
     const recentEvents = this.eventBuffer.slice(-400);
     const byNodeKind = new Map<string, Set<string>>();
     for (const ev of recentEvents) {
@@ -622,25 +669,78 @@ export class SODSServer {
       byNodeKind.get(ev.node_id)!.add(ev.kind);
     }
 
-    const visibleNodes = nodes.filter((node) => {
+    const mergedNodes = new Map<string, (typeof nodes)[number]>();
+    for (const node of nodes) {
       const age = now - node.last_seen;
       const ip = String(node.ip ?? "").trim();
       const hostname = String(node.hostname ?? "").trim();
-      return Boolean(ip || hostname) || age < 30_000;
+      if (Boolean(ip || hostname) || age < 30_000) {
+        mergedNodes.set(node.node_id, node);
+      }
+    }
+
+    for (const coreId of CORE_NODE_IDS) {
+      const existing = mergedNodes.get(coreId);
+      const defaults = CORE_NODE_DEFAULTS[coreId];
+      if (!existing) {
+        mergedNodes.set(coreId, {
+          node_id: coreId,
+          hostname: defaults.hostname,
+          last_seen: 0,
+          confidence: defaults.confidence,
+        });
+        continue;
+      }
+      const hasAddress = Boolean(String(existing.ip ?? "").trim() || String(existing.hostname ?? "").trim());
+      if (!hasAddress) {
+        mergedNodes.set(coreId, {
+          ...existing,
+          hostname: defaults.hostname,
+        });
+      }
+    }
+
+    const visibleNodes = Array.from(mergedNodes.values()).sort((a, b) => {
+      const bySeen = (b.last_seen ?? 0) - (a.last_seen ?? 0);
+      if (bySeen !== 0) return bySeen;
+      return a.node_id.localeCompare(b.node_id);
     });
 
     return {
       items: visibleNodes.map((node) => {
         const override = this.nodePresence.get(node.node_id);
-        const age = now - node.last_seen;
-        let state = "offline";
-        if (override && override.state === "connecting" && now - override.updatedAt < 30_000) {
+        const overrideAge = override ? now - override.updatedAt : Number.POSITIVE_INFINITY;
+        const lastSeen = Number(node.last_seen ?? 0);
+        const age = lastSeen > 0 ? Math.max(0, now - lastSeen) : Number.POSITIVE_INFINITY;
+        let state: NodePresenceState = "offline";
+        let stateReason: NodePresenceReason = "stale-events";
+        let presenceSource: NodePresenceSource = "events";
+
+        if (override && override.state === "connecting" && overrideAge < 30_000) {
           state = "connecting";
+          stateReason = "manual-override";
+          presenceSource = "manual-override";
+        } else if (override && override.state === "error" && overrideAge < 60_000) {
+          state = "error";
+          stateReason = "manual-override";
+          presenceSource = "manual-override";
+        } else if (override && override.state === "scanning" && overrideAge < 60_000) {
+          state = "scanning";
+          stateReason = "manual-override";
+          presenceSource = "manual-override";
         } else if (age < 30_000) {
           state = "online";
-        } else if (override && override.state === "error" && now - override.updatedAt < 60_000) {
-          state = "error";
+          stateReason = "event-recent";
+          presenceSource = "events";
+        } else {
+          const coreFallback = this.resolveCoreFallbackState(node.node_id, hints);
+          if (coreFallback) {
+            state = coreFallback;
+            stateReason = "control-plane-health";
+            presenceSource = "control-plane";
+          }
         }
+
         const kinds = byNodeKind.get(node.node_id) ?? new Set();
         const canScanWifi = Array.from(kinds).some((k) => k.includes("wifi"));
         const canScanBle = Array.from(kinds).some((k) => k.includes("ble"));
@@ -652,8 +752,10 @@ export class SODSServer {
         return {
           node_id: node.node_id,
           state,
+          state_reason: stateReason,
+          presence_source: presenceSource,
           last_seen: node.last_seen,
-          last_seen_age_ms: age,
+          last_seen_age_ms: Number.isFinite(age) ? age : 0,
           last_error: override?.lastError ?? "",
           ip: ip || undefined,
           mac: node.mac,
@@ -670,6 +772,127 @@ export class SODSServer {
         };
       }),
     };
+  }
+
+  private resolveCoreFallbackState(nodeId: string, hints?: CorePresenceHints): NodePresenceState | null {
+    if (!hints || !this.isCoreNodeID(nodeId)) return null;
+    if (nodeId === "exec-pi-aux" && hints.auxHealthy) return "idle";
+    if (nodeId === "exec-pi-logger" && hints.loggerHealthy) return "idle";
+    if (nodeId === "mac16" && hints.macHealthy) return "idle";
+    return null;
+  }
+
+  private isCoreNodeID(nodeId: string): nodeId is CoreNodeId {
+    return (CORE_NODE_IDS as readonly string[]).includes(nodeId);
+  }
+
+  private countOnlineEquivalentNodes(items: Array<{ state?: string }>) {
+    return items.filter((item) => this.isOnlineEquivalentState(item.state ?? "")).length;
+  }
+
+  private isOnlineEquivalentState(state: string) {
+    return state === "online" || state === "idle" || state === "scanning";
+  }
+
+  private async computeCorePresenceHints(logger: LoggerHealth): Promise<CorePresenceHints> {
+    const now = nowMs();
+    const fleetHints = this.readFleetStatusHint(now);
+    const [codegatchiLive, auxLive, vaultLive] = await Promise.all([
+      this.fetchCodegatchiHealthHint(),
+      this.fetchAuxHealthHint(),
+      this.fetchVaultHealthHint(),
+    ]);
+    const loggerFresh = logger.ok || this.isFreshMs(now, this.lastLoggerHealthSuccessAt, this.coreHealthFreshMs);
+    const auxFresh = auxLive || this.isFreshMs(now, this.lastAuxHealthSuccessAt, this.coreHealthFreshMs);
+    const vaultFresh = vaultLive || this.isFreshMs(now, this.lastVaultHealthSuccessAt, this.coreHealthFreshMs);
+    const codegatchiHealthy = codegatchiLive || this.isFreshMs(now, this.lastCodegatchiHealthSuccessAt, this.coreHealthFreshMs);
+    return {
+      now,
+      auxHealthy: fleetHints.auxHealthy || auxFresh || loggerFresh,
+      loggerHealthy: fleetHints.loggerHealthy || vaultFresh || loggerFresh,
+      macHealthy: fleetHints.macHealthy || codegatchiHealthy,
+    };
+  }
+
+  private readFleetStatusHint(now: number) {
+    const fallback = { auxHealthy: false, loggerHealthy: false, macHealthy: false };
+    if (!existsSync(this.fleetStatusPath)) return fallback;
+    try {
+      const raw = JSON.parse(readFileSync(this.fleetStatusPath, "utf8"));
+      const tsMs = Date.parse(String(raw?.ts ?? ""));
+      if (!this.isFreshMs(now, tsMs, this.fleetHintFreshMs)) return fallback;
+      const targets = Array.isArray(raw?.targets) ? raw.targets : [];
+      let auxHealthy = false;
+      let loggerHealthy = false;
+      let macHealthy = false;
+      for (const target of targets) {
+        const name = String(target?.name ?? "").toLowerCase();
+        const healthy = target?.ok === true || (target?.reachable === true && target?.ok !== false);
+        if (!healthy) continue;
+        if (name === "pi-aux" || name === "aux" || name.includes("pi-aux")) auxHealthy = true;
+        if (name === "pi-logger" || name === "vault" || name.includes("pi-logger")) loggerHealthy = true;
+        if (name === "mac-agents" || name === "mac16" || name.includes("mac16")) macHealthy = true;
+      }
+      return { auxHealthy, loggerHealthy, macHealthy };
+    } catch {
+      return fallback;
+    }
+  }
+
+  private async fetchCodegatchiHealthHint() {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 1200);
+    try {
+      const res = await fetch(this.codegatchiHealthURL, { method: "GET", signal: controller.signal });
+      if (!res.ok) return false;
+      const payload = await res.json().catch(() => null);
+      if (payload && typeof payload === "object" && "ok" in payload) {
+        const ok = Boolean((payload as Record<string, unknown>).ok);
+        if (ok) this.lastCodegatchiHealthSuccessAt = nowMs();
+        return ok;
+      }
+      this.lastCodegatchiHealthSuccessAt = nowMs();
+      return true;
+    } catch {
+      return false;
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  private async fetchAuxHealthHint() {
+    return this.fetchHealthHint(this.auxHealthURL, () => {
+      this.lastAuxHealthSuccessAt = nowMs();
+    });
+  }
+
+  private async fetchVaultHealthHint() {
+    return this.fetchHealthHint(this.vaultHealthURL, () => {
+      this.lastVaultHealthSuccessAt = nowMs();
+    });
+  }
+
+  private async fetchHealthHint(url: string, onSuccess: () => void) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 1200);
+    try {
+      const res = await fetch(url, { method: "GET", signal: controller.signal });
+      if (!res.ok) return false;
+      const payload = await res.json().catch(() => null);
+      if (payload && typeof payload === "object" && "ok" in payload && (payload as Record<string, unknown>).ok === false) {
+        return false;
+      }
+      onSuccess();
+      return true;
+    } catch {
+      return false;
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  private isFreshMs(now: number, tsMs: number, windowMs: number) {
+    return Number.isFinite(tsMs) && tsMs > 0 && now - tsMs <= windowMs;
   }
 
   private async handleNodeConnect(req: http.IncomingMessage, res: http.ServerResponse) {
@@ -785,7 +1008,7 @@ export class SODSServer {
     return { ok: false, node_id: nodeId, error: lastErr };
   }
 
-  private async fetchLoggerHealth() {
+  private async fetchLoggerHealth(): Promise<LoggerHealth> {
     const bases = this.ingestor.getBaseURLs();
     const ordered = [this.ingestor.getActiveBaseURL(), ...bases.filter((b) => b !== this.ingestor.getActiveBaseURL())];
     let lastStatus = "offline";
@@ -802,6 +1025,7 @@ export class SODSServer {
         }
         const json = await res.json();
         clearTimeout(timer);
+        this.lastLoggerHealthSuccessAt = nowMs();
         return { ok: true, status: "ok", detail: json, url: base };
       } catch (err: any) {
         clearTimeout(timer);

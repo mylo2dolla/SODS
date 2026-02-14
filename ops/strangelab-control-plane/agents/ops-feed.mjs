@@ -1,8 +1,11 @@
 import express from "express";
 import fs from "node:fs";
 import path from "node:path";
-import { spawnSync } from "node:child_process";
+import { spawnSync, execFile } from "node:child_process";
 import { randomUUID } from "node:crypto";
+import { promisify } from "node:util";
+
+const execFileAsync = promisify(execFile);
 
 function readEnvInt(name, fallback, min, max) {
   const raw = Number(process.env[name] ?? fallback);
@@ -97,40 +100,59 @@ function sortedRecentDayDirs(dayDirs, cutoffMs) {
     .reverse();
 }
 
-function runLocal(cmd, args) {
-  const out = spawnSync(cmd, args, { encoding: "utf8", timeout: READ_TIMEOUT_MS });
-  if (out.status !== 0) {
-    throw new Error(out.stderr?.trim() || out.stdout?.trim() || `${cmd} failed`);
+async function runLocal(cmd, args) {
+  try {
+    const { stdout } = await execFileAsync(cmd, args, {
+      encoding: "utf8",
+      timeout: READ_TIMEOUT_MS,
+      maxBuffer: 8 * 1024 * 1024,
+    });
+    return stdout || "";
+  } catch (error) {
+    const stderr = String(error?.stderr || "").trim();
+    const stdout = String(error?.stdout || "").trim();
+    throw new Error(stderr || stdout || `${cmd} failed`);
   }
-  return out.stdout || "";
 }
 
-function runRemoteSsh(cmd, args) {
+async function runRemoteSsh(cmd, args) {
   const remote = [cmd, ...args].map((part) => `'${String(part).replace(/'/g, "'\\''")}'`).join(" ");
-  const out = spawnSync(SSH_BIN, ["-o", "BatchMode=yes", "-o", `ConnectTimeout=${SSH_CONNECT_TIMEOUT_S}`, REMOTE_HOST, remote], { encoding: "utf8", timeout: READ_TIMEOUT_MS });
-  if (out.status !== 0) {
-    const stderr = String(out.stderr || "").trim();
-    const stdout = String(out.stdout || "").trim();
+  try {
+    const { stdout } = await execFileAsync(
+      SSH_BIN,
+      ["-o", "BatchMode=yes", "-o", `ConnectTimeout=${SSH_CONNECT_TIMEOUT_S}`, REMOTE_HOST, remote],
+      { encoding: "utf8", timeout: READ_TIMEOUT_MS, maxBuffer: 8 * 1024 * 1024 },
+    );
+    return stdout || "";
+  } catch (error) {
+    const stderr = String(error?.stderr || "").trim();
+    const stdout = String(error?.stdout || "").trim();
     const stdoutHead = stdout.length > 220 ? `${stdout.slice(0, 220)}...` : stdout;
-    throw new Error(stderr || `ssh command failed: ${cmd} status=${String(out.status)} stdout=${stdoutHead}`);
+    const status = typeof error?.code === "number" ? ` status=${String(error.code)}` : "";
+    throw new Error(stderr || `ssh command failed: ${cmd}${status} stdout=${stdoutHead}`);
   }
-  return out.stdout || "";
 }
 
-function runRemoteGuarded(cmd, args) {
+async function runRemoteGuarded(cmd, args) {
   const requestId = `ops-feed-${randomUUID()}`;
-  const out = spawnSync(SL_SSH_BIN, [SL_SSH_ALIAS, requestId, cmd, ...args], { encoding: "utf8", timeout: READ_TIMEOUT_MS });
-  if (out.status !== 0) {
-    const stderr = String(out.stderr || "").trim();
-    const stdout = String(out.stdout || "").trim();
+  try {
+    const { stdout } = await execFileAsync(
+      SL_SSH_BIN,
+      [SL_SSH_ALIAS, requestId, cmd, ...args],
+      { encoding: "utf8", timeout: READ_TIMEOUT_MS, maxBuffer: 8 * 1024 * 1024 },
+    );
+    const payload = parseJsonLine((stdout || "").trim());
+    if (!payload || payload.ok !== true) {
+      throw new Error(`sl-ssh response invalid for ${cmd}`);
+    }
+    return String(payload.stdout || "");
+  } catch (error) {
+    const stderr = String(error?.stderr || "").trim();
+    const stdout = String(error?.stdout || "").trim();
     const stdoutHead = stdout.length > 220 ? `${stdout.slice(0, 220)}...` : stdout;
-    throw new Error(stderr || `sl-ssh command failed: ${cmd} status=${String(out.status)} stdout=${stdoutHead}`);
+    const status = typeof error?.code === "number" ? ` status=${String(error.code)}` : "";
+    throw new Error(stderr || `sl-ssh command failed: ${cmd}${status} stdout=${stdoutHead}`);
   }
-  const payload = parseJsonLine((out.stdout || "").trim());
-  if (!payload || payload.ok !== true) {
-    throw new Error(`sl-ssh response invalid for ${cmd}`);
-  }
-  return String(payload.stdout || "");
 }
 
 function isTransientReaderError(error) {
@@ -145,7 +167,7 @@ function isTransientReaderError(error) {
     || message.includes("broken pipe");
 }
 
-function runReaderCommand(cmd, args) {
+async function runReaderCommand(cmd, args) {
   if (EFFECTIVE_READ_MODE === "local") {
     return runLocal(cmd, args);
   }
@@ -160,7 +182,7 @@ function runReaderCommand(cmd, args) {
   let lastError = null;
   for (let attempt = 0; attempt <= SSH_RETRIES; attempt += 1) {
     try {
-      return runner(cmd, args);
+      return await runner(cmd, args);
     } catch (error) {
       lastError = error;
       if (attempt >= SSH_RETRIES || !isTransientReaderError(error)) {
@@ -172,7 +194,7 @@ function runReaderCommand(cmd, args) {
   throw new Error(`unsupported READ_MODE: ${EFFECTIVE_READ_MODE}`);
 }
 
-function listDayDirs() {
+async function listDayDirs() {
   if (EFFECTIVE_READ_MODE === "local") {
     if (!fs.existsSync(VAULT_EVENTS_DIR)) return [];
     return fs.readdirSync(VAULT_EVENTS_DIR, { withFileTypes: true })
@@ -180,7 +202,7 @@ function listDayDirs() {
       .map((entry) => entry.name);
   }
   const root = REMOTE_EVENTS_DIR;
-  const output = runReaderCommand("/bin/ls", ["-1", root]);
+  const output = await runReaderCommand("/bin/ls", ["-1", root]);
   return output.split(/\r?\n/).map((v) => v.trim()).filter(Boolean);
 }
 
@@ -191,21 +213,21 @@ function filePathForDay(dayName) {
   return `${REMOTE_EVENTS_DIR}/${dayName}/ingest.ndjson`;
 }
 
-function fileExists(filePath) {
+async function fileExists(filePath) {
   if (EFFECTIVE_READ_MODE === "local") {
     return fs.existsSync(filePath);
   }
   try {
-    runReaderCommand("/bin/ls", ["-1", filePath]);
+    await runReaderCommand("/bin/ls", ["-1", filePath]);
     return true;
   } catch {
     return false;
   }
 }
 
-function readTail(filePath, lines) {
+async function readTail(filePath, lines) {
   const bounded = clampInt(lines, 10, MAX_TAIL_LINES, DEFAULT_TAIL_LINES);
-  const output = runReaderCommand("/usr/bin/tail", ["-n", String(bounded), filePath]);
+  const output = await runReaderCommand("/usr/bin/tail", ["-n", String(bounded), filePath]);
   return output.split(/\r?\n/).filter(Boolean);
 }
 
@@ -226,25 +248,25 @@ function matchesFilters(event, filters) {
   return true;
 }
 
-function readRecentEvents({ limit, sinceMs, typePrefix = "", src = "" }) {
+async function readRecentEvents({ limit, sinceMs, typePrefix = "", src = "" }) {
   const filters = {
     sinceMs: Math.max(sinceMs, nowMs() - MAX_WINDOW_MS),
     typePrefix,
     src,
   };
 
-  const dayDirs = sortedRecentDayDirs(listDayDirs(), filters.sinceMs);
+  const dayDirs = sortedRecentDayDirs(await listDayDirs(), filters.sinceMs);
   const events = [];
   let malformed = 0;
   let readErrors = 0;
 
   for (const day of dayDirs) {
     const filePath = filePathForDay(day);
-    if (!fileExists(filePath)) continue;
+    if (!(await fileExists(filePath))) continue;
     const tailLines = Math.min(MAX_TAIL_LINES_PER_FILE, Math.max(DEFAULT_TAIL_LINES, limit * 2));
     let lines = [];
     try {
-      lines = readTail(filePath, tailLines);
+      lines = await readTail(filePath, tailLines);
     } catch (error) {
       if (isIgnorableReadError(error)) {
         readErrors += 1;
@@ -311,11 +333,14 @@ const sourceProbe = {
   dayDirsVisible: 0,
   checkedAtMs: 0,
 };
+let sourceProbeRefreshing = false;
 
-function refreshSourceProbe() {
+async function refreshSourceProbe() {
+  if (sourceProbeRefreshing) return;
+  sourceProbeRefreshing = true;
   const checkedAtMs = nowMs();
   try {
-    const days = listDayDirs();
+    const days = await listDayDirs();
     sourceProbe.ok = true;
     sourceProbe.error = "";
     sourceProbe.dayDirsVisible = days.length;
@@ -325,6 +350,8 @@ function refreshSourceProbe() {
     sourceProbe.error = String(error?.message || error);
     sourceProbe.dayDirsVisible = 0;
     sourceProbe.checkedAtMs = checkedAtMs;
+  } finally {
+    sourceProbeRefreshing = false;
   }
 }
 
@@ -362,13 +389,13 @@ app.get("/ready", (_req, res) => {
   return res.status(503).json({ ok: false, ...payload });
 });
 
-app.get("/events", (req, res) => {
+app.get("/events", async (req, res) => {
   try {
     const limit = clampInt(req.query.limit, 1, MAX_LIMIT, DEFAULT_LIMIT);
     const sinceMs = clampInt(req.query.since_ms, 0, nowMs(), nowMs() - 60 * 60 * 1000);
     const typePrefix = String(req.query.typePrefix || "");
     const src = String(req.query.src || "");
-    const result = readRecentEvents({ limit, sinceMs, typePrefix, src });
+    const result = await readRecentEvents({ limit, sinceMs, typePrefix, src });
     return res.json({
       ok: true,
       count: result.events.length,
@@ -381,7 +408,7 @@ app.get("/events", (req, res) => {
   }
 });
 
-app.get("/trace", (req, res) => {
+app.get("/trace", async (req, res) => {
   try {
     const requestId = String(req.query.request_id || "").trim();
     if (!requestId) {
@@ -390,7 +417,7 @@ app.get("/trace", (req, res) => {
     const limit = clampInt(req.query.limit, 1, MAX_LIMIT, DEFAULT_LIMIT);
     const sinceMs = clampInt(req.query.since_ms, 0, nowMs(), nowMs() - 60 * 60 * 1000);
     const scanLimit = clampInt(req.query.scan_limit, limit, MAX_LIMIT, Math.min(MAX_LIMIT, Math.max(DEFAULT_LIMIT, limit * 3)));
-    const base = readRecentEvents({ limit: scanLimit, sinceMs });
+    const base = await readRecentEvents({ limit: scanLimit, sinceMs });
     const matched = base.events.filter((event) => eventRequestId(event) === requestId).slice(0, limit);
     return res.json({
       ok: true,
@@ -404,11 +431,11 @@ app.get("/trace", (req, res) => {
   }
 });
 
-app.get("/nodes", (req, res) => {
+app.get("/nodes", async (req, res) => {
   try {
     const windowS = clampInt(req.query.window_s, 10, 24 * 60 * 60, 120);
     const sinceMs = nowMs() - windowS * 1_000;
-    const base = readRecentEvents({ limit: MAX_LIMIT, sinceMs });
+    const base = await readRecentEvents({ limit: MAX_LIMIT, sinceMs });
     const nodes = summarizeNodeCounts(base.events);
     return res.json({
       ok: true,
@@ -421,9 +448,9 @@ app.get("/nodes", (req, res) => {
   }
 });
 
-refreshSourceProbe();
+void refreshSourceProbe();
 const probeInterval = setInterval(() => {
-  refreshSourceProbe();
+  void refreshSourceProbe();
 }, HEALTH_CACHE_MS);
 if (typeof probeInterval.unref === "function") {
   probeInterval.unref();

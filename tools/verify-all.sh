@@ -5,6 +5,8 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/_env.sh"
 
 fail=0
+LOCAL_STATION_URL="${SODS_LOCAL_STATION_URL:-http://127.0.0.1:${SODS_PORT:-9123}}"
+CONTROL_PLANE_OK=0
 
 pass() { printf '[PASS] %s\n' "$1"; }
 fail_msg() { printf '[FAIL] %s\n' "$1"; fail=1; }
@@ -75,6 +77,7 @@ fi
 section "D) Control Plane"
 if "$SCRIPT_DIR/verify-control-plane.sh" >/dev/null 2>&1; then
   pass "control-plane verify script passed"
+  CONTROL_PLANE_OK=1
 else
   fail_msg "control-plane verify script failed"
 fi
@@ -143,7 +146,92 @@ else
   fail_msg "ssh guard verify script failed"
 fi
 
-section "H) UI Data Rules"
+section "H) Local Core Node Presence"
+local_nodes_payload="$(curl --max-time 8 -fsS "${LOCAL_STATION_URL%/}/api/nodes" || true)"
+if [[ "$CONTROL_PLANE_OK" -eq 1 ]]; then
+if presence_result="$(python3 - "$local_nodes_payload" <<'PY'
+import json, sys
+raw = sys.argv[1]
+try:
+    payload = json.loads(raw)
+except Exception:
+    print("api/nodes not parseable")
+    sys.exit(1)
+items = payload.get("items")
+if not isinstance(items, list):
+    print("api/nodes missing items[]")
+    sys.exit(1)
+core_ids = ["exec-pi-aux", "exec-pi-logger", "mac16"]
+rows = {}
+for row in items:
+    if not isinstance(row, dict):
+        continue
+    node_id = row.get("node_id")
+    if node_id in core_ids:
+        rows[node_id] = row
+missing = [node for node in core_ids if node not in rows]
+if missing:
+    print("missing core nodes: " + ",".join(missing))
+    sys.exit(1)
+all_stale = all(
+    str(rows[node].get("state", "")).lower() == "offline"
+    and str(rows[node].get("state_reason", "")).lower() == "stale-events"
+    for node in core_ids
+)
+if all_stale:
+    detail = "; ".join(
+        f"{node}={rows[node].get('state','')}/{rows[node].get('state_reason','')}/{rows[node].get('presence_source','')}"
+        for node in core_ids
+    )
+    print("all core nodes stale-offline: " + detail)
+    sys.exit(1)
+summary = "; ".join(
+    f"{node}={rows[node].get('state','')}/{rows[node].get('state_reason','')}/{rows[node].get('presence_source','')}"
+    for node in core_ids
+)
+print(summary)
+PY
+)"; then
+  pass "local core node presence is healthy (${presence_result})"
+else
+  fail_msg "local core node presence mismatch (${presence_result:-check failed})"
+fi
+else
+if presence_result="$(python3 - "$local_nodes_payload" <<'PY'
+import json, sys
+raw = sys.argv[1]
+try:
+    payload = json.loads(raw)
+except Exception:
+    print("api/nodes not parseable")
+    sys.exit(1)
+items = payload.get("items")
+if not isinstance(items, list):
+    print("api/nodes missing items[]")
+    sys.exit(1)
+core_ids = ["exec-pi-aux", "exec-pi-logger", "mac16"]
+rows = {}
+for row in items:
+    if isinstance(row, dict) and row.get("node_id") in core_ids:
+        rows[row["node_id"]] = row
+missing = [node for node in core_ids if node not in rows]
+if missing:
+    print("missing core nodes: " + ",".join(missing))
+    sys.exit(1)
+summary = "; ".join(
+    f"{node}={rows[node].get('state','')}/{rows[node].get('state_reason','')}/{rows[node].get('presence_source','')}"
+    for node in core_ids
+)
+print(summary)
+PY
+)"; then
+  pass "local core nodes present (control-plane degraded, strict stale-state gate skipped: ${presence_result})"
+else
+  fail_msg "local core node presence check failed (${presence_result:-check failed})"
+fi
+fi
+
+section "I) UI Data Rules"
 if "$SCRIPT_DIR/verify-ui-data.sh" >/dev/null 2>&1; then
   pass "ui-data verify script passed"
 else
