@@ -6,14 +6,10 @@
   "scripts": {
     "start:token": "node ./agents/token-server.mjs",
     "start:gateway": "node ./agents/god-gateway.mjs",
-    "start:exec-agent": "node ./agents/exec-agent.mjs",
     "start:vault-ingest": "node ./agents/vault-ingest.mjs",
     "start:ops-feed": "node ./agents/ops-feed.mjs"
   },
   "dependencies": {
-    "@livekit/rtc-node": "^0.13.16",
-    "express": "^4.21.2",
-    "livekit-client": "^2.15.13",
-    "livekit-server-sdk": "^2.13.2"
+    "express": "^4.21.2"
   }
 }

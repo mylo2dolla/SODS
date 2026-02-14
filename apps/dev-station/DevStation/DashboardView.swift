@@ -273,6 +273,7 @@ struct DashboardView: View {
                                 eventCount: piAuxStore.recentEventCount(nodeID: node.id, window: 600),
                                 actions: dashboardActions(for: node),
                                 isScannerNode: isScannerNode,
+                                isServicePseudoNode: false,
                                 isConnecting: connectingNodeIDs.contains(node.id),
                                 stationBaseURL: sodsStore.baseURL,
                                 onRefresh: {

@@ -15,96 +15,104 @@ check_remote_active() {
   ssh "$host" "sudo systemctl is-active '$svc' 2>/dev/null || true"
 }
 
-echo "== C + D + F) Control Plane / Agents / God Path =="
+json_has_ok_true() {
+  local payload="$1"
+  python3 - "$payload" <<'PY'
+import json, sys
+text = sys.argv[1]
+try:
+    obj = json.loads(text)
+except Exception:
+    sys.exit(1)
+sys.exit(0 if obj.get("ok") is True else 1)
+PY
+}
 
-if ssh "$AUX_SSH_TARGET" "sudo docker ps --format '{{.Names}}' | grep -qi livekit"; then
-  pass "LiveKit container running"
-else
-  fail_msg "LiveKit container not running"
-fi
+echo "== C + D + F) Control Plane / Federation Path =="
 
-if ssh "$AUX_SSH_TARGET" "sudo ss -lntp | grep -q ':7880\\b'"; then
-  pass "LiveKit listens on :7880"
-else
-  fail_msg "LiveKit not listening on :7880"
-fi
-
-for svc in strangelab-token strangelab-god-gateway; do
+for svc in strangelab-codegatchi-tunnel strangelab-token strangelab-god-gateway strangelab-ops-feed; do
   status="$(check_remote_active "$AUX_SSH_TARGET" "$svc")"
   if [[ "$status" == "active" ]]; then
-    pass "${svc} active"
+    pass "${svc} active on aux"
   else
-    fail_msg "${svc} inactive (${status:-unknown})"
+    fail_msg "${svc} inactive on aux (${status:-unknown})"
   fi
 done
 
-ops_feed_status="$(check_remote_active "$AUX_SSH_TARGET" "strangelab-ops-feed")"
-if [[ "$ops_feed_status" == "active" ]]; then
-  pass "strangelab-ops-feed active"
+vault_status="$(check_remote_active "$VAULT_SSH_TARGET" "strangelab-vault-ingest")"
+if [[ "$vault_status" == "active" ]]; then
+  pass "strangelab-vault-ingest active on vault"
 else
-  fail_msg "strangelab-ops-feed inactive (${ops_feed_status:-unknown})"
+  fail_msg "strangelab-vault-ingest inactive on vault (${vault_status:-unknown})"
 fi
 
-if curl -fsS -X POST "$TOKEN_URL" \
-  -H 'content-type: application/json' \
-  -d '{"identity":"verify-control-plane","room":"strangelab"}' | rg -q '"token"'; then
-  pass "token endpoint returns token"
+if "$SCRIPT_DIR/verify-federation-contract.sh" >/dev/null 2>&1; then
+  pass "federation action contract validates"
 else
-  fail_msg "token endpoint failed"
+  fail_msg "federation action contract validation failed"
 fi
 
-if curl -fsS "${OPS_FEED_URL}/health" | rg -q '"ok"[[:space:]]*:[[:space:]]*true'; then
+tunnel_rsp="$(ssh "$AUX_SSH_TARGET" "curl -fsS --max-time 8 '${FED_GATEWAY_HEALTH_URL}'" 2>/dev/null || true)"
+if json_has_ok_true "$tunnel_rsp"; then
+  pass "codegatchi gateway reachable from aux tunnel (${FED_GATEWAY_HEALTH_URL})"
+else
+  fail_msg "codegatchi gateway unreachable from aux tunnel"
+fi
+
+token_health_rsp="$(curl --max-time 8 -fsS "$TOKEN_HEALTH_URL" 2>/dev/null || true)"
+if json_has_ok_true "$token_health_rsp"; then
+  pass "token health endpoint OK"
+else
+  fail_msg "token health endpoint failed (${TOKEN_HEALTH_URL})"
+fi
+
+god_health_rsp="$(curl --max-time 8 -fsS "$GOD_HEALTH_URL" 2>/dev/null || true)"
+if json_has_ok_true "$god_health_rsp"; then
+  pass "god gateway health endpoint OK"
+else
+  fail_msg "god gateway health endpoint failed (${GOD_HEALTH_URL})"
+fi
+
+ops_health_rsp="$(curl --max-time 8 -fsS "$OPS_FEED_HEALTH_URL" 2>/dev/null || true)"
+if json_has_ok_true "$ops_health_rsp"; then
   pass "ops-feed health endpoint OK"
 else
-  fail_msg "ops-feed health endpoint failed"
+  fail_msg "ops-feed health endpoint failed (${OPS_FEED_HEALTH_URL})"
 fi
 
-request_id="verify-snapshot-now-$(date +%s)"
-if curl -fsS -X POST "$GOD_URL" \
-  -H 'content-type: application/json' \
-  -d "{\"action\":\"snapshot.now\",\"scope\":\"tier1\",\"target\":null,\"request_id\":\"${request_id}\",\"reason\":\"verify-control-plane\",\"ts_ms\":0,\"args\":{\"dry_run\":true}}" | rg -q '"ok"'; then
+vault_health_rsp="$(curl --max-time 8 -fsS "$VAULT_HEALTH_URL" 2>/dev/null || true)"
+if json_has_ok_true "$vault_health_rsp"; then
+  pass "vault health endpoint OK"
+else
+  fail_msg "vault health endpoint failed (${VAULT_HEALTH_URL})"
+fi
+
+token_rsp="$(curl --max-time 8 -fsS -X POST "$TOKEN_URL" -H 'content-type: application/json' -d '{"identity":"verify-control-plane","room":"strangelab"}' 2>/dev/null || true)"
+if printf '%s' "$token_rsp" | rg -q '"token"\s*:\s*"[^"]+'; then
+  pass "token endpoint returns compatibility token"
+else
+  fail_msg "token endpoint failed to return token"
+fi
+
+request_id="verify-snapshot-now-$(date +%s)-$RANDOM"
+god_rsp="$(curl --max-time 8 -sS -X POST "$GOD_URL" -H 'content-type: application/json' -d "{\"action\":\"snapshot.now\",\"scope\":\"tier1\",\"target\":null,\"request_id\":\"${request_id}\",\"reason\":\"verify-control-plane\",\"ts_ms\":0,\"args\":{\"dry_run\":true}}" || true)"
+if json_has_ok_true "$god_rsp"; then
   pass "god gateway accepts structured action"
 else
   fail_msg "god gateway structured action failed"
 fi
 
-aux_exec_status="$(check_remote_active "$AUX_SSH_TARGET" "strangelab-exec-agent@pi-aux")"
-if [[ "$aux_exec_status" == "active" ]]; then
-  pass "exec-agent active on pi-aux"
+trace_rsp="$(curl --max-time 8 -fsS "${OPS_FEED_URL}/trace?request_id=${request_id}&limit=80&scan_limit=220&since_ms=$(( $(date +%s) * 1000 - 1200000 ))" 2>/dev/null || true)"
+if printf '%s' "$trace_rsp" | rg -q 'control\.god_button\.(intent|result)'; then
+  pass "ops-feed trace returns god-button evidence"
 else
-  fallback="$(check_remote_active "$AUX_SSH_TARGET" "strangelab-exec-agent")"
-  if [[ "$fallback" == "active" ]]; then
-    pass "exec-agent active on pi-aux (fallback unit name)"
-  else
-    fail_msg "exec-agent inactive on pi-aux"
-  fi
-fi
-
-log_exec_status="$(check_remote_active "$VAULT_SSH_TARGET" "strangelab-exec-agent@pi-logger")"
-if [[ "$log_exec_status" == "active" ]]; then
-  pass "exec-agent active on pi-logger"
-else
-  fallback="$(check_remote_active "$VAULT_SSH_TARGET" "strangelab-exec-agent")"
-  if [[ "$fallback" == "active" ]]; then
-    pass "exec-agent active on pi-logger (fallback unit name)"
-  else
-    fail_msg "exec-agent inactive on pi-logger"
-  fi
-fi
-
-if launchctl print "system/com.strangelab.exec-agent.mac1" >/dev/null 2>&1 || launchctl print "system/com.strangelab.exec-agent.mac2" >/dev/null 2>&1; then
-  pass "launchd exec-agent present on this mac (mac1 or mac2)"
-else
-  if ssh -o BatchMode=yes "$MAC2_SSH" "launchctl print system/com.strangelab.exec-agent.mac2 >/dev/null 2>&1"; then
-    pass "launchd exec-agent present on remote mac2"
-  else
-    fail_msg "launchd exec-agent not found locally or on mac2"
-  fi
+  fail_msg "ops-feed trace missing god-button evidence"
 fi
 
 if [[ "$fail" -eq 0 ]]; then
   echo "verify-control-plane: PASS"
   exit 0
 fi
+
 echo "verify-control-plane: FAIL"
 exit 2

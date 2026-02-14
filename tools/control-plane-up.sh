@@ -43,10 +43,11 @@ TOTAL_TARGETS=0
 OK_TARGETS=0
 REACHABLE_TARGETS=0
 
-TOKEN_CHECK_URL="${TOKEN_URL:-http://192.168.8.114:9123/token}"
-GOD_HEALTH_URL="${GOD_HEALTH_URL:-http://192.168.8.114:8099/health}"
-OPS_HEALTH_URL="${OPS_FEED_HEALTH_URL:-${OPS_FEED_URL:-http://192.168.8.114:9101}/health}"
-VAULT_HEALTH_URL="${VAULT_HEALTH_URL:-${VAULT_URL:-http://192.168.8.160:8088/v1/ingest}}"
+TOKEN_CHECK_URL="${TOKEN_URL:-http://${AUX_HOST:-pi-aux.local}:9123/token}"
+TOKEN_HEALTH_CHECK_URL="${TOKEN_HEALTH_URL:-http://${AUX_HOST:-pi-aux.local}:9123/health}"
+GOD_HEALTH_CHECK_URL="${GOD_HEALTH_URL:-http://${AUX_HOST:-pi-aux.local}:8099/health}"
+OPS_HEALTH_CHECK_URL="${OPS_FEED_HEALTH_URL:-http://${AUX_HOST:-pi-aux.local}:9101/health}"
+VAULT_HEALTH_CHECK_URL="${VAULT_HEALTH_URL:-http://${LOGGER_HOST:-pi-logger.local}:8088/health}"
 
 normalize_health_url() {
   local raw="${1:-}"
@@ -57,9 +58,9 @@ normalize_health_url() {
   echo "$raw" | sed -E 's#/v1/ingest/?$#/health#; s#/god/?$#/health#; s#//health/?$#/health#'
 }
 
-GOD_HEALTH_URL="$(normalize_health_url "$GOD_HEALTH_URL")"
-OPS_HEALTH_URL="$(normalize_health_url "$OPS_HEALTH_URL")"
-VAULT_HEALTH_URL="$(normalize_health_url "$VAULT_HEALTH_URL")"
+GOD_HEALTH_CHECK_URL="$(normalize_health_url "$GOD_HEALTH_CHECK_URL")"
+OPS_HEALTH_CHECK_URL="$(normalize_health_url "$OPS_HEALTH_CHECK_URL")"
+VAULT_HEALTH_CHECK_URL="$(normalize_health_url "$VAULT_HEALTH_CHECK_URL")"
 
 add_service_line() {
   local file="$1"
@@ -135,24 +136,23 @@ record_target() {
 
 probe_ssh_target() {
   local target="$1"
+  [[ -n "$target" ]] || return 1
   ssh "${SSH_FLAGS[@]}" "$target" "echo ok" >/dev/null 2>&1
 }
 
 resolve_ssh_target() {
   local out_var="$1"
   shift
-  local selected=""
+  local resolved=""
   local candidate
   for candidate in "$@"; do
-    if [[ -z "$candidate" ]]; then
-      continue
-    fi
+    [[ -n "$candidate" ]] || continue
     if probe_ssh_target "$candidate"; then
-      selected="$candidate"
+      resolved="$candidate"
       break
     fi
   done
-  printf -v "$out_var" '%s' "$selected"
+  printf -v "$out_var" '%s' "$resolved"
 }
 
 remote_cmd() {
@@ -170,13 +170,27 @@ remote_unit_state() {
 run_bootstrap_profile() {
   local install_host="$1"
   local profile="$2"
-  if [[ -z "$install_host" ]]; then
+  local installer="$REPO_ROOT/ops/strangelab-control-plane/scripts/push-and-install-remote.sh"
+  if [[ -z "$install_host" || ! -x "$installer" ]]; then
     return 1
   fi
   (
     cd "$REPO_ROOT/ops/strangelab-control-plane"
     ./scripts/push-and-install-remote.sh "$install_host" "$profile"
   )
+}
+
+json_payload_ok() {
+  local payload="$1"
+  python3 - "$payload" <<'PY'
+import json, sys
+text = sys.argv[1]
+try:
+    obj = json.loads(text)
+except Exception:
+    sys.exit(1)
+sys.exit(0 if obj.get("ok") is True else 1)
+PY
 }
 
 check_http_endpoint() {
@@ -187,27 +201,45 @@ check_http_endpoint() {
     add_service_line "$services_file" "$name" "0" "url-not-configured"
     return 1
   fi
-  if curl -fsS --max-time 4 "$url" >/dev/null 2>&1; then
+  local response
+  response="$(curl -fsS --max-time 5 "$url" 2>/dev/null || true)"
+  if json_payload_ok "$response"; then
     add_service_line "$services_file" "$name" "1" "$url"
     return 0
   fi
-  add_service_line "$services_file" "$name" "0" "$url unreachable"
+  add_service_line "$services_file" "$name" "0" "$url invalid-or-unreachable"
   return 1
 }
 
 check_token_endpoint() {
   local url="$1"
   local services_file="$2"
-  local response=""
-  if response="$(curl -fsS --max-time 4 -X POST "$url" -H 'content-type: application/json' -d '{"identity":"control-plane-up","room":"strangelab"}' 2>/dev/null)"; then
-    if [[ "$response" == *"token"* ]]; then
-      add_service_line "$services_file" "token-endpoint" "1" "$url"
-      return 0
-    fi
-    add_service_line "$services_file" "token-endpoint" "0" "$url invalid-response"
+  local response
+  response="$(curl -fsS --max-time 5 -X POST "$url" -H 'content-type: application/json' -d '{"identity":"control-plane-up","room":"strangelab"}' 2>/dev/null || true)"
+  if [[ "$response" == *'"token"'* ]]; then
+    add_service_line "$services_file" "token-endpoint" "1" "$url"
+    return 0
+  fi
+  add_service_line "$services_file" "token-endpoint" "0" "$url invalid-or-unreachable"
+  return 1
+}
+
+check_remote_health_endpoint() {
+  local target="$1"
+  local name="$2"
+  local url="$3"
+  local services_file="$4"
+  if [[ -z "$url" ]]; then
+    add_service_line "$services_file" "$name" "0" "url-not-configured"
     return 1
   fi
-  add_service_line "$services_file" "token-endpoint" "0" "$url unreachable"
+  local response
+  response="$(remote_cmd "$target" "curl -fsS --max-time 5 '$url'" 2>/dev/null || true)"
+  if json_payload_ok "$response"; then
+    add_service_line "$services_file" "$name" "1" "$url"
+    return 0
+  fi
+  add_service_line "$services_file" "$name" "0" "$url invalid-or-unreachable"
   return 1
 }
 
@@ -220,22 +252,13 @@ reconcile_systemd_units() {
   shift 5
   local units=("$@")
 
-  local unit
   local all_ok=1
   local had_inactive=0
-
-  declare -A status_map=()
-  declare -A detail_map=()
+  local unit state
 
   for unit in "${units[@]}"; do
-    local state
     state="$(remote_unit_state "$target" "$unit")"
-    if [[ "$state" == "active" ]]; then
-      status_map["$unit"]="1"
-      detail_map["$unit"]="active"
-    else
-      status_map["$unit"]="0"
-      detail_map["$unit"]="state=${state:-unknown}"
+    if [[ "$state" != "active" ]]; then
       had_inactive=1
     fi
   done
@@ -250,14 +273,8 @@ reconcile_systemd_units() {
 
     had_inactive=0
     for unit in "${units[@]}"; do
-      local state
       state="$(remote_unit_state "$target" "$unit")"
-      if [[ "$state" == "active" ]]; then
-        status_map["$unit"]="1"
-        detail_map["$unit"]="active-after-restart"
-      else
-        status_map["$unit"]="0"
-        detail_map["$unit"]="state=${state:-unknown}-after-restart"
+      if [[ "$state" != "active" ]]; then
         had_inactive=1
       fi
     done
@@ -270,23 +287,16 @@ reconcile_systemd_units() {
     else
       add_action_line "$actions_file" "bootstrap-install:failed"
     fi
-
-    for unit in "${units[@]}"; do
-      local state
-      state="$(remote_unit_state "$target" "$unit")"
-      if [[ "$state" == "active" ]]; then
-        status_map["$unit"]="1"
-        detail_map["$unit"]="active-after-bootstrap"
-      else
-        status_map["$unit"]="0"
-        detail_map["$unit"]="state=${state:-unknown}-after-bootstrap"
-      fi
-    done
   fi
 
   for unit in "${units[@]}"; do
-    local unit_ok="${status_map[$unit]:-0}"
-    local unit_detail="${detail_map[$unit]:-unknown}"
+    state="$(remote_unit_state "$target" "$unit")"
+    local unit_ok=0
+    local unit_detail="state=${state:-unknown}"
+    if [[ "$state" == "active" ]]; then
+      unit_ok=1
+      unit_detail="active"
+    fi
     add_service_line "$services_file" "$unit" "$unit_ok" "$unit_detail"
     if [[ "$unit_ok" != "1" ]]; then
       all_ok=0
@@ -306,30 +316,37 @@ process_pi_aux() {
   : > "$actions_file"
 
   local selected=""
-  resolve_ssh_target selected "aux" "pi@192.168.8.114"
+  resolve_ssh_target selected \
+    "${AUX_SSH_TARGET:-}" \
+    "${AUX_SSH_ALIAS:-aux}" \
+    "${AUX_SSH:-}" \
+    "aux" \
+    "pi@${AUX_HOST:-pi-aux.local}"
 
   local reachable=0
   local ok=0
 
   if [[ -z "$selected" ]]; then
-    add_action_line "$actions_file" "unreachable:ssh-candidates=aux,pi@192.168.8.114"
+    add_action_line "$actions_file" "unreachable:ssh-candidates=aux,${AUX_SSH_TARGET:-},${AUX_SSH:-}"
+    add_service_line "$services_file" "strangelab-codegatchi-tunnel.service" "0" "host-unreachable"
     add_service_line "$services_file" "strangelab-token.service" "0" "host-unreachable"
     add_service_line "$services_file" "strangelab-god-gateway.service" "0" "host-unreachable"
     add_service_line "$services_file" "strangelab-ops-feed.service" "0" "host-unreachable"
-    add_service_line "$services_file" "strangelab-exec-agent@pi-aux.service" "0" "host-unreachable"
     add_service_line "$services_file" "token-endpoint" "0" "host-unreachable"
+    add_service_line "$services_file" "token-health" "0" "host-unreachable"
     add_service_line "$services_file" "god-health" "0" "host-unreachable"
     add_service_line "$services_file" "ops-feed-health" "0" "host-unreachable"
+    add_service_line "$services_file" "codegatchi-tunnel-health" "0" "host-unreachable"
   else
     reachable=1
     add_action_line "$actions_file" "ssh-target:${selected}"
 
     local units_ok=1
     if ! reconcile_systemd_units "$selected" "$services_file" "$actions_file" "pi-aux" "$selected" \
+      "strangelab-codegatchi-tunnel.service" \
       "strangelab-token.service" \
       "strangelab-god-gateway.service" \
-      "strangelab-ops-feed.service" \
-      "strangelab-exec-agent@pi-aux.service"; then
+      "strangelab-ops-feed.service"; then
       units_ok=0
     fi
 
@@ -337,10 +354,16 @@ process_pi_aux() {
     if ! check_token_endpoint "$TOKEN_CHECK_URL" "$services_file"; then
       endpoints_ok=0
     fi
-    if ! check_http_endpoint "god-health" "$GOD_HEALTH_URL" "$services_file"; then
+    if ! check_http_endpoint "token-health" "$TOKEN_HEALTH_CHECK_URL" "$services_file"; then
       endpoints_ok=0
     fi
-    if ! check_http_endpoint "ops-feed-health" "$OPS_HEALTH_URL" "$services_file"; then
+    if ! check_http_endpoint "god-health" "$GOD_HEALTH_CHECK_URL" "$services_file"; then
+      endpoints_ok=0
+    fi
+    if ! check_http_endpoint "ops-feed-health" "$OPS_HEALTH_CHECK_URL" "$services_file"; then
+      endpoints_ok=0
+    fi
+    if ! check_remote_health_endpoint "$selected" "codegatchi-tunnel-health" "$FED_GATEWAY_HEALTH_URL" "$services_file"; then
       endpoints_ok=0
     fi
 
@@ -360,88 +383,45 @@ process_pi_logger() {
   : > "$actions_file"
 
   local selected=""
-  resolve_ssh_target selected "vault" "pi@192.168.8.160"
+  resolve_ssh_target selected \
+    "${VAULT_SSH_TARGET:-}" \
+    "${VAULT_SSH_ALIAS:-vault}" \
+    "${VAULT_SSH:-}" \
+    "vault" \
+    "pi@${LOGGER_HOST:-pi-logger.local}"
 
   local reachable=0
   local ok=0
 
   if [[ -z "$selected" ]]; then
-    add_action_line "$actions_file" "unreachable:ssh-candidates=vault,pi@192.168.8.160"
+    add_action_line "$actions_file" "unreachable:ssh-candidates=vault,${VAULT_SSH_TARGET:-},${VAULT_SSH:-}"
     add_service_line "$services_file" "strangelab-vault-ingest.service" "0" "host-unreachable"
-    add_service_line "$services_file" "strangelab-exec-agent@pi-logger.service" "0" "host-unreachable"
+    add_service_line "$services_file" "vault-events-dir" "0" "host-unreachable"
     add_service_line "$services_file" "vault-health" "0" "host-unreachable"
   else
     reachable=1
     add_action_line "$actions_file" "ssh-target:${selected}"
 
-    local vault_state
-    vault_state="$(remote_unit_state "$selected" "strangelab-vault-ingest.service")"
-    local exec_tpl_state
-    exec_tpl_state="$(remote_unit_state "$selected" "strangelab-exec-agent@pi-logger.service")"
-    local exec_fallback_state
-    exec_fallback_state="$(remote_unit_state "$selected" "strangelab-exec-agent.service")"
-
-    local vault_ok=0
-    local exec_ok=0
-
-    if [[ "$vault_state" == "active" ]]; then
-      vault_ok=1
-    fi
-    if [[ "$exec_tpl_state" == "active" || "$exec_fallback_state" == "active" ]]; then
-      exec_ok=1
+    local units_ok=1
+    if ! reconcile_systemd_units "$selected" "$services_file" "$actions_file" "pi-logger" "$selected" \
+      "strangelab-vault-ingest.service"; then
+      units_ok=0
     fi
 
-    if (( vault_ok == 0 || exec_ok == 0 )); then
-      add_action_line "$actions_file" "restart-systemd:pi-logger"
-      if remote_cmd "$selected" "sudo systemctl restart strangelab-vault-ingest.service strangelab-exec-agent@pi-logger.service strangelab-exec-agent.service" >/dev/null 2>&1; then
-        add_action_line "$actions_file" "restart-systemd:ok"
-      else
-        add_action_line "$actions_file" "restart-systemd:failed"
-      fi
-      vault_state="$(remote_unit_state "$selected" "strangelab-vault-ingest.service")"
-      exec_tpl_state="$(remote_unit_state "$selected" "strangelab-exec-agent@pi-logger.service")"
-      exec_fallback_state="$(remote_unit_state "$selected" "strangelab-exec-agent.service")"
-      vault_ok=$([[ "$vault_state" == "active" ]] && echo 1 || echo 0)
-      if [[ "$exec_tpl_state" == "active" || "$exec_fallback_state" == "active" ]]; then
-        exec_ok=1
-      else
-        exec_ok=0
-      fi
-    fi
-
-    if (( vault_ok == 0 || exec_ok == 0 )); then
-      add_action_line "$actions_file" "bootstrap-install:pi-logger@${selected}"
-      if run_bootstrap_profile "$selected" "pi-logger" >/dev/null 2>&1; then
-        add_action_line "$actions_file" "bootstrap-install:ok"
-      else
-        add_action_line "$actions_file" "bootstrap-install:failed"
-      fi
-      vault_state="$(remote_unit_state "$selected" "strangelab-vault-ingest.service")"
-      exec_tpl_state="$(remote_unit_state "$selected" "strangelab-exec-agent@pi-logger.service")"
-      exec_fallback_state="$(remote_unit_state "$selected" "strangelab-exec-agent.service")"
-      vault_ok=$([[ "$vault_state" == "active" ]] && echo 1 || echo 0)
-      if [[ "$exec_tpl_state" == "active" || "$exec_fallback_state" == "active" ]]; then
-        exec_ok=1
-      else
-        exec_ok=0
-      fi
-    fi
-
-    add_service_line "$services_file" "strangelab-vault-ingest.service" "$vault_ok" "state=${vault_state:-unknown}"
-    if [[ "$exec_tpl_state" == "active" ]]; then
-      add_service_line "$services_file" "strangelab-exec-agent@pi-logger.service" "1" "state=active"
-    elif [[ "$exec_fallback_state" == "active" ]]; then
-      add_service_line "$services_file" "strangelab-exec-agent@pi-logger.service" "1" "fallback=strangelab-exec-agent.service"
+    local events_dir_ok=0
+    if remote_cmd "$selected" "test -d /vault/sods/vault/events" >/dev/null 2>&1; then
+      events_dir_ok=1
+      add_service_line "$services_file" "vault-events-dir" "1" "/vault/sods/vault/events"
     else
-      add_service_line "$services_file" "strangelab-exec-agent@pi-logger.service" "0" "state=${exec_tpl_state:-unknown};fallback=${exec_fallback_state:-unknown}"
+      add_service_line "$services_file" "vault-events-dir" "0" "/vault/sods/vault/events missing"
     fi
 
-    local vault_health_ok=1
-    if ! check_http_endpoint "vault-health" "$VAULT_HEALTH_URL" "$services_file"; then
-      vault_health_ok=0
+    local health_ok=1
+    if ! check_http_endpoint "vault-health" "$VAULT_HEALTH_CHECK_URL" "$services_file"; then
+      health_ok=0
     fi
 
-    if (( vault_ok == 1 && exec_ok == 1 && vault_health_ok == 1 )); then
+    if (( units_ok == 1 && events_dir_ok == 1 && health_ok == 1 )); then
       ok=1
     fi
   fi
@@ -456,52 +436,28 @@ process_mac_agents() {
   : > "$services_file"
   : > "$actions_file"
 
-  local candidates=(
-    "mac8"
-    "mac16"
-    "${MAC8_SSH_TARGET:-}"
-    "${MAC16_SSH_TARGET:-}"
-    "${MAC8_SSH:-}"
-    "${MAC16_SSH:-}"
-  )
-
   local selected=""
-  resolve_ssh_target selected "${candidates[@]}"
+  resolve_ssh_target selected \
+    "${MAC16_SSH_TARGET:-}" \
+    "${MAC16_SSH_ALIAS:-mac16}" \
+    "${MAC16_SSH:-}" \
+    "mac16" \
+    "letsdev@${MAC16_HOST:-mac16.local}" \
+    "${MAC8_SSH_TARGET:-}" \
+    "${MAC8_SSH_ALIAS:-mac8}" \
+    "${MAC8_SSH:-}" \
+    "mac8"
 
   local reachable=0
   local ok=0
   if [[ -z "$selected" ]]; then
-    add_action_line "$actions_file" "unreachable:ssh-candidates=mac8,mac16,configured"
-    add_service_line "$services_file" "com.strangelab.exec-agent.mac2" "0" "host-unreachable"
-    add_service_line "$services_file" "com.strangelab.exec-agent.mac1" "0" "host-unreachable"
+    add_action_line "$actions_file" "unreachable:ssh-candidates=mac16,mac8,configured"
+    add_service_line "$services_file" "codegatchi-health" "0" "host-unreachable"
   else
     reachable=1
     add_action_line "$actions_file" "ssh-target:${selected}"
 
-    local mac2_ok=0
-    local mac1_ok=0
-    if remote_cmd "$selected" "launchctl print system/com.strangelab.exec-agent.mac2 >/dev/null 2>&1"; then
-      mac2_ok=1
-    fi
-    if remote_cmd "$selected" "launchctl print system/com.strangelab.exec-agent.mac1 >/dev/null 2>&1"; then
-      mac1_ok=1
-    fi
-
-    if (( mac2_ok == 0 && mac1_ok == 0 )); then
-      add_action_line "$actions_file" "kickstart-launchd:mac1+mac2"
-      remote_cmd "$selected" "sudo launchctl kickstart -k system/com.strangelab.exec-agent.mac2 >/dev/null 2>&1 || true; sudo launchctl kickstart -k system/com.strangelab.exec-agent.mac1 >/dev/null 2>&1 || true; launchctl kickstart -k system/com.strangelab.exec-agent.mac2 >/dev/null 2>&1 || true; launchctl kickstart -k system/com.strangelab.exec-agent.mac1 >/dev/null 2>&1 || true" >/dev/null 2>&1 || true
-      if remote_cmd "$selected" "launchctl print system/com.strangelab.exec-agent.mac2 >/dev/null 2>&1"; then
-        mac2_ok=1
-      fi
-      if remote_cmd "$selected" "launchctl print system/com.strangelab.exec-agent.mac1 >/dev/null 2>&1"; then
-        mac1_ok=1
-      fi
-    fi
-
-    add_service_line "$services_file" "com.strangelab.exec-agent.mac2" "$mac2_ok" "$([[ "$mac2_ok" == "1" ]] && echo active || echo inactive)"
-    add_service_line "$services_file" "com.strangelab.exec-agent.mac1" "$mac1_ok" "$([[ "$mac1_ok" == "1" ]] && echo active || echo inactive)"
-
-    if (( mac2_ok == 1 || mac1_ok == 1 )); then
+    if check_remote_health_endpoint "$selected" "codegatchi-health" "http://127.0.0.1:9777/v1/health" "$services_file"; then
       ok=1
     fi
   fi
@@ -564,9 +520,10 @@ PY
 log "=== control-plane-up start ==="
 log "repo=$REPO_ROOT"
 log "token=$TOKEN_CHECK_URL"
-log "god=$GOD_HEALTH_URL"
-log "ops=$OPS_HEALTH_URL"
-log "vault=$VAULT_HEALTH_URL"
+log "token-health=$TOKEN_HEALTH_CHECK_URL"
+log "god=$GOD_HEALTH_CHECK_URL"
+log "ops=$OPS_HEALTH_CHECK_URL"
+log "vault=$VAULT_HEALTH_CHECK_URL"
 
 process_pi_aux
 process_pi_logger

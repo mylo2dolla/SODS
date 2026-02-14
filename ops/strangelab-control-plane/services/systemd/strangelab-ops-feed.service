@@ -14,10 +14,15 @@ Environment=NODE_ENV=production
 Environment=HOST=0.0.0.0
 Environment=PORT=9101
 Environment=READ_MODE=auto
-Environment=REMOTE_HOST=pi@192.168.8.160
-Environment=REMOTE_EVENTS_DIR=/var/sods/vault/events
+Environment=OPS_FEED_READ_TIMEOUT_MS=6000
+Environment=OPS_FEED_HEALTH_CACHE_MS=5000
+Environment=OPS_FEED_SSH_CONNECT_TIMEOUT_S=5
+Environment=OPS_FEED_SSH_RETRIES=1
+Environment=REMOTE_HOST=pi@pi-logger.local
+Environment=LOGGER_HOST=pi-logger.local
+Environment=REMOTE_EVENTS_DIR=/vault/sods/vault/events
 Environment=SL_SSH_BIN=/usr/local/bin/sl-ssh
-Environment=SL_SSH_ALIAS=strangelab-pi-logger
+Environment=SL_SSH_ALIAS=vault
 
 [Install]
 WantedBy=multi-user.target

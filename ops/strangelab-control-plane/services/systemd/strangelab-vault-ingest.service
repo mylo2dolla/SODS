@@ -14,7 +14,7 @@ RestartSec=2
 Environment=NODE_ENV=production
 Environment=HOST=0.0.0.0
 Environment=PORT=8088
-Environment=VAULT_DATA_ROOT=/var/sods/vault
+Environment=VAULT_DATA_ROOT=/vault/sods/vault
 Environment=BLE_REGISTRY_DB=/var/sods/registry.sqlite
 
 [Install]

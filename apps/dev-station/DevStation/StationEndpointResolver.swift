@@ -6,23 +6,23 @@ enum StationEndpointResolver {
     private static let piLoggerURLKey = "PiLoggerURL"
     private static func defaultLoggerChain(env: [String: String]) -> String {
         let aux = env["AUX_HOST"]?.trimmingCharacters(in: .whitespacesAndNewlines)
-        let auxHost = (aux?.isEmpty == false) ? aux! : "192.168.8.114"
+        let auxHost = (aux?.isEmpty == false) ? aux! : "pi-aux.local"
         return "http://\(auxHost):9101"
     }
 
     static func stationBaseURL(defaults: UserDefaults = .standard) -> String {
         let env = ProcessInfo.processInfo.environment
         if let fromEnv = firstNonEmpty(env["SODS_BASE_URL"], env["SODS_STATION_URL"], env["STATION_URL"]),
-           let normalized = normalizeBaseURL(fromEnv) {
+           let normalized = normalizeStationBaseURL(fromEnv, requireLocalHost: true).url {
             return normalized
         }
         if let saved = defaults.string(forKey: stationBaseURLKey),
-           let normalized = normalizeBaseURL(saved) {
+           let normalized = normalizeStationBaseURL(saved, requireLocalHost: true).url {
             // Migration guard: older builds sometimes used the Pi-Aux control server port (8787/8788) as the Station port.
             // That conflicts with Dev Station's own control plane listener and causes the Station auto-start loop to thrash.
             if let url = URL(string: normalized),
                let host = url.host,
-               isLoopbackHost(host),
+               isLocalStationHost(host),
                let port = url.port,
                (port == 8787 || port == 8788) {
                 // Reset persisted bad value so future runs don't regress.
@@ -39,11 +39,16 @@ enum StationEndpointResolver {
         let env = ProcessInfo.processInfo.environment
         let fallback = defaultLoggerChain(env: env)
         if let fromEnv = firstNonEmpty(env["PI_LOGGER_URL"], env["PI_LOGGER"]),
-           let normalized = sanitizeLoggerList(normalizeURLList(fromEnv)) {
+           let canonicalized = canonicalizeLoggerList(fromEnv, env: env),
+           let normalized = sanitizeLoggerList(canonicalized) {
             return normalized
         }
         if let saved = defaults.string(forKey: piLoggerURLKey),
-           let normalized = sanitizeLoggerList(normalizeURLList(saved)) {
+           let canonicalized = canonicalizeLoggerList(saved, env: env),
+           let normalized = sanitizeLoggerList(canonicalized) {
+            if normalized != saved {
+                defaults.set(normalized, forKey: piLoggerURLKey)
+            }
             return normalized
         }
         return fallback
@@ -65,7 +70,7 @@ enum StationEndpointResolver {
     static func diagnosticsTargets(baseURL: String, defaults: UserDefaults = .standard) -> (dns: [String], http: [String]) {
         var dns: Set<String> = []
         var http: Set<String> = []
-        if let station = normalizeBaseURL(baseURL) {
+        if let station = normalizeStationBaseURL(baseURL, requireLocalHost: false).url {
             http.insert("\(station)/health")
             if let host = URL(string: station)?.host, !host.isEmpty {
                 dns.insert(host)
@@ -85,21 +90,39 @@ enum StationEndpointResolver {
         return (dns: Array(dns).sorted(), http: Array(http).sorted())
     }
 
-    private static func normalizeBaseURL(_ value: String) -> String? {
+    static func endpointURL(baseURL: String, path: String) -> URL? {
+        guard var components = URLComponents(string: baseURL) else { return nil }
+        components.path = path.hasPrefix("/") ? path : "/\(path)"
+        return components.url
+    }
+
+    static func normalizeStationBaseURL(_ value: String, requireLocalHost: Bool) -> (url: String?, error: String?) {
         let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return nil }
-        guard var comps = URLComponents(string: trimmed) else { return nil }
+        guard !trimmed.isEmpty else { return (nil, "Base URL is required.") }
+
+        let candidate = trimmed.contains("://") ? trimmed : "http://\(trimmed)"
+        guard var comps = URLComponents(string: candidate) else { return (nil, "Base URL is invalid.") }
         if comps.scheme == nil {
             comps.scheme = "http"
         }
-        guard let scheme = comps.scheme?.lowercased(), scheme == "http" || scheme == "https" else { return nil }
-        guard let host = comps.host?.trimmingCharacters(in: .whitespacesAndNewlines), !host.isEmpty else { return nil }
+        guard let scheme = comps.scheme?.lowercased(), scheme == "http" || scheme == "https" else {
+            return (nil, "Base URL must start with http:// or https://")
+        }
+        guard let host = comps.host?.trimmingCharacters(in: .whitespacesAndNewlines), !host.isEmpty else {
+            return (nil, "Base URL must include a host.")
+        }
+        if let port = comps.port, port == 8787 || port == 8788 {
+            return (nil, "Base URL port conflicts with control listener. Use Station port 9123.")
+        }
+        if requireLocalHost && !isLocalStationHost(host) {
+            return (nil, "Base URL must resolve to this machine (localhost or local IP).")
+        }
         comps.host = host
         comps.path = ""
         comps.query = nil
         comps.fragment = nil
-        guard let url = comps.url else { return nil }
-        return url.absoluteString.replacingOccurrences(of: "/$", with: "", options: .regularExpression)
+        guard let url = comps.url else { return (nil, "Base URL is invalid.") }
+        return (url.absoluteString.replacingOccurrences(of: "/$", with: "", options: .regularExpression), nil)
     }
 
     private static func normalizeAbsoluteURL(_ value: String) -> String? {
@@ -126,6 +149,48 @@ enum StationEndpointResolver {
             unique.append(entry)
         }
         return unique.joined(separator: ",")
+    }
+
+    private static func canonicalizeLoggerList(_ value: String, env: [String: String]) -> String? {
+        guard let normalized = normalizeURLList(value) else { return nil }
+        let entries = normalized
+            .split(separator: ",")
+            .map { String($0).trimmingCharacters(in: .whitespacesAndNewlines) }
+            .compactMap { migrateLegacyLoggerURL($0, env: env) }
+        guard !entries.isEmpty else { return nil }
+        var seen: Set<String> = []
+        var unique: [String] = []
+        for entry in entries {
+            let key = entry.lowercased()
+            if seen.contains(key) { continue }
+            seen.insert(key)
+            unique.append(entry)
+        }
+        return unique.joined(separator: ",")
+    }
+
+    private static func migrateLegacyLoggerURL(_ value: String, env: [String: String]) -> String? {
+        guard var comps = URLComponents(string: value),
+              let host = comps.host?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(),
+              !host.isEmpty else {
+            return nil
+        }
+
+        let aux = env["AUX_HOST"]?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let canonicalAux = (aux?.isEmpty == false) ? aux! : "pi-aux.local"
+
+        // One-time migration for legacy LAN IP defaults.
+        if host == "192.168.8.114" || host == "192.168.8.160" {
+            comps.host = canonicalAux
+        }
+
+        if comps.port == nil {
+            comps.port = 9101
+        }
+        comps.path = ""
+        comps.query = nil
+        comps.fragment = nil
+        return comps.url?.absoluteString.replacingOccurrences(of: "/+$", with: "", options: .regularExpression)
     }
 
     private static func sanitizeLoggerList(_ value: String?) -> String? {
@@ -157,5 +222,27 @@ enum StationEndpointResolver {
     private static func isLoopbackHost(_ host: String) -> Bool {
         let lowered = host.lowercased()
         return lowered == "127.0.0.1" || lowered == "localhost" || lowered == "::1"
+    }
+
+    private static func isLocalStationHost(_ host: String) -> Bool {
+        let lowered = host.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !lowered.isEmpty else { return false }
+        if isLoopbackHost(lowered) { return true }
+
+        var localHosts: Set<String> = []
+        if let localName = Host.current().localizedName?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(),
+           !localName.isEmpty {
+            localHosts.insert(localName)
+            localHosts.insert("\(localName).local")
+        }
+        for name in Host.current().names {
+            let clean = name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            if !clean.isEmpty { localHosts.insert(clean) }
+        }
+        for addr in Host.current().addresses {
+            let clean = addr.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            if !clean.isEmpty { localHosts.insert(clean) }
+        }
+        return localHosts.contains(lowered)
     }
 }

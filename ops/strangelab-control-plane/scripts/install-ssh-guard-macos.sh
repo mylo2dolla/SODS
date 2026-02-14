@@ -7,7 +7,7 @@ if [[ -f "$REPO_ROOT/tools/_env.sh" ]]; then
   # shellcheck disable=SC1091
   source "$REPO_ROOT/tools/_env.sh"
 fi
-LOGGER_HOST="${LOGGER_HOST:-192.168.8.160}"
+LOGGER_HOST="${LOGGER_HOST:-pi-logger.local}"
 
 if [[ $# -lt 2 ]]; then
   echo "usage: $0 <controller_pubkey_path> <mac1|mac2|allowlist.json> [node_id]"
@@ -58,7 +58,7 @@ if [[ -f /etc/strangelab-ssh-guard.env ]]; then
   source /etc/strangelab-ssh-guard.env
 fi
 
-LOGGER_HOST="${LOGGER_HOST:-192.168.8.160}"
+LOGGER_HOST="${LOGGER_HOST:-pi-logger.local}"
 VAULT_INGEST_URL="${VAULT_INGEST_URL:-http://${LOGGER_HOST}:8088/v1/ingest}"
 NODE_ID="${NODE_ID:-$(scutil --get LocalHostName 2>/dev/null || hostname -s)}"
 ALLOWLIST="${ALLOWLIST:-/opt/strangelab/allowlist.json}"

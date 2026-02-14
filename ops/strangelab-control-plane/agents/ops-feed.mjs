@@ -4,18 +4,29 @@ import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
 
+function readEnvInt(name, fallback, min, max) {
+  const raw = Number(process.env[name] ?? fallback);
+  if (!Number.isFinite(raw)) return fallback;
+  const rounded = Math.floor(raw);
+  return Math.max(min, Math.min(max, rounded));
+}
+
 const HOST = process.env.HOST || "0.0.0.0";
 const PORT = Number(process.env.PORT || 9101);
 const READ_MODE = String(process.env.READ_MODE || "auto").trim();
+const READ_TIMEOUT_MS = readEnvInt("OPS_FEED_READ_TIMEOUT_MS", 6_000, 500, 30_000);
+const HEALTH_CACHE_MS = readEnvInt("OPS_FEED_HEALTH_CACHE_MS", 5_000, 1_000, 60_000);
+const SSH_CONNECT_TIMEOUT_S = readEnvInt("OPS_FEED_SSH_CONNECT_TIMEOUT_S", 5, 1, 30);
+const SSH_RETRIES = readEnvInt("OPS_FEED_SSH_RETRIES", 1, 0, 5);
 
-const VAULT_EVENTS_DIR = process.env.VAULT_EVENTS_DIR || "/var/sods/vault/events";
-const LOGGER_HOST = process.env.LOGGER_HOST || "192.168.8.160";
+const VAULT_EVENTS_DIR = process.env.VAULT_EVENTS_DIR || "/vault/sods/vault/events";
+const LOGGER_HOST = process.env.LOGGER_HOST || "pi-logger.local";
 const REMOTE_HOST = process.env.REMOTE_HOST || `pi@${LOGGER_HOST}`;
-const REMOTE_EVENTS_DIR = process.env.REMOTE_EVENTS_DIR || "/var/sods/vault/events";
+const REMOTE_EVENTS_DIR = process.env.REMOTE_EVENTS_DIR || "/vault/sods/vault/events";
 const SSH_BIN = process.env.SSH_BIN || "ssh";
 
 const SL_SSH_BIN = process.env.SL_SSH_BIN || "/usr/local/bin/sl-ssh";
-const SL_SSH_ALIAS = process.env.SL_SSH_ALIAS || "strangelab-pi-logger";
+const SL_SSH_ALIAS = process.env.SL_SSH_ALIAS || "vault";
 
 const MAX_LIMIT = 500;
 const DEFAULT_LIMIT = 200;
@@ -87,7 +98,7 @@ function sortedRecentDayDirs(dayDirs, cutoffMs) {
 }
 
 function runLocal(cmd, args) {
-  const out = spawnSync(cmd, args, { encoding: "utf8", timeout: 12_000 });
+  const out = spawnSync(cmd, args, { encoding: "utf8", timeout: READ_TIMEOUT_MS });
   if (out.status !== 0) {
     throw new Error(out.stderr?.trim() || out.stdout?.trim() || `${cmd} failed`);
   }
@@ -96,7 +107,7 @@ function runLocal(cmd, args) {
 
 function runRemoteSsh(cmd, args) {
   const remote = [cmd, ...args].map((part) => `'${String(part).replace(/'/g, "'\\''")}'`).join(" ");
-  const out = spawnSync(SSH_BIN, ["-o", "BatchMode=yes", REMOTE_HOST, remote], { encoding: "utf8", timeout: 45_000 });
+  const out = spawnSync(SSH_BIN, ["-o", "BatchMode=yes", "-o", `ConnectTimeout=${SSH_CONNECT_TIMEOUT_S}`, REMOTE_HOST, remote], { encoding: "utf8", timeout: READ_TIMEOUT_MS });
   if (out.status !== 0) {
     const stderr = String(out.stderr || "").trim();
     const stdout = String(out.stdout || "").trim();
@@ -108,7 +119,7 @@ function runRemoteSsh(cmd, args) {
 
 function runRemoteGuarded(cmd, args) {
   const requestId = `ops-feed-${randomUUID()}`;
-  const out = spawnSync(SL_SSH_BIN, [SL_SSH_ALIAS, requestId, cmd, ...args], { encoding: "utf8", timeout: 45_000 });
+  const out = spawnSync(SL_SSH_BIN, [SL_SSH_ALIAS, requestId, cmd, ...args], { encoding: "utf8", timeout: READ_TIMEOUT_MS });
   if (out.status !== 0) {
     const stderr = String(out.stderr || "").trim();
     const stdout = String(out.stdout || "").trim();
@@ -122,16 +133,42 @@ function runRemoteGuarded(cmd, args) {
   return String(payload.stdout || "");
 }
 
+function isTransientReaderError(error) {
+  const message = String(error?.message || error || "").toLowerCase();
+  if (!message) return false;
+  return message.includes("status=255")
+    || message.includes("timed out")
+    || message.includes("timeout")
+    || message.includes("operation was aborted")
+    || message.includes("connection reset")
+    || message.includes("connection refused")
+    || message.includes("broken pipe");
+}
+
 function runReaderCommand(cmd, args) {
   if (EFFECTIVE_READ_MODE === "local") {
     return runLocal(cmd, args);
   }
+  let runner = null;
   if (EFFECTIVE_READ_MODE === "ssh") {
-    return runRemoteSsh(cmd, args);
+    runner = runRemoteSsh;
+  } else if (EFFECTIVE_READ_MODE === "ssh_guard") {
+    runner = runRemoteGuarded;
   }
-  if (EFFECTIVE_READ_MODE === "ssh_guard") {
-    return runRemoteGuarded(cmd, args);
+  if (!runner) throw new Error(`unsupported READ_MODE: ${EFFECTIVE_READ_MODE}`);
+
+  let lastError = null;
+  for (let attempt = 0; attempt <= SSH_RETRIES; attempt += 1) {
+    try {
+      return runner(cmd, args);
+    } catch (error) {
+      lastError = error;
+      if (attempt >= SSH_RETRIES || !isTransientReaderError(error)) {
+        throw error;
+      }
+    }
   }
+  if (lastError) throw lastError;
   throw new Error(`unsupported READ_MODE: ${EFFECTIVE_READ_MODE}`);
 }
 
@@ -172,6 +209,15 @@ function readTail(filePath, lines) {
   return output.split(/\r?\n/).filter(Boolean);
 }
 
+function isIgnorableReadError(error) {
+  const message = String(error?.message || error || "").toLowerCase();
+  if (!message) return false;
+  return isTransientReaderError(error)
+    || message.includes("no such file or directory")
+    || message.includes("cannot access")
+    || message.includes("not found");
+}
+
 function matchesFilters(event, filters) {
   const ts = normalizeTsMs(event);
   if (ts < filters.sinceMs) return false;
@@ -190,12 +236,22 @@ function readRecentEvents({ limit, sinceMs, typePrefix = "", src = "" }) {
   const dayDirs = sortedRecentDayDirs(listDayDirs(), filters.sinceMs);
   const events = [];
   let malformed = 0;
+  let readErrors = 0;
 
   for (const day of dayDirs) {
     const filePath = filePathForDay(day);
     if (!fileExists(filePath)) continue;
     const tailLines = Math.min(MAX_TAIL_LINES_PER_FILE, Math.max(DEFAULT_TAIL_LINES, limit * 2));
-    const lines = readTail(filePath, tailLines);
+    let lines = [];
+    try {
+      lines = readTail(filePath, tailLines);
+    } catch (error) {
+      if (isIgnorableReadError(error)) {
+        readErrors += 1;
+        continue;
+      }
+      throw error;
+    }
     for (const line of lines) {
       const parsed = parseJsonLine(line);
       if (!parsed) {
@@ -210,6 +266,7 @@ function readRecentEvents({ limit, sinceMs, typePrefix = "", src = "" }) {
   events.sort((a, b) => normalizeTsMs(b) - normalizeTsMs(a));
   return {
     malformed,
+    read_errors: readErrors,
     events: events.slice(0, limit),
   };
 }
@@ -248,26 +305,61 @@ function summarizeNodeCounts(events) {
   return Array.from(nodes.values()).sort((a, b) => b.last_seen_ts_ms - a.last_seen_ts_ms);
 }
 
-app.get("/health", (_req, res) => {
+const sourceProbe = {
+  ok: false,
+  error: "not_checked",
+  dayDirsVisible: 0,
+  checkedAtMs: 0,
+};
+
+function refreshSourceProbe() {
+  const checkedAtMs = nowMs();
   try {
     const days = listDayDirs();
-    return res.json({
-      ok: true,
-      service: "ops-feed",
-      ts_ms: nowMs(),
-      read_mode: EFFECTIVE_READ_MODE,
-      source_root: EFFECTIVE_READ_MODE === "local" ? VAULT_EVENTS_DIR : REMOTE_EVENTS_DIR,
-      day_dirs_visible: days.length,
-    });
+    sourceProbe.ok = true;
+    sourceProbe.error = "";
+    sourceProbe.dayDirsVisible = days.length;
+    sourceProbe.checkedAtMs = checkedAtMs;
   } catch (error) {
-    return res.status(503).json({
-      ok: false,
-      service: "ops-feed",
-      ts_ms: nowMs(),
-      read_mode: EFFECTIVE_READ_MODE,
-      error: String(error?.message || error),
-    });
+    sourceProbe.ok = false;
+    sourceProbe.error = String(error?.message || error);
+    sourceProbe.dayDirsVisible = 0;
+    sourceProbe.checkedAtMs = checkedAtMs;
   }
+}
+
+function sourceProbePayload() {
+  return {
+    source_ok: sourceProbe.ok,
+    source_error: sourceProbe.ok ? "" : sourceProbe.error,
+    day_dirs_visible: sourceProbe.dayDirsVisible,
+    source_checked_at_ms: sourceProbe.checkedAtMs,
+  };
+}
+
+app.get("/health", (_req, res) => {
+  return res.json({
+    ok: true,
+    service: "ops-feed",
+    ts_ms: nowMs(),
+    read_mode: EFFECTIVE_READ_MODE,
+    source_root: EFFECTIVE_READ_MODE === "local" ? VAULT_EVENTS_DIR : REMOTE_EVENTS_DIR,
+    ...sourceProbePayload(),
+  });
+});
+
+app.get("/ready", (_req, res) => {
+  const payload = {
+    service: "ops-feed",
+    ts_ms: nowMs(),
+    read_mode: EFFECTIVE_READ_MODE,
+    source_root: EFFECTIVE_READ_MODE === "local" ? VAULT_EVENTS_DIR : REMOTE_EVENTS_DIR,
+    ...sourceProbePayload(),
+  };
+  if (sourceProbe.ok) {
+    return res.json({ ok: true, ...payload });
+  }
+  return res.status(503).json({ ok: false, ...payload });
 });
 
 app.get("/events", (req, res) => {
@@ -281,6 +373,7 @@ app.get("/events", (req, res) => {
       ok: true,
       count: result.events.length,
       malformed_lines_skipped: result.malformed,
+      read_errors_skipped: result.read_errors,
       events: result.events,
     });
   } catch (error) {
@@ -303,6 +396,7 @@ app.get("/trace", (req, res) => {
       ok: true,
       request_id: requestId,
       count: matched.length,
+      read_errors_skipped: base.read_errors,
       events: matched,
     });
   } catch (error) {
@@ -319,12 +413,21 @@ app.get("/nodes", (req, res) => {
     return res.json({
       ok: true,
       window_s: windowS,
+      read_errors_skipped: base.read_errors,
       nodes,
     });
   } catch (error) {
     return res.status(500).json({ ok: false, error: String(error?.message || error) });
   }
 });
+
+refreshSourceProbe();
+const probeInterval = setInterval(() => {
+  refreshSourceProbe();
+}, HEALTH_CACHE_MS);
+if (typeof probeInterval.unref === "function") {
+  probeInterval.unref();
+}
 
 app.listen(PORT, HOST, () => {
   console.log(`ops-feed listening on http://${HOST}:${PORT} mode=${EFFECTIVE_READ_MODE}`);

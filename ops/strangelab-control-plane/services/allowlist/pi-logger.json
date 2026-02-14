@@ -23,7 +23,7 @@
       "cmd": "/bin/systemctl",
       "maxArgs": 6,
       "subcommands": ["status", "restart"],
-      "allowedUnits": ["strangelab-exec-agent.service", "strangelab-vault-ingest.service"],
+      "allowedUnits": ["strangelab-vault-ingest.service"],
       "allowedFlags": ["--no-pager"],
       "cwd": ["."]
     }

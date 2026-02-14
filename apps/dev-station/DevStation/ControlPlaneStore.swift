@@ -90,14 +90,25 @@ final class ControlPlaneStore: ObservableObject {
 
     private func controlPlaneURLs() -> (vaultHealth: URL, gatewayHealth: URL, opsFeedHealth: URL, tokenEndpoint: URL) {
         let env = ProcessInfo.processInfo.environment
-        let auxHost = (env["AUX_HOST"]?.trimmingCharacters(in: .whitespacesAndNewlines)).flatMap { $0.isEmpty ? nil : $0 } ?? "192.168.8.114"
-        let loggerHost = (env["LOGGER_HOST"]?.trimmingCharacters(in: .whitespacesAndNewlines)).flatMap { $0.isEmpty ? nil : $0 } ?? "192.168.8.160"
+        let auxHost = normalizedHost(env["AUX_HOST"], fallback: "pi-aux.local")
+        let loggerHost = normalizedHost(env["LOGGER_HOST"], fallback: "pi-logger.local")
 
         let vault = URL(string: env["VAULT_HEALTH_URL"] ?? "http://\(loggerHost):8088/health")!
         let gateway = URL(string: env["GOD_HEALTH_URL"] ?? "http://\(auxHost):8099/health")!
         let opsFeed = URL(string: env["OPS_FEED_HEALTH_URL"] ?? "http://\(auxHost):9101/health")!
         let token = URL(string: env["TOKEN_URL"] ?? "http://\(auxHost):9123/token")!
         return (vaultHealth: vault, gatewayHealth: gateway, opsFeedHealth: opsFeed, tokenEndpoint: token)
+    }
+
+    private func normalizedHost(_ rawValue: String?, fallback: String) -> String {
+        let cleaned = (rawValue ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let value = cleaned.isEmpty ? fallback : cleaned
+        let lower = value.lowercased()
+        if lower == "pi-aux" { return "pi-aux.local" }
+        if lower == "pi-logger" { return "pi-logger.local" }
+        if lower == "mac16" { return "mac16.local" }
+        if lower == "mac8" { return "mac8.local" }
+        return value
     }
 
     private func check(url: URL, label: String) async -> CheckResult {

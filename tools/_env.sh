@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 
-AUX_HOST="${AUX_HOST:-192.168.8.114}"
-LOGGER_HOST="${LOGGER_HOST:-192.168.8.160}"
-MAC2_HOST="${MAC2_HOST:-192.168.8.214}"
+AUX_HOST="${AUX_HOST:-pi-aux.local}"
+LOGGER_HOST="${LOGGER_HOST:-pi-logger.local}"
+MAC16_HOST="${MAC16_HOST:-mac16.local}"
+MAC8_HOST="${MAC8_HOST:-mac8.local}"
+MAC2_HOST="${MAC2_HOST:-$MAC16_HOST}"
 
-# Optional multi-NIC / multi-SSID naming. Defaults preserve existing behavior.
+# Optional multi-NIC / multi-SSID naming.
 VAULT_HOST="${VAULT_HOST:-$LOGGER_HOST}"
 VAULT_ETH_HOST="${VAULT_ETH_HOST:-$VAULT_HOST}"
 VAULT_WIFI_HOST="${VAULT_WIFI_HOST:-$VAULT_HOST}"
@@ -12,23 +14,36 @@ VAULT_WIFI_HOST="${VAULT_WIFI_HOST:-$VAULT_HOST}"
 AUX_5G_HOST="${AUX_5G_HOST:-$AUX_HOST}"
 AUX_24G_HOST="${AUX_24G_HOST:-$AUX_HOST}"
 
-MAC16_HOST="${MAC16_HOST:-$MAC2_HOST}"
-MAC8_HOST="${MAC8_HOST:-$MAC2_HOST}"
 AUX_CIDR="${AUX_CIDR:-192.168.8.0/24}"
 AUX_GATEWAY="${AUX_GATEWAY:-192.168.8.1}"
 
-LIVEKIT_URL="${LIVEKIT_URL:-ws://${AUX_HOST}:7880}"
+# Federation compatibility defaults (active path).
+FED_GATEWAY_URL="${FED_GATEWAY_URL:-http://127.0.0.1:9777}"
+FED_GATEWAY_HEALTH_URL="${FED_GATEWAY_HEALTH_URL:-${FED_GATEWAY_URL%/}/v1/health}"
+FED_DISPATCH_TIMEOUT_MS="${FED_DISPATCH_TIMEOUT_MS:-10000}"
+FED_DISPATCH_RETRIES="${FED_DISPATCH_RETRIES:-2}"
+FED_TARGETS_FILE="${FED_TARGETS_FILE:-/opt/strangelab/federation-targets.json}"
+FED_TUNNEL_HOST="${FED_TUNNEL_HOST:-mac16}"
+FED_TUNNEL_REMOTE_PORT="${FED_TUNNEL_REMOTE_PORT:-9777}"
+FED_TUNNEL_LOCAL_PORT="${FED_TUNNEL_LOCAL_PORT:-9777}"
+
+# Legacy variable retained only for compatibility with old scripts.
+LIVEKIT_URL="${LIVEKIT_URL:-}"
+
 TOKEN_ENDPOINT="${TOKEN_ENDPOINT:-http://${AUX_HOST}:9123/token}"
+TOKEN_HEALTH_URL="${TOKEN_HEALTH_URL:-http://${AUX_HOST}:9123/health}"
 GOD_GATEWAY_URL="${GOD_GATEWAY_URL:-http://${AUX_HOST}:8099/god}"
+GOD_HEALTH_URL="${GOD_HEALTH_URL:-http://${AUX_HOST}:8099/health}"
 VAULT_INGEST_URL="${VAULT_INGEST_URL:-http://${LOGGER_HOST}:8088/v1/ingest}"
+VAULT_HEALTH_URL="${VAULT_HEALTH_URL:-http://${LOGGER_HOST}:8088/health}"
 OPS_FEED_URL="${OPS_FEED_URL:-http://${AUX_HOST}:9101}"
+OPS_FEED_HEALTH_URL="${OPS_FEED_HEALTH_URL:-${OPS_FEED_URL%/}/health}"
 
 SODS_PORT="${SODS_PORT:-9123}"
-# Default to LAN-reachable station URL (so nodes can call back). Override freely.
-SODS_STATION_HOST="${SODS_STATION_HOST:-${MAC2_HOST}}"
+SODS_STATION_HOST="${SODS_STATION_HOST:-${MAC16_HOST}}"
 SODS_STATION_URL="${SODS_STATION_URL:-http://${SODS_STATION_HOST}:${SODS_PORT}}"
 
-PI_LOGGER_URL="${PI_LOGGER_URL:-http://${AUX_HOST}:9101}"
+PI_LOGGER_URL="${PI_LOGGER_URL:-$OPS_FEED_URL}"
 PI_LOGGER="${PI_LOGGER:-$PI_LOGGER_URL}"
 
 TOKEN_URL="${TOKEN_URL:-$TOKEN_ENDPOINT}"
@@ -37,13 +52,10 @@ VAULT_URL="${VAULT_URL:-$VAULT_INGEST_URL}"
 
 AUX_SSH="${AUX_SSH:-pi@${AUX_HOST}}"
 LOGGER_SSH="${LOGGER_SSH:-pi@${LOGGER_HOST}}"
-MAC2_SSH="${MAC2_SSH:-letsdev@${MAC2_HOST}}"
+MAC16_SSH="${MAC16_SSH:-letsdev@${MAC16_HOST}}"
+MAC8_SSH="${MAC8_SSH:-dev@${MAC8_HOST}}"
+MAC2_SSH="${MAC2_SSH:-$MAC16_SSH}"
 
-PI_AUX_ADMIN_SSH="${PI_AUX_ADMIN_SSH:-$AUX_SSH}"
-PI_LOGGER_ADMIN_SSH="${PI_LOGGER_ADMIN_SSH:-$LOGGER_SSH}"
-MAC2_ADMIN_SSH="${MAC2_ADMIN_SSH:-$MAC2_SSH}"
-
-# SSH alias names (for ~/.ssh/config entries). These are just names; they only work if you installed the aliases.
 VAULT_SSH_ALIAS="${VAULT_SSH_ALIAS:-vault}"
 VAULT_ETH_SSH_ALIAS="${VAULT_ETH_SSH_ALIAS:-vault-eth}"
 VAULT_WIFI_SSH_ALIAS="${VAULT_WIFI_SSH_ALIAS:-vault-wifi}"
@@ -55,11 +67,9 @@ AUX_24G_SSH_ALIAS="${AUX_24G_SSH_ALIAS:-aux-24g}"
 MAC16_SSH_ALIAS="${MAC16_SSH_ALIAS:-mac16}"
 MAC8_SSH_ALIAS="${MAC8_SSH_ALIAS:-mac8}"
 
-# When set to 1, scripts will prefer ~/.ssh/config alias targets over user@host strings.
-# Default to 1 because this repo standardizes on stable aliases (vault/vault-eth/vault-wifi, aux/aux-5g/aux-24g, mac16/mac8).
 SODS_PREFER_SSH_ALIASES="${SODS_PREFER_SSH_ALIASES:-1}"
+SODS_VERIFY_SSH_GUARD_STRICT_LOCAL="${SODS_VERIFY_SSH_GUARD_STRICT_LOCAL:-0}"
 
-# New SSH target aliases (optional). Set these to your actual ssh targets, e.g. `user@host`.
 VAULT_SSH="${VAULT_SSH:-pi@${VAULT_HOST}}"
 VAULT_ETH_SSH="${VAULT_ETH_SSH:-pi@${VAULT_ETH_HOST}}"
 VAULT_WIFI_SSH="${VAULT_WIFI_SSH:-pi@${VAULT_WIFI_HOST}}"
@@ -67,10 +77,6 @@ VAULT_WIFI_SSH="${VAULT_WIFI_SSH:-pi@${VAULT_WIFI_HOST}}"
 AUX_5G_SSH="${AUX_5G_SSH:-pi@${AUX_5G_HOST}}"
 AUX_24G_SSH="${AUX_24G_SSH:-pi@${AUX_24G_HOST}}"
 
-MAC16_SSH="${MAC16_SSH:-letsdev@${MAC16_HOST}}"
-MAC8_SSH="${MAC8_SSH:-letsdev@${MAC8_HOST}}"
-
-# Resolved targets for scripts (do not assume aliases exist unless explicitly preferred).
 if [[ "$SODS_PREFER_SSH_ALIASES" == "1" ]]; then
   AUX_SSH_TARGET="${AUX_SSH_TARGET:-$AUX_SSH_ALIAS}"
   AUX_5G_SSH_TARGET="${AUX_5G_SSH_TARGET:-$AUX_5G_SSH_ALIAS}"
@@ -95,10 +101,14 @@ else
   MAC8_SSH_TARGET="${MAC8_SSH_TARGET:-$MAC8_SSH}"
 fi
 
-REMOTE_HOST="${REMOTE_HOST:-$MAC2_SSH}"
+PI_AUX_ADMIN_SSH="${PI_AUX_ADMIN_SSH:-$AUX_SSH_TARGET}"
+PI_LOGGER_ADMIN_SSH="${PI_LOGGER_ADMIN_SSH:-$VAULT_SSH_TARGET}"
+MAC16_ADMIN_SSH="${MAC16_ADMIN_SSH:-$MAC16_SSH_TARGET}"
+MAC8_ADMIN_SSH="${MAC8_ADMIN_SSH:-$MAC8_SSH_TARGET}"
+MAC2_ADMIN_SSH="${MAC2_ADMIN_SSH:-$MAC16_ADMIN_SSH}"
 
-# Runtime root (shipper/outbox, inbox, workspace, reports).
-# Prefer ~/SODS if it exists, otherwise fall back to the repo root.
+REMOTE_HOST="${REMOTE_HOST:-$MAC16_SSH}"
+
 REPO_ROOT="${REPO_ROOT:-"$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"}"
 if [[ -d "${HOME}/SODS" ]]; then
   SODS_ROOT="${SODS_ROOT:-${HOME}/SODS}"

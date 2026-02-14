@@ -16,7 +16,7 @@
       "cmd": "/bin/systemctl",
       "maxArgs": 8,
       "subcommands": ["status", "restart"],
-      "allowedUnits": ["strangelab-token.service", "strangelab-god-gateway.service", "strangelab-exec-agent@pi-aux.service", "docker.service"],
+      "allowedUnits": ["strangelab-token.service", "strangelab-god-gateway.service", "strangelab-ops-feed.service", "strangelab-codegatchi-tunnel.service"],
       "allowedFlags": ["--no-pager"],
       "cwd": ["."]
     },

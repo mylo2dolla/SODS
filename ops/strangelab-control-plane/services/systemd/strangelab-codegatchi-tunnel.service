@@ -1,0 +1,20 @@
+[Unit]
+Description=StrangeLab Codegatchi Gateway Tunnel
+After=network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+User=pi
+Group=pi
+Environment=FED_TUNNEL_HOST=mac16
+Environment=FED_TUNNEL_LOCAL_PORT=9777
+Environment=FED_TUNNEL_REMOTE_PORT=9777
+EnvironmentFile=-/etc/strangelab/codegatchi-tunnel.env
+ExecStart=/bin/sh -lc 'exec /usr/bin/ssh -N -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ExitOnForwardFailure=yes -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -L 127.0.0.1:${FED_TUNNEL_LOCAL_PORT}:127.0.0.1:${FED_TUNNEL_REMOTE_PORT} ${FED_TUNNEL_HOST}'
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

@@ -72,6 +72,68 @@ enum NodePresenceState: String, Codable {
     case error
 }
 
+enum CoreNodeStateResolver {
+    private static let coreNodeIDs: Set<String> = ["exec-pi-aux", "exec-pi-logger", "mac16"]
+
+    static func effectiveState(node: NodeRecord, presence: NodePresence?) -> NodePresenceState {
+        guard let presenceState = normalizedPresenceState(presence?.state) else {
+            return node.presenceState
+        }
+        if coreNodeIDs.contains(node.id),
+           presenceState == .offline,
+           isOnline(node.presenceState) {
+            return node.presenceState
+        }
+        return presenceState
+    }
+
+    static func isOnline(_ state: NodePresenceState) -> Bool {
+        switch state {
+        case .connected, .idle, .scanning:
+            return true
+        case .offline, .error:
+            return false
+        }
+    }
+
+    static func isScanning(_ state: NodePresenceState) -> Bool {
+        state == .scanning
+    }
+
+    static func statusLabel(for state: NodePresenceState) -> String {
+        switch state {
+        case .connected:
+            return "Online"
+        case .idle:
+            return "Idle"
+        case .scanning:
+            return "Scanning"
+        case .offline:
+            return "Offline"
+        case .error:
+            return "Error"
+        }
+    }
+
+    private static func normalizedPresenceState(_ raw: String?) -> NodePresenceState? {
+        let value = raw?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() ?? ""
+        switch value {
+        case "online", "connected":
+            return .connected
+        case "idle":
+            return .idle
+        case "scanning":
+            return .scanning
+        case "offline":
+            return .offline
+        case "error":
+            return .error
+        default:
+            return nil
+        }
+    }
+}
+
 enum ScanMode: String, CaseIterable, Identifiable, Codable {
     case oneShot
     case continuous
@@ -169,9 +231,13 @@ struct NodePresentation: Hashable {
             presence?.ip,
             presence?.mac
         ])
-        let presenceOnline = isPresenceOnline(presence?.state)
-        let fallbackOnline = node.presenceState == .connected || node.presenceState == .idle || node.presenceState == .scanning
-        return NodePresentation.forNode(id: node.id, keys: keys, isOnline: presenceOnline || fallbackOnline, activityScore: activityScore)
+        let effectiveState = CoreNodeStateResolver.effectiveState(node: node, presence: presence)
+        return NodePresentation.forNode(
+            id: node.id,
+            keys: keys,
+            isOnline: CoreNodeStateResolver.isOnline(effectiveState),
+            activityScore: activityScore
+        )
     }
 
     @MainActor

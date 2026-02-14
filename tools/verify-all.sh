@@ -10,49 +10,34 @@ pass() { printf '[PASS] %s\n' "$1"; }
 fail_msg() { printf '[FAIL] %s\n' "$1"; fail=1; }
 section() { printf '\n== %s ==\n' "$1"; }
 
-json_ok_field() {
-  python3 - "$1" "$2" <<'PY'
+json_has_ok_true() {
+  local payload="$1"
+  python3 - "$payload" <<'PY'
 import json, sys
 text = sys.argv[1]
-field = sys.argv[2]
 try:
     obj = json.loads(text)
 except Exception:
-    sys.exit(2)
-value = obj
-for part in field.split("."):
-    if not isinstance(value, dict) or part not in value:
-        sys.exit(3)
-    value = value[part]
-if value is True:
-    sys.exit(0)
-sys.exit(1)
+    sys.exit(1)
+sys.exit(0 if obj.get("ok") is True else 1)
 PY
 }
 
-json_field_nonempty() {
-  python3 - "$1" "$2" <<'PY'
+json_count_gt_zero() {
+  local payload="$1"
+  python3 - "$payload" <<'PY'
 import json, sys
 text = sys.argv[1]
-field = sys.argv[2]
 try:
     obj = json.loads(text)
 except Exception:
-    sys.exit(2)
-value = obj
-for part in field.split("."):
-    if not isinstance(value, dict) or part not in value:
-        sys.exit(3)
-    value = value[part]
-if value is None:
     sys.exit(1)
-if isinstance(value, str):
-    sys.exit(0 if value.strip() else 1)
-if isinstance(value, (list, dict)):
-    sys.exit(0 if len(value) > 0 else 1)
-if isinstance(value, (int, float)):
-    sys.exit(0 if value > 0 else 1)
-sys.exit(1)
+count = obj.get("count", 0)
+try:
+    ok = int(count) > 0
+except Exception:
+    ok = False
+sys.exit(0 if ok else 1)
 PY
 }
 
@@ -80,72 +65,40 @@ else
   fail_msg "vault ingest failed (${VAULT_URL})"
 fi
 
-section "C) Control Plane + Feed"
-token_rsp="$(curl --max-time 8 -fsS -X POST "$TOKEN_URL" -H 'content-type: application/json' -d '{"identity":"verify-all","room":"strangelab"}' || true)"
-if json_field_nonempty "$token_rsp" "token"; then
-  pass "token endpoint returned token"
+section "C) Federation Contract"
+if "$SCRIPT_DIR/verify-federation-contract.sh" >/dev/null 2>&1; then
+  pass "federation contract validates"
 else
-  fail_msg "token endpoint invalid response"
+  fail_msg "federation contract validation failed"
 fi
 
-health_rsp="$(curl --max-time 8 -fsS "${OPS_FEED_URL}/health" || true)"
-if json_ok_field "$health_rsp" "ok"; then
-  pass "ops-feed health ok"
+section "D) Control Plane"
+if "$SCRIPT_DIR/verify-control-plane.sh" >/dev/null 2>&1; then
+  pass "control-plane verify script passed"
 else
-  fail_msg "ops-feed health failed"
+  fail_msg "control-plane verify script failed"
 fi
 
-god_probe_id="$(request_id verify-gateway)"
-god_probe_rsp="$(curl --max-time 8 -sS -X POST "$GOD_URL" -H 'content-type: application/json' -d "{\"action\":\"ritual.rollcall\",\"scope\":\"all\",\"target\":null,\"request_id\":\"${god_probe_id}\",\"reason\":\"verify-all\",\"ts_ms\":0,\"args\":{}}" || true)"
-if json_ok_field "$god_probe_rsp" "ok"; then
-  pass "god gateway accepts structured action"
-else
-  fail_msg "god gateway structured action failed"
-fi
-
-section "D) Agent Evidence"
-exec_probe_id="$(request_id verify-exec)"
-exec_probe_rsp="$(curl --max-time 8 -sS -X POST "$GOD_URL" -H 'content-type: application/json' -d "{\"action\":\"maint.status.service\",\"scope\":\"node\",\"target\":\"exec-pi-aux\",\"request_id\":\"${exec_probe_id}\",\"reason\":\"verify-agent-evidence\",\"ts_ms\":0,\"args\":{\"service\":\"strangelab-token.service\"}}" || true)"
-if json_ok_field "$exec_probe_rsp" "ok"; then
-  pass "maintenance probe action accepted"
-else
-  fail_msg "maintenance probe action failed"
-fi
-sleep 2
-
-events_rsp="$(curl --max-time 8 -fsS "${OPS_FEED_URL}/events?limit=120&typePrefix=agent.exec.&since_ms=$(( $(date +%s) * 1000 - 900000 ))" || true)"
-if json_field_nonempty "$events_rsp" "count"; then
-  pass "recent agent.exec events visible in ops-feed"
-else
-  maint_events_rsp="$(curl --max-time 8 -fsS "${OPS_FEED_URL}/events?limit=120&typePrefix=node.maintenance.result&since_ms=$(( $(date +%s) * 1000 - 900000 ))" || true)"
-  if json_field_nonempty "$maint_events_rsp" "count"; then
-    pass "maintenance result events visible in ops-feed"
-  else
-    fail_msg "no recent command execution evidence visible in ops-feed"
-  fi
-fi
-
-section "E) Vault-First Gate (Non-Destructive)"
+section "E) Trace + Dedupe"
 dry_id="$(request_id verify-dry)"
 dry_rsp="$(curl --max-time 8 -sS -X POST "$GOD_URL" -H 'content-type: application/json' -d "{\"action\":\"snapshot.now\",\"scope\":\"tier1\",\"target\":null,\"request_id\":\"${dry_id}\",\"reason\":\"verify-all-dry\",\"ts_ms\":0,\"args\":{\"dry_run\":true}}" || true)"
-if json_ok_field "$dry_rsp" "ok"; then
-  pass "dry-run action accepted while vault is reachable"
+if json_has_ok_true "$dry_rsp"; then
+  pass "dry-run action accepted"
 else
-  fail_msg "dry-run action rejected unexpectedly"
+  fail_msg "dry-run action rejected"
 fi
 
-dry_trace_rsp="$(curl --max-time 8 -fsS "${OPS_FEED_URL}/trace?request_id=${dry_id}&limit=200&scan_limit=300&since_ms=$(( $(date +%s) * 1000 - 1200000 ))" || true)"
-if json_field_nonempty "$dry_trace_rsp" "events"; then
-  pass "trace lookup returned dry-run events"
+dry_trace_rsp="$(curl --max-time 8 -fsS "${OPS_FEED_URL}/trace?request_id=${dry_id}&limit=120&scan_limit=260&since_ms=$(( $(date +%s) * 1000 - 1200000 ))" || true)"
+if printf '%s' "$dry_trace_rsp" | rg -q 'control\.god_button\.(intent|result)'; then
+  pass "trace lookup returned dry-run control events"
 else
-  fail_msg "trace lookup missing dry-run events"
+  fail_msg "trace lookup missing dry-run control events"
 fi
 
-section "F) Trace + Dedupe"
 dup_id="$(request_id verify-dedupe)"
 first_rsp="$(curl --max-time 8 -sS -X POST "$GOD_URL" -H 'content-type: application/json' -d "{\"action\":\"snapshot.now\",\"scope\":\"tier1\",\"target\":null,\"request_id\":\"${dup_id}\",\"reason\":\"verify-first\",\"ts_ms\":0,\"args\":{}}" || true)"
 second_rsp="$(curl --max-time 8 -sS -X POST "$GOD_URL" -H 'content-type: application/json' -d "{\"action\":\"snapshot.now\",\"scope\":\"tier1\",\"target\":null,\"request_id\":\"${dup_id}\",\"reason\":\"verify-duplicate\",\"ts_ms\":0,\"args\":{}}" || true)"
-if json_ok_field "$first_rsp" "ok"; then
+if json_has_ok_true "$first_rsp"; then
   pass "first request accepted"
 else
   fail_msg "first request was not accepted"
@@ -168,22 +121,30 @@ else
   fail_msg "duplicate request_id was not denied"
 fi
 
-trace_rsp="$(curl --max-time 8 -fsS "${OPS_FEED_URL}/trace?request_id=${dup_id}&limit=200&scan_limit=300&since_ms=$(( $(date +%s) * 1000 - 1200000 ))" || true)"
-if json_field_nonempty "$trace_rsp" "events"; then
+trace_rsp="$(curl --max-time 8 -fsS "${OPS_FEED_URL}/trace?request_id=${dup_id}&limit=200&scan_limit=320&since_ms=$(( $(date +%s) * 1000 - 1200000 ))" || true)"
+if json_count_gt_zero "$trace_rsp"; then
   pass "trace returns routed events for request_id"
 else
   fail_msg "trace missing events for request_id"
 fi
 
+section "F) Event Feed Evidence"
+events_rsp="$(curl --max-time 8 -fsS "${OPS_FEED_URL}/events?limit=160&typePrefix=control.god_button&since_ms=$(( $(date +%s) * 1000 - 900000 ))" || true)"
+if json_count_gt_zero "$events_rsp"; then
+  pass "recent control.god_button events visible in ops-feed"
+else
+  fail_msg "no recent control.god_button events visible in ops-feed"
+fi
+
 section "G) SSH Guard"
-if ./tools/verify-ssh-guard.sh >/dev/null 2>&1; then
+if "$SCRIPT_DIR/verify-ssh-guard.sh" >/dev/null 2>&1; then
   pass "ssh guard verify script passed"
 else
   fail_msg "ssh guard verify script failed"
 fi
 
 section "H) UI Data Rules"
-if ./tools/verify-ui-data.sh >/dev/null 2>&1; then
+if "$SCRIPT_DIR/verify-ui-data.sh" >/dev/null 2>&1; then
   pass "ui-data verify script passed"
 else
   fail_msg "ui-data verify script failed"

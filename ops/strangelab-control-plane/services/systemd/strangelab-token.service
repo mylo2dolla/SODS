@@ -1,5 +1,5 @@
 [Unit]
-Description=StrangeLab LiveKit Token Server
+Description=StrangeLab Federation Compatibility Token Service
 After=network-online.target
 Wants=network-online.target
 
@@ -9,10 +9,11 @@ ExecStart=/usr/bin/node /opt/strangelab/token-server.mjs
 Restart=always
 RestartSec=2
 Environment=NODE_ENV=production
-Environment=LIVEKIT_API_KEY=devkey
-Environment=LIVEKIT_API_SECRET=secret
 Environment=PORT=9123
 Environment=HOST=0.0.0.0
+Environment=FED_GATEWAY_HEALTH_URL=http://127.0.0.1:9777/v1/health
+Environment=TOKEN_HEALTH_TIMEOUT_MS=2500
+EnvironmentFile=-/etc/strangelab/token.env
 
 [Install]
 WantedBy=multi-user.target

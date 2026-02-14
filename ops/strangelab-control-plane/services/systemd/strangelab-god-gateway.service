@@ -1,7 +1,7 @@
 [Unit]
-Description=StrangeLab God Button HTTP Gateway
-After=network-online.target strangelab-token.service
-Wants=network-online.target
+Description=StrangeLab God Button HTTP Gateway (Federation Compatibility)
+After=network-online.target strangelab-token.service strangelab-codegatchi-tunnel.service
+Wants=network-online.target strangelab-codegatchi-tunnel.service
 
 [Service]
 WorkingDirectory=/opt/strangelab
@@ -9,12 +9,20 @@ ExecStart=/usr/bin/node /opt/strangelab/god-gateway.mjs
 Restart=always
 RestartSec=2
 Environment=NODE_ENV=production
-Environment=LIVEKIT_URL=ws://192.168.8.114:7880
-Environment=TOKEN_ENDPOINT=http://192.168.8.114:9123/token
-Environment=ROOM_NAME=strangelab
 Environment=IDENTITY=god-gateway
 Environment=PORT=8099
 Environment=HOST=0.0.0.0
+Environment=LOGGER_HOST=pi-logger.local
+Environment=FED_GATEWAY_URL=http://127.0.0.1:9777
+Environment=FED_GATEWAY_HEALTH_URL=http://127.0.0.1:9777/v1/health
+Environment=FED_TARGETS_FILE=/opt/strangelab/federation-targets.json
+Environment=FED_DISPATCH_TIMEOUT_MS=10000
+Environment=FED_DISPATCH_RETRIES=2
+Environment=FED_TUNNEL_HOST=mac16
+Environment=FED_TUNNEL_REMOTE_PORT=9777
+Environment=FETCH_TIMEOUT_MS=8000
+Environment=GOD_FETCH_RETRIES=2
+EnvironmentFile=-/etc/strangelab/god-gateway.env
 
 [Install]
 WantedBy=multi-user.target

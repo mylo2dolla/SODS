@@ -1,22 +1,28 @@
 import express from "express";
-import { Room } from "@livekit/rtc-node";
 import { randomUUID } from "node:crypto";
+import { existsSync, readFileSync, statSync } from "node:fs";
+import { resolve as resolvePath } from "node:path";
 
-const AUX_HOST = process.env.AUX_HOST || "192.168.8.114";
-const LOGGER_HOST = process.env.LOGGER_HOST || "192.168.8.160";
-const LIVEKIT_URL = process.env.LIVEKIT_URL || `ws://${AUX_HOST}:7880`;
-const TOKEN_ENDPOINT = process.env.TOKEN_ENDPOINT || `http://${AUX_HOST}:9123/token`;
-const ROOM_NAME = process.env.ROOM_NAME || "strangelab";
-const IDENTITY = process.env.IDENTITY || "god-gateway";
+const AUX_HOST = process.env.AUX_HOST || "pi-aux.local";
+const LOGGER_HOST = process.env.LOGGER_HOST || "pi-logger.local";
 const PORT = Number(process.env.PORT || 8099);
 const HOST = process.env.HOST || "0.0.0.0";
-const VAULT_INGEST_URL = process.env.VAULT_INGEST_URL || `http://${LOGGER_HOST}:8088/v1/ingest`;
-const FETCH_TIMEOUT_MS = Number(process.env.FETCH_TIMEOUT_MS || 3500);
-const CONNECT_TIMEOUT_MS = Number(process.env.CONNECT_TIMEOUT_MS || 5000);
-const PUBLISH_TIMEOUT_MS = Number(process.env.PUBLISH_TIMEOUT_MS || 3000);
+const IDENTITY = process.env.IDENTITY || "god-gateway";
 
-let room = null;
-let connecting = null;
+const VAULT_INGEST_URL = process.env.VAULT_INGEST_URL || `http://${LOGGER_HOST}:8088/v1/ingest`;
+const FETCH_TIMEOUT_MS = Number(process.env.FETCH_TIMEOUT_MS || 8000);
+const FETCH_RETRIES = Math.max(0, Number(process.env.GOD_FETCH_RETRIES || 2));
+
+const FED_GATEWAY_URL = (process.env.FED_GATEWAY_URL || "http://127.0.0.1:9777").replace(/\/$/, "");
+const FED_GATEWAY_HEALTH_URL = process.env.FED_GATEWAY_HEALTH_URL || `${FED_GATEWAY_URL}/v1/health`;
+const FED_GATEWAY_BEARER = (process.env.FED_GATEWAY_BEARER || "").trim();
+const FED_TARGETS_FILE = process.env.FED_TARGETS_FILE || "/opt/strangelab/federation-targets.json";
+const FED_DISPATCH_TIMEOUT_MS = Number(process.env.FED_DISPATCH_TIMEOUT_MS || 10000);
+const FED_DISPATCH_RETRIES = Math.max(0, Number(process.env.FED_DISPATCH_RETRIES || 2));
+const FED_SYNC_CACHE_MS = Math.max(5000, Number(process.env.FED_SYNC_CACHE_MS || 20000));
+const FED_TUNNEL_HOST = process.env.FED_TUNNEL_HOST || "mac16";
+const FED_TUNNEL_REMOTE_PORT = Number(process.env.FED_TUNNEL_REMOTE_PORT || 9777);
+
 const requestSeen = new Map();
 const rateBuckets = new Map();
 
@@ -65,18 +71,31 @@ const ACTION_ALLOWLIST = new Set([
   "ritual.wake.mode",
 ]);
 
-function routeTopic(action) {
-  if (action === "node.claim") return "ops.claim";
-  if (action === "node.flash") return "ops.flash";
-  if (action === "node.health.request") return "ops.health.request";
-  if (action.startsWith("panic.")) return "ops.panic";
-  if (action.startsWith("snapshot.")) return "ops.snapshot";
-  if (action.startsWith("maint.")) return "ops.maint";
-  if (action.startsWith("scan.")) return "ops.scan";
-  if (action.startsWith("build.")) return "ops.build";
-  if (action.startsWith("ritual.")) return "ops.ritual";
-  return null;
-}
+const BUILTIN_FEDERATION_TARGETS = {
+  schema_version: "2026-02-13",
+  defaults: {
+    dispatch_op: "dispatch.intent",
+    fallback_to_first_agent: true,
+    agent_selector: {
+      name_regex: "(sods|strange|ops|control|gateway)",
+    },
+    intent_template: "sods.action ${action} scope=${scope} target=${target} request_id=${request_id} reason=${reason} args=${args_json}",
+  },
+  actions: Object.fromEntries(Array.from(ACTION_ALLOWLIST).map((action) => [action, {}])),
+};
+
+const targetsCache = {
+  path: "",
+  mtimeMs: 0,
+  loaded: null,
+  loadError: "",
+  warnLogged: false,
+};
+
+const snapshotCache = {
+  fetchedAtMs: 0,
+  snapshot: null,
+};
 
 function envelope(type, data) {
   return {
@@ -101,13 +120,54 @@ function actionClass(action) {
   return String(action || "").split(".")[0];
 }
 
-function withTimeout(promise, ms, label) {
-  return Promise.race([
-    promise,
-    new Promise((_, reject) => {
-      setTimeout(() => reject(new Error(`${label} timeout after ${ms}ms`)), ms);
-    }),
-  ]);
+function isDryRun(request) {
+  if (!request || typeof request !== "object") return false;
+  const args = request.args;
+  if (!args || typeof args !== "object") return false;
+  if (args.dry_run === true || args.dryRun === true) return true;
+  if (typeof args.dry_run === "string") return args.dry_run.toLowerCase() === "true";
+  if (typeof args.dryRun === "string") return args.dryRun.toLowerCase() === "true";
+  return false;
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function isTransientError(error) {
+  if (!error) return false;
+  if (error.transient === true) return true;
+  const message = String(error?.message || error).toLowerCase();
+  return message.includes("timed out")
+    || message.includes("timeout")
+    || message.includes("aborted")
+    || message.includes("fetch failed")
+    || message.includes("connection reset")
+    || message.includes("connection refused")
+    || message.includes("econnreset")
+    || message.includes("econnrefused")
+    || message.includes("eai_again")
+    || message.includes("http 503")
+    || message.includes("http 502")
+    || message.includes("http 429")
+    || message.includes("http 408");
+}
+
+async function retryTransient(label, attempts, fn) {
+  let lastError = null;
+  for (let attempt = 0; attempt <= attempts; attempt += 1) {
+    try {
+      return await fn(attempt);
+    } catch (error) {
+      lastError = error;
+      if (attempt >= attempts || !isTransientError(error)) {
+        throw error;
+      }
+      console.warn(`${label} transient failure; retry ${attempt + 1}/${attempts}: ${String(error?.message || error)}`);
+      await sleep(150 * (attempt + 1));
+    }
+  }
+  throw lastError || new Error(`${label} failed`);
 }
 
 function enforceRateLimit(action) {
@@ -123,59 +183,48 @@ function enforceRateLimit(action) {
   return { ok: true, reason: "" };
 }
 
-async function vaultIngest(event) {
+function withTimeoutSignal(ms) {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-  const r = await fetch(VAULT_INGEST_URL, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(event),
-    signal: controller.signal,
-  }).finally(() => {
-    clearTimeout(timer);
-  });
-  if (!r.ok) {
-    const t = await r.text().catch(() => "");
-    throw new Error(`vault ingest failed: ${r.status} ${t}`);
-  }
+  const timer = setTimeout(() => controller.abort(), ms);
+  return { controller, timer };
 }
 
-async function getToken() {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-  const r = await fetch(TOKEN_ENDPOINT, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ identity: IDENTITY, room: ROOM_NAME }),
-    signal: controller.signal,
-  }).finally(() => {
-    clearTimeout(timer);
-  });
-  const j = await r.json();
-  if (!j.ok) throw new Error(j.error || "token endpoint failed");
-  return j.token;
-}
-
-async function connectRoom() {
-  if (room && room.state === "connected") return room;
-  if (connecting) return connecting;
-
-  connecting = (async () => {
-    const token = await getToken();
-    const nextRoom = new Room();
-    nextRoom.on("disconnected", () => {
-      room = null;
-    });
-    await withTimeout(nextRoom.connect(LIVEKIT_URL, token), CONNECT_TIMEOUT_MS, "livekit connect");
-    room = nextRoom;
-    return nextRoom;
-  })();
-
+function parsedJSON(text) {
   try {
-    return await connecting;
-  } finally {
-    connecting = null;
+    return JSON.parse(text);
+  } catch {
+    return null;
   }
+}
+
+async function fetchText(url, init = {}, timeoutMs = FETCH_TIMEOUT_MS) {
+  const { controller, timer } = withTimeoutSignal(timeoutMs);
+  try {
+    const response = await fetch(url, { ...init, signal: controller.signal });
+    const text = await response.text();
+    return { response, text };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function vaultIngest(event) {
+  await retryTransient("vault ingest", FETCH_RETRIES, async () => {
+    const { response, text } = await fetchText(
+      VAULT_INGEST_URL,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(event),
+      },
+      FETCH_TIMEOUT_MS,
+    );
+    if (!response.ok) {
+      const err = new Error(`vault ingest failed: HTTP ${response.status} ${text}`);
+      if (response.status >= 500 || response.status === 429 || response.status === 408) err.transient = true;
+      throw err;
+    }
+  });
 }
 
 function normalizeRequest(input) {
@@ -193,14 +242,337 @@ function normalizeRequest(input) {
   };
 }
 
-async function publish(topic, payload) {
-  const liveRoom = await connectRoom();
-  const bytes = new TextEncoder().encode(JSON.stringify(payload));
-  await withTimeout(
-    liveRoom.localParticipant.publishData(bytes, { reliable: true, topic }),
-    PUBLISH_TIMEOUT_MS,
-    `publish ${topic}`
+function normalizeTargetsData(raw, sourcePath) {
+  if (!raw || typeof raw !== "object" || !raw.actions || typeof raw.actions !== "object") {
+    throw new Error(`invalid federation targets schema in ${sourcePath}`);
+  }
+  const defaults = raw.defaults && typeof raw.defaults === "object" ? raw.defaults : {};
+  return {
+    schema_version: String(raw.schema_version || "unknown"),
+    defaults,
+    actions: raw.actions,
+  };
+}
+
+function loadFederationTargets() {
+  const resolvedPath = resolvePath(FED_TARGETS_FILE);
+  if (!existsSync(resolvedPath)) {
+    if (!targetsCache.warnLogged) {
+      console.warn(`federation targets missing at ${resolvedPath}; using builtin defaults`);
+      targetsCache.warnLogged = true;
+    }
+    targetsCache.path = resolvedPath;
+    targetsCache.loaded = BUILTIN_FEDERATION_TARGETS;
+    targetsCache.loadError = "";
+    return targetsCache.loaded;
+  }
+
+  const stats = statSync(resolvedPath);
+  const mtimeMs = stats.mtimeMs || 0;
+  if (targetsCache.loaded && targetsCache.path === resolvedPath && targetsCache.mtimeMs === mtimeMs) {
+    return targetsCache.loaded;
+  }
+
+  const parsed = parsedJSON(readFileSync(resolvedPath, "utf8"));
+  const normalized = normalizeTargetsData(parsed, resolvedPath);
+  targetsCache.path = resolvedPath;
+  targetsCache.mtimeMs = mtimeMs;
+  targetsCache.loaded = normalized;
+  targetsCache.loadError = "";
+  return normalized;
+}
+
+async function gatewayPost(op, payload, requestId, timeoutMs = FED_DISPATCH_TIMEOUT_MS) {
+  const envelopePayload = {
+    v: 1,
+    msgId: requestId,
+    tsMs: Date.now(),
+    nonce: randomUUID().replace(/-/g, ""),
+    traceId: requestId,
+    deviceId: IDENTITY,
+    tokenId: null,
+    op,
+    payload,
+  };
+
+  const headers = {
+    "content-type": "application/json",
+    accept: "application/json",
+  };
+  if (FED_GATEWAY_BEARER) {
+    headers.authorization = `Bearer ${FED_GATEWAY_BEARER}`;
+  }
+
+  const { response, text } = await fetchText(
+    `${FED_GATEWAY_URL}/v1/gateway`,
+    {
+      method: "POST",
+      headers,
+      body: JSON.stringify(envelopePayload),
+    },
+    timeoutMs,
   );
+
+  const body = parsedJSON(text);
+  if (!response.ok) {
+    const err = new Error(`gateway ${op} failed: HTTP ${response.status} ${text}`);
+    if (response.status >= 500 || response.status === 429 || response.status === 408) err.transient = true;
+    throw err;
+  }
+  if (!body || body.ok !== true) {
+    const message = body?.error?.message || body?.error || text || "gateway response not ok";
+    const err = new Error(`gateway ${op} failed: ${message}`);
+    if (typeof message === "string" && /timeout|temporar|rate|busy|retry|network|transport/i.test(message)) {
+      err.transient = true;
+    }
+    throw err;
+  }
+  return body.payload || {};
+}
+
+async function loadSnapshot(force = false) {
+  const now = Date.now();
+  if (!force && snapshotCache.snapshot && now - snapshotCache.fetchedAtMs < FED_SYNC_CACHE_MS) {
+    return snapshotCache.snapshot;
+  }
+  const payload = await gatewayPost("sync.full", {}, `sync-${randomUUID()}`, Math.max(4000, FED_DISPATCH_TIMEOUT_MS));
+  const snapshot = payload?.snapshot;
+  if (!snapshot || typeof snapshot !== "object") {
+    throw new Error("gateway sync.full returned invalid snapshot");
+  }
+  snapshotCache.snapshot = snapshot;
+  snapshotCache.fetchedAtMs = now;
+  return snapshot;
+}
+
+function extractAgents(snapshot) {
+  const agents = Array.isArray(snapshot?.agents) ? snapshot.agents : [];
+  return agents
+    .map((agent) => {
+      const id = typeof agent?.id === "string" ? agent.id : null;
+      if (!id) return null;
+      const names = [agent?.name, agent?.displayName, agent?.title, agent?.label]
+        .filter((value) => typeof value === "string" && value.trim().length > 0)
+        .map((value) => value.trim());
+      const tools = Array.isArray(agent?.tools) ? agent.tools : [];
+      return { id, names, tools, raw: agent };
+    })
+    .filter(Boolean);
+}
+
+function compileTemplate(template, request) {
+  const target = request.target == null ? "null" : String(request.target);
+  const argsJSON = JSON.stringify(request.args || {});
+  const replacements = {
+    action: request.action,
+    scope: request.scope,
+    target,
+    request_id: request.request_id,
+    reason: request.reason,
+    args_json: argsJSON,
+    ts_ms: String(request.ts_ms),
+  };
+  return String(template || "")
+    .replace(/\$\{([a-zA-Z0-9_]+)\}/g, (_full, key) => (key in replacements ? replacements[key] : ""))
+    .trim();
+}
+
+function findToolId(agent, toolName) {
+  const desired = String(toolName || "").trim().toLowerCase();
+  if (!desired) return "";
+  const normalizedTools = (agent?.tools || []).map((tool) => ({
+    id: typeof tool?.id === "string" ? tool.id : "",
+    names: [tool?.name, tool?.displayName, tool?.title, tool?.label]
+      .filter((value) => typeof value === "string" && value.trim().length > 0)
+      .map((value) => value.trim().toLowerCase()),
+  }));
+  const exact = normalizedTools.find((tool) => tool.id && tool.names.some((name) => name === desired));
+  if (exact) return exact.id;
+  const contains = normalizedTools.find((tool) => tool.id && tool.names.some((name) => name.includes(desired) || desired.includes(name)));
+  return contains?.id || "";
+}
+
+async function resolveDispatchTarget(request, mapping) {
+  const defaults = mapping.defaults || {};
+  const actionMap = mapping.actions?.[request.action] || {};
+  const dispatchOp = String(actionMap.dispatch_op || defaults.dispatch_op || "dispatch.intent").trim();
+  if (dispatchOp !== "dispatch.intent" && dispatchOp !== "dispatch.tool") {
+    throw new Error(`unsupported dispatch_op for action ${request.action}: ${dispatchOp}`);
+  }
+
+  const snapshot = await loadSnapshot(false);
+  const agents = extractAgents(snapshot);
+  if (agents.length === 0) {
+    throw new Error("no agents available in gateway snapshot");
+  }
+
+  let selectedAgent = null;
+  const explicitAgentID = String(actionMap.agent_id || "").trim();
+  if (explicitAgentID) {
+    selectedAgent = agents.find((agent) => agent.id === explicitAgentID) || null;
+    if (!selectedAgent) {
+      throw new Error(`mapped agent_id not present in snapshot for ${request.action}`);
+    }
+  } else {
+    const selector = actionMap.agent_selector && typeof actionMap.agent_selector === "object"
+      ? actionMap.agent_selector
+      : defaults.agent_selector || {};
+    const regexText = String(selector.name_regex || "").trim();
+    if (regexText) {
+      const matcher = new RegExp(regexText, "i");
+      selectedAgent = agents.find((agent) => agent.names.some((name) => matcher.test(name)) || matcher.test(agent.id)) || null;
+    }
+    if (!selectedAgent && (actionMap.fallback_to_first_agent ?? defaults.fallback_to_first_agent ?? true)) {
+      selectedAgent = agents[0];
+    }
+  }
+
+  if (!selectedAgent) {
+    throw new Error(`unable to resolve target agent for ${request.action}`);
+  }
+
+  if (dispatchOp === "dispatch.intent") {
+    const template = actionMap.intent || defaults.intent_template
+      || "sods.action ${action} scope=${scope} target=${target} request_id=${request_id} reason=${reason} args=${args_json}";
+    const text = compileTemplate(template, request);
+    if (!text) {
+      throw new Error(`intent template resolved empty for ${request.action}`);
+    }
+    return {
+      dispatchOp,
+      agentID: selectedAgent.id,
+      payload: {
+        agentID: selectedAgent.id,
+        text,
+      },
+      summary: {
+        dispatch_op: dispatchOp,
+        agent_id: selectedAgent.id,
+        intent_preview: text.length > 200 ? `${text.slice(0, 200)}...` : text,
+      },
+    };
+  }
+
+  const explicitToolID = String(actionMap.tool_id || "").trim();
+  let toolID = explicitToolID;
+  if (!toolID) {
+    toolID = findToolId(selectedAgent, actionMap.tool_name || defaults.tool_name || "");
+  }
+  if (!toolID) {
+    throw new Error(`dispatch.tool requires tool_id or resolvable tool_name for ${request.action}`);
+  }
+
+  return {
+    dispatchOp,
+    agentID: selectedAgent.id,
+    payload: {
+      agentID: selectedAgent.id,
+      toolID,
+    },
+    summary: {
+      dispatch_op: dispatchOp,
+      agent_id: selectedAgent.id,
+      tool_id: toolID,
+      tool_name: actionMap.tool_name || defaults.tool_name || "",
+    },
+  };
+}
+
+async function dispatchViaFederation(request) {
+  const mapping = loadFederationTargets();
+  const resolved = await resolveDispatchTarget(request, mapping);
+  const op = resolved.dispatchOp;
+  const gatewayOp = op === "dispatch.tool" ? "dispatch.tool" : "dispatch.intent";
+
+  const payload = await retryTransient("federation dispatch", FED_DISPATCH_RETRIES, async () => {
+    return gatewayPost(gatewayOp, resolved.payload, request.request_id, FED_DISPATCH_TIMEOUT_MS);
+  });
+
+  return {
+    routed: resolved.summary,
+    gateway_payload: payload,
+  };
+}
+
+function currentFederationState() {
+  let mapping = null;
+  let error = "";
+  try {
+    mapping = loadFederationTargets();
+  } catch (err) {
+    error = String(err?.message || err);
+    targetsCache.loadError = error;
+  }
+  return {
+    mapping,
+    mapping_error: error || targetsCache.loadError || "",
+    target_file: resolvePath(FED_TARGETS_FILE),
+  };
+}
+
+async function federationHealth() {
+  const { mapping, mapping_error, target_file } = currentFederationState();
+
+  try {
+    const { response, text } = await fetchText(
+      FED_GATEWAY_HEALTH_URL,
+      { method: "GET", headers: { accept: "application/json" } },
+      Math.max(2500, Math.min(FED_DISPATCH_TIMEOUT_MS, 7000)),
+    );
+    const body = parsedJSON(text);
+
+    let upstreamOK = false;
+    let upstreamDetail = text;
+    if (response.ok && body && body.ok === true) {
+      upstreamOK = true;
+      upstreamDetail = "ok";
+    } else if (response.ok && body && body.payload && body.ok === true) {
+      upstreamOK = true;
+      upstreamDetail = "ok";
+    } else if (body?.error?.message) {
+      upstreamDetail = body.error.message;
+    } else if (!response.ok) {
+      upstreamDetail = `HTTP ${response.status}`;
+    }
+
+    return {
+      ok: upstreamOK && !mapping_error,
+      codegatchi_gateway: {
+        url: FED_GATEWAY_URL,
+        health_url: FED_GATEWAY_HEALTH_URL,
+        ok: upstreamOK,
+        detail: upstreamDetail,
+      },
+      dispatch_mode: "federation-compat",
+      tunnel: {
+        host: FED_TUNNEL_HOST,
+        remote_port: FED_TUNNEL_REMOTE_PORT,
+      },
+      target_file,
+      mapping_schema: mapping?.schema_version || "unknown",
+      mapping_error,
+      auth_configured: FED_GATEWAY_BEARER.length > 0,
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      codegatchi_gateway: {
+        url: FED_GATEWAY_URL,
+        health_url: FED_GATEWAY_HEALTH_URL,
+        ok: false,
+        detail: String(error?.message || error),
+      },
+      dispatch_mode: "federation-compat",
+      tunnel: {
+        host: FED_TUNNEL_HOST,
+        remote_port: FED_TUNNEL_REMOTE_PORT,
+      },
+      target_file,
+      mapping_schema: mapping?.schema_version || "unknown",
+      mapping_error,
+      auth_configured: FED_GATEWAY_BEARER.length > 0,
+    };
+  }
 }
 
 async function dispatchGod(input) {
@@ -236,40 +608,33 @@ async function dispatchGod(input) {
     throw new Error(rl.reason);
   }
 
-  const routedTopic = routeTopic(request.action);
-  if (!routedTopic) {
-    await vaultIngest(envelope("control.god_button.denied", {
-      request_id: request.request_id,
-      action: request.action,
-      denied_reason: "unable to route action topic",
-    }));
-    throw new Error("unable to route action topic");
+  await vaultIngest(envelope("control.god_button.intent", { request }));
+
+  const dryRun = isDryRun(request);
+  let dispatchResult = null;
+  if (!dryRun) {
+    dispatchResult = await dispatchViaFederation(request);
   }
-
-  // Vault-first intent log, fail closed if unavailable.
-  await vaultIngest(envelope("control.god_button.intent", {
-    request,
-  }));
-
-  await publish("god.button", request);
-  await publish(routedTopic, request);
 
   const result = {
     ok: true,
     handled_by: IDENTITY,
     duration_ms: Date.now() - started,
-    result_summary: `dispatched to god.button + ${routedTopic}`,
-    routed_topic: routedTopic,
+    result_summary: dryRun
+      ? "dry-run accepted (no federation dispatch)"
+      : `dispatched via federation (${dispatchResult?.routed?.dispatch_op || "dispatch.intent"})`,
+    dispatch_mode: "federation-compat",
+    routed: dispatchResult?.routed || null,
+    gateway: dryRun ? null : dispatchResult?.gateway_payload || null,
+    dry_run: dryRun,
   };
 
-  // Do not block the HTTP response on the result log.
-  // Intent was already written to Vault (fail-closed), and publish succeeded.
   void vaultIngest(envelope("control.god_button.result", {
     request_id: request.request_id,
     action: request.action,
     result,
-  })).catch((e) => {
-    console.error(`vault result ingest failed: ${String(e?.message || e)}`);
+  })).catch((error) => {
+    console.error(`vault result ingest failed: ${String(error?.message || error)}`);
   });
 
   return { request, result };
@@ -279,30 +644,30 @@ const app = express();
 app.use(express.json());
 
 app.get("/health", async (_req, res) => {
-  try {
-    await connectRoom();
-    res.json({ ok: true, room: ROOM_NAME, identity: IDENTITY, livekit_url: LIVEKIT_URL });
-  } catch (e) {
-    res.status(503).json({ ok: false, error: String(e?.message || e) });
+  const health = await federationHealth();
+  if (health.ok) {
+    res.json({ ok: true, identity: IDENTITY, ...health });
+    return;
   }
+  res.status(503).json({ ok: false, identity: IDENTITY, ...health });
 });
 
 app.post("/god", async (req, res) => {
   try {
     const output = await dispatchGod(req.body ?? {});
     res.json({ ok: true, ...output });
-  } catch (e) {
-    console.error(`god dispatch failed: ${String(e?.message || e)}`);
-    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  } catch (error) {
+    console.error(`god dispatch failed: ${String(error?.message || error)}`);
+    res.status(500).json({ ok: false, error: String(error?.message || error) });
   }
 });
 
 app.listen(PORT, HOST, async () => {
-  console.log(`god gateway on http://${HOST}:${PORT}/god`);
-  try {
-    await connectRoom();
-    console.log("god gateway connected to LiveKit");
-  } catch (e) {
-    console.error(`initial LiveKit connect failed: ${String(e?.message || e)}`);
+  console.log(`god gateway on http://${HOST}:${PORT}/god (federation mode)`);
+  const health = await federationHealth();
+  if (health.ok) {
+    console.log(`federation gateway ready via ${FED_GATEWAY_HEALTH_URL}`);
+  } else {
+    console.error(`initial federation health check failed: ${health.codegatchi_gateway?.detail || "unknown"}`);
   }
 });

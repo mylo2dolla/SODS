@@ -25,8 +25,22 @@ pushd "$TARGET_DIR" >/dev/null
 sudo npm install --omit=dev
 popd >/dev/null
 
-sudo mkdir -p /var/sods/vault
-sudo chown -R pi:pi /var/sods
+sudo mkdir -p /vault/sods/vault
+sudo mkdir -p /var/sods
+if [ -d /var/sods/vault ] && [ ! -L /var/sods/vault ]; then
+  if command -v rsync >/dev/null 2>&1; then
+    sudo rsync -aHAX /var/sods/vault/ /vault/sods/vault/
+  else
+    sudo cp -a /var/sods/vault/. /vault/sods/vault/
+  fi
+  sudo mv /var/sods/vault "/var/sods/vault.pre-$(date +%Y%m%d%H%M%S)"
+fi
+if [ ! -L /var/sods/vault ]; then
+  sudo rm -rf /var/sods/vault
+  sudo ln -s /vault/sods/vault /var/sods/vault
+fi
+sudo chown -h pi:pi /var/sods/vault
+sudo chown -R pi:pi /var/sods /vault/sods
 
 sudo cp "$ROOT_DIR/services/systemd/strangelab-vault-ingest.service" /etc/systemd/system/strangelab-vault-ingest.service
 sudo systemctl daemon-reload

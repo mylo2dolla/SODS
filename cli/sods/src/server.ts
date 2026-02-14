@@ -1434,7 +1434,7 @@ export class SODSServer {
   private vaultIngestURL() {
     const explicit = (process.env.VAULT_INGEST_URL ?? "").trim();
     if (explicit) return explicit;
-    const loggerHost = (process.env.LOGGER_HOST ?? "192.168.8.160").trim() || "192.168.8.160";
+    const loggerHost = (process.env.LOGGER_HOST ?? "pi-logger.local").trim() || "pi-logger.local";
     return `http://${loggerHost}:8088/v1/ingest`;
   }
 

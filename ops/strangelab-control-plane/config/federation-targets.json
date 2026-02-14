@@ -1,0 +1,41 @@
+{
+  "schema_version": "2026-02-13",
+  "defaults": {
+    "dispatch_op": "dispatch.intent",
+    "fallback_to_first_agent": true,
+    "agent_selector": {
+      "name_regex": "(sods|strange|ops|control|gateway)"
+    },
+    "intent_template": "sods.action ${action} scope=${scope} target=${target} request_id=${request_id} reason=${reason} args=${args_json}"
+  },
+  "actions": {
+    "node.claim": {},
+    "node.flash": {},
+    "node.health.request": {},
+    "panic.freeze.agents": {},
+    "panic.lockdown.egress": {},
+    "panic.isolate.node": {},
+    "panic.kill.switch": {},
+    "snapshot.now": {},
+    "snapshot.services": {},
+    "snapshot.net.routes": {},
+    "snapshot.vault.verify": {},
+    "maint.restart.service": {},
+    "maint.status.service": {},
+    "maint.logs.tail": {},
+    "maint.disk.df": {},
+    "maint.net.ping": {},
+    "scan.lan.fast": {},
+    "scan.lan.ports.top": {},
+    "scan.ble.sweep": {},
+    "scan.wifi.snapshot": {},
+    "build.version.report": {},
+    "build.flash.target": {},
+    "build.rollback.target": {},
+    "build.deploy.config": {},
+    "ritual.rollcall": {},
+    "ritual.heartbeat.burst": {},
+    "ritual.quiet.mode": {},
+    "ritual.wake.mode": {}
+  }
+}
