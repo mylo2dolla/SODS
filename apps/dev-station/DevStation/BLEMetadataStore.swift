@@ -15,12 +15,35 @@ struct BLEAssignedUUIDInfo: Codable, Hashable {
     let source: String
 }
 
+struct BLEMetadataHealth: Hashable {
+    let companyCount: Int
+    let assignedCount: Int
+    let serviceCount: Int
+    let parseErrors: Int
+    let warnings: [String]
+
+    var isHealthy: Bool {
+        warnings.isEmpty
+    }
+
+    var summary: String {
+        "company=\(companyCount) assigned=\(assignedCount) services=\(serviceCount) parse_errors=\(parseErrors) healthy=\(isHealthy ? "true" : "false")"
+    }
+}
+
 final class BLEMetadataStore {
     static let shared = BLEMetadataStore()
 
     private enum DefaultsKey {
         static let companyMapPath = "BLECompanyMapPath"
         static let assignedMapPath = "BLEAssignedNumbersPath"
+    }
+
+    private enum Threshold {
+        static let minCompanyCount = 3900
+        static let minAssignedCount = 590
+        static let minServiceCount = 70
+        static let maxParseErrors = 20
     }
 
     private let queue = DispatchQueue(label: "BLEMetadataStore.queue", qos: .utility)
@@ -33,6 +56,7 @@ final class BLEMetadataStore {
     private var parseErrors = 0
     private var lastCompanyCount = 0
     private var lastAssignedCount = 0
+    private var lastServiceCount = 0
 
     private init() {
         loadMaps(log: nil)
@@ -102,15 +126,27 @@ final class BLEMetadataStore {
     func logStats(log: LogStore) {
         queue.sync {
             log.log(.info, "BLE mapping stats: company hits=\(companyHits) misses=\(companyMisses); assigned hits=\(assignedHits) misses=\(assignedMisses); parse errors=\(parseErrors)")
+            let health = metadataHealthLocked()
+            log.log(.info, "BLE metadata health: \(health.summary)")
+            if !health.isHealthy {
+                log.log(.warn, "BLE metadata warnings: \(health.warnings.joined(separator: " | "))")
+            }
         }
     }
 
     func tableWarning() -> String? {
         queue.sync {
-            if lastCompanyCount == 0 || lastAssignedCount == 0 {
-                return "BLE tables are empty; decoding coverage will be limited."
+            let health = metadataHealthLocked()
+            if !health.isHealthy {
+                return "BLE metadata degraded: \(health.warnings.joined(separator: " | "))"
             }
             return nil
+        }
+    }
+
+    func health() -> BLEMetadataHealth {
+        queue.sync {
+            metadataHealthLocked()
         }
     }
 
@@ -152,8 +188,9 @@ final class BLEMetadataStore {
             let bundleServiceURL = moduleBundle.url(forResource: "BLEServiceUUIDs", withExtension: "txt")
                 ?? fallbackBundle.url(forResource: "BLEServiceUUIDs", withExtension: "txt")
             if let bundleServiceURL, let bundleServices = loadLines(url: bundleServiceURL) {
-                mergeServiceUUIDs(lines: bundleServices)
+                lastServiceCount = mergeServiceUUIDs(lines: bundleServices)
             } else {
+                lastServiceCount = 0
                 log?.log(.warn, "BLEServiceUUIDs.txt missing in bundle")
             }
 
@@ -168,6 +205,12 @@ final class BLEMetadataStore {
             lastAssignedCount = assignedMap.count
             log?.log(.info, "BLE company map entries: \(companyMap.count)")
             log?.log(.info, "BLE assigned numbers entries: \(assignedMap.count)")
+            log?.log(.info, "BLE service UUID entries: \(lastServiceCount)")
+            let health = metadataHealthLocked()
+            log?.log(.info, "BLE metadata health: \(health.summary)")
+            if !health.isHealthy {
+                log?.log(.warn, "BLE metadata warnings: \(health.warnings.joined(separator: " | "))")
+            }
         }
         DispatchQueue.main.async {
             NotificationCenter.default.post(name: .bleMetadataUpdated, object: nil)
@@ -227,7 +270,8 @@ final class BLEMetadataStore {
         }
     }
 
-    private func mergeServiceUUIDs(lines: [String]) {
+    private func mergeServiceUUIDs(lines: [String]) -> Int {
+        var parsedCount = 0
         for line in lines {
             let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
             if trimmed.isEmpty || trimmed.hasPrefix("#") { continue }
@@ -239,11 +283,36 @@ final class BLEMetadataStore {
                 parseErrors += 1
                 continue
             }
+            parsedCount += 1
             let key = normalizeUUIDKey(uuidRaw)
             if assignedMap[key] != nil { continue }
             let short = shortUUID(from: uuidRaw)
             assignedMap[key] = BLEAssignedUUIDInfo(uuidFull: full, uuidShort: short, name: name, type: "service", source: "bluetooth-sig")
         }
+        return parsedCount
+    }
+
+    private func metadataHealthLocked() -> BLEMetadataHealth {
+        var warnings: [String] = []
+        if lastCompanyCount < Threshold.minCompanyCount {
+            warnings.append("company entries \(lastCompanyCount) below minimum \(Threshold.minCompanyCount)")
+        }
+        if lastAssignedCount < Threshold.minAssignedCount {
+            warnings.append("assigned entries \(lastAssignedCount) below minimum \(Threshold.minAssignedCount)")
+        }
+        if lastServiceCount < Threshold.minServiceCount {
+            warnings.append("service UUID entries \(lastServiceCount) below minimum \(Threshold.minServiceCount)")
+        }
+        if parseErrors > Threshold.maxParseErrors {
+            warnings.append("parse errors \(parseErrors) exceed maximum \(Threshold.maxParseErrors)")
+        }
+        return BLEMetadataHealth(
+            companyCount: lastCompanyCount,
+            assignedCount: lastAssignedCount,
+            serviceCount: lastServiceCount,
+            parseErrors: parseErrors,
+            warnings: warnings
+        )
     }
 
     private func parseCompanyID(_ token: String) -> UInt16? {

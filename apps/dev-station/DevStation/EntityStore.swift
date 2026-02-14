@@ -32,6 +32,10 @@ final class EntityStore: ObservableObject {
     @Published var selectedEntityKind: ObservationKind?
 
     private let maxObservations = 800
+    private var lastBLEParityLogAt: Date?
+    private let bleParityLogInterval: TimeInterval = 10
+    private var lastBLEObservationAtByFingerprint: [String: Date] = [:]
+    private let bleObservationInterval: TimeInterval = 2
 
     private init() {}
 
@@ -68,16 +72,24 @@ final class EntityStore: ObservableObject {
     }
 
     func ingestBLE(_ items: [BLEPeripheral]) {
+        let now = Date()
         blePeripherals = items.sorted { $0.lastSeen > $1.lastSeen }
         for peripheral in items {
+            let fingerprintID = peripheral.fingerprintID.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !fingerprintID.isEmpty else { continue }
+            guard shouldRecordBLEObservation(for: fingerprintID, now: now) else { continue }
             let label = IdentityResolver.bleDisplayLabel(for: peripheral)
-            recordObservation(kind: .ble, id: peripheral.fingerprintID, label: label, meta: [
-                "fingerprint": peripheral.fingerprintID,
+            recordObservation(kind: .ble, id: fingerprintID, label: label, meta: [
+                "fingerprint": fingerprintID,
                 "company": peripheral.fingerprint.manufacturerCompanyName ?? "",
                 "beacon": peripheral.fingerprint.beaconHint ?? ""
             ])
+            lastBLEObservationAtByFingerprint[fingerprintID] = now
         }
+        let liveFingerprints = Set(items.map { $0.fingerprintID.trimmingCharacters(in: .whitespacesAndNewlines) })
+        lastBLEObservationAtByFingerprint = lastBLEObservationAtByFingerprint.filter { liveFingerprints.contains($0.key) }
         IdentityResolver.shared.updateFromBLE(items)
+        logBLEParityIfNeeded(inputCount: items.count)
     }
 
     func ingestNodes(_ items: [NodeRecord]) {
@@ -99,5 +111,38 @@ final class EntityStore: ObservableObject {
             observations.removeFirst(observations.count - maxObservations)
         }
         lastObservationAt = obs.timestamp
+    }
+
+    private func logBLEParityIfNeeded(inputCount: Int) {
+        let now = Date()
+        if let last = lastBLEParityLogAt, now.timeIntervalSince(last) < bleParityLogInterval {
+            return
+        }
+        lastBLEParityLogAt = now
+        let distinctUUIDs = Set(blePeripherals.map { $0.id.uuidString }).count
+        let distinctFingerprints = Set(blePeripherals.map { $0.fingerprintID }).count
+        let uuidSamples = sampleUUIDSuffixes(from: blePeripherals.map { $0.id.uuidString })
+        LogStore.shared.log(
+            .info,
+            "BLE entity parity: input=\(inputCount) stored=\(blePeripherals.count) distinct_uuids=\(distinctUUIDs) distinct_fingerprints=\(distinctFingerprints) uuid_samples=\(uuidSamples)"
+        )
+    }
+
+    private func sampleUUIDSuffixes(from uuids: [String]) -> String {
+        let suffixes = uuids
+            .sorted()
+            .prefix(5)
+            .map { uuid in
+                String(uuid.suffix(6))
+            }
+        if suffixes.isEmpty {
+            return "-"
+        }
+        return suffixes.joined(separator: ",")
+    }
+
+    private func shouldRecordBLEObservation(for fingerprintID: String, now: Date) -> Bool {
+        guard let last = lastBLEObservationAtByFingerprint[fingerprintID] else { return true }
+        return now.timeIntervalSince(last) >= bleObservationInterval
     }
 }

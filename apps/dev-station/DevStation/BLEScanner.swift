@@ -15,7 +15,7 @@ final class BLEScanner: NSObject, ObservableObject, @preconcurrency CBCentralMan
     @Published private(set) var lastPermissionMessage: String = ""
 
     private let logStore = LogStore.shared
-    private(set) var scanMode: ScanMode = .oneShot
+    private(set) var scanMode: ScanMode = .continuous
     private let oneShotDuration: TimeInterval = 8
     private var oneShotTask: Task<Void, Never>?
     private var central: CBCentralManager!
@@ -24,6 +24,11 @@ final class BLEScanner: NSObject, ObservableObject, @preconcurrency CBCentralMan
     private var firstDeviceLogged = false
     private let rssiAlpha = 0.2
     private let rssiHistoryWindow: TimeInterval = 20
+    private let continuousPublishIntervalMs = 500.0
+    private var latestPeripheralByID: [UUID: BLEPeripheral] = [:]
+    private var continuousPublishTask: Task<Void, Never>?
+    private var lastParityLogAt: Date?
+    private let parityLogInterval: TimeInterval = 10
 
     private override init() {
         super.init()
@@ -70,6 +75,15 @@ final class BLEScanner: NSObject, ObservableObject, @preconcurrency CBCentralMan
         stopScanning()
     }
 
+    func clearDiscovered() {
+        peripherals.removeAll()
+        latestPeripheralByID.removeAll()
+        continuousPublishTask?.cancel()
+        continuousPublishTask = nil
+        firstDeviceLogged = false
+        logStore.log(.info, "BLE discovered list cleared")
+    }
+
     func centralManagerDidUpdateState(_ central: CBCentralManager) {
         let newState = describe(state: central.state)
         stateDescription = newState
@@ -98,6 +112,7 @@ final class BLEScanner: NSObject, ObservableObject, @preconcurrency CBCentralMan
         advertisementData: [String: Any],
         rssi RSSI: NSNumber
     ) {
+        let now = Date()
         let name = peripheral.name ?? (advertisementData[CBAdvertisementDataLocalNameKey] as? String)
         let serviceUUIDs = (advertisementData[CBAdvertisementDataServiceUUIDsKey] as? [CBUUID])?.map { $0.uuidString.uppercased() } ?? []
         let manufacturerData = advertisementData[CBAdvertisementDataManufacturerDataKey] as? Data
@@ -110,55 +125,49 @@ final class BLEScanner: NSObject, ObservableObject, @preconcurrency CBCentralMan
         )
         let fingerprintID = computeFingerprintID(fingerprint)
         let bleConfidence = computeBLEConfidence(fingerprint)
+        let existing = latestPeripheralByID[peripheral.identifier]
+        let currentRSSI = Double(RSSI.intValue)
+        let previousSmoothed = existing?.smoothedRSSI ?? 0
+        let smoothed = previousSmoothed == 0 ? currentRSSI : (rssiAlpha * currentRSSI + (1 - rssiAlpha) * previousSmoothed)
+        var history = existing?.rssiHistory ?? []
+        history.append(BLERSSISample(timestamp: now, smoothedRSSI: smoothed))
+        let cutoff = now.addingTimeInterval(-rssiHistoryWindow)
+        history.removeAll { $0.timestamp < cutoff }
 
-        if let index = peripherals.firstIndex(where: { $0.id == peripheral.identifier }) {
-            let previousSmoothed = peripherals[index].smoothedRSSI
-            let currentRSSI = Double(RSSI.intValue)
-            let smoothed = previousSmoothed == 0 ? currentRSSI : (rssiAlpha * currentRSSI + (1 - rssiAlpha) * previousSmoothed)
-            peripherals[index].name = name ?? peripherals[index].name
-            peripherals[index].rssi = RSSI.intValue
-            peripherals[index].smoothedRSSI = smoothed
-            peripherals[index].rssiHistory.append(BLERSSISample(timestamp: Date(), smoothedRSSI: smoothed))
-            let cutoff = Date().addingTimeInterval(-rssiHistoryWindow)
-            peripherals[index].rssiHistory.removeAll { $0.timestamp < cutoff }
-            if !serviceUUIDs.isEmpty {
-                peripherals[index].serviceUUIDs = serviceUUIDs
-            }
-            if let manufacturerHex = manufacturerHex {
-                peripherals[index].manufacturerDataHex = manufacturerHex
-            }
-            peripherals[index].fingerprint = fingerprint
-            peripherals[index].fingerprintID = fingerprintID
-            peripherals[index].bleConfidence = bleConfidence
-            peripherals[index].lastSeen = Date()
-        } else {
+        let updated = BLEPeripheral(
+            id: peripheral.identifier,
+            name: name ?? existing?.name,
+            rssi: RSSI.intValue,
+            smoothedRSSI: smoothed,
+            rssiHistory: history,
+            serviceUUIDs: serviceUUIDs.isEmpty ? (existing?.serviceUUIDs ?? []) : serviceUUIDs,
+            manufacturerDataHex: manufacturerHex ?? existing?.manufacturerDataHex,
+            fingerprint: fingerprint,
+            fingerprintID: fingerprintID,
+            bleConfidence: bleConfidence,
+            lastSeen: now,
+            provenance: Provenance(source: "ble.scan", mode: scanMode, timestamp: now)
+        )
+
+        latestPeripheralByID[peripheral.identifier] = updated
+        if existing == nil {
             if !firstDeviceLogged {
                 firstDeviceLogged = true
                 logStore.log(.info, "BLE first device discovered")
             }
-            let initialSmoothed = Double(RSSI.intValue)
-            let history = [BLERSSISample(timestamp: Date(), smoothedRSSI: initialSmoothed)]
-            let item = BLEPeripheral(
-                id: peripheral.identifier,
-                name: name,
-                rssi: RSSI.intValue,
-                smoothedRSSI: initialSmoothed,
-                rssiHistory: history,
-                serviceUUIDs: serviceUUIDs,
-                manufacturerDataHex: manufacturerHex,
-                fingerprint: fingerprint,
-                fingerprintID: fingerprintID,
-                bleConfidence: bleConfidence,
-                lastSeen: Date(),
-                provenance: Provenance(source: "ble.scan", mode: scanMode, timestamp: Date())
-            )
-            peripherals.append(item)
-            logNewPeripheral(item)
+            logNewPeripheral(updated)
+        }
+
+        if scanMode == .continuous {
+            scheduleContinuousPublish()
+        } else {
+            publishSnapshot()
         }
     }
 
     func snapshotEvidence() -> [BLEEvidence] {
-        peripherals.map { peripheral in
+        let source = latestPeripheralByID.isEmpty ? peripherals : latestPeripheralByID.values.sorted { $0.lastSeen > $1.lastSeen }
+        return source.map { peripheral in
             BLEEvidence(
                 id: peripheral.id.uuidString,
                 name: peripheral.name ?? "",
@@ -181,17 +190,50 @@ final class BLEScanner: NSObject, ObservableObject, @preconcurrency CBCentralMan
         guard !isScanning else { return }
         isScanning = true
         firstDeviceLogged = false
-        logStore.log(.info, "BLE scan started")
-        central.scanForPeripherals(withServices: nil, options: [CBCentralManagerScanOptionAllowDuplicatesKey: false])
+        continuousPublishTask?.cancel()
+        continuousPublishTask = nil
+        let allowDuplicates = scanMode == .continuous
+        logStore.log(.info, "BLE scan started mode=\(scanMode.rawValue) allowDuplicates=\(allowDuplicates)")
+        central.scanForPeripherals(withServices: nil, options: [CBCentralManagerScanOptionAllowDuplicatesKey: allowDuplicates])
     }
 
     private func stopScanning() {
         guard isScanning else { return }
+        continuousPublishTask?.cancel()
+        continuousPublishTask = nil
         central.stopScan()
         isScanning = false
+        publishSnapshot()
         logStore.log(.info, "BLE scan stopped")
-        logStore.log(.info, "BLE peripherals discovered: \(peripherals.count)")
+        logStore.log(.info, "BLE peripherals discovered: \(latestPeripheralByID.count)")
         logBLEConfidenceSummary()
+    }
+
+    private func scheduleContinuousPublish() {
+        guard continuousPublishTask == nil else { return }
+        let delayNs = UInt64(continuousPublishIntervalMs * 1_000_000)
+        continuousPublishTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: delayNs)
+            guard !Task.isCancelled else { return }
+            await MainActor.run {
+                guard let self else { return }
+                self.continuousPublishTask = nil
+                self.publishSnapshot()
+            }
+        }
+    }
+
+    private func publishSnapshot() {
+        peripherals = latestPeripheralByID.values.sorted { lhs, rhs in
+            if lhs.lastSeen != rhs.lastSeen {
+                return lhs.lastSeen > rhs.lastSeen
+            }
+            if lhs.rssi != rhs.rssi {
+                return lhs.rssi > rhs.rssi
+            }
+            return lhs.id.uuidString < rhs.id.uuidString
+        }
+        logParityIfNeeded()
     }
 
     private func logNewPeripheral(_ item: BLEPeripheral) {
@@ -200,6 +242,36 @@ final class BLEScanner: NSObject, ObservableObject, @preconcurrency CBCentralMan
         let beacon = item.fingerprint.beaconHint ?? ""
         let count = item.fingerprint.serviceUUIDs.count
         logStore.log(.info, "BLE device \(item.id.uuidString) name=\(name) company=\(company) beacon=\(beacon) services=\(count)")
+    }
+
+    private func logParityIfNeeded() {
+        let now = Date()
+        if let last = lastParityLogAt, now.timeIntervalSince(last) < parityLogInterval {
+            return
+        }
+        lastParityLogAt = now
+        let scannerCount = latestPeripheralByID.count
+        let publishedCount = peripherals.count
+        let fingerprintCount = Set(peripherals.map { $0.fingerprintID }).count
+        let scannerSamples = sampleUUIDSuffixes(from: latestPeripheralByID.keys.map(\.uuidString))
+        let publishedSamples = sampleUUIDSuffixes(from: peripherals.map { $0.id.uuidString })
+        logStore.log(
+            .info,
+            "BLE parity: scanner=\(scannerCount) published=\(publishedCount) distinct_fingerprints=\(fingerprintCount) scanner_samples=\(scannerSamples) published_samples=\(publishedSamples)"
+        )
+    }
+
+    private func sampleUUIDSuffixes(from uuids: [String]) -> String {
+        let suffixes = uuids
+            .sorted()
+            .prefix(5)
+            .map { uuid -> String in
+                String(uuid.suffix(6))
+            }
+        if suffixes.isEmpty {
+            return "-"
+        }
+        return suffixes.joined(separator: ",")
     }
 
     @MainActor

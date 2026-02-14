@@ -10,9 +10,14 @@
 		471C1C5F48C984D3E44253D8 /* DevStation/EntityStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1FE992EC78DBFB2B9A2C9C1 /* DevStation/EntityStore.swift */; };
 		7D2DC7DD97FBFE250002E63F /* DevStation/ModalCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30E4251FCC8DE55EACC023CC /* DevStation/ModalCoordinator.swift */; };
 		8BAE51ECB4CED21C4BE36BFF /* DevStation/IdentityResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 805A0DFFD8FAFFA48F8F9BEF /* DevStation/IdentityResolver.swift */; };
-		A1A1A1A1A1A1A1A1A1A1A1A1 /* DevStationApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1B1 /* DevStationApp.swift */; };
-		A1A1A1A1A1A1A1A1A1A1A1A2 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1B2 /* ContentView.swift */; };
-		A1A1A1A1A1A1A1A1A1A1A1A3 /* NetworkScanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1B3 /* NetworkScanner.swift */; };
+			A1A1A1A1A1A1A1A1A1A1A1A1 /* DevStationApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1B1 /* DevStationApp.swift */; };
+			A1A1A1A1A1A1A1A1A1A1A1A2 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1B2 /* ContentView.swift */; };
+			A1A1A1A1A1A1A1A1A1A1A300 /* ShellComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B300 /* ShellComponents.swift */; };
+			A1A1A1A1A1A1A1A1A1A1A301 /* ScanningView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B301 /* ScanningView.swift */; };
+			A1A1A1A1A1A1A1A1A1A1A302 /* UIHeartbeatWriter.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B302 /* UIHeartbeatWriter.swift */; };
+			A1A1A1A1A1A1A1A1A1A1A2F0 /* FlashedNoteStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B2F0 /* FlashedNoteStore.swift */; };
+			A1A1A1A1A1A1A1A1A1A1A2F1 /* ContentTabViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B2F1 /* ContentTabViews.swift */; };
+			A1A1A1A1A1A1A1A1A1A1A1A3 /* NetworkScanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1B3 /* NetworkScanner.swift */; };
 		A1A1A1A1A1A1A1A1A1A1A1A4 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1B4 /* Models.swift */; };
 		A1A1A1A1A1A1A1A1A1A1A1A5 /* AsyncSemaphore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1B6 /* AsyncSemaphore.swift */; };
 		A1A1A1A1A1A1A1A1A1A1A1A6 /* NetworkHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1B7 /* NetworkHelpers.swift */; };
@@ -47,9 +52,10 @@
 		A7B6CDA11F5F4E0FA1D5D0A3 /* GodGatewayClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7B6CDA11F5F4E0FA1D5D0A4 /* GodGatewayClient.swift */; };
 		A7B6CDA11F5F4E0FA1D5D0A5 /* ActionRateLimiter.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7B6CDA11F5F4E0FA1D5D0A6 /* ActionRateLimiter.swift */; };
 		A1A1A1A1A1A1A1A1A1A1A1D3 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1D3 /* Theme.swift */; };
-		A1A1A1A1A1A1A1A1A1A1A1D4 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1D4 /* DashboardView.swift */; };
-		A1A1A1A1A1A1A1A1A1A1A1D5 /* VisualizerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1D5 /* VisualizerView.swift */; };
-		A1A1A1A1A1A1A1A1A1A1A1D6 /* DailyLogManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1D6 /* DailyLogManager.swift */; };
+			A1A1A1A1A1A1A1A1A1A1A1D4 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1D4 /* DashboardView.swift */; };
+			A1A1A1A1A1A1A1A1A1A1A1D5 /* VisualizerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1D5 /* VisualizerView.swift */; };
+			A1A1A1A1A1A1A1A1A1A1A2F2 /* VisualizerComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B2F2 /* VisualizerComponents.swift */; };
+			A1A1A1A1A1A1A1A1A1A1A1D6 /* DailyLogManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1D6 /* DailyLogManager.swift */; };
 		A1A1A1A1A1A1A1A1A1A1A1D7 /* CaseSessionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1D7 /* CaseSessionManager.swift */; };
 		A1A1A1A1A1A1A1A1A1A1A1E0 /* ToolRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1E0 /* ToolRegistry.swift */; };
 		A1A1A1A1A1A1A1A1A1A1A1E1 /* ToolRegistryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1E1 /* ToolRegistryView.swift */; };
@@ -79,9 +85,14 @@
 		30E4251FCC8DE55EACC023CC /* DevStation/ModalCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevStation/ModalCoordinator.swift; sourceTree = "<group>"; };
 		805A0DFFD8FAFFA48F8F9BEF /* DevStation/IdentityResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevStation/IdentityResolver.swift; sourceTree = "<group>"; };
 		B1B1B1B1B1B1B1B1B1B1B1B0 /* DevStation.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DevStation.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		B1B1B1B1B1B1B1B1B1B1B1B1 /* DevStationApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevStationApp.swift; sourceTree = "<group>"; };
-		B1B1B1B1B1B1B1B1B1B1B1B2 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
-		B1B1B1B1B1B1B1B1B1B1B1B3 /* NetworkScanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkScanner.swift; sourceTree = "<group>"; };
+			B1B1B1B1B1B1B1B1B1B1B1B1 /* DevStationApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevStationApp.swift; sourceTree = "<group>"; };
+			B1B1B1B1B1B1B1B1B1B1B1B2 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+			B1B1B1B1B1B1B1B1B1B1B300 /* ShellComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShellComponents.swift; sourceTree = "<group>"; };
+			B1B1B1B1B1B1B1B1B1B1B301 /* ScanningView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanningView.swift; sourceTree = "<group>"; };
+			B1B1B1B1B1B1B1B1B1B1B302 /* UIHeartbeatWriter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UIHeartbeatWriter.swift; sourceTree = "<group>"; };
+			B1B1B1B1B1B1B1B1B1B1B2F0 /* FlashedNoteStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlashedNoteStore.swift; sourceTree = "<group>"; };
+			B1B1B1B1B1B1B1B1B1B1B2F1 /* ContentTabViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentTabViews.swift; sourceTree = "<group>"; };
+			B1B1B1B1B1B1B1B1B1B1B1B3 /* NetworkScanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkScanner.swift; sourceTree = "<group>"; };
 		B1B1B1B1B1B1B1B1B1B1B1B4 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
 		B1B1B1B1B1B1B1B1B1B1B1B5 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		B1B1B1B1B1B1B1B1B1B1B1B6 /* AsyncSemaphore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AsyncSemaphore.swift; sourceTree = "<group>"; };
@@ -117,9 +128,10 @@
 		B7B6CDA11F5F4E0FA1D5D0A4 /* GodGatewayClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GodGatewayClient.swift; sourceTree = "<group>"; };
 		B7B6CDA11F5F4E0FA1D5D0A6 /* ActionRateLimiter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActionRateLimiter.swift; sourceTree = "<group>"; };
 		B1B1B1B1B1B1B1B1B1B1B1D3 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
-		B1B1B1B1B1B1B1B1B1B1B1D4 /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
-		B1B1B1B1B1B1B1B1B1B1B1D5 /* VisualizerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisualizerView.swift; sourceTree = "<group>"; };
-		B1B1B1B1B1B1B1B1B1B1B1D6 /* DailyLogManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyLogManager.swift; sourceTree = "<group>"; };
+			B1B1B1B1B1B1B1B1B1B1B1D4 /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
+			B1B1B1B1B1B1B1B1B1B1B1D5 /* VisualizerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisualizerView.swift; sourceTree = "<group>"; };
+			B1B1B1B1B1B1B1B1B1B1B2F2 /* VisualizerComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisualizerComponents.swift; sourceTree = "<group>"; };
+			B1B1B1B1B1B1B1B1B1B1B1D6 /* DailyLogManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyLogManager.swift; sourceTree = "<group>"; };
 		B1B1B1B1B1B1B1B1B1B1B1D7 /* CaseSessionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaseSessionManager.swift; sourceTree = "<group>"; };
 		B1B1B1B1B1B1B1B1B1B1B1E0 /* ToolRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolRegistry.swift; sourceTree = "<group>"; };
 		B1B1B1B1B1B1B1B1B1B1B1E1 /* ToolRegistryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolRegistryView.swift; sourceTree = "<group>"; };
@@ -169,9 +181,14 @@
 		D1D1D1D1D1D1D1D1D1D1D1D2 /* DevStation */ = {
 			isa = PBXGroup;
 			children = (
-				B1B1B1B1B1B1B1B1B1B1B1B1 /* DevStationApp.swift */,
-				B1B1B1B1B1B1B1B1B1B1B1B2 /* ContentView.swift */,
-				B1B1B1B1B1B1B1B1B1B1B1E0 /* ToolRegistry.swift */,
+					B1B1B1B1B1B1B1B1B1B1B1B1 /* DevStationApp.swift */,
+					B1B1B1B1B1B1B1B1B1B1B1B2 /* ContentView.swift */,
+					B1B1B1B1B1B1B1B1B1B1B300 /* ShellComponents.swift */,
+					B1B1B1B1B1B1B1B1B1B1B301 /* ScanningView.swift */,
+					B1B1B1B1B1B1B1B1B1B1B302 /* UIHeartbeatWriter.swift */,
+					B1B1B1B1B1B1B1B1B1B1B2F0 /* FlashedNoteStore.swift */,
+					B1B1B1B1B1B1B1B1B1B1B2F1 /* ContentTabViews.swift */,
+					B1B1B1B1B1B1B1B1B1B1B1E0 /* ToolRegistry.swift */,
 				B1B1B1B1B1B1B1B1B1B1B1E1 /* ToolRegistryView.swift */,
 				B1B1B1B1B1B1B1B1B1B1B1E2 /* StationProcessManager.swift */,
 				B1B1B1B1B1B1B1B1B1B1B1FE /* StationEndpointResolver.swift */,
@@ -222,9 +239,10 @@
 				B1B1B1B1B1B1B1B1B1B1B1D0 /* VaultTransport.swift */,
 				B1B1B1B1B1B1B1B1B1B1B1D1 /* BLEUUIDDisplay.swift */,
 				B1B1B1B1B1B1B1B1B1B1B1D3 /* Theme.swift */,
-				B1B1B1B1B1B1B1B1B1B1B1D4 /* DashboardView.swift */,
-				B1B1B1B1B1B1B1B1B1B1B1D5 /* VisualizerView.swift */,
-				B1B1B1B1B1B1B1B1B1B1B1D6 /* DailyLogManager.swift */,
+					B1B1B1B1B1B1B1B1B1B1B1D4 /* DashboardView.swift */,
+					B1B1B1B1B1B1B1B1B1B1B1D5 /* VisualizerView.swift */,
+					B1B1B1B1B1B1B1B1B1B1B2F2 /* VisualizerComponents.swift */,
+					B1B1B1B1B1B1B1B1B1B1B1D6 /* DailyLogManager.swift */,
 				B1B1B1B1B1B1B1B1B1B1B1D7 /* CaseSessionManager.swift */,
 				B1B1B1B1B1B1B1B1B1B1B1BA /* LogStore.swift */,
 				B1B1B1B1B1B1B1B1B1B1B1BB /* OUIStore.swift */,
@@ -327,9 +345,14 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				A1A1A1A1A1A1A1A1A1A1A1A1 /* DevStationApp.swift in Sources */,
-				A1A1A1A1A1A1A1A1A1A1A1A2 /* ContentView.swift in Sources */,
-				A1A1A1A1A1A1A1A1A1A1A1E0 /* ToolRegistry.swift in Sources */,
+					A1A1A1A1A1A1A1A1A1A1A1A1 /* DevStationApp.swift in Sources */,
+					A1A1A1A1A1A1A1A1A1A1A1A2 /* ContentView.swift in Sources */,
+					A1A1A1A1A1A1A1A1A1A1A300 /* ShellComponents.swift in Sources */,
+					A1A1A1A1A1A1A1A1A1A1A301 /* ScanningView.swift in Sources */,
+					A1A1A1A1A1A1A1A1A1A1A302 /* UIHeartbeatWriter.swift in Sources */,
+					A1A1A1A1A1A1A1A1A1A1A2F0 /* FlashedNoteStore.swift in Sources */,
+					A1A1A1A1A1A1A1A1A1A1A2F1 /* ContentTabViews.swift in Sources */,
+					A1A1A1A1A1A1A1A1A1A1A1E0 /* ToolRegistry.swift in Sources */,
 				A1A1A1A1A1A1A1A1A1A1A1E1 /* ToolRegistryView.swift in Sources */,
 				A1A1A1A1A1A1A1A1A1A1A1E2 /* StationProcessManager.swift in Sources */,
 				A1A1A1A1A1A1A1A1A1A1A1FE /* StationEndpointResolver.swift in Sources */,
@@ -385,9 +408,10 @@
 				A1A1A1A1A1A1A1A1A1A1A1C0 /* VaultTransport.swift in Sources */,
 				A1A1A1A1A1A1A1A1A1A1A1C1 /* BLEUUIDDisplay.swift in Sources */,
 				A1A1A1A1A1A1A1A1A1A1A1D3 /* Theme.swift in Sources */,
-				A1A1A1A1A1A1A1A1A1A1A1D4 /* DashboardView.swift in Sources */,
-				A1A1A1A1A1A1A1A1A1A1A1D5 /* VisualizerView.swift in Sources */,
-				A1A1A1A1A1A1A1A1A1A1A1D6 /* DailyLogManager.swift in Sources */,
+					A1A1A1A1A1A1A1A1A1A1A1D4 /* DashboardView.swift in Sources */,
+					A1A1A1A1A1A1A1A1A1A1A1D5 /* VisualizerView.swift in Sources */,
+					A1A1A1A1A1A1A1A1A1A1A2F2 /* VisualizerComponents.swift in Sources */,
+					A1A1A1A1A1A1A1A1A1A1A1D6 /* DailyLogManager.swift in Sources */,
 				A1A1A1A1A1A1A1A1A1A1A1D7 /* CaseSessionManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
