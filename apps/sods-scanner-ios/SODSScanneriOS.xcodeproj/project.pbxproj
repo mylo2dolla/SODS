@@ -1,0 +1,546 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		00E7F57C9BC40356F684A7EB /* LegalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BA29C177D26B7B130BEC4B7 /* LegalView.swift */; };
+		37789CA537EAF85645D82ABF /* SODSScanner.storekit in Resources */ = {isa = PBXBuildFile; fileRef = 4F20085D167B2FC6E9337C4C /* SODSScanner.storekit */; };
+		39933A08803EA31DCE2684FB /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B15F221774E40CA62E28F446 /* OnboardingView.swift */; };
+		6097DBEDF5FA56218837B999 /* SubscriptionCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2FA8867FCDE76851928AB4A5 /* SubscriptionCache.swift */; };
+		69174ED6122AC226415FF2DC /* SubscriptionStatusCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BD5E88C9C9E1F992510A3DF /* SubscriptionStatusCard.swift */; };
+		6D942FCAA15A5A6F27A302E4 /* SODSScannerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E4532872145054F1998C27E /* SODSScannerApp.swift */; };
+		7930B7E3DE4039AD10402203 /* UpgradeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3377EBD21863F22435787CCA /* UpgradeView.swift */; };
+		9E041B6423B640F8ED551C80 /* ScannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCEE4317833BA8C949CB7B0D /* ScannerView.swift */; };
+		A5617F3B94D87EF6C4B0E6E7 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 04C839CC51A80911F9B8D306 /* LaunchScreen.storyboard */; };
+		AE9C381E95F2D772F9B8E762 /* SubscriptionModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74D60759FB8AA6C9D29FCA04 /* SubscriptionModels.swift */; };
+		B21971B1CC6B709DD8E679B8 /* SpectrumView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0327B97CA17AAB92D1F4CB8F /* SpectrumView.swift */; };
+		BDB907CA25A55ADA0CAA2D23 /* ScannerSpectrumCore in Frameworks */ = {isa = PBXBuildFile; productRef = 14AEFE4E23D48060374524A7 /* ScannerSpectrumCore */; };
+		C7DACB634AD012720097CD61 /* TermsOfUse.md in Resources */ = {isa = PBXBuildFile; fileRef = E988E67A63176738D20F2839 /* TermsOfUse.md */; };
+		D5EB29CEF6542CCD56F5DF9B /* PrivacyPolicy.md in Resources */ = {isa = PBXBuildFile; fileRef = DEE2DC87DE81F5229F4A0A46 /* PrivacyPolicy.md */; };
+		DD79AC870A2A5FAB5A16E66A /* DatabasesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C066F8FD1107F7C18B1AEA1 /* DatabasesView.swift */; };
+		E53867DEE4290C40B0284062 /* RootTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C04BB79AC98B4A2EF8E1A4CE /* RootTabView.swift */; };
+		EAEE7F2463EDE41F4AEEADF0 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F0F2F27B0F2022AA30436C3 /* SettingsView.swift */; };
+		EF0201545569FE6E514BAF04 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = BAA524C4A55E412058CCE21A /* Assets.xcassets */; };
+		F04B10F25B15096FDEA54BA0 /* SubscriptionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = D22AF7682581A9D717A91976 /* SubscriptionManager.swift */; };
+		F8BA208C24D5C3858020A571 /* DeviceInfoSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A7EC7ED9541B3BE59F48EAE /* DeviceInfoSheet.swift */; };
+		F9C16DB5176B1BFFDBD57016 /* IOSScanCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1449DF66ED12395881E0283D /* IOSScanCoordinator.swift */; };
+		FC8D8AD041DB5508E528DCCE /* DynamicFieldRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32241041DD86EC559F7DE5F5 /* DynamicFieldRenderer.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		0327B97CA17AAB92D1F4CB8F /* SpectrumView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpectrumView.swift; sourceTree = "<group>"; };
+		04C839CC51A80911F9B8D306 /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
+		1449DF66ED12395881E0283D /* IOSScanCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSScanCoordinator.swift; sourceTree = "<group>"; };
+		1499F83B3FB73C8B446DCE41 /* SODSScanneriOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SODSScanneriOS.entitlements; sourceTree = "<group>"; };
+		2BA29C177D26B7B130BEC4B7 /* LegalView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LegalView.swift; sourceTree = "<group>"; };
+		2FA8867FCDE76851928AB4A5 /* SubscriptionCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubscriptionCache.swift; sourceTree = "<group>"; };
+		32241041DD86EC559F7DE5F5 /* DynamicFieldRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DynamicFieldRenderer.swift; sourceTree = "<group>"; };
+		3377EBD21863F22435787CCA /* UpgradeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpgradeView.swift; sourceTree = "<group>"; };
+		4D2A47E2D27F3411FAB2A8F5 /* SODSScanneriOS.Debug.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SODSScanneriOS.Debug.entitlements; sourceTree = "<group>"; };
+		4E4532872145054F1998C27E /* SODSScannerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SODSScannerApp.swift; sourceTree = "<group>"; };
+		4F20085D167B2FC6E9337C4C /* SODSScanner.storekit */ = {isa = PBXFileReference; path = SODSScanner.storekit; sourceTree = "<group>"; };
+		5A7EC7ED9541B3BE59F48EAE /* DeviceInfoSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceInfoSheet.swift; sourceTree = "<group>"; };
+		6A22E3E6851C9044BAF25E0F /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		74D60759FB8AA6C9D29FCA04 /* SubscriptionModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubscriptionModels.swift; sourceTree = "<group>"; };
+		85E01329D90527BA219F7919 /* SODSScanneriOS.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = SODSScanneriOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		8BD5E88C9C9E1F992510A3DF /* SubscriptionStatusCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubscriptionStatusCard.swift; sourceTree = "<group>"; };
+		8C066F8FD1107F7C18B1AEA1 /* DatabasesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DatabasesView.swift; sourceTree = "<group>"; };
+		9F0F2F27B0F2022AA30436C3 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		A877F2C8CF173130B3EE9D2A /* scanner-spectrum-core */ = {isa = PBXFileReference; lastKnownFileType = folder; name = "scanner-spectrum-core"; path = "../scanner-spectrum-core"; sourceTree = SOURCE_ROOT; };
+		B15F221774E40CA62E28F446 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
+		BAA524C4A55E412058CCE21A /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		C04BB79AC98B4A2EF8E1A4CE /* RootTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootTabView.swift; sourceTree = "<group>"; };
+		CCEE4317833BA8C949CB7B0D /* ScannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScannerView.swift; sourceTree = "<group>"; };
+		D22AF7682581A9D717A91976 /* SubscriptionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubscriptionManager.swift; sourceTree = "<group>"; };
+		DEE2DC87DE81F5229F4A0A46 /* PrivacyPolicy.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = PrivacyPolicy.md; sourceTree = "<group>"; };
+		E988E67A63176738D20F2839 /* TermsOfUse.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = TermsOfUse.md; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		9168609EFB907ACBC8DDE29C /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BDB907CA25A55ADA0CAA2D23 /* ScannerSpectrumCore in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		0887786B213C7938B1594CEA /* ViewModels */ = {
+			isa = PBXGroup;
+			children = (
+				1449DF66ED12395881E0283D /* IOSScanCoordinator.swift */,
+			);
+			path = ViewModels;
+			sourceTree = "<group>";
+		};
+		0E5C7C5E1AB366A3A9608E41 /* Packages */ = {
+			isa = PBXGroup;
+			children = (
+				A877F2C8CF173130B3EE9D2A /* scanner-spectrum-core */,
+			);
+			name = Packages;
+			sourceTree = "<group>";
+		};
+		0F06E993245D383B7C459798 /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				5A7EC7ED9541B3BE59F48EAE /* DeviceInfoSheet.swift */,
+				32241041DD86EC559F7DE5F5 /* DynamicFieldRenderer.swift */,
+			);
+			path = Shared;
+			sourceTree = "<group>";
+		};
+		1255144376F1BE83E5DF6F38 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				6A22E3E6851C9044BAF25E0F /* Info.plist */,
+				04C839CC51A80911F9B8D306 /* LaunchScreen.storyboard */,
+				4F20085D167B2FC6E9337C4C /* SODSScanner.storekit */,
+				4D2A47E2D27F3411FAB2A8F5 /* SODSScanneriOS.Debug.entitlements */,
+				1499F83B3FB73C8B446DCE41 /* SODSScanneriOS.entitlements */,
+				3E376B16F838DF310A2AD8FE /* Legal */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		252DE36FA93152E010D4C309 /* Settings */ = {
+			isa = PBXGroup;
+			children = (
+				9F0F2F27B0F2022AA30436C3 /* SettingsView.swift */,
+			);
+			path = Settings;
+			sourceTree = "<group>";
+		};
+		27ED9D22958992B57AA68446 /* Features */ = {
+			isa = PBXGroup;
+			children = (
+				C0A0086E591CF874174EECF2 /* Databases */,
+				758F1BB0FD09EB632DD31D02 /* Legal */,
+				EBCC6394D469553BBE13CC92 /* Onboarding */,
+				BBC29B4BF357B360637CE1C9 /* Scanner */,
+				252DE36FA93152E010D4C309 /* Settings */,
+				0F06E993245D383B7C459798 /* Shared */,
+				718EBA4A1AA30E7BFA9DB764 /* Spectrum */,
+				AB16F873DC45888175C41291 /* Subscription */,
+			);
+			path = Features;
+			sourceTree = "<group>";
+		};
+		3E376B16F838DF310A2AD8FE /* Legal */ = {
+			isa = PBXGroup;
+			children = (
+				DEE2DC87DE81F5229F4A0A46 /* PrivacyPolicy.md */,
+				E988E67A63176738D20F2839 /* TermsOfUse.md */,
+			);
+			path = Legal;
+			sourceTree = "<group>";
+		};
+		4F801CB17AFE33431AC9EDFB = {
+			isa = PBXGroup;
+			children = (
+				0E5C7C5E1AB366A3A9608E41 /* Packages */,
+				F99B026B7156FD041BB34001 /* SODSScanneriOS */,
+				FAB32B4947910F4D1E30AE13 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		5F03CA4FA6359087D7E26779 /* Monetization */ = {
+			isa = PBXGroup;
+			children = (
+				2FA8867FCDE76851928AB4A5 /* SubscriptionCache.swift */,
+				D22AF7682581A9D717A91976 /* SubscriptionManager.swift */,
+				74D60759FB8AA6C9D29FCA04 /* SubscriptionModels.swift */,
+			);
+			path = Monetization;
+			sourceTree = "<group>";
+		};
+		718EBA4A1AA30E7BFA9DB764 /* Spectrum */ = {
+			isa = PBXGroup;
+			children = (
+				0327B97CA17AAB92D1F4CB8F /* SpectrumView.swift */,
+			);
+			path = Spectrum;
+			sourceTree = "<group>";
+		};
+		758F1BB0FD09EB632DD31D02 /* Legal */ = {
+			isa = PBXGroup;
+			children = (
+				2BA29C177D26B7B130BEC4B7 /* LegalView.swift */,
+			);
+			path = Legal;
+			sourceTree = "<group>";
+		};
+		AB16F873DC45888175C41291 /* Subscription */ = {
+			isa = PBXGroup;
+			children = (
+				8BD5E88C9C9E1F992510A3DF /* SubscriptionStatusCard.swift */,
+				3377EBD21863F22435787CCA /* UpgradeView.swift */,
+			);
+			path = Subscription;
+			sourceTree = "<group>";
+		};
+		BBC29B4BF357B360637CE1C9 /* Scanner */ = {
+			isa = PBXGroup;
+			children = (
+				CCEE4317833BA8C949CB7B0D /* ScannerView.swift */,
+			);
+			path = Scanner;
+			sourceTree = "<group>";
+		};
+		C0A0086E591CF874174EECF2 /* Databases */ = {
+			isa = PBXGroup;
+			children = (
+				8C066F8FD1107F7C18B1AEA1 /* DatabasesView.swift */,
+			);
+			path = Databases;
+			sourceTree = "<group>";
+		};
+		EBCC6394D469553BBE13CC92 /* Onboarding */ = {
+			isa = PBXGroup;
+			children = (
+				B15F221774E40CA62E28F446 /* OnboardingView.swift */,
+			);
+			path = Onboarding;
+			sourceTree = "<group>";
+		};
+		F1B9256BB343F4613697D81B /* App */ = {
+			isa = PBXGroup;
+			children = (
+				C04BB79AC98B4A2EF8E1A4CE /* RootTabView.swift */,
+				4E4532872145054F1998C27E /* SODSScannerApp.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		F99B026B7156FD041BB34001 /* SODSScanneriOS */ = {
+			isa = PBXGroup;
+			children = (
+				BAA524C4A55E412058CCE21A /* Assets.xcassets */,
+				F1B9256BB343F4613697D81B /* App */,
+				27ED9D22958992B57AA68446 /* Features */,
+				5F03CA4FA6359087D7E26779 /* Monetization */,
+				1255144376F1BE83E5DF6F38 /* Resources */,
+				0887786B213C7938B1594CEA /* ViewModels */,
+			);
+			path = SODSScanneriOS;
+			sourceTree = "<group>";
+		};
+		FAB32B4947910F4D1E30AE13 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				85E01329D90527BA219F7919 /* SODSScanneriOS.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		D43E756ADAC31B98A269C99F /* SODSScanneriOS */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 46C2AF47BA2AFF99EA2C33DA /* Build configuration list for PBXNativeTarget "SODSScanneriOS" */;
+			buildPhases = (
+				6DEF20A083D55EB14406C480 /* Sources */,
+				6FFAF7BE2BDF62A11ACE9E18 /* Resources */,
+				9168609EFB907ACBC8DDE29C /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = SODSScanneriOS;
+			packageProductDependencies = (
+				14AEFE4E23D48060374524A7 /* ScannerSpectrumCore */,
+			);
+			productName = SODSScanneriOS;
+			productReference = 85E01329D90527BA219F7919 /* SODSScanneriOS.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		705AEDB0D94E7EEE3E377C43 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					D43E756ADAC31B98A269C99F = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = E4C26DF61DEBA38505110C17 /* Build configuration list for PBXProject "SODSScanneriOS" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 4F801CB17AFE33431AC9EDFB;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				D72074A9657B34BCBA5B3897 /* XCLocalSwiftPackageReference "../scanner-spectrum-core" */,
+			);
+			preferredProjectObjectVersion = 77;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				D43E756ADAC31B98A269C99F /* SODSScanneriOS */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		6FFAF7BE2BDF62A11ACE9E18 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				EF0201545569FE6E514BAF04 /* Assets.xcassets in Resources */,
+				A5617F3B94D87EF6C4B0E6E7 /* LaunchScreen.storyboard in Resources */,
+				D5EB29CEF6542CCD56F5DF9B /* PrivacyPolicy.md in Resources */,
+				37789CA537EAF85645D82ABF /* SODSScanner.storekit in Resources */,
+				C7DACB634AD012720097CD61 /* TermsOfUse.md in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		6DEF20A083D55EB14406C480 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				DD79AC870A2A5FAB5A16E66A /* DatabasesView.swift in Sources */,
+				F8BA208C24D5C3858020A571 /* DeviceInfoSheet.swift in Sources */,
+				FC8D8AD041DB5508E528DCCE /* DynamicFieldRenderer.swift in Sources */,
+				F9C16DB5176B1BFFDBD57016 /* IOSScanCoordinator.swift in Sources */,
+				00E7F57C9BC40356F684A7EB /* LegalView.swift in Sources */,
+				39933A08803EA31DCE2684FB /* OnboardingView.swift in Sources */,
+				E53867DEE4290C40B0284062 /* RootTabView.swift in Sources */,
+				6D942FCAA15A5A6F27A302E4 /* SODSScannerApp.swift in Sources */,
+				9E041B6423B640F8ED551C80 /* ScannerView.swift in Sources */,
+				EAEE7F2463EDE41F4AEEADF0 /* SettingsView.swift in Sources */,
+				B21971B1CC6B709DD8E679B8 /* SpectrumView.swift in Sources */,
+				6097DBEDF5FA56218837B999 /* SubscriptionCache.swift in Sources */,
+				F04B10F25B15096FDEA54BA0 /* SubscriptionManager.swift in Sources */,
+				AE9C381E95F2D772F9B8E762 /* SubscriptionModels.swift in Sources */,
+				69174ED6122AC226415FF2DC /* SubscriptionStatusCard.swift in Sources */,
+				7930B7E3DE4039AD10402203 /* UpgradeView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		417E5B9EE19F3F01B6CD8AA6 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = SODSScanneriOS/Resources/SODSScanneriOS.Debug.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				INFOPLIST_FILE = SODSScanneriOS/Resources/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.strangelab.sods.scanner;
+				PRODUCT_NAME = "SODS Scanner iOS";
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		57C15492E9A14882E56A2C76 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		E3F2348E30D06681C9349093 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = SODSScanneriOS/Resources/SODSScanneriOS.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				INFOPLIST_FILE = SODSScanneriOS/Resources/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.strangelab.sods.scanner;
+				PRODUCT_NAME = "SODS Scanner iOS";
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		EF3328F9C46C47E67DBBB809 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		46C2AF47BA2AFF99EA2C33DA /* Build configuration list for PBXNativeTarget "SODSScanneriOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				417E5B9EE19F3F01B6CD8AA6 /* Debug */,
+				E3F2348E30D06681C9349093 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		E4C26DF61DEBA38505110C17 /* Build configuration list for PBXProject "SODSScanneriOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				57C15492E9A14882E56A2C76 /* Debug */,
+				EF3328F9C46C47E67DBBB809 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		D72074A9657B34BCBA5B3897 /* XCLocalSwiftPackageReference "../scanner-spectrum-core" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = "../scanner-spectrum-core";
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		14AEFE4E23D48060374524A7 /* ScannerSpectrumCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = ScannerSpectrumCore;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 705AEDB0D94E7EEE3E377C43 /* Project object */;
+}

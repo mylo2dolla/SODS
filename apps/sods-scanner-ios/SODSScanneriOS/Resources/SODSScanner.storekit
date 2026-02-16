@@ -1,0 +1,57 @@
+{
+  "identifier": "SODSScanner.storekit",
+  "settings": {
+    "_applicationInternalID": "00000000-0000-0000-0000-000000000001"
+  },
+  "subscriptionGroups": [
+    {
+      "id": "5D942168-0396-45AF-B0CB-C08E399192E5",
+      "name": "SODS Scanner Pro",
+      "localizations": [
+        {
+          "locale": "en_US",
+          "displayName": "SODS Scanner Pro",
+          "description": "Unlock advanced scanner features and full dynamic device insights."
+        }
+      ],
+      "subscriptions": [
+        {
+          "id": "2D9A395A-6D32-4388-8AF9-8FD843A82C8F",
+          "productID": "com.strangelab.sods.scanner.pro.monthly",
+          "type": "RecurringSubscription",
+          "referenceName": "SODS Scanner Pro Monthly",
+          "recurringSubscriptionPeriod": "P1M",
+          "localizations": [
+            {
+              "locale": "en_US",
+              "displayName": "Pro Monthly",
+              "description": "Monthly Pro access for SODS Scanner."
+            }
+          ]
+        },
+        {
+          "id": "B24E2F63-27EC-4840-8B1F-69A0E402638F",
+          "productID": "com.strangelab.sods.scanner.pro.yearly",
+          "type": "RecurringSubscription",
+          "referenceName": "SODS Scanner Pro Yearly",
+          "recurringSubscriptionPeriod": "P1Y",
+          "introductoryOffer": {
+            "paymentMode": "freeTrial",
+            "period": "P7D"
+          },
+          "localizations": [
+            {
+              "locale": "en_US",
+              "displayName": "Pro Yearly",
+              "description": "Yearly Pro access for SODS Scanner with a 7-day free trial."
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "version": {
+    "major": 3,
+    "minor": 0
+  }
+}

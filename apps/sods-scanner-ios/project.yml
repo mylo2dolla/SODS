@@ -1,0 +1,38 @@
+name: SODSScanneriOS
+options:
+  minimumXcodeGenVersion: 2.38.0
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: 5.0
+packages:
+  ScannerSpectrumCore:
+    path: ../scanner-spectrum-core
+targets:
+  SODSScanneriOS:
+    type: application
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: SODSScanneriOS
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.strangelab.sods.scanner
+        PRODUCT_NAME: SODS Scanner iOS
+        INFOPLIST_FILE: SODSScanneriOS/Resources/Info.plist
+        CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: ""
+        MARKETING_VERSION: 1.0.0
+        CURRENT_PROJECT_VERSION: 1
+        TARGETED_DEVICE_FAMILY: "1,2"
+      configs:
+        Debug:
+          CODE_SIGN_ENTITLEMENTS: SODSScanneriOS/Resources/SODSScanneriOS.Debug.entitlements
+        Release:
+          CODE_SIGN_ENTITLEMENTS: SODSScanneriOS/Resources/SODSScanneriOS.entitlements
+    dependencies:
+      - package: ScannerSpectrumCore
+        product: ScannerSpectrumCore
+    scheme:
+      gatherCoverageData: false
+      testTargets: []
