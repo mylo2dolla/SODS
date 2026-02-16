@@ -23,6 +23,8 @@ fi
 echo "Running runtime data checks..."
 "$REPO_ROOT/tools/check-dynamic-data.sh"
 "$REPO_ROOT/tools/check-visualizer-sync.sh"
+echo "Verifying app icon assets..."
+"$REPO_ROOT/tools/verify-app-icons.sh" --target devstation
 if [[ "${SODS_SKIP_FIRMWARE_CHECK:-0}" != "1" ]]; then
   echo "Running firmware integrity checks..."
   "$REPO_ROOT/tools/check-firmware.sh"

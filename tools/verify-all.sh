@@ -47,6 +47,13 @@ request_id() {
   printf '%s-%s' "$1" "$(date +%s)-$RANDOM"
 }
 
+section "0) App Icon Integrity"
+if "$SCRIPT_DIR/verify-app-icons.sh" --target all >/dev/null 2>&1; then
+  pass "app icon assets and project wiring verified"
+else
+  fail_msg "app icon verification failed (run tools/verify-app-icons.sh --target all)"
+fi
+
 section "A) Network"
 if ping -c 1 "$AUX_HOST" >/dev/null 2>&1; then
   pass "pi-aux reachable (${AUX_HOST})"

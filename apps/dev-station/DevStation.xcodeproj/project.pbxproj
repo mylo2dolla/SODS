@@ -36,6 +36,7 @@
 		A1A1A1A1A1A1A1A1A1A1A1B3 /* BLECompanyIDs.txt in Resources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1C4 /* BLECompanyIDs.txt */; };
 		A1A1A1A1A1A1A1A1A1A1A1B4 /* BLEServiceUUIDs.txt in Resources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1C5 /* BLEServiceUUIDs.txt */; };
 		A1A1A1A1A1A1A1A1A1A1A1B5 /* BLEAssignedNumbers.txt in Resources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1C6 /* BLEAssignedNumbers.txt */; };
+		CCF2DA8F0B364F91B5AC90C1 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = CCF2DA8F0B364F91B5AC90C2 /* Assets.xcassets */; };
 		A1A1A1A1A1A1A1A1A1A1A1B7 /* RTSPHardProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1C7 /* RTSPHardProbe.swift */; };
 		A1A1A1A1A1A1A1A1A1A1A1B8 /* AppTruth.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1C8 /* AppTruth.swift */; };
 		A1A1A1A1A1A1A1A1A1A1A1B9 /* Payloads.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1C9 /* Payloads.swift */; };
@@ -112,6 +113,7 @@
 		B1B1B1B1B1B1B1B1B1B1B1C4 /* BLECompanyIDs.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = BLECompanyIDs.txt; sourceTree = "<group>"; };
 		B1B1B1B1B1B1B1B1B1B1B1C5 /* BLEServiceUUIDs.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = BLEServiceUUIDs.txt; sourceTree = "<group>"; };
 		B1B1B1B1B1B1B1B1B1B1B1C6 /* BLEAssignedNumbers.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = BLEAssignedNumbers.txt; sourceTree = "<group>"; };
+		CCF2DA8F0B364F91B5AC90C2 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		B1B1B1B1B1B1B1B1B1B1B1C7 /* RTSPHardProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RTSPHardProbe.swift; sourceTree = "<group>"; };
 		B1B1B1B1B1B1B1B1B1B1B1C8 /* AppTruth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTruth.swift; sourceTree = "<group>"; };
 		B1B1B1B1B1B1B1B1B1B1B1C9 /* Payloads.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Payloads.swift; sourceTree = "<group>"; };
@@ -246,6 +248,7 @@
 				B1B1B1B1B1B1B1B1B1B1B1D7 /* CaseSessionManager.swift */,
 				B1B1B1B1B1B1B1B1B1B1B1BA /* LogStore.swift */,
 				B1B1B1B1B1B1B1B1B1B1B1BB /* OUIStore.swift */,
+				CCF2DA8F0B364F91B5AC90C2 /* Assets.xcassets */,
 				D1D1D1D1D1D1D1D1D1D1D1D3 /* Resources */,
 			);
 			path = DevStation;
@@ -331,6 +334,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				CCF2DA8F0B364F91B5AC90C1 /* Assets.xcassets in Resources */,
 				A1A1A1A1A1A1A1A1A1A1A1AB /* OUI.txt in Resources */,
 				A1A1A1A1A1A1A1A1A1A1A1B3 /* BLECompanyIDs.txt in Resources */,
 				A1A1A1A1A1A1A1A1A1A1A1B4 /* BLEServiceUUIDs.txt in Resources */,
