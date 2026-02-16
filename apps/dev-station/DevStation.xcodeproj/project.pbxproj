@@ -80,6 +80,7 @@
 		A1A1A1A1A1A1A1A1A1A1A1FC /* FindDeviceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1FC /* FindDeviceView.swift */; };
 		A1A1A1A1A1A1A1A1A1A1A1FD /* NodeRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1FD /* NodeRegistry.swift */; };
 		A1A1A1A1A1A1A1A1A1A1A1FE /* StationEndpointResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1B1B1B1B1B1B1B1B1B1FE /* StationEndpointResolver.swift */; };
+		AA0228274B674ED3B4DE465C /* ScannerSpectrumCore in Frameworks */ = {isa = PBXBuildFile; productRef = 26D410D613E74B85A9399E5B /* ScannerSpectrumCore */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -165,6 +166,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				AA0228274B674ED3B4DE465C /* ScannerSpectrumCore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -244,7 +246,7 @@
 					B1B1B1B1B1B1B1B1B1B1B1D4 /* DashboardView.swift */,
 					B1B1B1B1B1B1B1B1B1B1B1D5 /* VisualizerView.swift */,
 					B1B1B1B1B1B1B1B1B1B1B2F2 /* VisualizerComponents.swift */,
-					B1B1B1B1B1B1B1B1B1B1B1D6 /* DailyLogManager.swift */,
+				B1B1B1B1B1B1B1B1B1B1B1D6 /* DailyLogManager.swift */,
 				B1B1B1B1B1B1B1B1B1B1B1D7 /* CaseSessionManager.swift */,
 				B1B1B1B1B1B1B1B1B1B1B1BA /* LogStore.swift */,
 				B1B1B1B1B1B1B1B1B1B1B1BB /* OUIStore.swift */,
@@ -292,6 +294,9 @@
 			dependencies = (
 			);
 			name = DevStation;
+			packageProductDependencies = (
+				26D410D613E74B85A9399E5B /* ScannerSpectrumCore */,
+			);
 			productName = DevStation;
 			productReference = B1B1B1B1B1B1B1B1B1B1B1B0 /* DevStation.app */;
 			productType = "com.apple.product-type.application";
@@ -320,6 +325,9 @@
 				Base,
 			);
 			mainGroup = D1D1D1D1D1D1D1D1D1D1D1D1;
+			packageReferences = (
+				A103F62028A44553B3599936 /* XCLocalSwiftPackageReference "../scanner-spectrum-core" */,
+			);
 			productRefGroup = D1D1D1D1D1D1D1D1D1D1D1D1;
 			projectDirPath = "";
 			projectRoot = "";
@@ -328,6 +336,21 @@
 			);
 		};
 /* End PBXProject section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		A103F62028A44553B3599936 /* XCLocalSwiftPackageReference "../scanner-spectrum-core" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../scanner-spectrum-core;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		26D410D613E74B85A9399E5B /* ScannerSpectrumCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A103F62028A44553B3599936 /* XCLocalSwiftPackageReference "../scanner-spectrum-core" */;
+			productName = ScannerSpectrumCore;
+		};
+/* End XCSwiftPackageProductDependency section */
 
 /* Begin PBXResourcesBuildPhase section */
 		C1C1C1C1C1C1C1C1C1C1C1C3 /* Resources */ = {
