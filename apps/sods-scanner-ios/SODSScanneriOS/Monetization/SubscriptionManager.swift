@@ -8,12 +8,18 @@ final class SubscriptionManager: ObservableObject {
     @Published private(set) var statusMessage: String = "Free tier active."
     #if DEBUG
     @Published private(set) var debugProOverrideEnabled: Bool
+    @Published private(set) var debugAdminEmail: String
+    @Published private(set) var debugAdminEmailMatched: Bool
     #endif
 
     private static let monthlyProductID = "com.strangelab.sods.scanner.pro.monthly"
     private static let yearlyProductID = "com.strangelab.sods.scanner.pro.yearly"
     #if DEBUG
     private static let debugOverrideKey = "SODSScanneriOS.debug.pro_override"
+    private static let debugAdminEmailKey = "SODSScanneriOS.debug.admin_email"
+    private static let debugAdminAllowlist: Set<String> = [
+        "letsdev23@icloud.com"
+    ]
     #endif
 
     private let productIDs = [
@@ -35,7 +41,12 @@ final class SubscriptionManager: ObservableObject {
         self.cache = cache
         self.defaults = defaults
         #if DEBUG
+        let persistedAdminEmail = defaults.string(forKey: Self.debugAdminEmailKey) ?? "letsdev23@icloud.com"
+        let normalizedAdminEmail = Self.normalizeEmail(persistedAdminEmail)
+        self.debugAdminEmail = normalizedAdminEmail
+        self.debugAdminEmailMatched = Self.debugAdminAllowlist.contains(normalizedAdminEmail)
         self.debugProOverrideEnabled = defaults.bool(forKey: Self.debugOverrideKey)
+        defaults.set(normalizedAdminEmail, forKey: Self.debugAdminEmailKey)
         #endif
         self.updatesTask = listenForTransactionUpdates()
     }
@@ -46,6 +57,25 @@ final class SubscriptionManager: ObservableObject {
 
     func refreshEntitlement() async {
         #if DEBUG
+        let normalizedAdminEmail = Self.normalizeEmail(debugAdminEmail)
+        if normalizedAdminEmail != debugAdminEmail {
+            debugAdminEmail = normalizedAdminEmail
+            defaults.set(normalizedAdminEmail, forKey: Self.debugAdminEmailKey)
+        }
+
+        debugAdminEmailMatched = Self.debugAdminAllowlist.contains(normalizedAdminEmail)
+        if debugAdminEmailMatched {
+            entitlement = SubscriptionEntitlement(
+                isPro: true,
+                source: .debugAdminAllowlist,
+                verifiedAt: Date(),
+                expiresAt: nil,
+                graceUntil: nil
+            )
+            statusMessage = "Debug admin Pro active for \(normalizedAdminEmail)."
+            return
+        }
+
         if debugProOverrideEnabled {
             entitlement = SubscriptionEntitlement(
                 isPro: true,
@@ -88,6 +118,15 @@ final class SubscriptionManager: ObservableObject {
     func setDebugProOverride(_ enabled: Bool) {
         debugProOverrideEnabled = enabled
         defaults.set(enabled, forKey: Self.debugOverrideKey)
+        Task { @MainActor in
+            await refreshEntitlement()
+        }
+    }
+
+    func setDebugAdminEmail(_ email: String) {
+        let normalized = Self.normalizeEmail(email)
+        debugAdminEmail = normalized
+        defaults.set(normalized, forKey: Self.debugAdminEmailKey)
         Task { @MainActor in
             await refreshEntitlement()
         }
@@ -315,4 +354,10 @@ final class SubscriptionManager: ObservableObject {
             }
         }
     }
+
+    #if DEBUG
+    private static func normalizeEmail(_ email: String) -> String {
+        email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    }
+    #endif
 }

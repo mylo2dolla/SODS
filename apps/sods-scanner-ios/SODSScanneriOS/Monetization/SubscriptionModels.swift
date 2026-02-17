@@ -25,6 +25,7 @@ public enum EntitlementSource: String, Codable, Sendable {
     case verifiedTransaction
     case cachedGrace
     case debugOverride
+    case debugAdminAllowlist
 }
 
 public struct SubscriptionEntitlement: Codable, Hashable, Sendable {

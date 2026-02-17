@@ -4,6 +4,9 @@ struct SettingsView: View {
     @EnvironmentObject private var coordinator: IOSScanCoordinator
     @EnvironmentObject private var subscriptionManager: SubscriptionManager
     @State private var showUpgradeSheet = false
+    #if DEBUG
+    @State private var debugAdminEmailInput: String = ""
+    #endif
 
     var body: some View {
         NavigationStack {
@@ -33,6 +36,26 @@ struct SettingsView: View {
 
                 #if DEBUG
                 Section("Admin (Debug)") {
+                    TextField("Admin email", text: $debugAdminEmailInput)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .keyboardType(.emailAddress)
+
+                    Button("Apply Admin Email") {
+                        subscriptionManager.setDebugAdminEmail(debugAdminEmailInput)
+                    }
+                    .buttonStyle(.bordered)
+
+                    if subscriptionManager.debugAdminEmailMatched {
+                        Text("Allowlisted Pro email matched.")
+                            .font(.caption)
+                            .foregroundStyle(.green)
+                    } else {
+                        Text("Enter letsdev23@icloud.com to unlock Pro in Debug.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
                     Toggle(
                         "Unlock Pro Features (Debug)",
                         isOn: Binding(
@@ -91,6 +114,9 @@ struct SettingsView: View {
             }
             .task {
                 await subscriptionManager.refreshEntitlement()
+                #if DEBUG
+                debugAdminEmailInput = subscriptionManager.debugAdminEmail
+                #endif
             }
         }
     }
