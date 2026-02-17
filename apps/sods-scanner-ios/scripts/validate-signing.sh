@@ -35,7 +35,7 @@ RELEASE_SETTINGS="$(build_settings_for Release)"
 
 require_contains "$DEBUG_SETTINGS" "CODE_SIGN_STYLE = Automatic" "automatic signing in Debug"
 require_contains "$RELEASE_SETTINGS" "CODE_SIGN_STYLE = Automatic" "automatic signing in Release"
-require_contains "$DEBUG_SETTINGS" "PRODUCT_BUNDLE_IDENTIFIER = com.strangelab.sods.scanner" "bundle id in Debug"
+require_contains "$DEBUG_SETTINGS" "PRODUCT_BUNDLE_IDENTIFIER = com.strangelab.sods.scanner.dev.letsdev23" "bundle id in Debug"
 require_contains "$RELEASE_SETTINGS" "PRODUCT_BUNDLE_IDENTIFIER = com.strangelab.sods.scanner" "bundle id in Release"
 require_contains "$DEBUG_SETTINGS" "CODE_SIGN_ENTITLEMENTS = SODSScanneriOS/Resources/SODSScanneriOS.Debug.entitlements" "debug entitlements"
 require_contains "$RELEASE_SETTINGS" "CODE_SIGN_ENTITLEMENTS = SODSScanneriOS/Resources/SODSScanneriOS.entitlements" "release entitlements"

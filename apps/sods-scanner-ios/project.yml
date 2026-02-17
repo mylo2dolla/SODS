@@ -27,6 +27,7 @@ targets:
         TARGETED_DEVICE_FAMILY: "1,2"
       configs:
         Debug:
+          PRODUCT_BUNDLE_IDENTIFIER: com.strangelab.sods.scanner.dev.letsdev23
           CODE_SIGN_ENTITLEMENTS: SODSScanneriOS/Resources/SODSScanneriOS.Debug.entitlements
         Release:
           CODE_SIGN_ENTITLEMENTS: SODSScanneriOS/Resources/SODSScanneriOS.entitlements
