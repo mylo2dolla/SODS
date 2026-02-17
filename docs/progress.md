@@ -1,9 +1,11 @@
 # SODS Progress
 
-Date: 2026-02-04
+Date: 2026-02-17
 
 ## What Changed Today
 
+- 2026-02-17: Added explicit `services/orchestrator/README.md` status boundary. Orchestrator is intentionally non-runtime and not wired to live CLI/Dev Station/control-plane, LiveKit, AgentPortal, or Codegatchi paths.
+- 2026-02-17: Hardened runtime artifact hygiene for local-only outputs (`workspace`, `reports`, `inbox`, `.shipper`, and literal `SODS?` runtime mirror paths) to reduce `git status` churn after normal tool runs.
 - 2026-02-04: Staged ESP32-P4 godbutton firmware for ESP Web Tools. Rebuilt and restaged node-agent firmware for ESP32 DevKit v1 (`esp32dev`) and ESP32-C3 (`esp32c3`). Staged ops-portal CYD firmware for ESP Web Tools.
 - 2026-02-04: DevStation UI now enforces a single global node presentation (identity color + faint glow for active, grey/no glow for offline) across node cards and visualizer, with per-node Refresh wired to existing status/connect codepaths.
 - Canonical repo structure established under `firmware/`, `apps/`, `cli/`, `tools/`, and `docs/`.
@@ -46,6 +48,7 @@ Date: 2026-02-04
 - Tier 1: **Pi Aux + Logger** = `/v1/events` source of truth.
 - Tier 2: **node-agent** (ESP32/ESP32-C3) = sensor nodes emitting `node.announce` + `wifi.status`.
 - **Ops Portal (CYD)** = dedicated field UI with Utility (landscape) + Watch (portrait) modes.
+- `services/orchestrator` is intentionally reserved and non-runtime at this time.
 
 ## Canonical Paths
 

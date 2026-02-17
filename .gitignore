@@ -12,6 +12,8 @@
 # Builds
 **/build
 **/out
+**/.build
+**/.swiftpm
 
 # IDE
 **/.idea
@@ -41,6 +43,11 @@ inbox/
 recordings/
 .shipper/
 strange/
+/SODS\?/
+/SODS\?/.shipper/
+/SODS\?/inbox/
+/SODS\?/workspace/
+/SODS\?/reports/
 **/__MACOSX/**
 **/._*
 **/*.old

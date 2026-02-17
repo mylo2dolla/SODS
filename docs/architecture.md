@@ -35,6 +35,12 @@
 - Hosts spectrum UI and tool endpoints.
 - Provides WebSocket streams for frames/events.
 
+## Reserved Services
+
+- `services/orchestrator` is currently a non-runtime placeholder directory.
+- It is not wired into the live CLI/spine, Dev Station runtime, LiveKit, AgentPortal, or Codegatchi paths in this repo.
+- Active runtime integration points remain `cli/sods`, `apps/dev-station`, and `ops/strangelab-control-plane`.
+
 ## Naming
 
 - Umbrella: **SODS** (Strange Ops Dev Station)

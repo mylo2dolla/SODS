@@ -19,12 +19,12 @@ Operational requirements:
 ```bash
 cd cli/sods
 npm install
-npm run dev -- --pi-logger http://pi-logger.local:8088 --port 9123
+npm run dev -- --pi-logger http://pi-aux.local:9101 --port 9123
 ```
 
 Optional local capture (append-only NDJSON):
 ```bash
-SODS_LOCAL_LOG_PATH="./data/logs/local-events.ndjson" ./tools/sods start --pi-logger http://pi-logger.local:8088 --port 9123
+SODS_LOCAL_LOG_PATH="./data/logs/local-events.ndjson" ./tools/sods start --pi-logger http://pi-aux.local:9101 --port 9123
 ```
 
 Tools are runnable from any working directory. Use an absolute path or `cd` to the repo root before running `./tools/...`.
@@ -35,7 +35,7 @@ Build + run:
 cd cli/sods
 npm install
 npm run build
-node dist/cli.js start --pi-logger http://pi-logger.local:8088 --port 9123
+node dist/cli.js start --pi-logger http://pi-aux.local:9101 --port 9123
 ```
 
 Open spectrum:
@@ -160,8 +160,9 @@ Docs:
 ## CLI (Unified)
 
 Defaults:
-- `sods whereis/open/tail` use `http://pi-logger.local:8088` via `--logger`
-- `sods spectrum/tools/stream` use `http://localhost:9123` via `--station`
+- `sods start --pi-logger` uses `PI_LOGGER_URL`/`PI_LOGGER`, else `http://${AUX_HOST:-pi-aux.local}:9101`
+- `sods whereis/open/tail --logger` uses first URL from `PI_LOGGER_URL`/`PI_LOGGER`, else `http://${AUX_HOST:-pi-aux.local}:9101`
+- `sods spectrum/tools/stream --station` uses `SODS_STATION_URL`/`SODS_BASE_URL`/`SODS_STATION`/`STATION_URL`, else `http://localhost:9123`
 
 Examples:
 ```bash
@@ -173,7 +174,7 @@ Examples:
 
 ## Dev Station App Flow
 
-- App connects to Station at `SODS_STATION_URL` (default `http://192.168.8.214:9123`).
+- App connects to Station at `SODS_STATION_URL`/`SODS_BASE_URL`/`STATION_URL` (default `http://127.0.0.1:9123`).
 - If the station is not running, the app launches it as a child process.
 - Tools load from `/api/tools`.
 - Visualizer streams from `/ws/frames`.
@@ -251,12 +252,20 @@ Audit helper:
 
 ## Local Storage Paths
 
-Dev Station stores local artifacts under `~/SODS`:
-- `~/SODS/inbox`
-- `~/SODS/workspace`
-- `~/SODS/reports`
-- `~/SODS/.shipper`
-- `~/SODS/oui/oui_combined.txt`
+Runtime root resolution:
+- `SODS_ROOT` (if explicitly set)
+- else `~/SODS` (only if that directory already exists)
+- else repo root (`/Users/letsdev/SODS-main`)
+
+Local runtime outputs (operational artifacts, not source-controlled):
+- `<runtime-root>/inbox`
+- `<runtime-root>/workspace`
+- `<runtime-root>/reports`
+- `<runtime-root>/.shipper`
+
+Canonical source-controlled locations:
+- `docs/tool-registry.json`, `docs/presets.json`, `docs/runbooks.json`
+- app/runtime code under `apps/`, `cli/`, `firmware/`, `tools/`, `docs/`
 
 ## Flashing Paths
 

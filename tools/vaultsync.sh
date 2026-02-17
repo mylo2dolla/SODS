@@ -15,8 +15,10 @@ vaultsync.sh [outbox|all]  (env: DRY_RUN=1)
 Ships local runtime data to Vault over SSH.
 
 Defaults:
-  - Ships only: ~/SODS/.shipper/outbox -> $VAULT_SYNC_DEST (date-partitioned)
-  - "all" also ships: ~/SODS/inbox, ~/SODS/workspace, ~/SODS/reports
+  - Runtime root resolves from $SODS_ROOT (fallbacks from tools/_env.sh)
+  - Ships only: <runtime-root>/.shipper/outbox -> $VAULT_SYNC_DEST (date-partitioned)
+  - "all" also ships: <runtime-root>/inbox, <runtime-root>/workspace, <runtime-root>/reports
+  - Runtime outputs are operational artifacts and should remain local (not committed)
 
 Environment:
   VAULT_SYNC_SSH      SSH target (default: $VAULT_SSH_TARGET)
