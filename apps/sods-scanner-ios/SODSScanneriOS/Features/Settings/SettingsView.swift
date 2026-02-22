@@ -37,9 +37,11 @@ struct SettingsView: View {
                 #if DEBUG
                 Section("Admin (Debug)") {
                     TextField("Admin email", text: $debugAdminEmailInput)
+#if os(iOS)
                         .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
                         .keyboardType(.emailAddress)
+#endif
+                        .autocorrectionDisabled()
 
                     Button("Apply Admin Email") {
                         subscriptionManager.setDebugAdminEmail(debugAdminEmailInput)

@@ -82,7 +82,7 @@ struct ScannerView: View {
                 .foregroundStyle(.secondary)
         }
         .padding(12)
-        .background(Color(.secondarySystemBackground))
+        .background(Color.secondary.opacity(0.12))
         .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 
@@ -149,7 +149,7 @@ struct ScannerView: View {
                             Spacer()
                         }
                         .padding(10)
-                        .background(Color(.tertiarySystemBackground))
+                        .background(Color.secondary.opacity(0.12))
                         .clipShape(RoundedRectangle(cornerRadius: 10))
                     }
                     .buttonStyle(.plain)
@@ -191,7 +191,7 @@ struct ScannerView: View {
                                 .foregroundStyle(host.isAlive ? .green : .secondary)
                         }
                         .padding(10)
-                        .background(Color(.tertiarySystemBackground))
+                        .background(Color.secondary.opacity(0.12))
                         .clipShape(RoundedRectangle(cornerRadius: 10))
                     }
                     .buttonStyle(.plain)

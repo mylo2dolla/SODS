@@ -30,10 +30,17 @@ struct RootTabView: View {
                     Label("Settings", systemImage: "gear")
                 }
         }
+#if os(iOS)
         .fullScreenCover(isPresented: $showOnboarding) {
             OnboardingView(isPresented: $showOnboarding)
                 .environmentObject(subscriptionManager)
         }
+#else
+        .sheet(isPresented: $showOnboarding) {
+            OnboardingView(isPresented: $showOnboarding)
+                .environmentObject(subscriptionManager)
+        }
+#endif
         .onAppear {
             showOnboarding = !onboardingCompleted
         }

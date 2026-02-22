@@ -74,7 +74,7 @@ struct DatabasesView: View {
                 .fixedSize(horizontal: false, vertical: true)
         }
         .padding(12)
-        .background(Color(.secondarySystemBackground))
+        .background(Color.secondary.opacity(0.12))
         .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 
@@ -125,7 +125,7 @@ struct DatabasesView: View {
             .buttonStyle(.bordered)
         }
         .padding(12)
-        .background(Color(.secondarySystemBackground))
+        .background(Color.secondary.opacity(0.12))
         .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 
@@ -188,7 +188,7 @@ struct DatabasesView: View {
             }
         }
         .padding(12)
-        .background(Color(.secondarySystemBackground))
+        .background(Color.secondary.opacity(0.12))
         .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 }

@@ -1,0 +1,860 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		04E6954375B768D1A50B1538 /* LegalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A8C3252A3F0DD3DC2ED03E5 /* LegalView.swift */; };
+		06B05BC3342A5F5F0D55BBA3 /* SODSScannerRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1011F3D1521B37E15D7653E6 /* SODSScannerRootView.swift */; };
+		0F92CE13A9C5EC9B6BACDCB7 /* SubscriptionStatusCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7DBD90D60C0F07D7E6D1C76 /* SubscriptionStatusCard.swift */; };
+		10AD63EDD70D80619D6A83B0 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 8686D45E9F81A32CD4AF4F3A /* LaunchScreen.storyboard */; };
+		176E4366FDE1BB1C008537DB /* SubscriptionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 910B44E22385307423617383 /* SubscriptionManager.swift */; };
+		1AA56B388392A594917FE497 /* LegalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A8C3252A3F0DD3DC2ED03E5 /* LegalView.swift */; };
+		20EE49F24ABBFE02B3741322 /* DynamicFieldRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = E42CDFF864D3A3B9DB8F7975 /* DynamicFieldRenderer.swift */; };
+		24549489B6CA141568F0EB29 /* SODSScannerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2967B170BF45833DA338C36B /* SODSScannerApp.swift */; };
+		24F68D300D9AA9223272AE61 /* DeviceInfoSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 432EF25961220374099706B4 /* DeviceInfoSheet.swift */; };
+		290F8205EE10AD06451A6BD0 /* SODSScannerRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1011F3D1521B37E15D7653E6 /* SODSScannerRootView.swift */; };
+		2BD93595CBB7528510ADE0D7 /* ScannerSpectrumCore in Frameworks */ = {isa = PBXBuildFile; productRef = 65F32EE2EE368A2595EA8806 /* ScannerSpectrumCore */; };
+		2DA890978C5AC0E090120466 /* PrivacyPolicy.md in Resources */ = {isa = PBXBuildFile; fileRef = 058B84FB85964BEBFA5A987D /* PrivacyPolicy.md */; };
+		327722EB30E47EDDF28A3BCC /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D0F6EFB4C57D30A26A0ECBA /* SettingsView.swift */; };
+		58BE1D76D04D7D0121AF85E0 /* RootTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63A51B6E47971B2262462D1F /* RootTabView.swift */; };
+		5BF3E5EEDCDCD4AA27E0BB0F /* TermsOfUse.md in Resources */ = {isa = PBXBuildFile; fileRef = 438768DD6DB5DDDA57A5DCBC /* TermsOfUse.md */; };
+		617C902751A1A8087054F88C /* UpgradeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90FCFFAD2492BC9BB077DE36 /* UpgradeView.swift */; };
+		6768483286C2D69E2D46E2A3 /* SubscriptionDecisionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C787150EDC0576BF3B0AC76 /* SubscriptionDecisionTests.swift */; };
+		68646C3048374190FABE7BD4 /* ScannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64B007BE1EF8E2F243810267 /* ScannerView.swift */; };
+		6B970B99BEB0E71899C1B6E8 /* SODSScanner.storekit in Resources */ = {isa = PBXBuildFile; fileRef = A3458ECE64A643D38EA90CF7 /* SODSScanner.storekit */; };
+		6C2436D3C485AD9FD0FAEA6F /* SpectrumView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59785859D813B3EC8A37EAE9 /* SpectrumView.swift */; };
+		745FC1C772688EF77EE2A2ED /* SpectrumView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59785859D813B3EC8A37EAE9 /* SpectrumView.swift */; };
+		7555AF8D945D007FC321FFF0 /* DatabasesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F53A4661708538982C068BBD /* DatabasesView.swift */; };
+		76C439DF7C4DA9D043B286BB /* UpgradeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90FCFFAD2492BC9BB077DE36 /* UpgradeView.swift */; };
+		77CEC746D157151E9320B543 /* SODSScannerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2967B170BF45833DA338C36B /* SODSScannerApp.swift */; };
+		7DB79B83BCD96F002FB92F94 /* SubscriptionModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = CDD683F11AA544A0368A5393 /* SubscriptionModels.swift */; };
+		817356AE7DB0E6F953542806 /* SODSScanneriOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB7864A3EA0B7D2A6713A984 /* SODSScanneriOSApp.swift */; };
+		9C3852DD1E095090B2ED4F9B /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F1B7A6FDB44195E69280EBE /* OnboardingView.swift */; };
+		A38A38D4ACC3320C6CB31A03 /* SubscriptionStatusCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7DBD90D60C0F07D7E6D1C76 /* SubscriptionStatusCard.swift */; };
+		AAAB6D2835D13BEC9612DB84 /* DeviceInfoSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 432EF25961220374099706B4 /* DeviceInfoSheet.swift */; };
+		AF922287C81692AB47AEA124 /* SubscriptionCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC283DAC2163ED97EE3FD7CD /* SubscriptionCache.swift */; };
+		AFECA952A8EBE9DC09F7D973 /* SODSScannerMacOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33B9162582FBA39FE2746F88 /* SODSScannerMacOSApp.swift */; };
+		B2C2AF04BE28BA4DADF10A0C /* Info-macOS.plist in Resources */ = {isa = PBXBuildFile; fileRef = C14C06732D29A9EE77FECFD1 /* Info-macOS.plist */; };
+		B4C3606B64BBB5A875CDE1D2 /* SubscriptionModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = CDD683F11AA544A0368A5393 /* SubscriptionModels.swift */; };
+		B99BEBF32901B37F17A5C1EE /* SubscriptionCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC283DAC2163ED97EE3FD7CD /* SubscriptionCache.swift */; };
+		B9EB59F15190ABBEA9EA9DE1 /* SODSAppCore in Frameworks */ = {isa = PBXBuildFile; productRef = 9DE728FEED9EEFDBCE37A4F6 /* SODSAppCore */; };
+		BC7CB26A51E659C180BCCFFD /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F1B7A6FDB44195E69280EBE /* OnboardingView.swift */; };
+		BF732677D2E47C648F7E6AFB /* DatabasesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F53A4661708538982C068BBD /* DatabasesView.swift */; };
+		C03DAE3FF087F6D31C1EF5C5 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 6041F29802B09758A685D059 /* Assets.xcassets */; };
+		C2785EB8FD2D337107BF39B1 /* SODSAppCore in Frameworks */ = {isa = PBXBuildFile; productRef = 5630756A6FB0252E2F8990D2 /* SODSAppCore */; };
+		CAE7BD852D2CF9FA75BB363C /* IOSScanCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = D637E93EBF0BCD9CDE71755C /* IOSScanCoordinator.swift */; };
+		D3753A79EE91F4FE652A24FF /* Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 08018F5372B630EB41AFF494 /* Info.plist */; };
+		D90017AE150CED336BDB0AA4 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 6041F29802B09758A685D059 /* Assets.xcassets */; };
+		DAED2F1BC58B036F2B183F58 /* IOSScanCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = D637E93EBF0BCD9CDE71755C /* IOSScanCoordinator.swift */; };
+		EBBA1FD6D23E10DF51D7C783 /* RootTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63A51B6E47971B2262462D1F /* RootTabView.swift */; };
+		F2336A28B037B45943C6A2BE /* ScannerSpectrumCore in Frameworks */ = {isa = PBXBuildFile; productRef = 49211131EB8D670E552C475C /* ScannerSpectrumCore */; };
+		F29116D7D06AB8C5DFBC8A84 /* TermsOfUse.md in Resources */ = {isa = PBXBuildFile; fileRef = 438768DD6DB5DDDA57A5DCBC /* TermsOfUse.md */; };
+		F56626ADC67CC9131B67269E /* PrivacyPolicy.md in Resources */ = {isa = PBXBuildFile; fileRef = 058B84FB85964BEBFA5A987D /* PrivacyPolicy.md */; };
+		F5E381CD3C0AE16D5C053967 /* SubscriptionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 910B44E22385307423617383 /* SubscriptionManager.swift */; };
+		F82002605E27DD3B7BE9F583 /* ScannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64B007BE1EF8E2F243810267 /* ScannerView.swift */; };
+		F9B3387B7DF8D24B248AF7A2 /* DynamicFieldRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = E42CDFF864D3A3B9DB8F7975 /* DynamicFieldRenderer.swift */; };
+		FC1C07F1413D4CBF92B046D7 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D0F6EFB4C57D30A26A0ECBA /* SettingsView.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		979F03C9A7584AD3E39D93B4 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = E49C6140450209F1E7030A9B /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 8215ACEB1CDB735616404A0D;
+			remoteInfo = SODSScanneriOS;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		058B84FB85964BEBFA5A987D /* PrivacyPolicy.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = PrivacyPolicy.md; sourceTree = "<group>"; };
+		08018F5372B630EB41AFF494 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		1011F3D1521B37E15D7653E6 /* SODSScannerRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SODSScannerRootView.swift; sourceTree = "<group>"; };
+		1F1B7A6FDB44195E69280EBE /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
+		231D5158DCFEADCD464C286B /* SODSScannermacOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SODSScannermacOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		2967B170BF45833DA338C36B /* SODSScannerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SODSScannerApp.swift; sourceTree = "<group>"; };
+		2C787150EDC0576BF3B0AC76 /* SubscriptionDecisionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubscriptionDecisionTests.swift; sourceTree = "<group>"; };
+		33B9162582FBA39FE2746F88 /* SODSScannerMacOSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SODSScannerMacOSApp.swift; sourceTree = "<group>"; };
+		432EF25961220374099706B4 /* DeviceInfoSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceInfoSheet.swift; sourceTree = "<group>"; };
+		438768DD6DB5DDDA57A5DCBC /* TermsOfUse.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = TermsOfUse.md; sourceTree = "<group>"; };
+		53634DF969533391EB9D4DA0 /* scanner-spectrum-core */ = {isa = PBXFileReference; lastKnownFileType = folder; name = "scanner-spectrum-core"; path = "../scanner-spectrum-core"; sourceTree = SOURCE_ROOT; };
+		59785859D813B3EC8A37EAE9 /* SpectrumView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpectrumView.swift; sourceTree = "<group>"; };
+		5D0F6EFB4C57D30A26A0ECBA /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		6041F29802B09758A685D059 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		63A51B6E47971B2262462D1F /* RootTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootTabView.swift; sourceTree = "<group>"; };
+		64B007BE1EF8E2F243810267 /* ScannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScannerView.swift; sourceTree = "<group>"; };
+		736D618618A52461A1F1402A /* SODSScanneriOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SODSScanneriOS.entitlements; sourceTree = "<group>"; };
+		794D8E7B164B8A10A2CE8ECC /* SODSScanneriOS.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = SODSScanneriOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		7A8C3252A3F0DD3DC2ED03E5 /* LegalView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LegalView.swift; sourceTree = "<group>"; };
+		7DE5B2E4EC1AB03BDBCCC6A3 /* SODSScanneriOS.Debug.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SODSScanneriOS.Debug.entitlements; sourceTree = "<group>"; };
+		8686D45E9F81A32CD4AF4F3A /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
+		90FCFFAD2492BC9BB077DE36 /* UpgradeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpgradeView.swift; sourceTree = "<group>"; };
+		910B44E22385307423617383 /* SubscriptionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubscriptionManager.swift; sourceTree = "<group>"; };
+		A3458ECE64A643D38EA90CF7 /* SODSScanner.storekit */ = {isa = PBXFileReference; path = SODSScanner.storekit; sourceTree = "<group>"; };
+		BB7864A3EA0B7D2A6713A984 /* SODSScanneriOSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SODSScanneriOSApp.swift; sourceTree = "<group>"; };
+		C14C06732D29A9EE77FECFD1 /* Info-macOS.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "Info-macOS.plist"; sourceTree = "<group>"; };
+		CC283DAC2163ED97EE3FD7CD /* SubscriptionCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubscriptionCache.swift; sourceTree = "<group>"; };
+		CDD683F11AA544A0368A5393 /* SubscriptionModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubscriptionModels.swift; sourceTree = "<group>"; };
+		D637E93EBF0BCD9CDE71755C /* IOSScanCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSScanCoordinator.swift; sourceTree = "<group>"; };
+		D7DBD90D60C0F07D7E6D1C76 /* SubscriptionStatusCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubscriptionStatusCard.swift; sourceTree = "<group>"; };
+		E42CDFF864D3A3B9DB8F7975 /* DynamicFieldRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DynamicFieldRenderer.swift; sourceTree = "<group>"; };
+		ED3E6D06698D40377724FDD9 /* SODSScanneriOSTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = SODSScanneriOSTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		F53A4661708538982C068BBD /* DatabasesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DatabasesView.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		1556C5F820295BFC22ADBADF /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F2336A28B037B45943C6A2BE /* ScannerSpectrumCore in Frameworks */,
+				B9EB59F15190ABBEA9EA9DE1 /* SODSAppCore in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A8F27812CE94EBB71208E212 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				2BD93595CBB7528510ADE0D7 /* ScannerSpectrumCore in Frameworks */,
+				C2785EB8FD2D337107BF39B1 /* SODSAppCore in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		16A2E2FAA09F935BC4537ABF /* Settings */ = {
+			isa = PBXGroup;
+			children = (
+				5D0F6EFB4C57D30A26A0ECBA /* SettingsView.swift */,
+			);
+			path = Settings;
+			sourceTree = "<group>";
+		};
+		1B8B04C9AF9CE5F7D4FABFBD /* Features */ = {
+			isa = PBXGroup;
+			children = (
+				FB482A365354DF3733E3FF01 /* Databases */,
+				5C42F9B338C6FD0BF1DC55FC /* Legal */,
+				9DB55AADA40AFDE424A3424F /* Onboarding */,
+				2E310FA990970254C341B1FF /* Scanner */,
+				16A2E2FAA09F935BC4537ABF /* Settings */,
+				F50CB0320384127EF71A8D9D /* Shared */,
+				EE51674424436A6F3049A76D /* Spectrum */,
+				3DAD90690C36BCD5AD287833 /* Subscription */,
+			);
+			path = Features;
+			sourceTree = "<group>";
+		};
+		2E310FA990970254C341B1FF /* Scanner */ = {
+			isa = PBXGroup;
+			children = (
+				64B007BE1EF8E2F243810267 /* ScannerView.swift */,
+			);
+			path = Scanner;
+			sourceTree = "<group>";
+		};
+		3DAD90690C36BCD5AD287833 /* Subscription */ = {
+			isa = PBXGroup;
+			children = (
+				D7DBD90D60C0F07D7E6D1C76 /* SubscriptionStatusCard.swift */,
+				90FCFFAD2492BC9BB077DE36 /* UpgradeView.swift */,
+			);
+			path = Subscription;
+			sourceTree = "<group>";
+		};
+		5C42F9B338C6FD0BF1DC55FC /* Legal */ = {
+			isa = PBXGroup;
+			children = (
+				7A8C3252A3F0DD3DC2ED03E5 /* LegalView.swift */,
+			);
+			path = Legal;
+			sourceTree = "<group>";
+		};
+		64CD2BD55F9EDC69E5CC5416 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				63A51B6E47971B2262462D1F /* RootTabView.swift */,
+				2967B170BF45833DA338C36B /* SODSScannerApp.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		65E373A8BC37914E3069AE93 /* SODSScanneriOSTests */ = {
+			isa = PBXGroup;
+			children = (
+				2C787150EDC0576BF3B0AC76 /* SubscriptionDecisionTests.swift */,
+			);
+			path = SODSScanneriOSTests;
+			sourceTree = "<group>";
+		};
+		684F10405D9F4ACB7C54C7EC /* ViewModels */ = {
+			isa = PBXGroup;
+			children = (
+				D637E93EBF0BCD9CDE71755C /* IOSScanCoordinator.swift */,
+			);
+			path = ViewModels;
+			sourceTree = "<group>";
+		};
+		74B7DA1032CB6AD9CE8B4710 /* Monetization */ = {
+			isa = PBXGroup;
+			children = (
+				CC283DAC2163ED97EE3FD7CD /* SubscriptionCache.swift */,
+				910B44E22385307423617383 /* SubscriptionManager.swift */,
+				CDD683F11AA544A0368A5393 /* SubscriptionModels.swift */,
+			);
+			path = Monetization;
+			sourceTree = "<group>";
+		};
+		8731E03CD432E5A9843349CE /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				794D8E7B164B8A10A2CE8ECC /* SODSScanneriOS.app */,
+				ED3E6D06698D40377724FDD9 /* SODSScanneriOSTests.xctest */,
+				231D5158DCFEADCD464C286B /* SODSScannermacOS.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		8D2771536A08CE3F171C2D9C /* SODSScannerShared */ = {
+			isa = PBXGroup;
+			children = (
+				1011F3D1521B37E15D7653E6 /* SODSScannerRootView.swift */,
+			);
+			path = SODSScannerShared;
+			sourceTree = "<group>";
+		};
+		9DB55AADA40AFDE424A3424F /* Onboarding */ = {
+			isa = PBXGroup;
+			children = (
+				1F1B7A6FDB44195E69280EBE /* OnboardingView.swift */,
+			);
+			path = Onboarding;
+			sourceTree = "<group>";
+		};
+		9E17481649B86513319008D7 /* Platform */ = {
+			isa = PBXGroup;
+			children = (
+				F2FE070EBECCBC31471DC9C4 /* iOS */,
+				B43B321DDE0C8D527400560B /* macOS */,
+			);
+			path = Platform;
+			sourceTree = "<group>";
+		};
+		A69995A825C137BF31FA4988 /* Packages */ = {
+			isa = PBXGroup;
+			children = (
+				53634DF969533391EB9D4DA0 /* scanner-spectrum-core */,
+			);
+			name = Packages;
+			sourceTree = "<group>";
+		};
+		B43B321DDE0C8D527400560B /* macOS */ = {
+			isa = PBXGroup;
+			children = (
+				33B9162582FBA39FE2746F88 /* SODSScannerMacOSApp.swift */,
+			);
+			path = macOS;
+			sourceTree = "<group>";
+		};
+		C5F0BF9214903D0823862F76 /* Legal */ = {
+			isa = PBXGroup;
+			children = (
+				058B84FB85964BEBFA5A987D /* PrivacyPolicy.md */,
+				438768DD6DB5DDDA57A5DCBC /* TermsOfUse.md */,
+			);
+			path = Legal;
+			sourceTree = "<group>";
+		};
+		EE51674424436A6F3049A76D /* Spectrum */ = {
+			isa = PBXGroup;
+			children = (
+				59785859D813B3EC8A37EAE9 /* SpectrumView.swift */,
+			);
+			path = Spectrum;
+			sourceTree = "<group>";
+		};
+		F092B99777E3FE0671893B83 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				C14C06732D29A9EE77FECFD1 /* Info-macOS.plist */,
+				08018F5372B630EB41AFF494 /* Info.plist */,
+				8686D45E9F81A32CD4AF4F3A /* LaunchScreen.storyboard */,
+				A3458ECE64A643D38EA90CF7 /* SODSScanner.storekit */,
+				7DE5B2E4EC1AB03BDBCCC6A3 /* SODSScanneriOS.Debug.entitlements */,
+				736D618618A52461A1F1402A /* SODSScanneriOS.entitlements */,
+				C5F0BF9214903D0823862F76 /* Legal */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		F2FE070EBECCBC31471DC9C4 /* iOS */ = {
+			isa = PBXGroup;
+			children = (
+				BB7864A3EA0B7D2A6713A984 /* SODSScanneriOSApp.swift */,
+			);
+			path = iOS;
+			sourceTree = "<group>";
+		};
+		F4B8B682294080BDC2556B49 = {
+			isa = PBXGroup;
+			children = (
+				A69995A825C137BF31FA4988 /* Packages */,
+				9E17481649B86513319008D7 /* Platform */,
+				FD62B2376B8FC19BCC359893 /* SODSScanneriOS */,
+				65E373A8BC37914E3069AE93 /* SODSScanneriOSTests */,
+				8D2771536A08CE3F171C2D9C /* SODSScannerShared */,
+				8731E03CD432E5A9843349CE /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		F50CB0320384127EF71A8D9D /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				432EF25961220374099706B4 /* DeviceInfoSheet.swift */,
+				E42CDFF864D3A3B9DB8F7975 /* DynamicFieldRenderer.swift */,
+			);
+			path = Shared;
+			sourceTree = "<group>";
+		};
+		FB482A365354DF3733E3FF01 /* Databases */ = {
+			isa = PBXGroup;
+			children = (
+				F53A4661708538982C068BBD /* DatabasesView.swift */,
+			);
+			path = Databases;
+			sourceTree = "<group>";
+		};
+		FD62B2376B8FC19BCC359893 /* SODSScanneriOS */ = {
+			isa = PBXGroup;
+			children = (
+				6041F29802B09758A685D059 /* Assets.xcassets */,
+				64CD2BD55F9EDC69E5CC5416 /* App */,
+				1B8B04C9AF9CE5F7D4FABFBD /* Features */,
+				74B7DA1032CB6AD9CE8B4710 /* Monetization */,
+				F092B99777E3FE0671893B83 /* Resources */,
+				684F10405D9F4ACB7C54C7EC /* ViewModels */,
+			);
+			path = SODSScanneriOS;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		2F763E64082C90B57189909D /* SODSScannermacOS */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C54DDC32E9AFAA9EA77BC913 /* Build configuration list for PBXNativeTarget "SODSScannermacOS" */;
+			buildPhases = (
+				21B3DFE8C196A94384A99345 /* Sources */,
+				ADDF0B7C1AB3816E1C6656D0 /* Resources */,
+				1556C5F820295BFC22ADBADF /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = SODSScannermacOS;
+			packageProductDependencies = (
+				49211131EB8D670E552C475C /* ScannerSpectrumCore */,
+				9DE728FEED9EEFDBCE37A4F6 /* SODSAppCore */,
+			);
+			productName = SODSScannermacOS;
+			productReference = 231D5158DCFEADCD464C286B /* SODSScannermacOS.app */;
+			productType = "com.apple.product-type.application";
+		};
+		30FAE66A67AFEF6E1B9CA9D0 /* SODSScanneriOSTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 0D72F4AAFE2F88CFE4E213F2 /* Build configuration list for PBXNativeTarget "SODSScanneriOSTests" */;
+			buildPhases = (
+				1689D4ADF24994C1601B8C22 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				FBE41C54B000649BE5FD7F3B /* PBXTargetDependency */,
+			);
+			name = SODSScanneriOSTests;
+			packageProductDependencies = (
+			);
+			productName = SODSScanneriOSTests;
+			productReference = ED3E6D06698D40377724FDD9 /* SODSScanneriOSTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		8215ACEB1CDB735616404A0D /* SODSScanneriOS */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 0B5635A17FA01E286F9F0677 /* Build configuration list for PBXNativeTarget "SODSScanneriOS" */;
+			buildPhases = (
+				1E078AC47BBA84A35384AE01 /* Sources */,
+				5A3C43CD9F3E5B5A517F8E7F /* Resources */,
+				A8F27812CE94EBB71208E212 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = SODSScanneriOS;
+			packageProductDependencies = (
+				65F32EE2EE368A2595EA8806 /* ScannerSpectrumCore */,
+				5630756A6FB0252E2F8990D2 /* SODSAppCore */,
+			);
+			productName = SODSScanneriOS;
+			productReference = 794D8E7B164B8A10A2CE8ECC /* SODSScanneriOS.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		E49C6140450209F1E7030A9B /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					2F763E64082C90B57189909D = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Automatic;
+					};
+					8215ACEB1CDB735616404A0D = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = EEB4EF4321EC04C37F690AB6 /* Build configuration list for PBXProject "SODSScanner" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = F4B8B682294080BDC2556B49;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				2AC973786B78C392BB37CC29 /* XCLocalSwiftPackageReference "../scanner-spectrum-core" */,
+			);
+			preferredProjectObjectVersion = 77;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				8215ACEB1CDB735616404A0D /* SODSScanneriOS */,
+				30FAE66A67AFEF6E1B9CA9D0 /* SODSScanneriOSTests */,
+				2F763E64082C90B57189909D /* SODSScannermacOS */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		5A3C43CD9F3E5B5A517F8E7F /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C03DAE3FF087F6D31C1EF5C5 /* Assets.xcassets in Resources */,
+				B2C2AF04BE28BA4DADF10A0C /* Info-macOS.plist in Resources */,
+				10AD63EDD70D80619D6A83B0 /* LaunchScreen.storyboard in Resources */,
+				2DA890978C5AC0E090120466 /* PrivacyPolicy.md in Resources */,
+				6B970B99BEB0E71899C1B6E8 /* SODSScanner.storekit in Resources */,
+				F29116D7D06AB8C5DFBC8A84 /* TermsOfUse.md in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		ADDF0B7C1AB3816E1C6656D0 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D90017AE150CED336BDB0AA4 /* Assets.xcassets in Resources */,
+				D3753A79EE91F4FE652A24FF /* Info.plist in Resources */,
+				F56626ADC67CC9131B67269E /* PrivacyPolicy.md in Resources */,
+				5BF3E5EEDCDCD4AA27E0BB0F /* TermsOfUse.md in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		1689D4ADF24994C1601B8C22 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				6768483286C2D69E2D46E2A3 /* SubscriptionDecisionTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		1E078AC47BBA84A35384AE01 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				7555AF8D945D007FC321FFF0 /* DatabasesView.swift in Sources */,
+				24F68D300D9AA9223272AE61 /* DeviceInfoSheet.swift in Sources */,
+				F9B3387B7DF8D24B248AF7A2 /* DynamicFieldRenderer.swift in Sources */,
+				DAED2F1BC58B036F2B183F58 /* IOSScanCoordinator.swift in Sources */,
+				1AA56B388392A594917FE497 /* LegalView.swift in Sources */,
+				BC7CB26A51E659C180BCCFFD /* OnboardingView.swift in Sources */,
+				58BE1D76D04D7D0121AF85E0 /* RootTabView.swift in Sources */,
+				24549489B6CA141568F0EB29 /* SODSScannerApp.swift in Sources */,
+				06B05BC3342A5F5F0D55BBA3 /* SODSScannerRootView.swift in Sources */,
+				817356AE7DB0E6F953542806 /* SODSScanneriOSApp.swift in Sources */,
+				68646C3048374190FABE7BD4 /* ScannerView.swift in Sources */,
+				FC1C07F1413D4CBF92B046D7 /* SettingsView.swift in Sources */,
+				6C2436D3C485AD9FD0FAEA6F /* SpectrumView.swift in Sources */,
+				AF922287C81692AB47AEA124 /* SubscriptionCache.swift in Sources */,
+				176E4366FDE1BB1C008537DB /* SubscriptionManager.swift in Sources */,
+				B4C3606B64BBB5A875CDE1D2 /* SubscriptionModels.swift in Sources */,
+				A38A38D4ACC3320C6CB31A03 /* SubscriptionStatusCard.swift in Sources */,
+				76C439DF7C4DA9D043B286BB /* UpgradeView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		21B3DFE8C196A94384A99345 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BF732677D2E47C648F7E6AFB /* DatabasesView.swift in Sources */,
+				AAAB6D2835D13BEC9612DB84 /* DeviceInfoSheet.swift in Sources */,
+				20EE49F24ABBFE02B3741322 /* DynamicFieldRenderer.swift in Sources */,
+				CAE7BD852D2CF9FA75BB363C /* IOSScanCoordinator.swift in Sources */,
+				04E6954375B768D1A50B1538 /* LegalView.swift in Sources */,
+				9C3852DD1E095090B2ED4F9B /* OnboardingView.swift in Sources */,
+				EBBA1FD6D23E10DF51D7C783 /* RootTabView.swift in Sources */,
+				77CEC746D157151E9320B543 /* SODSScannerApp.swift in Sources */,
+				AFECA952A8EBE9DC09F7D973 /* SODSScannerMacOSApp.swift in Sources */,
+				290F8205EE10AD06451A6BD0 /* SODSScannerRootView.swift in Sources */,
+				F82002605E27DD3B7BE9F583 /* ScannerView.swift in Sources */,
+				327722EB30E47EDDF28A3BCC /* SettingsView.swift in Sources */,
+				745FC1C772688EF77EE2A2ED /* SpectrumView.swift in Sources */,
+				B99BEBF32901B37F17A5C1EE /* SubscriptionCache.swift in Sources */,
+				F5E381CD3C0AE16D5C053967 /* SubscriptionManager.swift in Sources */,
+				7DB79B83BCD96F002FB92F94 /* SubscriptionModels.swift in Sources */,
+				0F92CE13A9C5EC9B6BACDCB7 /* SubscriptionStatusCard.swift in Sources */,
+				617C902751A1A8087054F88C /* UpgradeView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		FBE41C54B000649BE5FD7F3B /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 8215ACEB1CDB735616404A0D /* SODSScanneriOS */;
+			targetProxy = 979F03C9A7584AD3E39D93B4 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		030FA8E185F1430C4AA8B365 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		5EA3EA683DE85DBC0C8142BE /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		7282985392B6A82AAC3B0BA4 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGNING_ALLOWED = NO;
+				CODE_SIGNING_REQUIRED = NO;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.strangelab.sods.scanner.tests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/SODSScanneriOS.app/SODSScanneriOS";
+			};
+			name = Debug;
+		};
+		9A38DE7150107562B38B6AC7 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.strangelab.sods.scanner.tests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/SODSScanneriOS.app/SODSScanneriOS";
+			};
+			name = Release;
+		};
+		A7A9556EBADD7F8564D8C400 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGNING_ALLOWED = NO;
+				CODE_SIGNING_REQUIRED = NO;
+				CODE_SIGN_ENTITLEMENTS = SODSScanneriOS/Resources/SODSScanneriOS.Debug.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				INFOPLIST_FILE = SODSScanneriOS/Resources/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.strangelab.sods.scanner.local;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		BD90EF2730AB564862B7B7D5 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGNING_ALLOWED = NO;
+				CODE_SIGNING_REQUIRED = NO;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				INFOPLIST_FILE = "SODSScanneriOS/Resources/Info-macOS.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.strangelab.sods.scanner.macos;
+				PRODUCT_NAME = "SODS Scanner";
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		E35E3172420C086006D27879 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				INFOPLIST_FILE = "SODSScanneriOS/Resources/Info-macOS.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.strangelab.sods.scanner.macos;
+				PRODUCT_NAME = "SODS Scanner";
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+		E9B56AC6F023EF2B90B7C04B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = SODSScanneriOS/Resources/SODSScanneriOS.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				INFOPLIST_FILE = SODSScanneriOS/Resources/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.strangelab.sods.scanner;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		0B5635A17FA01E286F9F0677 /* Build configuration list for PBXNativeTarget "SODSScanneriOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A7A9556EBADD7F8564D8C400 /* Debug */,
+				E9B56AC6F023EF2B90B7C04B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		0D72F4AAFE2F88CFE4E213F2 /* Build configuration list for PBXNativeTarget "SODSScanneriOSTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				7282985392B6A82AAC3B0BA4 /* Debug */,
+				9A38DE7150107562B38B6AC7 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		C54DDC32E9AFAA9EA77BC913 /* Build configuration list for PBXNativeTarget "SODSScannermacOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				BD90EF2730AB564862B7B7D5 /* Debug */,
+				E35E3172420C086006D27879 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		EEB4EF4321EC04C37F690AB6 /* Build configuration list for PBXProject "SODSScanner" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				030FA8E185F1430C4AA8B365 /* Debug */,
+				5EA3EA683DE85DBC0C8142BE /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		2AC973786B78C392BB37CC29 /* XCLocalSwiftPackageReference "../scanner-spectrum-core" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = "../scanner-spectrum-core";
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		49211131EB8D670E552C475C /* ScannerSpectrumCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = ScannerSpectrumCore;
+		};
+		5630756A6FB0252E2F8990D2 /* SODSAppCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SODSAppCore;
+		};
+		65F32EE2EE368A2595EA8806 /* ScannerSpectrumCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = ScannerSpectrumCore;
+		};
+		9DE728FEED9EEFDBCE37A4F6 /* SODSAppCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SODSAppCore;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = E49C6140450209F1E7030A9B /* Project object */;
+}

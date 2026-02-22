@@ -51,7 +51,9 @@ struct OnboardingView: View {
                 .padding(20)
             }
             .navigationTitle("Getting Started")
+#if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
+#endif
             .sheet(isPresented: $showUpgradeSheet) {
                 UpgradeView()
                     .environmentObject(subscriptionManager)
@@ -69,7 +71,7 @@ struct OnboardingView: View {
                 .fixedSize(horizontal: false, vertical: true)
         }
         .padding(12)
-        .background(Color(.secondarySystemBackground))
+        .background(Color.secondary.opacity(0.12))
         .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 }

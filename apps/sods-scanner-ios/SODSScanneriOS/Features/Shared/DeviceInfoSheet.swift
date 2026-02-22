@@ -252,7 +252,9 @@ struct DeviceInfoSheet: View {
                 }
             }
             .navigationTitle("Device Info")
+#if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
+#endif
         }
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)

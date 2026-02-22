@@ -159,7 +159,7 @@ struct SpectrumView: View {
             .onAppear {
                 loadPersistedKindsIfNeeded()
             }
-            .onChange(of: selectedKinds) {
+            .onChange(of: selectedKinds) { _ in
                 persistSelectedKinds()
             }
         }
@@ -228,7 +228,7 @@ struct SpectrumView: View {
                                 .foregroundStyle(selectedKinds.contains(kind) ? Color.red : Color.primary)
                                 .background(
                                     Capsule()
-                                        .fill(selectedKinds.contains(kind) ? Color.red.opacity(0.16) : Color(.tertiarySystemBackground))
+                                        .fill(selectedKinds.contains(kind) ? Color.red.opacity(0.16) : Color.secondary.opacity(0.12))
                                 )
                                 .overlay(
                                     Capsule()
@@ -247,7 +247,7 @@ struct SpectrumView: View {
             }
         }
         .padding(12)
-        .background(Color(.secondarySystemBackground))
+        .background(Color.secondary.opacity(0.12))
         .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 
@@ -266,7 +266,7 @@ struct SpectrumView: View {
             .minimumScaleFactor(0.75)
         }
         .padding(12)
-        .background(Color(.secondarySystemBackground))
+        .background(Color.secondary.opacity(0.12))
         .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 
@@ -300,7 +300,7 @@ struct SpectrumView: View {
                 .foregroundStyle(isOn.wrappedValue ? Color.red : Color.primary)
                 .background(
                     Capsule()
-                        .fill(isOn.wrappedValue ? Color.red.opacity(0.16) : Color(.tertiarySystemBackground))
+                        .fill(isOn.wrappedValue ? Color.red.opacity(0.16) : Color.secondary.opacity(0.12))
                 )
                 .overlay(
                     Capsule()

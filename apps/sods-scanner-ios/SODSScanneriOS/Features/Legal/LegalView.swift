@@ -36,7 +36,9 @@ struct LegalView: View {
                 .textSelection(.enabled)
         }
         .navigationTitle(document.title)
+#if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
+#endif
         .task {
             renderedText = await loadDocument()
         }

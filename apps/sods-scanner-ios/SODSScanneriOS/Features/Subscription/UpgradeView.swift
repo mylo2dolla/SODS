@@ -34,7 +34,7 @@ struct UpgradeView: View {
                         featureRow("Extended signal history retention")
                     }
                     .padding(12)
-                    .background(Color(.secondarySystemBackground))
+                    .background(Color.secondary.opacity(0.12))
                     .clipShape(RoundedRectangle(cornerRadius: 12))
 
                     VStack(spacing: 10) {
@@ -78,7 +78,9 @@ struct UpgradeView: View {
                 .padding(16)
             }
             .navigationTitle("Upgrade to Pro")
+#if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
+#endif
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Close") {
@@ -102,7 +104,7 @@ struct UpgradeView: View {
                 .fixedSize(horizontal: false, vertical: true)
         }
         .padding(12)
-        .background(Color(.secondarySystemBackground))
+        .background(Color.secondary.opacity(0.12))
         .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 
@@ -158,7 +160,7 @@ struct UpgradeView: View {
             .disabled(isWorking)
         }
         .padding(12)
-        .background(Color(.secondarySystemBackground))
+        .background(Color.secondary.opacity(0.12))
         .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 

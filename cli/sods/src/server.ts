@@ -45,6 +45,7 @@ type CoreNodeId = "exec-pi-aux" | "exec-pi-logger" | "mac16";
 type NodePresenceState = "online" | "idle" | "scanning" | "connecting" | "error" | "offline";
 type NodePresenceSource = "events" | "control-plane" | "manual-override";
 type NodePresenceReason = "event-recent" | "control-plane-health" | "manual-override" | "stale-events";
+type AppClientPlatform = "ios" | "macos";
 type LoggerHealth = { ok: boolean; status: string; detail?: any; url?: string };
 type CorePresenceHints = {
   now: number;
@@ -102,6 +103,7 @@ export class SODSServer {
   private readonly codegatchiHealthURL = process.env.SODS_CODEGATCHI_HEALTH_URL ?? "http://127.0.0.1:9777/v1/health";
   private readonly auxHealthURL = process.env.GOD_HEALTH_URL ?? `http://${AUX_HOST_FOR_HEALTH}:8099/health`;
   private readonly vaultHealthURL = process.env.VAULT_HEALTH_URL ?? `http://${LOGGER_HOST_FOR_HEALTH}:8088/health`;
+  private readonly apiToken = (process.env.SODS_API_TOKEN ?? "").trim();
 
   constructor(private options: ServerOptions) {
     this.ingestor = new Ingestor(options.piLoggerBase, 500, 1400);
@@ -191,9 +193,22 @@ export class SODSServer {
 
   private handleRequest(req: http.IncomingMessage, res: http.ServerResponse) {
     const url = new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`);
+    const method = (req.method ?? "GET").toUpperCase();
+    if (this.requiresAPIToken(url.pathname, method) && !this.hasValidAPIToken(req)) {
+      this.respondJsonWithStatus(
+        res,
+        401,
+        { ok: false, error: "unauthorized" },
+        { "WWW-Authenticate": "Bearer realm=\"sods-api\"" },
+      );
+      return;
+    }
     if (url.pathname === "/api/status") {
       void this.handleStatus(res);
       return;
+    }
+    if (url.pathname === "/api/app/capabilities" && method === "GET") {
+      return this.handleAppCapabilities(url, res);
     }
     if (url.pathname === "/api/knowledge/resolve" && req.method === "GET") {
       return this.handleKnowledgeResolve(url, res);
@@ -601,14 +616,77 @@ export class SODSServer {
     ].includes(value);
   }
 
-  private respondJson(res: http.ServerResponse, payload: any) {
+  private requiresAPIToken(pathname: string, method: string) {
+    if (!this.apiToken) return false;
+    if (!pathname.startsWith("/api/")) return false;
+    if (pathname === "/api/p4/god") return true;
+    return method === "POST" || method === "PUT" || method === "PATCH" || method === "DELETE";
+  }
+
+  private hasValidAPIToken(req: http.IncomingMessage) {
+    if (!this.apiToken) return true;
+    const authorization = Array.isArray(req.headers.authorization)
+      ? req.headers.authorization[0] ?? ""
+      : req.headers.authorization ?? "";
+    const match = /^Bearer\s+(.+)$/.exec(authorization);
+    if (!match) return false;
+    return match[1].trim() === this.apiToken;
+  }
+
+  private handleAppCapabilities(url: URL, res: http.ServerResponse) {
+    const raw = (url.searchParams.get("client") ?? "ios").toLowerCase();
+    if (raw !== "ios" && raw !== "macos") {
+      this.respondJsonWithStatus(res, 400, { ok: false, error: "client must be ios or macos" });
+      return;
+    }
+    const client = raw as AppClientPlatform;
+    const shared = {
+      scanner: true,
+      spectrum: true,
+      status: true,
+      nodes: true,
+      tools: true,
+      runbooks: true,
+      presets: true,
+      eventsRecent: true,
+      frameStream: true,
+    };
+    const capabilities = client === "macos"
+      ? {
+        ...shared,
+        localStationProcess: true,
+        localFileReveal: true,
+        localShellExecution: true,
+        localUSBFlash: true,
+      }
+      : {
+        ...shared,
+        localStationProcess: false,
+        localFileReveal: false,
+        localShellExecution: false,
+        localUSBFlash: false,
+      };
+    this.respondJson(res, { ok: true, client, capabilities });
+  }
+
+  private respondJsonWithStatus(
+    res: http.ServerResponse,
+    statusCode: number,
+    payload: any,
+    extraHeaders: Record<string, string> = {},
+  ) {
     const body = JSON.stringify(payload);
-    res.writeHead(200, {
+    res.writeHead(statusCode, {
       "Content-Type": "application/json",
       "Access-Control-Allow-Origin": "*",
       "Cache-Control": "no-store",
+      ...extraHeaders,
     });
     res.end(body);
+  }
+
+  private respondJson(res: http.ServerResponse, payload: any) {
+    this.respondJsonWithStatus(res, 200, payload);
   }
 
   private serveStatic(res: http.ServerResponse, relPath: string) {

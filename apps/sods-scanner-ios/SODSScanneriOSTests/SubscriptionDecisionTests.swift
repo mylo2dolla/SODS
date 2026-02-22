@@ -1,5 +1,5 @@
 import XCTest
-@testable import SODS_Scanner_iOS
+@testable import SODSScanneriOS
 
 final class SubscriptionDecisionTests: XCTestCase {
     func testNormalizeEmailTrimsAndLowercases() {

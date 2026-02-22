@@ -11,6 +11,10 @@ let package = Package(
         .library(
             name: "ScannerSpectrumCore",
             targets: ["ScannerSpectrumCore"]
+        ),
+        .library(
+            name: "SODSAppCore",
+            targets: ["SODSAppCore"]
         )
     ],
     targets: [
@@ -22,6 +26,10 @@ let package = Package(
                 .process("Resources/BLEAssignedNumbers.txt"),
                 .process("Resources/BLEServiceUUIDs.txt")
             ]
+        ),
+        .target(
+            name: "SODSAppCore",
+            dependencies: ["ScannerSpectrumCore"]
         ),
         .testTarget(
             name: "ScannerSpectrumCoreTests",
