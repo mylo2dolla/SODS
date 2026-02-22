@@ -17,79 +17,82 @@ struct ToolRunnerView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             ModalHeaderView(title: tool.name, onBack: onBack, onClose: onClose)
+            ScrollView(.vertical, showsIndicators: true) {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text(tool.description ?? "")
+                        .font(.system(size: 12))
+                        .foregroundColor(Theme.textSecondary)
 
-            Text(tool.description ?? "")
-                .font(.system(size: 12))
-                .foregroundColor(Theme.textSecondary)
-
-            if !inputFields.isEmpty {
-                VStack(alignment: .leading, spacing: 8) {
-                    ForEach(inputFields, id: \.self) { field in
-                        HStack {
-                            Text(field)
-                                .font(.system(size: 11))
-                                .frame(width: 140, alignment: .leading)
-                            TextField("", text: Binding(
-                                get: { fieldInputs[field] ?? "" },
-                                set: { fieldInputs[field] = $0 }
-                            ))
-                            .textFieldStyle(.roundedBorder)
+                    if !inputFields.isEmpty {
+                        VStack(alignment: .leading, spacing: 8) {
+                            ForEach(inputFields, id: \.self) { field in
+                                HStack {
+                                    Text(field)
+                                        .font(.system(size: 11))
+                                        .frame(width: 140, alignment: .leading)
+                                    TextField("", text: Binding(
+                                        get: { fieldInputs[field] ?? "" },
+                                        set: { fieldInputs[field] = $0 }
+                                    ))
+                                    .textFieldStyle(.roundedBorder)
+                                }
+                            }
                         }
+                        Toggle("Advanced JSON input", isOn: $useJsonEditor)
+                            .toggleStyle(SwitchToggleStyle(tint: Theme.accent))
+                            .font(.system(size: 11))
+                    }
+
+                    if useJsonEditor {
+                        TextEditor(text: $jsonInput)
+                            .font(.system(size: 11, design: .monospaced))
+                            .frame(height: 120)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .stroke(Theme.border, lineWidth: 1)
+                            )
+                    }
+
+                    HStack(spacing: 8) {
+                        Text("Run")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                        Button { runTool() } label: {
+                            if isRunning {
+                                ProgressView()
+                                    .controlSize(.small)
+                            } else {
+                                Image(systemName: "play.circle")
+                                    .font(.system(size: 12, weight: .semibold))
+                            }
+                        }
+                        .buttonStyle(PrimaryActionButtonStyle())
+                        .disabled(isRunning)
+                        .help(isRunning ? "Running..." : "Run")
+                        .accessibilityLabel(Text(isRunning ? "Running..." : "Run"))
+                        Spacer()
+                    }
+
+                    if let lastError {
+                        Text(lastError)
+                            .font(.system(size: 11))
+                            .foregroundColor(.red)
+                    }
+
+                    ScrollView {
+                        Text(outputText.isEmpty ? "No output yet." : outputText)
+                            .font(.system(size: 11, design: .monospaced))
+                            .foregroundColor(Theme.textPrimary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(10)
+                            .background(Theme.panelAlt)
+                            .clipShape(RoundedRectangle(cornerRadius: 10))
                     }
                 }
-                Toggle("Advanced JSON input", isOn: $useJsonEditor)
-                    .toggleStyle(SwitchToggleStyle(tint: Theme.accent))
-                    .font(.system(size: 11))
-            }
-
-            if useJsonEditor {
-                TextEditor(text: $jsonInput)
-                    .font(.system(size: 11, design: .monospaced))
-                    .frame(height: 120)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 8)
-                            .stroke(Theme.border, lineWidth: 1)
-                    )
-            }
-
-            HStack(spacing: 8) {
-                Text("Run")
-                    .font(.system(size: 11))
-                    .foregroundColor(.secondary)
-                Button { runTool() } label: {
-                    if isRunning {
-                        ProgressView()
-                            .controlSize(.small)
-                    } else {
-                        Image(systemName: "play.circle")
-                            .font(.system(size: 12, weight: .semibold))
-                    }
-                }
-                .buttonStyle(PrimaryActionButtonStyle())
-                .disabled(isRunning)
-                .help(isRunning ? "Running..." : "Run")
-                .accessibilityLabel(Text(isRunning ? "Running..." : "Run"))
-                Spacer()
-            }
-
-            if let lastError {
-                Text(lastError)
-                    .font(.system(size: 11))
-                    .foregroundColor(.red)
-            }
-
-            ScrollView {
-                Text(outputText.isEmpty ? "No output yet." : outputText)
-                    .font(.system(size: 11, design: .monospaced))
-                    .foregroundColor(Theme.textPrimary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(10)
-                    .background(Theme.panelAlt)
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
             }
         }
         .padding(16)
-        .frame(minWidth: 720, minHeight: 520)
+        .frame(minWidth: 520, minHeight: 360)
         .background(Theme.background)
         .foregroundColor(Theme.textPrimary)
         .onAppear {

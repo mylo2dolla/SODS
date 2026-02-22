@@ -46,11 +46,11 @@ cat > "$PLIST_DST" <<EOF
 </plist>
 EOF
 
-UID="$(id -u)"
-launchctl bootout "gui/$UID" "$PLIST_DST" >/dev/null 2>&1 || true
-launchctl bootstrap "gui/$UID" "$PLIST_DST"
-launchctl enable "gui/$UID/io.strangemythic.sods.station"
-launchctl kickstart -k "gui/$UID/io.strangemythic.sods.station"
+USER_UID="$(id -u)"
+launchctl bootout "gui/$USER_UID" "$PLIST_DST" >/dev/null 2>&1 || true
+launchctl bootstrap "gui/$USER_UID" "$PLIST_DST"
+launchctl enable "gui/$USER_UID/io.strangemythic.sods.station"
+launchctl kickstart -k "gui/$USER_UID/io.strangemythic.sods.station"
 
 echo "Installed and started LaunchAgent:"
 echo "  $PLIST_DST"

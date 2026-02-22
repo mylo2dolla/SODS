@@ -1,8 +1,12 @@
 #!/usr/bin/env bash
 
-AUX_HOST="${AUX_HOST:-pi-aux.local}"
-LOGGER_HOST="${LOGGER_HOST:-pi-logger.local}"
-MAC16_HOST="${MAC16_HOST:-mac16.local}"
+#
+# IP-first defaults for control-plane stability.
+# Hostname aliases remain supported when explicitly configured.
+#
+AUX_HOST="${AUX_HOST:-192.168.8.114}"
+LOGGER_HOST="${LOGGER_HOST:-192.168.8.160}"
+MAC16_HOST="${MAC16_HOST:-192.168.8.214}"
 MAC8_HOST="${MAC8_HOST:-mac8.local}"
 MAC2_HOST="${MAC2_HOST:-$MAC16_HOST}"
 

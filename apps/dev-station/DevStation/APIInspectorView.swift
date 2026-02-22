@@ -15,60 +15,63 @@ struct APIInspectorView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             ModalHeaderView(title: "API Inspector", onBack: onBack, onClose: onClose)
+            ScrollView(.vertical, showsIndicators: true) {
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(spacing: 10) {
+                        Picker("Endpoint", selection: $endpoint) {
+                            ForEach(ContentView.APIEndpoint.allCases) { ep in
+                                Text(ep.label).tag(ep)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+                        Toggle("Auto-refresh", isOn: $autoRefresh)
+                            .toggleStyle(SwitchToggleStyle(tint: Theme.accent))
+                            .font(.system(size: 11))
+                        Button { fetch() } label: {
+                            if isLoading {
+                                ProgressView()
+                                    .progressViewStyle(.circular)
+                                    .controlSize(.small)
+                                    .frame(width: 14, height: 14)
+                            } else {
+                                Image(systemName: "arrow.clockwise")
+                                    .font(.system(size: 12, weight: .semibold))
+                            }
+                        }
+                            .buttonStyle(SecondaryActionButtonStyle())
+                            .help("Refresh")
+                            .accessibilityLabel(Text("Refresh"))
+                            .keyboardShortcut("r", modifiers: [.command])
+                        Button { copyJSON() } label: {
+                            Image(systemName: "doc.on.doc")
+                                .font(.system(size: 12, weight: .semibold))
+                        }
+                            .buttonStyle(SecondaryActionButtonStyle())
+                            .help("Copy JSON")
+                            .accessibilityLabel(Text("Copy JSON"))
+                        Spacer()
+                    }
 
-            HStack(spacing: 10) {
-                Picker("Endpoint", selection: $endpoint) {
-                    ForEach(ContentView.APIEndpoint.allCases) { ep in
-                        Text(ep.label).tag(ep)
+                    if let lastError {
+                        Text(lastError)
+                            .font(.system(size: 11))
+                            .foregroundColor(.red)
+                    }
+
+                    ScrollView {
+                        Text(jsonText.isEmpty ? "No data yet." : jsonText)
+                            .font(.system(size: 11, design: .monospaced))
+                            .foregroundColor(Theme.textPrimary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(10)
+                            .background(Theme.panelAlt)
+                            .clipShape(RoundedRectangle(cornerRadius: 10))
                     }
                 }
-                .pickerStyle(.segmented)
-                Toggle("Auto-refresh", isOn: $autoRefresh)
-                    .toggleStyle(SwitchToggleStyle(tint: Theme.accent))
-                    .font(.system(size: 11))
-                Button { fetch() } label: {
-                    if isLoading {
-                        ProgressView()
-                            .progressViewStyle(.circular)
-                            .controlSize(.small)
-                            .frame(width: 14, height: 14)
-                    } else {
-                        Image(systemName: "arrow.clockwise")
-                            .font(.system(size: 12, weight: .semibold))
-                    }
-                }
-                    .buttonStyle(SecondaryActionButtonStyle())
-                    .help("Refresh")
-                    .accessibilityLabel(Text("Refresh"))
-                    .keyboardShortcut("r", modifiers: [.command])
-                Button { copyJSON() } label: {
-                    Image(systemName: "doc.on.doc")
-                        .font(.system(size: 12, weight: .semibold))
-                }
-                    .buttonStyle(SecondaryActionButtonStyle())
-                    .help("Copy JSON")
-                    .accessibilityLabel(Text("Copy JSON"))
-                Spacer()
-            }
-
-            if let lastError {
-                Text(lastError)
-                    .font(.system(size: 11))
-                    .foregroundColor(.red)
-            }
-
-            ScrollView {
-                Text(jsonText.isEmpty ? "No data yet." : jsonText)
-                    .font(.system(size: 11, design: .monospaced))
-                    .foregroundColor(Theme.textPrimary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(10)
-                    .background(Theme.panelAlt)
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
             }
         }
         .padding(16)
-        .frame(minWidth: 720, minHeight: 480)
+        .frame(minWidth: 520, minHeight: 360)
         .background(Theme.background)
         .foregroundColor(Theme.textPrimary)
         .onAppear { fetch() }

@@ -77,6 +77,7 @@ struct TopControlStripScanProgress: Equatable {
 struct TopControlStripView<FlashContent: View>: View {
     @Binding var baseURLText: String
     let baseURLValidationMessage: String?
+    let baseURLApplyInFlight: Bool
     @Binding var showScanDetails: Bool
     @Binding var showGodMenu: Bool
     @Binding var showFlashPopover: Bool
@@ -133,20 +134,79 @@ struct TopControlStripView<FlashContent: View>: View {
     }
 
     private var endpointRow: some View {
-        HStack(spacing: 8) {
-            Text("Base URL")
-                .font(.system(size: 11))
-                .frame(width: 70, alignment: .leading)
-            TextField("", text: $baseURLText)
-                .textFieldStyle(.roundedBorder)
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 8) {
+                Text("Base URL")
+                    .font(.system(size: 11))
+                    .frame(width: 70, alignment: .leading)
+                TextField("", text: $baseURLText)
+                    .textFieldStyle(.roundedBorder)
+                    .disabled(baseURLApplyInFlight)
 
+                endpointActionButtons
+            }
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 8) {
+                    Text("Base URL")
+                        .font(.system(size: 11))
+                    TextField("", text: $baseURLText)
+                        .textFieldStyle(.roundedBorder)
+                        .disabled(baseURLApplyInFlight)
+                }
+                HStack(spacing: 8) {
+                    endpointActionButtons
+                    Spacer(minLength: 0)
+                }
+            }
+        }
+    }
+
+    private var actionRow: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 8) {
+                actionButtons
+                Spacer(minLength: 0)
+            }
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 8) {
+                    actionButtons
+                    Spacer(minLength: 0)
+                }
+            }
+        }
+    }
+
+    private var statusChipsRow: some View {
+        ScrollView(.horizontal, showsIndicators: true) {
+            HStack(spacing: 8) {
+                StatusChipView(label: "Station", value: stationHealthLabel, tint: stationHealthColor)
+                StatusChipView(label: "Ops Feed", value: opsFeedStatusLabel, tint: opsFeedStatusColor)
+                StatusChipView(label: "Nodes", value: "\(nodeCount)")
+                if let lastIngestText, !lastIngestText.isEmpty {
+                    StatusChipView(label: "Last ingest", value: lastIngestText, monospacedValue: true)
+                }
+                StatusChipView(
+                    label: "Scan",
+                    value: scanStatusLabel,
+                    tint: scanStatusLabel == "Yes" ? Theme.accent : Theme.muted
+                )
+                StatusChipView(label: "Hosts", value: "\(hostCount)")
+                StatusChipView(label: "BLE", value: bleStatusLabel)
+            }
+            .padding(.vertical, 2)
+        }
+    }
+
+    private var endpointActionButtons: some View {
+        HStack(spacing: 8) {
             CompactActionButton(
-                systemImage: "checkmark.circle",
-                helpText: "Apply",
-                accessibilityTitle: "Apply",
+                systemImage: baseURLApplyInFlight ? "hourglass.circle" : "checkmark.circle",
+                helpText: baseURLApplyInFlight ? "Validating Base URL" : "Apply",
+                accessibilityTitle: baseURLApplyInFlight ? "Validating Base URL" : "Apply",
                 variant: .secondary,
                 action: onApplyBaseURL
             )
+            .disabled(baseURLApplyInFlight)
             CompactActionButton(
                 systemImage: "arrow.counterclockwise",
                 helpText: "Reset",
@@ -154,6 +214,7 @@ struct TopControlStripView<FlashContent: View>: View {
                 variant: .secondary,
                 action: onResetBaseURL
             )
+            .disabled(baseURLApplyInFlight)
             CompactActionButton(
                 systemImage: "doc.text.magnifyingglass",
                 helpText: "Inspect API",
@@ -161,15 +222,16 @@ struct TopControlStripView<FlashContent: View>: View {
                 variant: .secondary,
                 action: onInspectAPI
             )
+            .disabled(baseURLApplyInFlight)
         }
     }
 
-    private var actionRow: some View {
-        HStack(spacing: 8) {
+    private var actionButtons: some View {
+        Group {
             CompactActionButton(
                 systemImage: "waveform",
-                helpText: "Open Spectrum",
-                accessibilityTitle: "Open Spectrum",
+                helpText: "Open Analyzer",
+                accessibilityTitle: "Open Analyzer",
                 variant: .primary,
                 action: onOpenSpectrum
             )
@@ -199,28 +261,6 @@ struct TopControlStripView<FlashContent: View>: View {
             .popover(isPresented: $showFlashPopover, arrowEdge: .bottom) {
                 flashPopoverContent()
             }
-            Spacer()
-        }
-    }
-
-    private var statusChipsRow: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                StatusChipView(label: "Station", value: stationHealthLabel, tint: stationHealthColor)
-                StatusChipView(label: "Ops Feed", value: opsFeedStatusLabel, tint: opsFeedStatusColor)
-                StatusChipView(label: "Nodes", value: "\(nodeCount)")
-                if let lastIngestText, !lastIngestText.isEmpty {
-                    StatusChipView(label: "Last ingest", value: lastIngestText, monospacedValue: true)
-                }
-                StatusChipView(
-                    label: "Scan",
-                    value: scanStatusLabel,
-                    tint: scanStatusLabel == "Yes" ? Theme.accent : Theme.muted
-                )
-                StatusChipView(label: "Hosts", value: "\(hostCount)")
-                StatusChipView(label: "BLE", value: bleStatusLabel)
-            }
-            .padding(.vertical, 2)
         }
     }
 

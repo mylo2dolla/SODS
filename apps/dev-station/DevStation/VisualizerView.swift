@@ -1,5 +1,6 @@
 import SwiftUI
 import AppKit
+import ScannerSpectrumCore
 
 extension Notification.Name {
     static let sodsReplaySeek = Notification.Name("sods.replay.seek")
@@ -11,6 +12,7 @@ struct VisualizerView: View {
     let onOpenTools: () -> Void
     @State private var baseURLText: String = ""
     @State private var baseURLValidationMessage: String?
+    @State private var baseURLApplyInFlight = false
     @State private var showBaseURLToast = false
     @State private var baseURLToastMessage = ""
     @State private var paused: Bool = false
@@ -39,55 +41,21 @@ struct VisualizerView: View {
             HStack(spacing: 12) {
                 sidebar
                     .frame(minWidth: 320, maxWidth: 360)
-                SignalFieldView(
+                SharedSpectrumRendererView(
                     events: filteredEvents,
-                    traceEvents: store.events,
                     frames: displayFrames,
-                    framesAreDerived: framesAreDerived,
                     paused: paused,
-                    decayRate: decayRate,
-                    timeScale: timeScale,
-                    maxParticles: Int(maxParticles),
-                    intensity: intensityMode,
-                    replayEnabled: replayEnabled,
-                    replayOffset: replayOffset,
-                    ghostTrails: ghostTrails,
-                    topologyClarity: topologyClarity,
-                    protocolLanes: protocolLanes,
-                    recentOnlyLinks: recentOnlyLinks,
-                    targetSpotlight: targetSpotlight,
-                    aliases: nodeAliases,
-                    nodePresentations: nodePresentationByID,
-                    focusID: entityStore.selectedEntityID,
-                    entityStore: entityStore,
-                    onOpenTools: onOpenTools
+                    maxParticles: Int(maxParticles)
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             VStack(spacing: 12) {
                 sidebar
-                SignalFieldView(
+                SharedSpectrumRendererView(
                     events: filteredEvents,
-                    traceEvents: store.events,
                     frames: displayFrames,
-                    framesAreDerived: framesAreDerived,
                     paused: paused,
-                    decayRate: decayRate,
-                    timeScale: timeScale,
-                    maxParticles: Int(maxParticles),
-                    intensity: intensityMode,
-                    replayEnabled: replayEnabled,
-                    replayOffset: replayOffset,
-                    ghostTrails: ghostTrails,
-                    topologyClarity: topologyClarity,
-                    protocolLanes: protocolLanes,
-                    recentOnlyLinks: recentOnlyLinks,
-                    targetSpotlight: targetSpotlight,
-                    aliases: nodeAliases,
-                    nodePresentations: nodePresentationByID,
-                    focusID: entityStore.selectedEntityID,
-                    entityStore: entityStore,
-                    onOpenTools: onOpenTools
+                    maxParticles: Int(maxParticles)
                 )
                 .frame(maxWidth: .infinity, minHeight: 420)
             }
@@ -112,6 +80,13 @@ struct VisualizerView: View {
         .onChange(of: store.baseURL) { newValue in
             baseURLText = newValue
             baseURLValidationMessage = nil
+        }
+        .onReceive(store.$baseURLNotice) { notice in
+            guard let notice, !notice.isEmpty else { return }
+            baseURLText = store.baseURL
+            baseURLValidationMessage = nil
+            showBaseURLToast(notice)
+            store.clearBaseURLNotice()
         }
         .onReceive(Timer.publish(every: 0.5, on: .main, in: .common).autoconnect()) { _ in
             guard replayEnabled, replayAutoPlay else { return }
@@ -150,7 +125,7 @@ struct VisualizerView: View {
     private var header: some View {
         let dataSource = dataSourceStatus
         return VStack(alignment: .leading, spacing: 6) {
-            Text("SODS Spectrum")
+            Text("SODS Analyzer")
                 .font(.system(size: 16, weight: .semibold))
             Text("Strange Ops Dev Station • inferred signal field")
                 .font(.system(size: 11))
@@ -211,23 +186,33 @@ struct VisualizerView: View {
                         .frame(width: 70, alignment: .leading)
                     TextField("", text: $baseURLText)
                         .textFieldStyle(.roundedBorder)
+                        .disabled(baseURLApplyInFlight)
                     Button {
-                        if store.updateBaseURL(baseURLText) {
-                            baseURLValidationMessage = nil
-                            baseURLText = store.baseURL
-                        } else {
-                            let message = store.baseURLError ?? "Base URL must start with http:// or https://"
-                            baseURLValidationMessage = message
-                            baseURLText = store.baseURL
-                            showBaseURLToast(message)
+                        let candidate = baseURLText.trimmingCharacters(in: .whitespacesAndNewlines)
+                        guard !candidate.isEmpty else { return }
+                        guard !baseURLApplyInFlight else { return }
+                        baseURLApplyInFlight = true
+                        Task { @MainActor in
+                            let applied = await store.updateBaseURL(candidate)
+                            baseURLApplyInFlight = false
+                            if applied {
+                                baseURLValidationMessage = nil
+                                baseURLText = store.baseURL
+                            } else {
+                                let message = store.baseURLError ?? "Base URL must start with http:// or https://"
+                                baseURLValidationMessage = message
+                                baseURLText = store.baseURL
+                                showBaseURLToast(message)
+                            }
                         }
                     } label: {
-                        Image(systemName: "checkmark.circle")
+                        Image(systemName: baseURLApplyInFlight ? "hourglass.circle" : "checkmark.circle")
                             .font(.system(size: 13, weight: .semibold))
                     }
                     .buttonStyle(SecondaryActionButtonStyle())
-                    .help("Apply")
-                    .accessibilityLabel(Text("Apply"))
+                    .help(baseURLApplyInFlight ? "Validating Base URL" : "Apply")
+                    .accessibilityLabel(Text(baseURLApplyInFlight ? "Validating Base URL" : "Apply"))
+                    .disabled(baseURLApplyInFlight)
 
                     Button {
                         store.resetBaseURL()
@@ -241,6 +226,7 @@ struct VisualizerView: View {
                     .buttonStyle(SecondaryActionButtonStyle())
                     .help("Reset")
                     .accessibilityLabel(Text("Reset"))
+                    .disabled(baseURLApplyInFlight)
                 }
                 if let message = baseURLValidationMessage {
                     Text(message)
@@ -350,6 +336,9 @@ struct VisualizerView: View {
                     legendRow(color: SignalColor.kindAccent(kind: "node.heartbeat"), label: "Node • diamond halo")
                     legendRow(color: SignalColor.kindAccent(kind: "tool"), label: "Action • pulse burst")
                     legendRow(color: SignalColor.kindAccent(kind: "error"), label: "Error • starburst")
+                    Text("Type-first color coding: hue = signal class, tint = device identity.")
+                        .font(.system(size: 9))
+                        .foregroundColor(.secondary)
                     Text("Brightness = recency + strength. Trails fade with time.")
                         .font(.system(size: 9))
                         .foregroundColor(.secondary)
@@ -827,6 +816,131 @@ struct VisualizerView: View {
     }
 }
 
+private struct SharedSpectrumRendererView: View {
+    let events: [NormalizedEvent]
+    let frames: [SignalFrame]
+    let paused: Bool
+    let maxParticles: Int
+
+    @State private var frozenEvents: [NormalizedEvent] = []
+    @State private var frozenFrames: [SignalFrame] = []
+
+    private var effectiveEvents: [NormalizedEvent] {
+        let source = paused ? frozenEvents : events
+        return Array(source.suffix(max(200, maxParticles * 2)))
+    }
+
+    private var effectiveFrames: [SignalFrame] {
+        let source = paused ? frozenFrames : frames
+        return Array(source.suffix(max(100, maxParticles)))
+    }
+
+    private var coreEvents: [ScannerSpectrumCore.NormalizedEvent] {
+        effectiveEvents.map { $0.toCoreEvent() }
+    }
+
+    private var coreFrames: [ScannerSpectrumCore.SignalFrame] {
+        effectiveFrames.map { $0.toCoreFrame() }
+    }
+
+    var body: some View {
+        ScannerSpectrumCore.SpectrumFieldView(events: coreEvents, frames: coreFrames)
+            .onAppear {
+                frozenEvents = events
+                frozenFrames = frames
+            }
+            .onChange(of: events) { newValue in
+                if !paused {
+                    frozenEvents = newValue
+                }
+            }
+            .onChange(of: frames) { newValue in
+                if !paused {
+                    frozenFrames = newValue
+                }
+            }
+            .onChange(of: paused) { isPaused in
+                if isPaused {
+                    frozenEvents = events
+                    frozenFrames = frames
+                }
+            }
+    }
+}
+
+private enum CoreSpectrumBridge {
+    static let iso8601: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter
+    }()
+}
+
+private extension NormalizedEvent {
+    func toCoreEvent() -> ScannerSpectrumCore.NormalizedEvent {
+        let timestamp = eventTs ?? recvTs ?? Date()
+        let canonical = ScannerSpectrumCore.CanonicalEvent(
+            id: id,
+            recvTs: Int((recvTs ?? timestamp).timeIntervalSince1970 * 1000),
+            eventTs: CoreSpectrumBridge.iso8601.string(from: timestamp),
+            nodeID: nodeID,
+            kind: kind,
+            severity: severity,
+            summary: summary,
+            data: data.mapValues { $0.toCoreJSONValue() }
+        )
+        return ScannerSpectrumCore.NormalizedEvent(from: canonical)
+    }
+}
+
+private extension SignalFrame {
+    func toCoreFrame() -> ScannerSpectrumCore.SignalFrame {
+        ScannerSpectrumCore.SignalFrame(
+            t: t,
+            source: source,
+            nodeID: nodeID,
+            deviceID: deviceID,
+            channel: channel,
+            frequency: frequency,
+            rssi: rssi,
+            x: x,
+            y: y,
+            z: z,
+            color: color.toCoreColor(),
+            glow: glow,
+            persistence: persistence,
+            velocity: velocity,
+            confidence: confidence
+        )
+    }
+}
+
+private extension FrameColor {
+    func toCoreColor() -> ScannerSpectrumCore.FrameColor {
+        ScannerSpectrumCore.FrameColor(h: h, s: s, l: l)
+    }
+}
+
+private extension JSONValue {
+    func toCoreJSONValue() -> ScannerSpectrumCore.JSONValue {
+        switch self {
+        case .string(let value):
+            return .string(value)
+        case .number(let value):
+            return .number(value)
+        case .bool(let value):
+            return .bool(value)
+        case .object(let value):
+            let mapped = value.mapValues { $0.toCoreJSONValue() }
+            return .object(mapped)
+        case .array(let value):
+            return .array(value.map { $0.toCoreJSONValue() })
+        case .null:
+            return .null
+        }
+    }
+}
+
 struct NodeRow: View {
     let node: SignalNode
     let alias: String?
@@ -1024,8 +1138,8 @@ struct SignalFieldView: View {
 
     var body: some View {
         ZStack {
-            // Keep the field at a bounded update rate for readability + edge count scalability.
-            TimelineView(.animation(minimumInterval: 1.0 / 15.0)) { timeline in
+            // Keep the field bounded while staying fluid enough to avoid choppy motion.
+            TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { timeline in
                 Canvas { context, size in
                     let parallax = Parallax.offset(mousePoint: mousePoint, size: size, now: timeline.date, lastMove: lastMouseMove)
                     let isActive = fieldIsActive(now: timeline.date)
@@ -1479,6 +1593,9 @@ struct LegendOverlayView: View {
                     legendRow(color: SignalColor.kindAccent(kind: "node.heartbeat"), label: "Node • diamond halo")
                     legendRow(color: SignalColor.kindAccent(kind: "tool"), label: "Action • pulse burst")
                     legendRow(color: SignalColor.kindAccent(kind: "error"), label: "Error • starburst")
+                    Text("Type-first color coding: hue = signal class, tint = device identity.")
+                        .font(.system(size: 9))
+                        .foregroundColor(.secondary)
                     Text("Brightness = recency + strength. Trails fade with time.")
                         .font(.system(size: 9))
                         .foregroundColor(.secondary)
@@ -2051,6 +2168,7 @@ final class SignalFieldEngine: ObservableObject {
     private var particles: [SignalParticle] = []
     private var processedIDs: Set<String> = []
     private var lastUpdate: Date?
+    private var smoothedDeltaTime: Double?
     private var lastProjected: [ProjectedNode] = []
     private var lastProjectedEdges: [ProjectedEdge] = []
     private var pulses: [FieldPulse] = []
@@ -2172,6 +2290,7 @@ final class SignalFieldEngine: ObservableObject {
             step(now: now, timeScale: timeScale, decayRate: decayRate, isActive: isActive)
         } else {
             lastUpdate = now
+            smoothedDeltaTime = nil
         }
 
         // Enforce particle budget *before* drawing so rendering cost doesn't spike.
@@ -2237,7 +2356,11 @@ final class SignalFieldEngine: ObservableObject {
                             fromID: fromID,
                             toID: toID,
                             strength: source.lastStrength ?? -70,
-                            color: SignalColor.kindAccent(kind: event.kind, channel: event.signal.channel),
+                            color: SignalColor.typeFirstColor(
+                                renderKind: SignalRenderKind.from(event: event),
+                                deviceID: key,
+                                channel: event.signal.channel
+                            ),
                             renderKind: SignalRenderKind.from(event: event),
                             now: now,
                             intensity: intensity
@@ -2258,6 +2381,12 @@ final class SignalFieldEngine: ObservableObject {
             source.update(from: frame)
             sources[key] = source
             let style = SignalFrameStyle.from(frame: frame)
+            let renderKind = SignalRenderKind.from(source: frame.source)
+            let typeColor = SignalColor.typeFirstColor(
+                renderKind: renderKind,
+                deviceID: key,
+                channel: "\(frame.channel)"
+            )
             if !linePulseOnly {
                 particles.append(
                     SignalParticle(
@@ -2269,24 +2398,32 @@ final class SignalFieldEngine: ObservableObject {
                         birth: now,
                         lifespan: 1.2,
                         baseSize: 10 + style.glow * 12,
-                        color: style.color,
+                        color: typeColor,
                         strength: max(0.2, style.confidence * 1.4),
                         glow: style.glow,
                         ringRadius: 0,
                         ringWidth: 1.6,
                         trail: [],
-                        renderKind: SignalRenderKind.from(source: frame.source)
+                        renderKind: renderKind
                     )
                 )
-                seedPulse(id: key, color: style.color, strength: style.glow, source: source, now: now, renderKind: SignalRenderKind.from(source: frame.source), intensity: intensity)
+                seedPulse(
+                    id: key,
+                    color: typeColor,
+                    strength: style.glow,
+                    source: source,
+                    now: now,
+                    renderKind: renderKind,
+                    intensity: intensity
+                )
                 if let nodeID = source.lastNodeID, !nodeID.isEmpty, nodeID != "unknown" {
                     seedEdgePulse(
                         throttleKey: "\(key)|\(nodeID)|\(edgeLaneKey(for: frame))|in",
                         fromID: key,
                         toID: "node:\(nodeID)",
                         strength: frame.rssi,
-                        color: style.color,
-                        renderKind: SignalRenderKind.from(source: frame.source),
+                        color: typeColor,
+                        renderKind: renderKind,
                         now: now,
                         intensity: intensity
                     )
@@ -2296,13 +2433,20 @@ final class SignalFieldEngine: ObservableObject {
     }
 
     private func step(now: Date, timeScale: Double, decayRate: Double, isActive: Bool) {
-        let dt: Double
+        let rawDt: Double
         if let last = lastUpdate {
-            dt = min(0.033, now.timeIntervalSince(last)) * timeScale
+            rawDt = min(0.05, max(1.0 / 120.0, now.timeIntervalSince(last))) * timeScale
         } else {
-            dt = 0.016 * timeScale
+            rawDt = (1.0 / 60.0) * timeScale
         }
         lastUpdate = now
+        let clampedDt = max(1.0 / 240.0, min(0.05, rawDt))
+        if let previous = smoothedDeltaTime {
+            smoothedDeltaTime = previous + (clampedDt - previous) * 0.18
+        } else {
+            smoothedDeltaTime = clampedDt
+        }
+        let dt = smoothedDeltaTime ?? clampedDt
         let decay = max(0.2, min(2.2, decayRate))
         if isActive {
             applyAttraction()
@@ -2444,14 +2588,17 @@ final class SignalFieldEngine: ObservableObject {
             let start = Angle(radians: angle.radians - 0.08)
             let end = Angle(radians: angle.radians + 0.08)
             let dimmed = focusID != nil && focusID != frame.deviceID
-            let color = Color(
-                NSColor(
-                    calibratedHue: CGFloat(frame.color.h / 360.0),
-                    saturation: CGFloat(frame.color.s),
-                    brightness: CGFloat(frame.color.l),
-                    alpha: 1.0
-                )
+            let frameTint = NSColor(
+                calibratedHue: CGFloat(frame.color.h / 360.0),
+                saturation: CGFloat(frame.color.s),
+                brightness: CGFloat(frame.color.l),
+                alpha: 1.0
             )
+            let typeColor = SignalColor.renderKindAccent(
+                renderKind: SignalRenderKind.from(source: frame.source),
+                channel: "\(frame.channel)"
+            )
+            let color = Color(SignalColor.mix(typeColor, frameTint, ratio: 0.18))
             var path = Path()
             path.addArc(center: center, radius: radius, startAngle: start, endAngle: end, clockwise: false)
             let alpha = (dimmed ? 0.08 : 0.18) * activityFade
@@ -2478,12 +2625,26 @@ final class SignalFieldEngine: ObservableObject {
             let depthFade = depthFade(for: depth)
             let strength = source.lastStrength ?? -65
             let strengthNorm = clamp(((-strength) - 30.0) / 70.0)
+            let renderKind: SignalRenderKind = {
+                if let lastKind = source.lastKind, !lastKind.isEmpty {
+                    return SignalRenderKind.from(source: lastKind)
+                }
+                return SignalRenderKind.from(source: source.group)
+            }()
+            let typeColor = SignalColor.renderKindAccent(renderKind: renderKind, channel: source.lastChannel)
+            let deviceTint = SignalColor.deviceColor(id: source.id, saturation: 0.58, brightness: 0.94)
+            let typeFirstColor = SignalColor.mix(typeColor, deviceTint, ratio: 0.22)
             let glowScale = CGFloat(1.0 + strengthNorm * 0.55)
-            let glow = CGSize(width: 26 * depth * glowScale, height: 26 * depth * glowScale)
-            let core = CGSize(width: 10 * depth, height: 10 * depth)
+            let glow = CGSize(width: 34 * depth * glowScale, height: 34 * depth * glowScale)
+            let core = CGSize(width: 13.6 * depth, height: 13.6 * depth)
             let dimmed = focusID != nil && focusID != source.id
             let presentation = nodePresentations[source.id] ?? nodePresentations["node:\(source.id)"]
-            let displayColor = presentation?.displayColor ?? source.color
+            let displayColor: NSColor
+            if let presentationColor = presentation?.displayColor {
+                displayColor = SignalColor.mix(typeFirstColor, presentationColor, ratio: 0.28)
+            } else {
+                displayColor = typeFirstColor
+            }
             let isNodeSource = nodePresentations[source.id] != nil || nodePresentations["node:\(source.id)"] != nil || source.id.hasPrefix("node:")
             let coreTint: NSColor = {
                 if presentation?.isOffline == true { return displayColor }
@@ -2751,12 +2912,12 @@ final class SignalFieldEngine: ObservableObject {
                 let centerWeight = 1.0 - abs(t - 0.5) * 1.6
                 let fade = max(0.28, min(1.0, centerWeight))
                 let alpha = min(1.0, edge.alpha * Double(activityFade) * fade * focusScale * (0.68 + 1.05 * strengthBoost))
-                let size = max(1.2, edge.lineWidth * CGFloat(0.72 + normalizedRate * 0.52 + strengthBoost * 0.5))
+                let size = max(1.8, edge.lineWidth * CGFloat(1.02 + normalizedRate * 0.58 + strengthBoost * 0.58))
 
                 let brightPulse = SignalColor.mix(edge.typeColor, NSColor.white, ratio: 0.12 + 0.36 * strengthBoost)
                 let pulseColor = Color(brightPulse).opacity(alpha)
                 let glowColor = Color(edge.typeColor).opacity(alpha * (0.34 + 0.5 * strengthBoost))
-                let glowRadius = size * (2.8 + CGFloat(strengthBoost) * 1.2)
+                let glowRadius = size * (3.6 + CGFloat(strengthBoost) * 1.45)
                 context.fill(
                     Path(ellipseIn: CGRect(x: px - glowRadius, y: py - glowRadius, width: glowRadius * 2, height: glowRadius * 2)),
                     with: .color(glowColor)
@@ -2774,6 +2935,12 @@ final class SignalFieldEngine: ObservableObject {
                         with: .color(pulseColor)
                     )
                 }
+                let rimRect = CGRect(x: px - size, y: py - size, width: size * 2, height: size * 2)
+                context.stroke(
+                    Path(ellipseIn: rimRect),
+                    with: .color(Color.white.opacity(alpha * 0.16)),
+                    lineWidth: max(0.7, size * 0.28)
+                )
             }
 
             if edge.status == .error {
@@ -3085,7 +3252,19 @@ final class SignalFieldEngine: ObservableObject {
         if now.timeIntervalSince(ghostLastFlush) > intensity.ghostFlushInterval {
             ghostLastFlush = now
             for source in sources.values {
-                let color = nodePresentations[source.id]?.displayColor ?? source.color
+                let kind = source.lastKind ?? source.group
+                let renderKind = SignalRenderKind.from(source: kind)
+                let typedColor = SignalColor.typeFirstColor(
+                    renderKind: renderKind,
+                    deviceID: source.id,
+                    channel: source.lastChannel
+                )
+                let color: NSColor
+                if let presentationColor = nodePresentations[source.id]?.displayColor {
+                    color = SignalColor.mix(typedColor, presentationColor, ratio: 0.28)
+                } else {
+                    color = typedColor
+                }
                 ghostAccumulator.append(GhostPoint(sourceID: source.id, position: source.position, color: color, ts: now))
             }
             if ghostAccumulator.count > intensity.ghostCap {
@@ -3147,14 +3326,23 @@ final class SignalFieldEngine: ObservableObject {
                     let angle = Double(i) / Double(dots) * Double.pi * 2
                     let dx = cos(angle) * Double(radius)
                     let dy = sin(angle) * Double(radius)
-                    let dotRadius = max(1.2, 2.4 * depth)
+                    let dotRadius = max(1.8, 3.6 * depth)
                     let dotRect = CGRect(
                         x: center.x + CGFloat(dx) - dotRadius,
                         y: center.y + CGFloat(dy) - dotRadius,
                         width: dotRadius * 2,
                         height: dotRadius * 2
                     )
+                    let haloRadius = dotRadius * 1.9
+                    let haloRect = CGRect(
+                        x: center.x + CGFloat(dx) - haloRadius,
+                        y: center.y + CGFloat(dy) - haloRadius,
+                        width: haloRadius * 2,
+                        height: haloRadius * 2
+                    )
+                    context.fill(Path(ellipseIn: haloRect), with: .color(color.opacity(0.22)))
                     context.fill(Path(ellipseIn: dotRect), with: .color(color.opacity(0.8)))
+                    context.stroke(Path(ellipseIn: dotRect), with: .color(Color.white.opacity(strokeAlpha * 0.26)), lineWidth: max(0.8, dotRadius * 0.32))
                 }
             case .wifi:
                 context.stroke(Path(ellipseIn: rect), with: .color(color.opacity(0.85)), lineWidth: lineWidth)
@@ -3183,8 +3371,12 @@ final class SignalFieldEngine: ObservableObject {
     private var ghostLastFlush: Date = .distantPast
 
     private func seedPulse(id: String, source: SignalSource, event: NormalizedEvent, now: Date, intensity: SignalIntensity) {
-        let color = SignalColor.deviceColor(id: id)
         let renderKind = SignalRenderKind.from(event: event)
+        let color = SignalColor.typeFirstColor(
+            renderKind: renderKind,
+            deviceID: id,
+            channel: event.signal.channel
+        )
         seedPulse(id: id, color: color, strength: event.signal.strength == nil ? 0.5 : 0.8, source: source, now: now, renderKind: renderKind, intensity: intensity)
     }
 
@@ -3287,7 +3479,7 @@ final class SignalSource: Hashable {
     var lastKind: String?
     var lastChannel: String?
     var lastNodeID: String?
-    private let targetSmoothing: Double = 0.25
+    private let targetSmoothing: Double = 0.18
 
     init(id: String) {
         self.id = id
@@ -3343,10 +3535,10 @@ final class SignalSource: Hashable {
     }
 
     func step(dt: Double, isActive: Bool) {
-        let damping: Double = isActive ? 0.88 : 0.93
+        let damping: Double = isActive ? 0.9 : 0.95
         if isActive {
-            let swirl = SIMD3<Double>(-position.y, position.x, 0) * 0.05
-            let spring = SIMD3<Double>(repeating: 1.15)
+            let swirl = SIMD3<Double>(-position.y, position.x, 0) * 0.04
+            let spring = SIMD3<Double>(repeating: 1.08)
             let delta = target - position
             velocity += (delta * spring + swirl) * dt
         } else {
@@ -3450,7 +3642,7 @@ struct SignalParticle: Hashable {
 
         switch kind {
         case .spark:
-            let radius = CGFloat(baseSize) * depth * 0.08
+            let radius = max(1.4, CGFloat(baseSize) * depth * 0.12)
             let rect = CGRect(x: basePoint.x - radius / 2, y: basePoint.y - radius / 2, width: radius, height: radius)
             if glowStrength > 0.05 {
                 let glowRadius = radius * (1.6 + CGFloat(glowStrength) * 2.4)
@@ -3474,14 +3666,23 @@ struct SignalParticle: Hashable {
                     let angle = Double(i) / Double(dots) * Double.pi * 2
                     let dx = cos(angle) * Double(radius)
                     let dy = sin(angle) * Double(radius)
-                    let dotRadius = max(1.0, 2.2 * depth)
+                    let dotRadius = max(1.6, 3.2 * depth)
                     let dotRect = CGRect(
                         x: basePoint.x + CGFloat(dx) - dotRadius,
                         y: basePoint.y + CGFloat(dy) - dotRadius,
                         width: dotRadius * 2,
                         height: dotRadius * 2
                     )
+                    let haloRadius = dotRadius * 1.8
+                    let haloRect = CGRect(
+                        x: basePoint.x + CGFloat(dx) - haloRadius,
+                        y: basePoint.y + CGFloat(dy) - haloRadius,
+                        width: haloRadius * 2,
+                        height: haloRadius * 2
+                    )
+                    context.fill(Path(ellipseIn: haloRect), with: .color(drawColor.opacity(0.2)))
                     context.fill(Path(ellipseIn: dotRect), with: .color(drawColor.opacity(0.8)))
+                    context.stroke(Path(ellipseIn: dotRect), with: .color(Color.white.opacity(Double(alphaScale) * 0.24)), lineWidth: max(0.7, dotRadius * 0.26))
                 }
             case .wifi:
                 context.stroke(Path(ellipseIn: rect), with: .color(drawColor.opacity(0.7 + CGFloat(glowStrength) * 0.2)), lineWidth: lineWidth)
@@ -3740,12 +3941,19 @@ enum SignalEmitter {
         let energy = max(0.2, min(1.8, (abs(strength) / 90.0)))
         let style = SignalVisualStyle.from(event: event, now: now)
         let deviceID = event.deviceID ?? event.nodeID
-        let baseColor = SignalColor.deviceColor(id: deviceID, saturation: style.saturation, brightness: style.brightness)
+        let renderKind = SignalRenderKind.from(event: event)
+        let baseColor = SignalColor.typeFirstColor(
+            renderKind: renderKind,
+            deviceID: deviceID,
+            channel: event.signal.channel,
+            deviceBlend: 0.22,
+            saturation: style.saturation,
+            brightness: style.brightness
+        )
         // Particle density is a primary driver of perf *and* visual readability.
         // Keep it bounded; rely on glow/size for "strength" instead of sheer count.
         let count = min(9, Int(ceil(4.8 * intensity.multiplier * energy)))
         var particles: [SignalParticle] = []
-        let renderKind = SignalRenderKind.from(event: event)
 
         let isWifi = kind.contains("wifi") || kind.contains("net") || kind.contains("host")
         if kind.contains("ble") {
@@ -3856,7 +4064,10 @@ struct SignalVisualStyle: Hashable {
     let confidence: Double
 
     static func from(event: NormalizedEvent, now: Date) -> SignalVisualStyle {
-        let baseColor = SignalColor.kindAccent(kind: event.kind, channel: event.signal.channel)
+        let baseColor = SignalColor.renderKindAccent(
+            renderKind: SignalRenderKind.from(event: event),
+            channel: event.signal.channel
+        )
         let base = baseColor.usingColorSpace(.deviceRGB) ?? baseColor
         var hueValue: CGFloat = 0
         var satValue: CGFloat = 0
@@ -3948,6 +4159,50 @@ enum SignalColor {
             return NSColor(calibratedHue: 0.0, saturation: 0.95, brightness: 1.0, alpha: 1.0)
         }
         return NSColor(calibratedHue: 0.1, saturation: 0.75, brightness: 0.95, alpha: 1.0)
+    }
+
+    static func renderKindAccent(renderKind: SignalRenderKind, channel: String? = nil) -> NSColor {
+        switch renderKind {
+        case .ble:
+            return kindAccent(kind: "ble.seen", channel: channel)
+        case .wifi:
+            return kindAccent(kind: "wifi.status", channel: channel)
+        case .node:
+            return kindAccent(kind: "node.heartbeat", channel: channel)
+        case .tool:
+            return kindAccent(kind: "tool", channel: channel)
+        case .error:
+            return kindAccent(kind: "error", channel: channel)
+        case .generic:
+            return kindAccent(kind: "signal", channel: channel)
+        }
+    }
+
+    static func typeFirstColor(
+        renderKind: SignalRenderKind,
+        deviceID: String,
+        channel: String? = nil,
+        deviceBlend: Double = 0.22,
+        saturation: Double? = nil,
+        brightness: Double? = nil
+    ) -> NSColor {
+        let base = renderKindAccent(renderKind: renderKind, channel: channel)
+        let tint = deviceColor(id: deviceID, saturation: 0.62, brightness: 0.92)
+        let blended = mix(base, tint, ratio: deviceBlend)
+        return applyTone(blended, saturation: saturation, brightness: brightness)
+    }
+
+    private static func applyTone(_ color: NSColor, saturation: Double?, brightness: Double?) -> NSColor {
+        guard saturation != nil || brightness != nil else { return color }
+        let converted = color.usingColorSpace(.deviceRGB) ?? color
+        var hueValue: CGFloat = 0
+        var satValue: CGFloat = 0
+        var brightValue: CGFloat = 0
+        var alphaValue: CGFloat = 1
+        converted.getHue(&hueValue, saturation: &satValue, brightness: &brightValue, alpha: &alphaValue)
+        let sat = CGFloat(max(0.2, min(1.0, saturation ?? Double(satValue))))
+        let bright = CGFloat(max(0.2, min(1.0, brightness ?? Double(brightValue))))
+        return NSColor(calibratedHue: hueValue, saturation: sat, brightness: bright, alpha: alphaValue)
     }
 
     static func mix(_ base: NSColor, _ accent: NSColor, ratio: Double) -> NSColor {

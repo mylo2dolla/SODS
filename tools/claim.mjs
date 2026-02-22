@@ -3,8 +3,8 @@ import { spawnSync } from "node:child_process";
 import crypto from "node:crypto";
 
 const args = process.argv.slice(2);
-const auxHost = process.env.AUX_HOST || "pi-aux.local";
-const loggerHost = process.env.LOGGER_HOST || "pi-logger.local";
+const auxHost = process.env.AUX_HOST || process.env.SODS_AUX_HOST || process.env.SODS_DEFAULT_AUX_HOST || "192.168.8.114";
+const loggerHost = process.env.LOGGER_HOST || process.env.SODS_LOGGER_HOST || process.env.SODS_DEFAULT_LOGGER_HOST || "192.168.8.160";
 const opts = {
   port: "auto",
   board: "",

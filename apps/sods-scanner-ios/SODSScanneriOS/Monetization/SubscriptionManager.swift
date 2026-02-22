@@ -42,7 +42,7 @@ final class SubscriptionManager: ObservableObject {
         self.defaults = defaults
         #if DEBUG
         let persistedAdminEmail = defaults.string(forKey: Self.debugAdminEmailKey) ?? "letsdev23@icloud.com"
-        let normalizedAdminEmail = Self.normalizeEmail(persistedAdminEmail)
+        let normalizedAdminEmail = SubscriptionDecision.normalizeEmail(persistedAdminEmail)
         self.debugAdminEmail = normalizedAdminEmail
         self.debugAdminEmailMatched = Self.debugAdminAllowlist.contains(normalizedAdminEmail)
         self.debugProOverrideEnabled = defaults.bool(forKey: Self.debugOverrideKey)
@@ -57,34 +57,23 @@ final class SubscriptionManager: ObservableObject {
 
     func refreshEntitlement() async {
         #if DEBUG
-        let normalizedAdminEmail = Self.normalizeEmail(debugAdminEmail)
+        let normalizedAdminEmail = SubscriptionDecision.normalizeEmail(debugAdminEmail)
         if normalizedAdminEmail != debugAdminEmail {
             debugAdminEmail = normalizedAdminEmail
             defaults.set(normalizedAdminEmail, forKey: Self.debugAdminEmailKey)
         }
 
         debugAdminEmailMatched = Self.debugAdminAllowlist.contains(normalizedAdminEmail)
-        if debugAdminEmailMatched {
-            entitlement = SubscriptionEntitlement(
-                isPro: true,
-                source: .debugAdminAllowlist,
-                verifiedAt: Date(),
-                expiresAt: nil,
-                graceUntil: nil
-            )
-            statusMessage = "Debug admin Pro active for \(normalizedAdminEmail)."
-            return
-        }
-
-        if debugProOverrideEnabled {
-            entitlement = SubscriptionEntitlement(
-                isPro: true,
-                source: .debugOverride,
-                verifiedAt: Date(),
-                expiresAt: nil,
-                graceUntil: nil
-            )
-            statusMessage = "Debug Pro override active."
+        if let debugEntitlement = SubscriptionDecision.debugEntitlement(
+            now: Date(),
+            normalizedEmail: normalizedAdminEmail,
+            allowlist: Self.debugAdminAllowlist,
+            debugOverrideEnabled: debugProOverrideEnabled
+        ) {
+            entitlement = debugEntitlement
+            statusMessage = debugEntitlement.source == .debugAdminAllowlist
+                ? "Debug admin Pro active for \(normalizedAdminEmail)."
+                : "Debug Pro override active."
             return
         }
         #endif
@@ -124,7 +113,7 @@ final class SubscriptionManager: ObservableObject {
     }
 
     func setDebugAdminEmail(_ email: String) {
-        let normalized = Self.normalizeEmail(email)
+        let normalized = SubscriptionDecision.normalizeEmail(email)
         debugAdminEmail = normalized
         defaults.set(normalized, forKey: Self.debugAdminEmailKey)
         Task { @MainActor in
@@ -293,20 +282,17 @@ final class SubscriptionManager: ObservableObject {
             return nil
         }
 
-        let now = Date()
-        let graceUntil = payload.lastVerifiedAt.addingTimeInterval(graceWindow)
-        guard now <= graceUntil else {
+        guard let entitlement = SubscriptionDecision.cachedGraceEntitlement(
+            now: Date(),
+            lastVerifiedAt: payload.lastVerifiedAt,
+            expiresAt: payload.expiresAt,
+            graceWindow: graceWindow
+        ) else {
             cache.clear()
             return nil
         }
 
-        return SubscriptionEntitlement(
-            isPro: true,
-            source: .cachedGrace,
-            verifiedAt: payload.lastVerifiedAt,
-            expiresAt: payload.expiresAt,
-            graceUntil: graceUntil
-        )
+        return entitlement
     }
 
     private func periodLabel(for subscription: Product.SubscriptionInfo?) -> String {
@@ -355,9 +341,4 @@ final class SubscriptionManager: ObservableObject {
         }
     }
 
-    #if DEBUG
-    private static func normalizeEmail(_ email: String) -> String {
-        email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-    }
-    #endif
 }

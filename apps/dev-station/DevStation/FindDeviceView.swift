@@ -16,52 +16,55 @@ struct FindDeviceView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             ModalHeaderView(title: "Find Newly Flashed Device", onBack: nil, onClose: onClose)
+            ScrollView(.vertical, showsIndicators: true) {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Run a local scan to identify fresh devices, then bind one to a node record.")
+                        .font(.system(size: 12))
+                        .foregroundColor(Theme.textSecondary)
 
-            Text("Run a local scan to identify fresh devices, then bind one to a node record.")
-                .font(.system(size: 12))
-                .foregroundColor(Theme.textSecondary)
-
-            HStack(spacing: 8) {
-                TextField("Node ID (optional)", text: $nodeID)
-                    .textFieldStyle(.roundedBorder)
-                Button { runScan() } label: {
-                    if isRunning {
-                        ProgressView()
-                            .controlSize(.small)
-                    } else {
-                        Image(systemName: "magnifyingglass")
-                            .font(.system(size: 12, weight: .semibold))
+                    HStack(spacing: 8) {
+                        TextField("Node ID (optional)", text: $nodeID)
+                            .textFieldStyle(.roundedBorder)
+                        Button { runScan() } label: {
+                            if isRunning {
+                                ProgressView()
+                                    .controlSize(.small)
+                            } else {
+                                Image(systemName: "magnifyingglass")
+                                    .font(.system(size: 12, weight: .semibold))
+                            }
+                        }
+                        .buttonStyle(PrimaryActionButtonStyle())
+                        .disabled(isRunning)
+                        .help(isRunning ? "Scanning..." : "Run Scan")
+                        .accessibilityLabel(Text(isRunning ? "Scanning..." : "Run Scan"))
+                        Spacer()
                     }
-                }
-                .buttonStyle(PrimaryActionButtonStyle())
-                .disabled(isRunning)
-                .help(isRunning ? "Scanning..." : "Run Scan")
-                .accessibilityLabel(Text(isRunning ? "Scanning..." : "Run Scan"))
-                Spacer()
-            }
 
-            if let lastError {
-                Text(lastError)
-                    .font(.system(size: 11))
-                    .foregroundColor(.red)
-            }
+                    if let lastError {
+                        Text(lastError)
+                            .font(.system(size: 11))
+                            .foregroundColor(.red)
+                    }
 
-            if !statusText.isEmpty {
-                Text(statusText)
-                    .font(.system(size: 11))
-                    .foregroundColor(Theme.textSecondary)
-            }
+                    if !statusText.isEmpty {
+                        Text(statusText)
+                            .font(.system(size: 11))
+                            .foregroundColor(Theme.textSecondary)
+                    }
 
-            ScrollView {
-                VStack(alignment: .leading, spacing: 8) {
-                    ForEach(candidates) { candidate in
-                        candidateCard(candidate)
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 8) {
+                            ForEach(candidates) { candidate in
+                                candidateCard(candidate)
+                            }
+                        }
                     }
                 }
             }
         }
         .padding(16)
-        .frame(minWidth: 720, minHeight: 520)
+        .frame(minWidth: 520, minHeight: 360)
         .background(Theme.background)
         .foregroundColor(Theme.textPrimary)
         .onAppear {

@@ -30,132 +30,135 @@ struct RunbookRunnerView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             ModalHeaderView(title: runbook.name, onBack: nil, onClose: onClose)
-
-            if let desc = runbook.description {
-                Text(desc)
-                    .font(.system(size: 12))
-                    .foregroundColor(Theme.textSecondary)
-            }
-
-            HStack(spacing: 8) {
-                Button { runRunbook() } label: {
-                    if isRunning {
-                        ProgressView()
-                            .progressViewStyle(.circular)
-                            .controlSize(.small)
-                            .frame(width: 14, height: 14)
-                    } else {
-                        Image(systemName: "play.fill")
-                            .font(.system(size: 12, weight: .semibold))
+            ScrollView(.vertical, showsIndicators: true) {
+                VStack(alignment: .leading, spacing: 12) {
+                    if let desc = runbook.description {
+                        Text(desc)
+                            .font(.system(size: 12))
+                            .foregroundColor(Theme.textSecondary)
                     }
-                }
-                    .buttonStyle(PrimaryActionButtonStyle())
-                    .disabled(isRunning)
-                    .help(isRunning ? "Running..." : "Run")
-                    .accessibilityLabel(Text(isRunning ? "Running..." : "Run"))
-                Button { stopRunbook() } label: {
-                    Image(systemName: "stop.fill")
-                        .font(.system(size: 12, weight: .semibold))
-                }
-                    .buttonStyle(SecondaryActionButtonStyle())
-                    .disabled(!isRunning)
-                    .help("Stop")
-                    .accessibilityLabel(Text("Stop"))
-                Button { copyReport() } label: {
-                    Image(systemName: "doc.on.doc")
-                        .font(.system(size: 12, weight: .semibold))
-                }
-                    .buttonStyle(SecondaryActionButtonStyle())
-                    .help("Copy Report")
-                    .accessibilityLabel(Text("Copy Report"))
-                Spacer()
-            }
 
-            GroupBox("Input JSON") {
-                TextEditor(text: $inputJson)
-                    .font(.system(size: 11, design: .monospaced))
-                    .frame(minHeight: 90)
-            }
-            if let schema = runbook.inputSchema, !schema.isEmpty {
-                Text("Input schema: \(schema.keys.sorted().joined(separator: ", "))")
-                    .font(.system(size: 10))
-                    .foregroundColor(.secondary)
-            }
-
-            if let lastError {
-                Text(lastError)
-                    .font(.system(size: 11))
-                    .foregroundColor(.red)
-            }
-
-            GroupBox("Steps") {
-                VStack(alignment: .leading, spacing: 6) {
-                    ForEach(runbook.steps ?? []) { entry in
-                        if case .parallel(let group) = entry {
-                            Text("Parallel group")
-                                .font(.system(size: 11, weight: .semibold))
-                            ForEach(group.parallel) { step in
-                                stepRow(step)
+                    HStack(spacing: 8) {
+                        Button { runRunbook() } label: {
+                            if isRunning {
+                                ProgressView()
+                                    .progressViewStyle(.circular)
+                                    .controlSize(.small)
+                                    .frame(width: 14, height: 14)
+                            } else {
+                                Image(systemName: "play.fill")
+                                    .font(.system(size: 12, weight: .semibold))
                             }
-                        } else if case .single(let step) = entry {
-                            stepRow(step)
                         }
+                            .buttonStyle(PrimaryActionButtonStyle())
+                            .disabled(isRunning)
+                            .help(isRunning ? "Running..." : "Run")
+                            .accessibilityLabel(Text(isRunning ? "Running..." : "Run"))
+                        Button { stopRunbook() } label: {
+                            Image(systemName: "stop.fill")
+                                .font(.system(size: 12, weight: .semibold))
+                        }
+                            .buttonStyle(SecondaryActionButtonStyle())
+                            .disabled(!isRunning)
+                            .help("Stop")
+                            .accessibilityLabel(Text("Stop"))
+                        Button { copyReport() } label: {
+                            Image(systemName: "doc.on.doc")
+                                .font(.system(size: 12, weight: .semibold))
+                        }
+                            .buttonStyle(SecondaryActionButtonStyle())
+                            .help("Copy Report")
+                            .accessibilityLabel(Text("Copy Report"))
+                        Spacer()
                     }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(6)
-            }
 
-            ScrollView {
-                VStack(alignment: .leading, spacing: 8) {
-                    if let output {
-                        if let artifacts = output.artifacts, !artifacts.isEmpty {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("Artifacts")
-                                    .font(.system(size: 11, weight: .semibold))
-                                ForEach(artifacts) { artifact in
-                                    Text(artifact.filename)
-                                        .font(.system(size: 10, design: .monospaced))
-                                        .foregroundColor(.secondary)
+                    GroupBox("Input JSON") {
+                        TextEditor(text: $inputJson)
+                            .font(.system(size: 11, design: .monospaced))
+                            .frame(minHeight: 90)
+                    }
+                    if let schema = runbook.inputSchema, !schema.isEmpty {
+                        Text("Input schema: \(schema.keys.sorted().joined(separator: ", "))")
+                            .font(.system(size: 10))
+                            .foregroundColor(.secondary)
+                    }
+
+                    if let lastError {
+                        Text(lastError)
+                            .font(.system(size: 11))
+                            .foregroundColor(.red)
+                    }
+
+                    GroupBox("Steps") {
+                        VStack(alignment: .leading, spacing: 6) {
+                            ForEach(runbook.steps ?? []) { entry in
+                                if case .parallel(let group) = entry {
+                                    Text("Parallel group")
+                                        .font(.system(size: 11, weight: .semibold))
+                                    ForEach(group.parallel) { step in
+                                        stepRow(step)
+                                    }
+                                } else if case .single(let step) = entry {
+                                    stepRow(step)
                                 }
                             }
-                            .padding(8)
-                            .background(Theme.panel)
-                            .clipShape(RoundedRectangle(cornerRadius: 8))
                         }
-                        ForEach(output.results.keys.sorted(), id: \.self) { key in
-                            if let result = output.results[key] {
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text("\(key) • \(result.name) • \(result.ok ? "ok" : "err")")
-                                        .font(.system(size: 11, weight: .semibold))
-                                    Text(result.stdout)
-                                        .font(.system(size: 10, design: .monospaced))
-                                        .foregroundColor(Theme.textPrimary)
-                                    if let urls = result.urls, let first = urls.first, let url = URL(string: first) {
-                                        Button { onOpenViewer(url) } label: {
-                                            Image(systemName: "arrow.up.right.square")
-                                                .font(.system(size: 12, weight: .semibold))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(6)
+                    }
+
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 8) {
+                            if let output {
+                                if let artifacts = output.artifacts, !artifacts.isEmpty {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text("Artifacts")
+                                            .font(.system(size: 11, weight: .semibold))
+                                        ForEach(artifacts) { artifact in
+                                            Text(artifact.filename)
+                                                .font(.system(size: 10, design: .monospaced))
+                                                .foregroundColor(.secondary)
                                         }
-                                            .buttonStyle(SecondaryActionButtonStyle())
-                                            .help("Open Viewer")
-                                            .accessibilityLabel(Text("Open Viewer"))
+                                    }
+                                    .padding(8)
+                                    .background(Theme.panel)
+                                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                                }
+                                ForEach(output.results.keys.sorted(), id: \.self) { key in
+                                    if let result = output.results[key] {
+                                        VStack(alignment: .leading, spacing: 4) {
+                                            Text("\(key) • \(result.name) • \(result.ok ? "ok" : "err")")
+                                                .font(.system(size: 11, weight: .semibold))
+                                            Text(result.stdout)
+                                                .font(.system(size: 10, design: .monospaced))
+                                                .foregroundColor(Theme.textPrimary)
+                                            if let urls = result.urls, let first = urls.first, let url = URL(string: first) {
+                                                Button { onOpenViewer(url) } label: {
+                                                    Image(systemName: "arrow.up.right.square")
+                                                        .font(.system(size: 12, weight: .semibold))
+                                                }
+                                                    .buttonStyle(SecondaryActionButtonStyle())
+                                                    .help("Open Viewer")
+                                                    .accessibilityLabel(Text("Open Viewer"))
+                                            }
+                                        }
+                                        .padding(8)
+                                        .background(Theme.panelAlt)
+                                        .clipShape(RoundedRectangle(cornerRadius: 8))
                                     }
                                 }
-                                .padding(8)
-                                .background(Theme.panelAlt)
-                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                            } else {
+                                Text("No output yet.")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(.secondary)
                             }
                         }
-                    } else {
-                        Text("No output yet.")
-                            .font(.system(size: 11))
-                            .foregroundColor(.secondary)
                     }
                 }
             }
         }
         .padding(16)
-        .frame(minWidth: 760, minHeight: 560)
+        .frame(minWidth: 520, minHeight: 360)
         .background(Theme.background)
         .foregroundColor(Theme.textPrimary)
         .onDisappear { task?.cancel() }

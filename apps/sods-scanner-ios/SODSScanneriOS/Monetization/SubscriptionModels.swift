@@ -94,3 +94,62 @@ public enum RestoreResult: Sendable {
     case nothingToRestore
     case failed(message: String)
 }
+
+public enum SubscriptionDecision {
+    public static func normalizeEmail(_ value: String) -> String {
+        value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    }
+
+    public static func debugEntitlement(
+        now: Date,
+        normalizedEmail: String,
+        allowlist: Set<String>,
+        debugOverrideEnabled: Bool
+    ) -> SubscriptionEntitlement? {
+        if allowlist.contains(normalizedEmail) {
+            return SubscriptionEntitlement(
+                isPro: true,
+                source: .debugAdminAllowlist,
+                verifiedAt: now,
+                expiresAt: nil,
+                graceUntil: nil
+            )
+        }
+
+        if debugOverrideEnabled {
+            return SubscriptionEntitlement(
+                isPro: true,
+                source: .debugOverride,
+                verifiedAt: now,
+                expiresAt: nil,
+                graceUntil: nil
+            )
+        }
+
+        return nil
+    }
+
+    public static func cachedGraceEntitlement(
+        now: Date,
+        lastVerifiedAt: Date?,
+        expiresAt: Date?,
+        graceWindow: TimeInterval
+    ) -> SubscriptionEntitlement? {
+        guard let lastVerifiedAt else {
+            return nil
+        }
+
+        let graceUntil = lastVerifiedAt.addingTimeInterval(graceWindow)
+        guard now <= graceUntil else {
+            return nil
+        }
+
+        return SubscriptionEntitlement(
+            isPro: true,
+            source: .cachedGrace,
+            verifiedAt: lastVerifiedAt,
+            expiresAt: expiresAt,
+            graceUntil: graceUntil
+        )
+    }
+}

@@ -9,10 +9,32 @@ fail=0
 pass() { printf '[PASS] %s\n' "$1"; }
 fail_msg() { printf '[FAIL] %s\n' "$1"; fail=1; }
 
+SSH_OPTS=(
+  -o BatchMode=yes
+  -o ConnectTimeout=8
+  -o StrictHostKeyChecking=accept-new
+)
+
+ssh_exec() {
+  local target="$1"
+  shift
+  ssh "${SSH_OPTS[@]}" "$target" "$@"
+}
+
+resolve_ssh_target() {
+  local preferred="$1"
+  local fallback="$2"
+  if ssh_exec "$preferred" 'true' >/dev/null 2>&1; then
+    printf '%s' "$preferred"
+    return 0
+  fi
+  printf '%s' "$fallback"
+}
+
 check_remote_active() {
   local host="$1"
   local svc="$2"
-  ssh "$host" "sudo systemctl is-active '$svc' 2>/dev/null || true"
+  ssh_exec "$host" "sudo systemctl is-active '$svc' 2>/dev/null || true" || true
 }
 
 json_has_ok_true() {
@@ -30,8 +52,13 @@ PY
 
 echo "== C + D + F) Control Plane / Federation Path =="
 
+AUX_RUNTIME_SSH_TARGET="$(resolve_ssh_target "${AUX_SSH_TARGET:-pi@${AUX_HOST}}" "pi@${AUX_HOST}")"
+VAULT_RUNTIME_SSH_TARGET="$(resolve_ssh_target "${VAULT_SSH_TARGET:-pi@${LOGGER_HOST}}" "pi@${LOGGER_HOST}")"
+echo "using aux ssh target: $AUX_RUNTIME_SSH_TARGET"
+echo "using vault ssh target: $VAULT_RUNTIME_SSH_TARGET"
+
 for svc in strangelab-codegatchi-tunnel strangelab-token strangelab-god-gateway strangelab-ops-feed; do
-  status="$(check_remote_active "$AUX_SSH_TARGET" "$svc")"
+  status="$(check_remote_active "$AUX_RUNTIME_SSH_TARGET" "$svc")"
   if [[ "$status" == "active" ]]; then
     pass "${svc} active on aux"
   else
@@ -39,7 +66,7 @@ for svc in strangelab-codegatchi-tunnel strangelab-token strangelab-god-gateway 
   fi
 done
 
-vault_status="$(check_remote_active "$VAULT_SSH_TARGET" "strangelab-vault-ingest")"
+vault_status="$(check_remote_active "$VAULT_RUNTIME_SSH_TARGET" "strangelab-vault-ingest")"
 if [[ "$vault_status" == "active" ]]; then
   pass "strangelab-vault-ingest active on vault"
 else
@@ -52,11 +79,11 @@ else
   fail_msg "federation action contract validation failed"
 fi
 
-tunnel_code="$(ssh "$AUX_SSH_TARGET" "curl -sS -o /dev/null -w '%{http_code}' --max-time 8 '${FED_GATEWAY_HEALTH_URL}'" 2>/dev/null || true)"
+tunnel_code="$(ssh_exec "$AUX_RUNTIME_SSH_TARGET" "curl -sS -o /dev/null -w '%{http_code}' --max-time 8 '${FED_GATEWAY_HEALTH_URL}'" 2>/dev/null || true)"
 if [[ "$tunnel_code" == "401" ]]; then
   pass "codegatchi gateway reachable from aux tunnel (${FED_GATEWAY_HEALTH_URL}, auth required)"
 elif [[ "$tunnel_code" == "200" ]]; then
-  tunnel_rsp="$(ssh "$AUX_SSH_TARGET" "curl -fsS --max-time 8 '${FED_GATEWAY_HEALTH_URL}'" 2>/dev/null || true)"
+  tunnel_rsp="$(ssh_exec "$AUX_RUNTIME_SSH_TARGET" "curl -fsS --max-time 8 '${FED_GATEWAY_HEALTH_URL}'" 2>/dev/null || true)"
   if json_has_ok_true "$tunnel_rsp"; then
     pass "codegatchi gateway reachable from aux tunnel (${FED_GATEWAY_HEALTH_URL})"
   else

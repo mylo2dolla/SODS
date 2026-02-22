@@ -7,12 +7,13 @@ import { resolve, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { toolRegistryPaths, ToolEntry } from "./tool-registry.js";
 import { presetRegistryPaths } from "./presets.js";
+import { knowledgeEntityKeyFromAliasIdentifier } from "./knowledge.js";
 
 const args = process.argv.slice(2);
 const cmd = args[0] ?? "help";
 const env = process.env;
 const defaultPort = env.SODS_PORT || "9123";
-const auxHost = env.AUX_HOST || "pi-aux.local";
+const auxHost = env.AUX_HOST || env.SODS_AUX_HOST || env.SODS_DEFAULT_AUX_HOST || "192.168.8.114";
 const loggerHost = env.LOGGER_HOST || "pi-logger.local";
 const fallbackPiLoggerList = `http://${auxHost}:9101`;
 const defaultPiLoggerList = env.PI_LOGGER_URL || env.PI_LOGGER || fallbackPiLoggerList;
@@ -64,6 +65,10 @@ Defaults:
   --port ${defaultPort}
   --station ${defaultStationURL}
   --logger ${defaultLoggerURL}
+
+Default resolution:
+  pi-logger: PI_LOGGER_URL | PI_LOGGER, else http://${auxHost}:9101
+  station: SODS_STATION_URL | SODS_BASE_URL | SODS_STATION | STATION_URL, else http://localhost:${defaultPort}
 `);
   process.exit(exitCode);
 }
@@ -153,6 +158,21 @@ type RawEvent = {
   data_json?: any;
 };
 
+type KnowledgeResolvedField = {
+  entity_key: string;
+  field: string;
+  value: unknown;
+  source: string;
+  confidence: number;
+  updated_at_ms: number;
+  auto_use: boolean;
+};
+
+type KnowledgeResolveResponse = {
+  results?: KnowledgeResolvedField[];
+  by_field?: Record<string, KnowledgeResolvedField>;
+};
+
 async function httpJson(path: string) {
   const url = `${stationURL()}${path}`;
   const res = await fetch(url);
@@ -168,6 +188,37 @@ async function httpPost(path: string, payload: any) {
     throw new Error(`HTTP ${res.status}: ${text}`);
   }
   return res.json();
+}
+
+async function resolveKnowledge(keys: string[], fields: string[]): Promise<KnowledgeResolveResponse | null> {
+  const normalizedKeys = keys.map((item) => item.trim()).filter(Boolean);
+  if (!normalizedKeys.length) return null;
+  const normalizedFields = fields.map((item) => item.trim()).filter(Boolean);
+  const query = new URLSearchParams({
+    keys: normalizedKeys.join(","),
+    fields: normalizedFields.join(","),
+  });
+  try {
+    return await httpJson(`/api/knowledge/resolve?${query.toString()}`) as KnowledgeResolveResponse;
+  } catch {
+    return null;
+  }
+}
+
+function resolvedKnowledgeField(response: KnowledgeResolveResponse | null, field: string): KnowledgeResolvedField | null {
+  if (!response) return null;
+  const byField = response.by_field ?? {};
+  if (byField[field]) return byField[field];
+  const list = response.results ?? [];
+  return list.find((item) => item.field === field) ?? null;
+}
+
+function fieldString(response: KnowledgeResolveResponse | null, field: string): string | undefined {
+  const entry = resolvedKnowledgeField(response, field);
+  if (!entry || typeof entry.value !== "string" || !entry.value.trim()) {
+    return undefined;
+  }
+  return entry.value.trim();
 }
 
 function isStationExplicit() {
@@ -228,8 +279,13 @@ async function cmdWhereis() {
   const nodeId = positional(1);
   if (!nodeId) return usage(1);
   const limit = Number(getArg("--limit", "200"));
-  const events = await fetchEvents(nodeId, limit);
-  events.sort((a, b) => eventTime(b) - eventTime(a));
+  let events: RawEvent[] = [];
+  try {
+    events = await fetchEvents(nodeId, limit);
+    events.sort((a, b) => eventTime(b) - eventTime(a));
+  } catch {
+    events = [];
+  }
   const preferredKinds = new Set(["wifi.status", "node.announce"]);
 
   let match: RawEvent | undefined;
@@ -250,18 +306,36 @@ async function cmdWhereis() {
     }
   }
 
-  if (!match || !ip) {
-    console.error("Node IP not found in recent events");
+  let knowledgeAlias: string | undefined;
+  let knowledgeLastSeenISO: string | undefined;
+  if (!ip) {
+    const response = await resolveKnowledge(
+      [`node:${nodeId}`, nodeId],
+      ["ip", "hostname", "display_label", "last_seen_ms"]
+    );
+    const resolvedIP = resolvedKnowledgeField(response, "ip");
+    if (resolvedIP && resolvedIP.auto_use && typeof resolvedIP.value === "string" && resolvedIP.value.trim()) {
+      ip = resolvedIP.value.trim();
+    }
+    knowledgeAlias = fieldString(response, "display_label");
+    const lastSeen = resolvedKnowledgeField(response, "last_seen_ms");
+    if (lastSeen && typeof lastSeen.value === "number" && Number.isFinite(lastSeen.value)) {
+      knowledgeLastSeenISO = new Date(lastSeen.value).toISOString();
+    }
+  }
+
+  if (!ip) {
+    console.error("Node IP not found in recent events or shared knowledge");
     process.exit(2);
   }
 
   const aliases = await fetchAliases();
-  const alias = resolveAlias(aliases, nodeId, ip, parseJsonMaybe(match.data_json));
-  const seenAt = new Date(eventTime(match)).toISOString();
+  const alias = knowledgeAlias ?? resolveAlias(aliases, nodeId, ip, parseJsonMaybe(match?.data_json));
+  const seenAt = match ? new Date(eventTime(match)).toISOString() : (knowledgeLastSeenISO ?? "unknown");
   console.log(`node_id:   ${nodeId}`);
   if (alias) console.log(`alias:     ${alias}`);
   console.log(`ip:        ${ip}`);
-  console.log(`kind:      ${match.kind ?? "?"}`);
+  console.log(`kind:      ${match?.kind ?? "knowledge.resolve"}`);
   console.log(`last_seen: ${seenAt}`);
 }
 
@@ -269,8 +343,13 @@ async function cmdOpen() {
   const nodeId = positional(1);
   if (!nodeId) return usage(1);
   const limit = Number(getArg("--limit", "200"));
-  const events = await fetchEvents(nodeId, limit);
-  events.sort((a, b) => eventTime(b) - eventTime(a));
+  let events: RawEvent[] = [];
+  try {
+    events = await fetchEvents(nodeId, limit);
+    events.sort((a, b) => eventTime(b) - eventTime(a));
+  } catch {
+    events = [];
+  }
 
   let ip: string | undefined;
   let data: any = {};
@@ -280,20 +359,53 @@ async function cmdOpen() {
     if (ip) break;
   }
 
+  let knowledgeURL: string | undefined;
+  let knowledgeAlias: string | undefined;
   if (!ip) {
-    console.error("Node IP not found in recent events");
+    const response = await resolveKnowledge(
+      [`node:${nodeId}`, nodeId],
+      ["ip", "display_label", "http_url"]
+    );
+    const resolvedIP = resolvedKnowledgeField(response, "ip");
+    if (resolvedIP && resolvedIP.auto_use && typeof resolvedIP.value === "string" && resolvedIP.value.trim()) {
+      ip = resolvedIP.value.trim();
+    }
+    const resolvedHTTP = resolvedKnowledgeField(response, "http_url");
+    if (resolvedHTTP && resolvedHTTP.auto_use && typeof resolvedHTTP.value === "string" && resolvedHTTP.value.trim()) {
+      knowledgeURL = resolvedHTTP.value.trim();
+      if (!ip) {
+        try {
+          const parsed = new URL(knowledgeURL);
+          if (parsed.hostname) ip = parsed.hostname;
+        } catch {
+          // ignore invalid URL
+        }
+      }
+    }
+    knowledgeAlias = fieldString(response, "display_label");
+  }
+
+  if (!ip) {
+    console.error("Node IP not found in recent events or shared knowledge");
     process.exit(2);
   }
 
   const aliases = await fetchAliases();
-  const alias = resolveAlias(aliases, nodeId, ip, data);
+  const alias = knowledgeAlias ?? resolveAlias(aliases, nodeId, ip, data);
   if (alias) {
     console.log(`alias: ${alias}`);
   }
-  const urls = [`http://${ip}/health`, `http://${ip}/metrics`, `http://${ip}/whoami`];
-  for (const url of urls) {
+  const urls = [
+    ...(knowledgeURL ? [knowledgeURL] : []),
+    `http://${ip}/health`,
+    `http://${ip}/metrics`,
+    `http://${ip}/whoami`,
+  ];
+  const uniqueURLs = Array.from(new Set(urls));
+  const shouldOpenBrowser = process.platform === "darwin" && process.env.SODS_DISABLE_OPEN !== "1";
+  for (const url of uniqueURLs) {
     console.log(url);
-    if (process.platform === "darwin") spawn("open", [url], { stdio: "ignore", detached: true }).unref();
+    if (shouldOpenBrowser) spawn("open", [url], { stdio: "ignore", detached: true }).unref();
   }
 }
 
@@ -509,6 +621,7 @@ async function cmdAliasEdit(action: "set" | "delete") {
     body: JSON.stringify(payload),
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  await mirrorAliasMutationToKnowledge(id, action === "set" ? alias : undefined);
   console.log("ok");
 }
 
@@ -536,8 +649,40 @@ async function cmdAliasImport() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
+    await mirrorAliasMutationToKnowledge(id, String(alias));
   }
   console.log("ok");
+}
+
+async function mirrorAliasMutationToKnowledge(id: string, alias?: string) {
+  const station = stationURL();
+  const entityKey = knowledgeEntityKeyFromAliasIdentifier(id);
+  const body = alias
+    ? {
+      upserts: [{
+        entity_key: entityKey,
+        field: "display_label",
+        value: alias,
+        source: "manual.override",
+        confidence: 100,
+        updated_at_ms: Date.now(),
+      }],
+    }
+    : {
+      deletes: [{
+        entity_key: entityKey,
+        field: "display_label",
+      }],
+    };
+  try {
+    await fetch(`${station}/api/knowledge/upsert`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+  } catch {
+    // best-effort mirror
+  }
 }
 
 async function readStdin(): Promise<string> {

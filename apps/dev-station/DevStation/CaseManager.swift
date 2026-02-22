@@ -1,5 +1,6 @@
 import Foundation
 import AppKit
+import ScannerSpectrumCore
 
 struct CaseIndex: Codable, Identifiable, Hashable {
     let id: String
@@ -77,7 +78,7 @@ final class CaseManager: ObservableObject {
         let references = collectBLEReferences(fingerprintID: fingerprintID, log: log)
         copyReferences(references, to: caseDir, log: log)
 
-        let confidence = bleScanner.peripherals.first(where: { $0.fingerprintID == fingerprintID })?.bleConfidence ?? BLEConfidence(score: 0, level: .low, reasons: [])
+        let confidence = bleScanner.peripherals.first(where: { $0.fingerprintID == fingerprintID })?.bleConfidence ?? ScannerSpectrumCore.BLEConfidence(score: 0, level: .low, reasons: [])
         let now = ISO8601DateFormatter().string(from: Date())
         let index = CaseIndex(
             id: targetID,

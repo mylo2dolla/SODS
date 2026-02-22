@@ -8,6 +8,17 @@
 	<string>com.strangelab.sods</string>
 	<key>CFBundleName</key>
 	<string>Strange Ops Dev Station</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.strangelab.sods.devstation</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>devstation</string>
+			</array>
+		</dict>
+	</array>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>

@@ -6,6 +6,7 @@ struct SODSApp: App {
     @MainActor
     init() {
         _ = BLEScanner.shared
+        BLEScanner.configureDevStationLogging()
         Task.detached {
             await OUIStore.shared.loadPreferredIfNeeded(log: LogStore.shared)
         }
@@ -15,6 +16,7 @@ struct SODSApp: App {
         WindowGroup {
             ContentView()
         }
+        .defaultSize(width: 1280, height: 840)
         .commands {
             CommandMenu("Nodes") {
                 Button {

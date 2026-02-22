@@ -15,6 +15,21 @@ import { runScriptTool, runScratch, RunResult as ToolRunResult } from "./tool-ru
 import { runPreset } from "./preset-runner.js";
 import { runRunbook } from "./runbook-runner.js";
 import { toolRegistryPaths } from "./tool-registry.js";
+import {
+  deleteKnowledgeFacts,
+  importAliasMapsIntoKnowledge,
+  knowledgeEntity,
+  knowledgeEntityKeyFromAliasIdentifier,
+  knowledgeEntityKeyForIP,
+  knowledgeEntityKeyForNode,
+  loadKnowledgeSnapshot,
+  resolveKnowledge,
+  type KnowledgeDelete,
+  type KnowledgeField,
+  type KnowledgeSource,
+  type KnowledgeUpsert,
+  upsertKnowledgeFacts,
+} from "./knowledge.js";
 
 type ServerOptions = {
   port: number;
@@ -45,6 +60,10 @@ const CORE_NODE_DEFAULTS: Record<CoreNodeId, { hostname: string; confidence: num
 };
 
 const CORE_NODE_IDS = Object.keys(CORE_NODE_DEFAULTS) as CoreNodeId[];
+const DEFAULT_AUX_HOST = process.env.SODS_DEFAULT_AUX_HOST || "192.168.8.114";
+const DEFAULT_LOGGER_HOST = process.env.SODS_DEFAULT_LOGGER_HOST || "192.168.8.160";
+const AUX_HOST_FOR_HEALTH = process.env.AUX_HOST || process.env.SODS_AUX_HOST || DEFAULT_AUX_HOST;
+const LOGGER_HOST_FOR_HEALTH = process.env.VAULT_HOST || process.env.LOGGER_HOST || process.env.SODS_LOGGER_HOST || DEFAULT_LOGGER_HOST;
 
 function readMsEnv(name: string, fallback: number) {
   const raw = process.env[name];
@@ -59,6 +78,7 @@ export class SODSServer {
   private lastEvent?: CanonicalEvent;
   private eventBuffer: CanonicalEvent[] = [];
   private lastFrames: SignalFrame[] = [];
+  private framesOut = 0;
   private lastError: string | null = null;
   private lastIngestAt = 0;
   private nodePresence = new Map<string, { state: string; lastError?: string; updatedAt: number }>();
@@ -75,12 +95,13 @@ export class SODSServer {
   private lastAuxHealthSuccessAt = 0;
   private lastVaultHealthSuccessAt = 0;
   private lastCodegatchiHealthSuccessAt = 0;
+  private lastKnowledgeMirrorAt = 0;
   private readonly coreHealthFreshMs = readMsEnv("SODS_CORE_HEALTH_FRESH_MS", 90_000);
   private readonly fleetHintFreshMs = readMsEnv("SODS_FLEET_HINT_FRESH_MS", 300_000);
   private readonly fleetStatusPath = process.env.SODS_FLEET_STATUS_PATH ?? join(os.homedir(), "Library", "Logs", "SODS", "control-plane-status.json");
   private readonly codegatchiHealthURL = process.env.SODS_CODEGATCHI_HEALTH_URL ?? "http://127.0.0.1:9777/v1/health";
-  private readonly auxHealthURL = process.env.GOD_HEALTH_URL ?? "http://pi-aux.local:8099/health";
-  private readonly vaultHealthURL = process.env.VAULT_HEALTH_URL ?? "http://pi-logger.local:8088/health";
+  private readonly auxHealthURL = process.env.GOD_HEALTH_URL ?? `http://${AUX_HOST_FOR_HEALTH}:8099/health`;
+  private readonly vaultHealthURL = process.env.VAULT_HEALTH_URL ?? `http://${LOGGER_HOST_FOR_HEALTH}:8088/health`;
 
   constructor(private options: ServerOptions) {
     this.ingestor = new Ingestor(options.piLoggerBase, 500, 1400);
@@ -92,6 +113,11 @@ export class SODSServer {
       } catch {
         this.localLogStream = undefined;
       }
+    }
+    try {
+      importAliasMapsIntoKnowledge();
+    } catch {
+      // knowledge import is best-effort
     }
   }
 
@@ -123,7 +149,8 @@ export class SODSServer {
 
     this.ingestor.start(
       (ev) => this.handleEvent(ev),
-      (msg) => { this.lastError = msg; }
+      (msg) => { this.lastError = msg; },
+      () => { this.lastError = null; }
     );
 
     this.frameTimer = setInterval(() => this.emitFrames(), 1000 / 30);
@@ -155,6 +182,7 @@ export class SODSServer {
     const frames = this.frameEngine.tick();
     if (frames.length === 0) return;
     this.lastFrames = frames;
+    this.framesOut += frames.length;
     const payload = JSON.stringify({ t: nowMs(), frames });
     for (const ws of this.frameClients) {
       ws.send(payload);
@@ -166,6 +194,15 @@ export class SODSServer {
     if (url.pathname === "/api/status") {
       void this.handleStatus(res);
       return;
+    }
+    if (url.pathname === "/api/knowledge/resolve" && req.method === "GET") {
+      return this.handleKnowledgeResolve(url, res);
+    }
+    if (url.pathname === "/api/knowledge/upsert" && req.method === "POST") {
+      return this.handleKnowledgeUpsert(req, res);
+    }
+    if (url.pathname === "/api/knowledge/entity" && req.method === "GET") {
+      return this.handleKnowledgeEntity(url, res);
     }
     if (url.pathname === "/api/portal/state") {
       void this.handlePortalState(req, res);
@@ -241,7 +278,7 @@ export class SODSServer {
       const payload = {
         events_in: counters.events_in,
         events_bad_json: counters.events_bad_json,
-        frames_out: counters.events_out,
+        frames_out: this.framesOut,
         nodes_seen: counters.nodes_seen,
         tools: listTools().length,
       };
@@ -410,6 +447,160 @@ export class SODSServer {
     return this.serveStatic(res, url.pathname.slice(1));
   }
 
+  private handleKnowledgeResolve(url: URL, res: http.ServerResponse) {
+    const keysRaw = String(url.searchParams.get("keys") ?? "");
+    const fieldsRaw = String(url.searchParams.get("fields") ?? "");
+    const keys = keysRaw
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean);
+    const fields = this.parseKnowledgeFields(fieldsRaw);
+    const resolved = resolveKnowledge(keys, fields, { requireAutoUse: false });
+    return this.respondJson(res, {
+      results: resolved.results,
+      by_field: resolved.by_field,
+      auto_use_confidence_threshold: 50,
+    });
+  }
+
+  private handleKnowledgeEntity(url: URL, res: http.ServerResponse) {
+    const key = String(url.searchParams.get("key") ?? "").trim();
+    if (!key) {
+      res.writeHead(400);
+      res.end("missing key");
+      return;
+    }
+    const entity = knowledgeEntity(key);
+    if (!entity) {
+      return this.respondJson(res, { entity: null });
+    }
+    return this.respondJson(res, { entity });
+  }
+
+  private handleKnowledgeUpsert(req: http.IncomingMessage, res: http.ServerResponse) {
+    if (!this.isLocalRequest(req)) {
+      res.writeHead(403);
+      res.end("knowledge writes allowed only on localhost station");
+      return;
+    }
+    let body = "";
+    req.on("data", (chunk) => body += chunk);
+    req.on("end", () => {
+      try {
+        const payload = body ? JSON.parse(body) : {};
+        const rawUpserts = Array.isArray(payload.upserts) ? payload.upserts : [];
+        const rawDeletes = Array.isArray(payload.deletes) ? payload.deletes : [];
+
+        const upserts: KnowledgeUpsert[] = [];
+        for (const item of rawUpserts) {
+          if (!item || typeof item !== "object") continue;
+          const entityKey = String((item as any).entity_key ?? "").trim();
+          const field = String((item as any).field ?? "").trim();
+          const source = String((item as any).source ?? "event.derived").trim();
+          if (!entityKey || !this.isKnowledgeField(field) || !this.isKnowledgeSource(source)) continue;
+          upserts.push({
+            entity_key: entityKey,
+            field: field as KnowledgeField,
+            value: (item as any).value,
+            source: source as KnowledgeSource,
+            confidence: Number((item as any).confidence ?? 0),
+            updated_at_ms: Number((item as any).updated_at_ms ?? 0),
+          });
+        }
+
+        const deletes: KnowledgeDelete[] = [];
+        for (const item of rawDeletes) {
+          if (!item || typeof item !== "object") continue;
+          const entityKey = String((item as any).entity_key ?? "").trim();
+          const field = String((item as any).field ?? "").trim();
+          if (!entityKey || !this.isKnowledgeField(field)) continue;
+          deletes.push({
+            entity_key: entityKey,
+            field: field as KnowledgeField,
+          });
+        }
+
+        if (upserts.length) {
+          upsertKnowledgeFacts(upserts);
+        }
+        if (deletes.length) {
+          deleteKnowledgeFacts(deletes);
+        }
+
+        const snapshot = loadKnowledgeSnapshot();
+        this.respondJson(res, {
+          ok: true,
+          revision: snapshot.revision,
+          upserted: upserts.length,
+          deleted: deletes.length,
+        });
+      } catch (err: any) {
+        res.writeHead(400);
+        res.end(err?.message ?? "knowledge upsert error");
+      }
+    });
+  }
+
+  private parseKnowledgeFields(rawCSV: string): KnowledgeField[] {
+    const fields = rawCSV
+      .split(",")
+      .map((item) => item.trim())
+      .filter((item): item is KnowledgeField => this.isKnowledgeField(item));
+    if (fields.length > 0) {
+      return fields;
+    }
+    return [
+      "display_label",
+      "hostname",
+      "ip",
+      "mac",
+      "vendor",
+      "vendor_confidence_score",
+      "open_ports",
+      "http_url",
+      "rtsp_uri",
+      "onvif_xaddr",
+      "node_id",
+      "ble_company",
+      "last_seen_ms",
+    ];
+  }
+
+  private isKnowledgeField(value: string): value is KnowledgeField {
+    return [
+      "display_label",
+      "hostname",
+      "ip",
+      "mac",
+      "vendor",
+      "vendor_confidence_score",
+      "open_ports",
+      "http_url",
+      "rtsp_uri",
+      "onvif_xaddr",
+      "node_id",
+      "ble_company",
+      "last_seen_ms",
+    ].includes(value);
+  }
+
+  private isKnowledgeSource(value: string): value is KnowledgeSource {
+    return [
+      "manual.override",
+      "user.credential",
+      "probe.onvif",
+      "probe.rtsp",
+      "scan.network.live",
+      "scan.ble.live",
+      "station.registry",
+      "station.alias",
+      "export.snapshot",
+      "evidence.payload",
+      "audit.log",
+      "event.derived",
+    ].includes(value);
+  }
+
   private respondJson(res: http.ServerResponse, payload: any) {
     const body = JSON.stringify(payload);
     res.writeHead(200, {
@@ -515,6 +706,8 @@ export class SODSServer {
     const logger = await this.fetchLoggerHealth();
     const hints = await this.computeCorePresenceHints(logger);
     const presence = this.buildNodePresence(hints);
+    this.mirrorRecentEventKnowledge();
+    this.upsertPresenceKnowledge(presence.items);
     const station = {
       ok: true,
       uptime_ms: Math.floor(process.uptime() * 1000),
@@ -566,6 +759,7 @@ export class SODSServer {
 
     const aliases: Record<string, string> = { ...this.readAliases() };
     const recent = this.eventBuffer.slice(-300);
+    this.mirrorRecentEventKnowledge(recent);
     for (const ev of recent) {
       const data = ev.data ?? {};
       const deviceId = String((data as any).device_id ?? (data as any).deviceId ?? (data as any).device ?? (data as any).addr ?? (data as any).address ?? (data as any).mac ?? (data as any).mac_address ?? (data as any).bssid ?? ev.node_id ?? "");
@@ -627,6 +821,220 @@ export class SODSServer {
     };
 
     this.respondJson(res, payload);
+  }
+
+  private mirrorRecentEventKnowledge(events: CanonicalEvent[] = this.eventBuffer.slice(-300)) {
+    const now = nowMs();
+    if (now - this.lastKnowledgeMirrorAt < 5_000) {
+      return;
+    }
+    this.lastKnowledgeMirrorAt = now;
+
+    const upserts: KnowledgeUpsert[] = [];
+
+    for (const ev of events) {
+      const data = ev.data ?? {};
+      const nodeID = String(ev.node_id ?? "").trim();
+      const ip = String((data as any).ip ?? (data as any).ip_addr ?? (data as any).ip_address ?? "").trim();
+      const hostname = String((data as any).hostname ?? (data as any).host ?? "").trim();
+      const ssid = String((data as any).ssid ?? "").trim();
+      const deviceID = String((data as any).device_id ?? (data as any).deviceId ?? (data as any).device ?? (data as any).addr ?? (data as any).address ?? (data as any).mac ?? (data as any).mac_address ?? (data as any).bssid ?? "").trim();
+      const alias = hostname || ssid || ip;
+      const eventMS = Number.isFinite(Date.parse(ev.event_ts)) ? Date.parse(ev.event_ts) : now;
+
+      if (nodeID) {
+        const nodeKey = knowledgeEntityKeyForNode(nodeID);
+        upserts.push({
+          entity_key: nodeKey,
+          field: "node_id",
+          value: nodeID,
+          source: "event.derived",
+          confidence: 40,
+          updated_at_ms: eventMS,
+        });
+        upserts.push({
+          entity_key: nodeKey,
+          field: "last_seen_ms",
+          value: eventMS,
+          source: "event.derived",
+          confidence: 100,
+          updated_at_ms: eventMS,
+        });
+        if (hostname) {
+          upserts.push({
+            entity_key: nodeKey,
+            field: "hostname",
+            value: hostname,
+            source: "event.derived",
+            confidence: 45,
+            updated_at_ms: eventMS,
+          });
+        }
+        if (ip) {
+          upserts.push({
+            entity_key: nodeKey,
+            field: "ip",
+            value: ip,
+            source: "event.derived",
+            confidence: 45,
+            updated_at_ms: eventMS,
+          });
+        }
+        if (alias) {
+          upserts.push({
+            entity_key: nodeKey,
+            field: "display_label",
+            value: alias,
+            source: "event.derived",
+            confidence: 45,
+            updated_at_ms: eventMS,
+          });
+        }
+      }
+
+      if (ip) {
+        const ipKey = knowledgeEntityKeyForIP(ip);
+        upserts.push({
+          entity_key: ipKey,
+          field: "ip",
+          value: ip,
+          source: "event.derived",
+          confidence: 45,
+          updated_at_ms: eventMS,
+        });
+        upserts.push({
+          entity_key: ipKey,
+          field: "last_seen_ms",
+          value: eventMS,
+          source: "event.derived",
+          confidence: 100,
+          updated_at_ms: eventMS,
+        });
+        if (hostname) {
+          upserts.push({
+            entity_key: ipKey,
+            field: "hostname",
+            value: hostname,
+            source: "event.derived",
+            confidence: 45,
+            updated_at_ms: eventMS,
+          });
+        }
+        if (nodeID) {
+          upserts.push({
+            entity_key: ipKey,
+            field: "node_id",
+            value: nodeID,
+            source: "event.derived",
+            confidence: 45,
+            updated_at_ms: eventMS,
+          });
+        }
+      }
+
+      if (deviceID && alias) {
+        const entityKey = knowledgeEntityKeyFromAliasIdentifier(deviceID);
+        upserts.push({
+          entity_key: entityKey,
+          field: "display_label",
+          value: alias,
+          source: "event.derived",
+          confidence: 45,
+          updated_at_ms: eventMS,
+        });
+      }
+    }
+
+    if (upserts.length) {
+      try {
+        upsertKnowledgeFacts(upserts);
+      } catch {
+        // best-effort mirror
+      }
+    }
+  }
+
+  private upsertPresenceKnowledge(items: any[]) {
+    if (!Array.isArray(items) || items.length === 0) {
+      return;
+    }
+
+    const now = nowMs();
+    const upserts: KnowledgeUpsert[] = [];
+
+    for (const item of items) {
+      const nodeID = String(item?.node_id ?? item?.nodeID ?? "").trim();
+      if (!nodeID) continue;
+
+      const entityKey = knowledgeEntityKeyForNode(nodeID);
+      const ip = String(item?.ip ?? "").trim();
+      const hostname = String(item?.hostname ?? "").trim();
+      const lastSeen = Number(item?.last_seen ?? now);
+      const lastSeenMS = Number.isFinite(lastSeen) ? Math.round(lastSeen) : now;
+
+      upserts.push({
+        entity_key: entityKey,
+        field: "node_id",
+        value: nodeID,
+        source: "station.registry",
+        confidence: 90,
+        updated_at_ms: now,
+      });
+      upserts.push({
+        entity_key: entityKey,
+        field: "last_seen_ms",
+        value: lastSeenMS,
+        source: "station.registry",
+        confidence: 100,
+        updated_at_ms: now,
+      });
+
+      if (hostname) {
+        upserts.push({
+          entity_key: entityKey,
+          field: "hostname",
+          value: hostname,
+          source: "station.registry",
+          confidence: 80,
+          updated_at_ms: now,
+        });
+        upserts.push({
+          entity_key: entityKey,
+          field: "display_label",
+          value: hostname,
+          source: "station.alias",
+          confidence: 70,
+          updated_at_ms: now,
+        });
+      }
+
+      if (ip) {
+        upserts.push({
+          entity_key: entityKey,
+          field: "ip",
+          value: ip,
+          source: "station.registry",
+          confidence: 85,
+          updated_at_ms: now,
+        });
+        upserts.push({
+          entity_key: knowledgeEntityKeyForIP(ip),
+          field: "node_id",
+          value: nodeID,
+          source: "station.registry",
+          confidence: 85,
+          updated_at_ms: now,
+        });
+      }
+    }
+
+    if (upserts.length) {
+      try {
+        upsertKnowledgeFacts(upserts);
+      } catch {
+        // best-effort mirror
+      }
+    }
   }
 
   private buildFramesSummary() {
@@ -1431,6 +1839,19 @@ export class SODSServer {
           current[id] = alias;
         }
         this.writeAliases(userPath, current);
+        const entityKey = knowledgeEntityKeyFromAliasIdentifier(id);
+        if (action === "delete") {
+          deleteKnowledgeFacts([{ entity_key: entityKey, field: "display_label" }]);
+        } else if (alias) {
+          upsertKnowledgeFacts([{
+            entity_key: entityKey,
+            field: "display_label",
+            value: alias,
+            source: "manual.override",
+            confidence: 100,
+            updated_at_ms: nowMs(),
+          }]);
+        }
         res.end("ok");
       } catch (err: any) {
         res.writeHead(400);

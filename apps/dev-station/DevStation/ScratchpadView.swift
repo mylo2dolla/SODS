@@ -15,75 +15,78 @@ struct ScratchpadView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             ModalHeaderView(title: "Scratchpad", onBack: nil, onClose: onClose)
+            ScrollView(.vertical, showsIndicators: true) {
+                VStack(alignment: .leading, spacing: 12) {
+                    Picker("Runner", selection: $runner) {
+                        Text("shell").tag("shell")
+                        Text("python").tag("python")
+                        Text("node").tag("node")
+                    }
+                    .pickerStyle(.segmented)
 
-            Picker("Runner", selection: $runner) {
-                Text("shell").tag("shell")
-                Text("python").tag("python")
-                Text("node").tag("node")
-            }
-            .pickerStyle(.segmented)
+                    Text("Input (JSON)")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                    TextEditor(text: $inputJson)
+                        .font(.system(size: 11, design: .monospaced))
+                        .frame(height: 80)
+                        .overlay(RoundedRectangle(cornerRadius: 8).stroke(Theme.border, lineWidth: 1))
 
-            Text("Input (JSON)")
-                .font(.system(size: 11))
-                .foregroundColor(.secondary)
-            TextEditor(text: $inputJson)
-                .font(.system(size: 11, design: .monospaced))
-                .frame(height: 80)
-                .overlay(RoundedRectangle(cornerRadius: 8).stroke(Theme.border, lineWidth: 1))
+                    Text("Script")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                    TextEditor(text: $script)
+                        .font(.system(size: 11, design: .monospaced))
+                        .frame(height: 160)
+                        .overlay(RoundedRectangle(cornerRadius: 8).stroke(Theme.border, lineWidth: 1))
 
-            Text("Script")
-                .font(.system(size: 11))
-                .foregroundColor(.secondary)
-            TextEditor(text: $script)
-                .font(.system(size: 11, design: .monospaced))
-                .frame(height: 160)
-                .overlay(RoundedRectangle(cornerRadius: 8).stroke(Theme.border, lineWidth: 1))
+                    HStack(spacing: 10) {
+                        Button { runScratch() } label: {
+                            if isRunning {
+                                ProgressView()
+                                    .progressViewStyle(.circular)
+                                    .controlSize(.small)
+                                    .frame(width: 14, height: 14)
+                            } else {
+                                Image(systemName: "play.fill")
+                                    .font(.system(size: 12, weight: .semibold))
+                            }
+                        }
+                            .buttonStyle(PrimaryActionButtonStyle())
+                            .disabled(isRunning)
+                            .help(isRunning ? "Running..." : "Run")
+                            .accessibilityLabel(Text(isRunning ? "Running..." : "Run"))
+                        Button {
+                            onSaveAsTool(runner, script)
+                        } label: {
+                            Image(systemName: "tray.and.arrow.down")
+                                .font(.system(size: 12, weight: .semibold))
+                        }
+                        .buttonStyle(SecondaryActionButtonStyle())
+                        .help("Save as Tool")
+                        .accessibilityLabel(Text("Save as Tool"))
+                    }
 
-            HStack(spacing: 10) {
-                Button { runScratch() } label: {
-                    if isRunning {
-                        ProgressView()
-                            .progressViewStyle(.circular)
-                            .controlSize(.small)
-                            .frame(width: 14, height: 14)
-                    } else {
-                        Image(systemName: "play.fill")
-                            .font(.system(size: 12, weight: .semibold))
+                    if let lastError {
+                        Text(lastError)
+                            .font(.system(size: 11))
+                            .foregroundColor(.red)
+                    }
+
+                    ScrollView {
+                        Text(outputText.isEmpty ? "No output yet." : outputText)
+                            .font(.system(size: 11, design: .monospaced))
+                            .foregroundColor(Theme.textPrimary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(10)
+                            .background(Theme.panelAlt)
+                            .clipShape(RoundedRectangle(cornerRadius: 10))
                     }
                 }
-                    .buttonStyle(PrimaryActionButtonStyle())
-                    .disabled(isRunning)
-                    .help(isRunning ? "Running..." : "Run")
-                    .accessibilityLabel(Text(isRunning ? "Running..." : "Run"))
-                Button {
-                    onSaveAsTool(runner, script)
-                } label: {
-                    Image(systemName: "tray.and.arrow.down")
-                        .font(.system(size: 12, weight: .semibold))
-                }
-                .buttonStyle(SecondaryActionButtonStyle())
-                .help("Save as Tool")
-                .accessibilityLabel(Text("Save as Tool"))
-            }
-
-            if let lastError {
-                Text(lastError)
-                    .font(.system(size: 11))
-                    .foregroundColor(.red)
-            }
-
-            ScrollView {
-                Text(outputText.isEmpty ? "No output yet." : outputText)
-                    .font(.system(size: 11, design: .monospaced))
-                    .foregroundColor(Theme.textPrimary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(10)
-                    .background(Theme.panelAlt)
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
             }
         }
         .padding(16)
-        .frame(minWidth: 720, minHeight: 520)
+        .frame(minWidth: 520, minHeight: 360)
         .background(Theme.background)
         .foregroundColor(Theme.textPrimary)
     }

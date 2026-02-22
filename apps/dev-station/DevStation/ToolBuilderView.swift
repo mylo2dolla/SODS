@@ -20,83 +20,86 @@ struct ToolBuilderView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             ModalHeaderView(title: "Tool Builder", onBack: nil, onClose: onClose)
+            ScrollView(.vertical, showsIndicators: true) {
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(spacing: 10) {
+                        TextField("Name", text: $name)
+                            .textFieldStyle(.roundedBorder)
+                        TextField("Title", text: $title)
+                            .textFieldStyle(.roundedBorder)
+                    }
+                    TextField("Description", text: $description)
+                        .textFieldStyle(.roundedBorder)
 
-            HStack(spacing: 10) {
-                TextField("Name", text: $name)
-                    .textFieldStyle(.roundedBorder)
-                TextField("Title", text: $title)
-                    .textFieldStyle(.roundedBorder)
-            }
-            TextField("Description", text: $description)
-                .textFieldStyle(.roundedBorder)
+                    HStack(spacing: 10) {
+                        Picker("Runner", selection: $runner) {
+                            Text("shell").tag("shell")
+                            Text("python").tag("python")
+                            Text("node").tag("node")
+                        }
+                        .pickerStyle(.segmented)
+                        Picker("Kind", selection: $kind) {
+                            Text("inspect").tag("inspect")
+                            Text("action").tag("action")
+                            Text("report").tag("report")
+                        }
+                        .pickerStyle(.segmented)
+                        TextField("Timeout ms (optional)", text: $timeoutMs)
+                            .textFieldStyle(.roundedBorder)
+                    }
 
-            HStack(spacing: 10) {
-                Picker("Runner", selection: $runner) {
-                    Text("shell").tag("shell")
-                    Text("python").tag("python")
-                    Text("node").tag("node")
-                }
-                .pickerStyle(.segmented)
-                Picker("Kind", selection: $kind) {
-                    Text("inspect").tag("inspect")
-                    Text("action").tag("action")
-                    Text("report").tag("report")
-                }
-                .pickerStyle(.segmented)
-                TextField("Timeout ms (optional)", text: $timeoutMs)
-                    .textFieldStyle(.roundedBorder)
-            }
+                    TextField("Tags (comma-separated)", text: $tags)
+                        .textFieldStyle(.roundedBorder)
 
-            TextField("Tags (comma-separated)", text: $tags)
-                .textFieldStyle(.roundedBorder)
+                    Text("Input Schema (JSON)")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                    TextEditor(text: $inputSchema)
+                        .font(.system(size: 11, design: .monospaced))
+                        .frame(height: 100)
+                        .overlay(RoundedRectangle(cornerRadius: 8).stroke(Theme.border, lineWidth: 1))
 
-            Text("Input Schema (JSON)")
-                .font(.system(size: 11))
-                .foregroundColor(.secondary)
-            TextEditor(text: $inputSchema)
-                .font(.system(size: 11, design: .monospaced))
-                .frame(height: 100)
-                .overlay(RoundedRectangle(cornerRadius: 8).stroke(Theme.border, lineWidth: 1))
+                    TextField("Output format (text|json|url|ndjson)", text: $outputFormat)
+                        .textFieldStyle(.roundedBorder)
 
-            TextField("Output format (text|json|url|ndjson)", text: $outputFormat)
-                .textFieldStyle(.roundedBorder)
+                    Text("Script")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                    TextEditor(text: $script)
+                        .font(.system(size: 11, design: .monospaced))
+                        .frame(height: 160)
+                        .overlay(RoundedRectangle(cornerRadius: 8).stroke(Theme.border, lineWidth: 1))
 
-            Text("Script")
-                .font(.system(size: 11))
-                .foregroundColor(.secondary)
-            TextEditor(text: $script)
-                .font(.system(size: 11, design: .monospaced))
-                .frame(height: 160)
-                .overlay(RoundedRectangle(cornerRadius: 8).stroke(Theme.border, lineWidth: 1))
+                    if let lastError {
+                        Text(lastError)
+                            .font(.system(size: 11))
+                            .foregroundColor(.red)
+                    }
 
-            if let lastError {
-                Text(lastError)
-                    .font(.system(size: 11))
-                    .foregroundColor(.red)
-            }
-
-            HStack(spacing: 10) {
-                Text("Save Tool")
-                    .font(.system(size: 11))
-                    .foregroundColor(.secondary)
-                Spacer()
-                Button { saveTool() } label: {
-                    if isSaving {
-                        ProgressView()
-                            .controlSize(.small)
-                    } else {
-                        Image(systemName: "square.and.arrow.down")
-                            .font(.system(size: 12, weight: .semibold))
+                    HStack(spacing: 10) {
+                        Text("Save Tool")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                        Spacer()
+                        Button { saveTool() } label: {
+                            if isSaving {
+                                ProgressView()
+                                    .controlSize(.small)
+                            } else {
+                                Image(systemName: "square.and.arrow.down")
+                                    .font(.system(size: 12, weight: .semibold))
+                            }
+                        }
+                        .buttonStyle(PrimaryActionButtonStyle())
+                        .disabled(isSaving)
+                        .help(isSaving ? "Saving..." : "Save Tool")
+                        .accessibilityLabel(Text(isSaving ? "Saving..." : "Save Tool"))
                     }
                 }
-                .buttonStyle(PrimaryActionButtonStyle())
-                .disabled(isSaving)
-                .help(isSaving ? "Saving..." : "Save Tool")
-                .accessibilityLabel(Text(isSaving ? "Saving..." : "Save Tool"))
             }
         }
         .padding(16)
-        .frame(minWidth: 720, minHeight: 520)
+        .frame(minWidth: 520, minHeight: 360)
         .background(Theme.background)
         .foregroundColor(Theme.textPrimary)
     }

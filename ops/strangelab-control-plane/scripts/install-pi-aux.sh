@@ -35,15 +35,23 @@ sudo cp "$ROOT_DIR/services/systemd/strangelab-ops-feed.service" /etc/systemd/sy
 sudo cp "$ROOT_DIR/services/systemd/strangelab-codegatchi-tunnel.service" /etc/systemd/system/strangelab-codegatchi-tunnel.service
 
 sudo mkdir -p /etc/strangelab
+default_tunnel_host="${FED_TUNNEL_HOST:-letsdev@192.168.8.214}"
+default_logger_host="${LOGGER_HOST:-192.168.8.160}"
+default_remote_host="${REMOTE_HOST:-pi@${default_logger_host}}"
 cat <<ENV | sudo tee /etc/strangelab/codegatchi-tunnel.env >/dev/null
-FED_TUNNEL_HOST=${FED_TUNNEL_HOST:-${MAC16_SSH:-letsdev@mac16.local}}
+FED_TUNNEL_HOST=$default_tunnel_host
 FED_TUNNEL_LOCAL_PORT=${FED_TUNNEL_LOCAL_PORT:-9777}
 FED_TUNNEL_REMOTE_PORT=${FED_TUNNEL_REMOTE_PORT:-9777}
 ENV
 
+cat <<ENV | sudo tee /etc/strangelab/ops-feed.env >/dev/null
+REMOTE_HOST=$default_remote_host
+LOGGER_HOST=$default_logger_host
+ENV
+
 federation_bearer="${FED_GATEWAY_BEARER:-}"
 if [[ -z "$federation_bearer" ]]; then
-  federation_bearer="$(ssh -o BatchMode=yes -o ConnectTimeout=8 "${FED_TUNNEL_HOST:-mac16}" 'security find-generic-password -s com.dev.codegatchi.gateway -a codegatchi.gateway.token.v1 -w' 2>/dev/null || true)"
+  federation_bearer="$(ssh -o BatchMode=yes -o ConnectTimeout=8 "$default_tunnel_host" 'security find-generic-password -s com.dev.codegatchi.gateway -a codegatchi.gateway.token.v1 -w' 2>/dev/null || true)"
 fi
 if [[ -n "$federation_bearer" ]]; then
   {

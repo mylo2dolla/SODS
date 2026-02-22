@@ -37,75 +37,78 @@ struct PresetRunnerView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             ModalHeaderView(title: preset.name, onBack: nil, onClose: onClose)
-
-            if let desc = preset.description {
-                Text(desc)
-                    .font(.system(size: 12))
-                    .foregroundColor(Theme.textSecondary)
-            }
-
-            HStack(spacing: 10) {
-                Text("Run Preset")
-                    .font(.system(size: 11))
-                    .foregroundColor(.secondary)
-                Spacer()
-                Button { runPreset() } label: {
-                    if isRunning {
-                        ProgressView()
-                            .controlSize(.small)
-                    } else {
-                        Image(systemName: "play.circle")
-                            .font(.system(size: 12, weight: .semibold))
+            ScrollView(.vertical, showsIndicators: true) {
+                VStack(alignment: .leading, spacing: 12) {
+                    if let desc = preset.description {
+                        Text(desc)
+                            .font(.system(size: 12))
+                            .foregroundColor(Theme.textSecondary)
                     }
-                }
-                .buttonStyle(PrimaryActionButtonStyle())
-                .disabled(isRunning)
-                .help(isRunning ? "Running..." : "Run Preset")
-                .accessibilityLabel(Text(isRunning ? "Running..." : "Run Preset"))
-            }
 
-            if let lastError {
-                Text(lastError)
-                    .font(.system(size: 11))
-                    .foregroundColor(.red)
-            }
-
-            ScrollView {
-                VStack(alignment: .leading, spacing: 8) {
-                    if let output {
-                        ForEach(output.results.keys.sorted(), id: \.self) { key in
-                            if let result = output.results[key] {
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text("\(key) • \(result.name) • \(result.ok ? "ok" : "err")")
-                                        .font(.system(size: 11, weight: .semibold))
-                                    Text(result.stdout)
-                                        .font(.system(size: 10, design: .monospaced))
-                                        .foregroundColor(Theme.textPrimary)
-                                    if let urls = result.urls, let first = urls.first, let url = URL(string: first) {
-                                        Button { onOpenViewer(url) } label: {
-                                            Image(systemName: "arrow.up.right.square")
-                                                .font(.system(size: 12, weight: .semibold))
-                                        }
-                                            .buttonStyle(SecondaryActionButtonStyle())
-                                            .help("Open Viewer")
-                                            .accessibilityLabel(Text("Open Viewer"))
-                                    }
-                                }
-                                .padding(8)
-                                .background(Theme.panelAlt)
-                                .clipShape(RoundedRectangle(cornerRadius: 8))
-                            }
-                        }
-                    } else {
-                        Text("No output yet.")
+                    HStack(spacing: 10) {
+                        Text("Run Preset")
                             .font(.system(size: 11))
                             .foregroundColor(.secondary)
+                        Spacer()
+                        Button { runPreset() } label: {
+                            if isRunning {
+                                ProgressView()
+                                    .controlSize(.small)
+                            } else {
+                                Image(systemName: "play.circle")
+                                    .font(.system(size: 12, weight: .semibold))
+                            }
+                        }
+                        .buttonStyle(PrimaryActionButtonStyle())
+                        .disabled(isRunning)
+                        .help(isRunning ? "Running..." : "Run Preset")
+                        .accessibilityLabel(Text(isRunning ? "Running..." : "Run Preset"))
+                    }
+
+                    if let lastError {
+                        Text(lastError)
+                            .font(.system(size: 11))
+                            .foregroundColor(.red)
+                    }
+
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 8) {
+                            if let output {
+                                ForEach(output.results.keys.sorted(), id: \.self) { key in
+                                    if let result = output.results[key] {
+                                        VStack(alignment: .leading, spacing: 4) {
+                                            Text("\(key) • \(result.name) • \(result.ok ? "ok" : "err")")
+                                                .font(.system(size: 11, weight: .semibold))
+                                            Text(result.stdout)
+                                                .font(.system(size: 10, design: .monospaced))
+                                                .foregroundColor(Theme.textPrimary)
+                                            if let urls = result.urls, let first = urls.first, let url = URL(string: first) {
+                                                Button { onOpenViewer(url) } label: {
+                                                    Image(systemName: "arrow.up.right.square")
+                                                        .font(.system(size: 12, weight: .semibold))
+                                                }
+                                                    .buttonStyle(SecondaryActionButtonStyle())
+                                                    .help("Open Viewer")
+                                                    .accessibilityLabel(Text("Open Viewer"))
+                                            }
+                                        }
+                                        .padding(8)
+                                        .background(Theme.panelAlt)
+                                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                                    }
+                                }
+                            } else {
+                                Text("No output yet.")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(.secondary)
+                            }
+                        }
                     }
                 }
             }
         }
         .padding(16)
-        .frame(minWidth: 720, minHeight: 520)
+        .frame(minWidth: 520, minHeight: 360)
         .background(Theme.background)
         .foregroundColor(Theme.textPrimary)
     }

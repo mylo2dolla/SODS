@@ -1,6 +1,6 @@
 # Bluetooth SIG Service UUIDs
 # Source: https://bitbucket.org/bluetooth-SIG/public/raw/HEAD/assigned_numbers/uuids/service_uuids.yaml
-# Updated: 2026-02-05
+# Updated: 2026-02-16
 0x1800 GAP
 0x1801 GATT
 0x1802 Immediate Alert

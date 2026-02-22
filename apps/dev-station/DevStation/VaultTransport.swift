@@ -24,7 +24,7 @@ final class VaultTransport: ObservableObject {
 
     private init() {
         let defaults = UserDefaults.standard
-        host = StationEndpointResolver.defaultVaultHost()
+        host = StationEndpointResolver.defaultVaultHost(defaults: defaults)
         user = defaults.string(forKey: "VaultUser") ?? "pi"
         let savedDestination = defaults.string(forKey: "VaultDestPath")?.trimmingCharacters(in: .whitespacesAndNewlines)
         if let savedDestination, !savedDestination.isEmpty, savedDestination != "/var/sods/vault/sods/" {
@@ -52,6 +52,17 @@ final class VaultTransport: ObservableObject {
     }
 
     func shipPending(log: LogStore) async {
+        let hostPreflight = validateHostPreflight()
+        guard hostPreflight.ok else {
+            await MainActor.run {
+                self.queuedCount = 0
+                self.lastShipResult = hostPreflight.result
+                self.lastShipDetail = hostPreflight.detail
+            }
+            log.log(.error, "Vault ship preflight failed: \(hostPreflight.result) \(hostPreflight.detail)")
+            return
+        }
+
         let outbox = ArtifactStore.outboxURL()
         let files = listFiles(in: outbox)
         let baseDestination = normalizeRemotePath(destinationPath)
@@ -70,7 +81,8 @@ final class VaultTransport: ObservableObject {
                 let base = ensureRemoteDir(path: baseDestination)
                 let retry = ensureRemoteDir(path: baseDest)
                 if !(base.success && retry.success) {
-                    let detail = [ensure.stderr, base.stderr, retry.stderr].filter { !$0.isEmpty }.joined(separator: " | ")
+                    let rawDetail = [ensure.stderr, base.stderr, retry.stderr].filter { !$0.isEmpty }.joined(separator: " | ")
+                    let detail = appendHostResolutionHintIfNeeded(to: rawDetail)
                     log.log(.error, "Vault ship error: failed to create \(baseDest) \(detail)")
                     await MainActor.run {
                         self.lastShipResult = "Error creating remote dir: \(baseDest)"
@@ -94,7 +106,12 @@ final class VaultTransport: ObservableObject {
             } else {
                 let detail = send.stderr.trimmingCharacters(in: .whitespacesAndNewlines)
                 let message = "Ship failed: \(remotePath)"
-                let hint = "Suggested fix: ensure the directory exists and is writable. Example: ssh \(user)@\(host) \"mkdir -p \\\"\(baseDest)\\\" && chmod u+rwX \\\"\(baseDest)\\\"\""
+                let hint = [
+                    hostResolutionHintIfNeeded(from: detail),
+                    "Suggested fix: ensure the directory exists and is writable. Example: ssh \(user)@\(host) \"mkdir -p \\\"\(baseDest)\\\" && chmod u+rwX \\\"\(baseDest)\\\"\""
+                ]
+                .compactMap { $0 }
+                .joined(separator: "\n")
                 log.log(.error, "Vault ship error: \(file.url.path)\(detail.isEmpty ? "" : " (\(detail))")")
                 await MainActor.run {
                     self.lastShipResult = message
@@ -102,6 +119,46 @@ final class VaultTransport: ObservableObject {
                 }
             }
         }
+    }
+
+    private func validateHostPreflight() -> (ok: Bool, result: String, detail: String) {
+        let trimmedHost = host.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmedHost.isEmpty {
+            return (
+                false,
+                "Vault host is empty.",
+                "Set Vault host to 192.168.8.160 (pi-logger) or a resolvable DNS/hosts alias."
+            )
+        }
+        if !StationEndpointResolver.isResolvableHost(trimmedHost) {
+            return (
+                false,
+                "Vault host '\(trimmedHost)' is not resolvable.",
+                "Set Vault host to 192.168.8.160 (pi-logger) or a resolvable DNS/hosts alias."
+            )
+        }
+        return (true, "", "")
+    }
+
+    private func appendHostResolutionHintIfNeeded(to detail: String) -> String {
+        guard let hint = hostResolutionHintIfNeeded(from: detail) else {
+            return detail
+        }
+        if detail.isEmpty {
+            return hint
+        }
+        return "\(detail)\n\(hint)"
+    }
+
+    private func hostResolutionHintIfNeeded(from stderr: String) -> String? {
+        let lowered = stderr.lowercased()
+        if lowered.contains("could not resolve hostname")
+            || lowered.contains("nodename nor servname provided")
+            || lowered.contains("name or service not known")
+        {
+            return "Host '\(host)' did not resolve. Set Vault host to 192.168.8.160 (pi-logger) or fix DNS/hosts."
+        }
+        return nil
     }
 
     private func listFiles(in dir: URL) -> [FileEntry] {

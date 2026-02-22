@@ -1,14 +1,14 @@
 # Codebase issue task proposals
 
 ## 1) Typo fix task
-**Task:** Rename `projectoverveiw.txt` to `projectoverview.txt` (or migrate its content into a canonical markdown doc in `docs/`) and update any scripts/docs that reference the old path.
+**Task:** Rename the misspelled project overview filename to `projectoverview.txt` (or migrate its content into a canonical markdown doc in `docs/`) and update any scripts/docs that reference the old path.
 
 **Why:** The file name contains a spelling typo (`overveiw`), which makes search/discovery harder and propagates inconsistent naming in the repo.
 
 **Acceptance criteria:**
 - File is renamed to a correctly spelled path.
-- Any references to `projectoverveiw.txt` are updated.
-- `rg -n "projectoverveiw"` returns no matches (except historical changelog context, if intentionally retained).
+- Any references to the misspelled filename are updated.
+- Repo search returns no references to the misspelled filename.
 
 ## 2) Bug fix task
 **Task:** Fix `/metrics` so `frames_out` reports actual emitted frames instead of reusing event counters.

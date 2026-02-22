@@ -1,6 +1,6 @@
 # Bluetooth SIG Assigned Numbers (Services, Characteristics, Descriptors)
 # Source: https://bitbucket.org/bluetooth-SIG/public/raw/HEAD/assigned_numbers/uuids/service_uuids.yaml, https://bitbucket.org/bluetooth-SIG/public/raw/HEAD/assigned_numbers/uuids/characteristic_uuids.yaml, https://bitbucket.org/bluetooth-SIG/public/raw/HEAD/assigned_numbers/uuids/descriptors.yaml
-# Updated: 2026-02-05
+# Updated: 2026-02-16
 0x1800 service GAP
 0x1801 service GATT
 0x1802 service Immediate Alert
@@ -76,6 +76,30 @@
 0x185D service Cookware
 0x185E service Voice Assistant
 0x185F service Generic Voice Assistant
+0x2900 descriptor Characteristic Extended Properties
+0x2901 descriptor Characteristic User Description
+0x2902 descriptor Client Characteristic Configuration
+0x2903 descriptor Server Characteristic Configuration
+0x2904 descriptor Characteristic Presentation Format
+0x2905 descriptor Characteristic Aggregate Format
+0x2906 descriptor Valid Range
+0x2907 descriptor External Report Reference
+0x2908 descriptor Report Reference
+0x2909 descriptor Number of Digitals
+0x290A descriptor Value Trigger Setting
+0x290B descriptor Environmental Sensing Configuration
+0x290C descriptor Environmental Sensing Measurement
+0x290D descriptor Environmental Sensing Trigger Setting
+0x290E descriptor Time Trigger Setting
+0x290F descriptor Complete BR-EDR Transport Block Data
+0x2910 descriptor Observation Schedule
+0x2911 descriptor Valid Range and Accuracy
+0x2912 descriptor Measurement Description
+0x2913 descriptor Manufacturer Limits
+0x2914 descriptor Process Tolerances
+0x2915 descriptor IMD Trigger Setting
+0x2916 descriptor Cooking Sensor Info
+0x2917 descriptor Cooking Trigger Setting
 0x2A00 characteristic Device Name
 0x2A01 characteristic Appearance
 0x2A02 characteristic Peripheral Privacy Flag
@@ -409,7 +433,7 @@
 0x2B89 characteristic Apparent Energy 32
 0x2B8A characteristic Apparent Power
 0x2B8B characteristic Live Health Observations
-0x2B8C characteristic CO\\textsubscript{2} Concentration
+0x2B8C characteristic CO\textsubscript{2} Concentration
 0x2B8D characteristic Cosine of the Angle
 0x2B8E characteristic Device Time Feature
 0x2B8F characteristic Device Time Parameters
@@ -578,27 +602,3 @@
 0x2C36 characteristic Voice Assistant Session Flag
 0x2C37 characteristic Voice Assistant Supported Languages
 0x2C38 characteristic Voice Assistant Supported Features
-0x2900 descriptor Characteristic Extended Properties
-0x2901 descriptor Characteristic User Description
-0x2902 descriptor Client Characteristic Configuration
-0x2903 descriptor Server Characteristic Configuration
-0x2904 descriptor Characteristic Presentation Format
-0x2905 descriptor Characteristic Aggregate Format
-0x2906 descriptor Valid Range
-0x2907 descriptor External Report Reference
-0x2908 descriptor Report Reference
-0x2909 descriptor Number of Digitals
-0x290A descriptor Value Trigger Setting
-0x290B descriptor Environmental Sensing Configuration
-0x290C descriptor Environmental Sensing Measurement
-0x290D descriptor Environmental Sensing Trigger Setting
-0x290E descriptor Time Trigger Setting
-0x290F descriptor Complete BR-EDR Transport Block Data
-0x2910 descriptor Observation Schedule
-0x2911 descriptor Valid Range and Accuracy
-0x2912 descriptor Measurement Description
-0x2913 descriptor Manufacturer Limits
-0x2914 descriptor Process Tolerances
-0x2915 descriptor IMD Trigger Setting
-0x2916 descriptor Cooking Sensor Info
-0x2917 descriptor Cooking Trigger Setting

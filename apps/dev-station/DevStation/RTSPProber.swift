@@ -1,17 +1,9 @@
 @preconcurrency import Foundation
 @preconcurrency import Dispatch
 import Network
+import ScannerSpectrumCore
 
-struct RTSPProbeResult: Identifiable, Hashable {
-    let id = UUID()
-    let uri: String
-    let statusCode: Int?
-    let server: String?
-    let hasVideo: Bool
-    let codecHints: [String]
-    let success: Bool
-    let error: String?
-}
+typealias RTSPProbeResult = ScannerSpectrumCore.RTSPProbeResult
 
 enum RTSPProber {
     private static let candidates: [String] = [

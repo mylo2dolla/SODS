@@ -43,11 +43,11 @@ TOTAL_TARGETS=0
 OK_TARGETS=0
 REACHABLE_TARGETS=0
 
-TOKEN_CHECK_URL="${TOKEN_URL:-http://${AUX_HOST:-pi-aux.local}:9123/token}"
-TOKEN_HEALTH_CHECK_URL="${TOKEN_HEALTH_URL:-http://${AUX_HOST:-pi-aux.local}:9123/health}"
-GOD_HEALTH_CHECK_URL="${GOD_HEALTH_URL:-http://${AUX_HOST:-pi-aux.local}:8099/health}"
-OPS_HEALTH_CHECK_URL="${OPS_FEED_HEALTH_URL:-http://${AUX_HOST:-pi-aux.local}:9101/health}"
-VAULT_HEALTH_CHECK_URL="${VAULT_HEALTH_URL:-http://${LOGGER_HOST:-pi-logger.local}:8088/health}"
+TOKEN_CHECK_URL="${TOKEN_URL:-http://${AUX_HOST:-192.168.8.114}:9123/token}"
+TOKEN_HEALTH_CHECK_URL="${TOKEN_HEALTH_URL:-http://${AUX_HOST:-192.168.8.114}:9123/health}"
+GOD_HEALTH_CHECK_URL="${GOD_HEALTH_URL:-http://${AUX_HOST:-192.168.8.114}:8099/health}"
+OPS_HEALTH_CHECK_URL="${OPS_FEED_HEALTH_URL:-http://${AUX_HOST:-192.168.8.114}:9101/health}"
+VAULT_HEALTH_CHECK_URL="${VAULT_HEALTH_URL:-http://${LOGGER_HOST:-192.168.8.169}:8088/health}"
 
 normalize_health_url() {
   local raw="${1:-}"
@@ -56,6 +56,83 @@ normalize_health_url() {
     return 0
   fi
   echo "$raw" | sed -E 's#/v1/ingest/?$#/health#; s#/god/?$#/health#; s#//health/?$#/health#'
+}
+
+resolve_ipv4_host() {
+  local host="${1:-}"
+  if [[ -z "$host" ]]; then
+    printf '%s' ""
+    return 0
+  fi
+  python3 - "$host" <<'PY'
+import socket
+import sys
+host = sys.argv[1]
+try:
+    print(socket.gethostbyname(host))
+except Exception:
+    print("")
+PY
+}
+
+url_host() {
+  local raw="${1:-}"
+  if [[ -z "$raw" ]]; then
+    printf '%s' ""
+    return 0
+  fi
+  python3 - "$raw" <<'PY'
+from urllib.parse import urlsplit
+import sys
+url = sys.argv[1]
+try:
+    print(urlsplit(url).hostname or "")
+except Exception:
+    print("")
+PY
+}
+
+url_with_host() {
+  local raw="${1:-}"
+  local new_host="${2:-}"
+  if [[ -z "$raw" || -z "$new_host" ]]; then
+    printf '%s' ""
+    return 0
+  fi
+  python3 - "$raw" "$new_host" <<'PY'
+from urllib.parse import urlsplit, urlunsplit
+import sys
+url = sys.argv[1]
+new_host = sys.argv[2]
+try:
+    parts = urlsplit(url)
+    if not parts.scheme:
+      print("")
+      raise SystemExit
+    netloc = new_host
+    if parts.port:
+      netloc = f"{new_host}:{parts.port}"
+    print(urlunsplit((parts.scheme, netloc, parts.path, parts.query, parts.fragment)))
+except Exception:
+    print("")
+PY
+}
+
+endpoint_candidates() {
+  local configured_url="${1:-}"
+  if [[ -z "$configured_url" ]]; then
+    return 0
+  fi
+  printf '%s\n' "$configured_url"
+  local host resolved_url resolved_ip
+  host="$(url_host "$configured_url")"
+  resolved_ip="$(resolve_ipv4_host "$host")"
+  if [[ -n "$resolved_ip" && -n "$host" && "$resolved_ip" != "$host" ]]; then
+    resolved_url="$(url_with_host "$configured_url" "$resolved_ip")"
+    if [[ -n "$resolved_url" ]]; then
+      printf '%s\n' "$resolved_url"
+    fi
+  fi
 }
 
 GOD_HEALTH_CHECK_URL="$(normalize_health_url "$GOD_HEALTH_CHECK_URL")"
@@ -201,26 +278,63 @@ check_http_endpoint() {
     add_service_line "$services_file" "$name" "0" "url-not-configured"
     return 1
   fi
-  local response
-  response="$(curl -fsS --max-time 5 "$url" 2>/dev/null || true)"
-  if json_payload_ok "$response"; then
-    add_service_line "$services_file" "$name" "1" "$url"
+
+  local attempts=""
+  local success_url=""
+  local candidates candidate response code body
+  candidates="$(endpoint_candidates "$url")"
+
+  while IFS= read -r candidate; do
+    [[ -n "$candidate" ]] || continue
+    response="$(curl -sS --max-time 5 -w '\n__HTTP_CODE__:%{http_code}' "$candidate" 2>/dev/null || true)"
+    code="$(printf '%s\n' "$response" | sed -n 's/^__HTTP_CODE__:\([0-9][0-9][0-9]\)$/\1/p' | tail -n 1)"
+    body="$(printf '%s\n' "$response" | sed '/^__HTTP_CODE__:[0-9][0-9][0-9]$/d')"
+    if [[ -n "$attempts" ]]; then
+      attempts="${attempts}; "
+    fi
+    attempts="${attempts}${candidate} http=${code:-none}"
+    if [[ "$code" == "200" ]] && json_payload_ok "$body"; then
+      success_url="$candidate"
+    fi
+  done <<< "$candidates"
+
+  if [[ -n "$success_url" ]]; then
+    add_service_line "$services_file" "$name" "1" "ok endpoint=${success_url}; attempted=${attempts}"
     return 0
   fi
-  add_service_line "$services_file" "$name" "0" "$url invalid-or-unreachable"
+
+  add_service_line "$services_file" "$name" "0" "invalid-or-unreachable; attempted=${attempts}"
   return 1
 }
 
 check_token_endpoint() {
   local url="$1"
   local services_file="$2"
-  local response
-  response="$(curl -fsS --max-time 5 -X POST "$url" -H 'content-type: application/json' -d '{"identity":"control-plane-up","room":"strangelab"}' 2>/dev/null || true)"
-  if [[ "$response" == *'"token"'* ]]; then
-    add_service_line "$services_file" "token-endpoint" "1" "$url"
+  local attempts=""
+  local success_url=""
+  local candidates candidate response code body
+  candidates="$(endpoint_candidates "$url")"
+
+  while IFS= read -r candidate; do
+    [[ -n "$candidate" ]] || continue
+    response="$(curl -sS --max-time 5 -X POST -H 'content-type: application/json' -d '{"identity":"control-plane-up","room":"strangelab"}' -w '\n__HTTP_CODE__:%{http_code}' "$candidate" 2>/dev/null || true)"
+    code="$(printf '%s\n' "$response" | sed -n 's/^__HTTP_CODE__:\([0-9][0-9][0-9]\)$/\1/p' | tail -n 1)"
+    body="$(printf '%s\n' "$response" | sed '/^__HTTP_CODE__:[0-9][0-9][0-9]$/d')"
+    if [[ -n "$attempts" ]]; then
+      attempts="${attempts}; "
+    fi
+    attempts="${attempts}${candidate} http=${code:-none}"
+    if [[ "$code" == "200" && "$body" == *'"token"'* ]]; then
+      success_url="$candidate"
+    fi
+  done <<< "$candidates"
+
+  if [[ -n "$success_url" ]]; then
+    add_service_line "$services_file" "token-endpoint" "1" "ok endpoint=${success_url}; attempted=${attempts}"
     return 0
   fi
-  add_service_line "$services_file" "token-endpoint" "0" "$url invalid-or-unreachable"
+
+  add_service_line "$services_file" "token-endpoint" "0" "invalid-or-unreachable; attempted=${attempts}"
   return 1
 }
 
@@ -328,7 +442,7 @@ process_pi_aux() {
     "${AUX_SSH_ALIAS:-aux}" \
     "${AUX_SSH:-}" \
     "aux" \
-    "pi@${AUX_HOST:-pi-aux.local}"
+    "pi@${AUX_HOST:-192.168.8.114}"
 
   local reachable=0
   local ok=0
@@ -395,7 +509,7 @@ process_pi_logger() {
     "${VAULT_SSH_ALIAS:-vault}" \
     "${VAULT_SSH:-}" \
     "vault" \
-    "pi@${LOGGER_HOST:-pi-logger.local}"
+    "pi@${LOGGER_HOST:-192.168.8.169}"
 
   local reachable=0
   local ok=0

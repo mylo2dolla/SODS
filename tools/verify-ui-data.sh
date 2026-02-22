@@ -79,7 +79,7 @@ verify_visualizer_contract() {
   must_contain_in_files "$label edge hit test present" 'func nearestEdge' "$@"
   must_contain_in_files "$label edge hover tooltip present" 'EdgeHoverTooltipView' "$@"
   must_contain_in_files "$label edge trace panel present" 'EdgeTracePanelView' "$@"
-  must_contain_in_files "$label throttled animation present" 'minimumInterval: 1\.0 / 15\.0' "$@"
+  must_contain_in_files "$label throttled animation present" 'minimumInterval: 1\.0 / (15|30)\.0' "$@"
 }
 
 echo "== J) Spectrum UI + Dynamic Data =="

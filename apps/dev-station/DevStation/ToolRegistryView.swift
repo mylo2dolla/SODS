@@ -16,97 +16,98 @@ struct ToolRegistryView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             ModalHeaderView(title: "Tool Registry", onBack: nil, onClose: onClose)
-
-            HStack(spacing: 10) {
-                TextField("Search tools", text: $searchText)
-                    .textFieldStyle(.roundedBorder)
-                Button {
-                    onInspect(.tools)
-                } label: {
-                    Image(systemName: "doc.text.magnifyingglass")
-                        .font(.system(size: 12, weight: .semibold))
-                }
-                .buttonStyle(SecondaryActionButtonStyle())
-                .help("View JSON")
-                .accessibilityLabel(Text("View JSON"))
-
-                Button {
-                    onFlash()
-                } label: {
-                    Image(systemName: "bolt.circle")
-                        .font(.system(size: 12, weight: .semibold))
-                }
-                .buttonStyle(PrimaryActionButtonStyle())
-                .help("Flash")
-                .accessibilityLabel(Text("Flash"))
-
-                Button { onBuildTool() } label: {
-                    Image(systemName: "hammer")
-                        .font(.system(size: 12, weight: .semibold))
-                }
-                    .buttonStyle(SecondaryActionButtonStyle())
-                    .help("Build Tool")
-                    .accessibilityLabel(Text("Build Tool"))
-
-                Button { onBuildPreset() } label: {
-                    Image(systemName: "slider.horizontal.3")
-                        .font(.system(size: 12, weight: .semibold))
-                }
-                    .buttonStyle(SecondaryActionButtonStyle())
-                    .help("Build Preset")
-                    .accessibilityLabel(Text("Build Preset"))
-
-                Button { onScratchpad() } label: {
-                    Image(systemName: "square.and.pencil")
-                        .font(.system(size: 12, weight: .semibold))
-                }
-                    .buttonStyle(SecondaryActionButtonStyle())
-                    .help("Scratchpad")
-                    .accessibilityLabel(Text("Scratchpad"))
-            }
-
-            if let note = registry.policyNote {
-                Text(note)
-                    .font(.system(size: 12))
-                    .foregroundColor(.secondary)
-            }
-
-            let filtered = registry.tools.filter { tool in
-                if searchText.isEmpty { return true }
-                let needle = searchText.lowercased()
-                return tool.name.lowercased().contains(needle)
-                    || (tool.scope ?? "").lowercased().contains(needle)
-                    || (tool.kind ?? "").lowercased().contains(needle)
-                    || (tool.description ?? "").lowercased().contains(needle)
-            }
-
-            if filtered.isEmpty {
-                Text("No tools available.")
-                    .font(.system(size: 12))
-                    .foregroundColor(.secondary)
-            } else {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 10) {
-                        ForEach(filtered) { tool in
-                            ToolRow(
-                                tool: tool,
-                                onRun: {
-                                    if tool.kind == "runbook" {
-                                        onRunRunbook(tool.name)
-                                    } else {
-                                        onRunTool(tool)
-                                    }
-                                },
-                                onInspect: { onInspect(.tools) }
-                            )
+            ScrollView(.vertical, showsIndicators: true) {
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(spacing: 10) {
+                        TextField("Search tools", text: $searchText)
+                            .textFieldStyle(.roundedBorder)
+                        Button {
+                            onInspect(.tools)
+                        } label: {
+                            Image(systemName: "doc.text.magnifyingglass")
+                                .font(.system(size: 12, weight: .semibold))
                         }
+                        .buttonStyle(SecondaryActionButtonStyle())
+                        .help("View JSON")
+                        .accessibilityLabel(Text("View JSON"))
+
+                        Button {
+                            onFlash()
+                        } label: {
+                            Image(systemName: "bolt.circle")
+                                .font(.system(size: 12, weight: .semibold))
+                        }
+                        .buttonStyle(PrimaryActionButtonStyle())
+                        .help("Flash")
+                        .accessibilityLabel(Text("Flash"))
+
+                        Button { onBuildTool() } label: {
+                            Image(systemName: "hammer")
+                                .font(.system(size: 12, weight: .semibold))
+                        }
+                            .buttonStyle(SecondaryActionButtonStyle())
+                            .help("Build Tool")
+                            .accessibilityLabel(Text("Build Tool"))
+
+                        Button { onBuildPreset() } label: {
+                            Image(systemName: "slider.horizontal.3")
+                                .font(.system(size: 12, weight: .semibold))
+                        }
+                            .buttonStyle(SecondaryActionButtonStyle())
+                            .help("Build Preset")
+                            .accessibilityLabel(Text("Build Preset"))
+
+                        Button { onScratchpad() } label: {
+                            Image(systemName: "square.and.pencil")
+                                .font(.system(size: 12, weight: .semibold))
+                        }
+                            .buttonStyle(SecondaryActionButtonStyle())
+                            .help("Scratchpad")
+                            .accessibilityLabel(Text("Scratchpad"))
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                    if let note = registry.policyNote {
+                        Text(note)
+                            .font(.system(size: 12))
+                            .foregroundColor(.secondary)
+                    }
+
+                    let filtered = registry.tools.filter { tool in
+                        if searchText.isEmpty { return true }
+                        let needle = searchText.lowercased()
+                        return tool.name.lowercased().contains(needle)
+                            || (tool.scope ?? "").lowercased().contains(needle)
+                            || (tool.kind ?? "").lowercased().contains(needle)
+                            || (tool.description ?? "").lowercased().contains(needle)
+                    }
+
+                    if filtered.isEmpty {
+                        Text("No tools available.")
+                            .font(.system(size: 12))
+                            .foregroundColor(.secondary)
+                    } else {
+                        VStack(alignment: .leading, spacing: 10) {
+                            ForEach(filtered) { tool in
+                                ToolRow(
+                                    tool: tool,
+                                    onRun: {
+                                        if tool.kind == "runbook" {
+                                            onRunRunbook(tool.name)
+                                        } else {
+                                            onRunTool(tool)
+                                        }
+                                    },
+                                    onInspect: { onInspect(.tools) }
+                                )
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
                 }
             }
         }
         .padding(16)
-        .frame(minWidth: 640, minHeight: 420)
+        .frame(minWidth: 520, minHeight: 360)
         .background(Theme.background)
         .foregroundColor(Theme.textPrimary)
         .onAppear { registry.reload() }

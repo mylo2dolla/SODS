@@ -23,6 +23,14 @@ type RawEvent = {
   data_json?: any;
 };
 
+const DEFAULT_AUX_HOST = process.env.SODS_DEFAULT_AUX_HOST || "192.168.8.114";
+
+function resolveAuxHost(): string {
+  const candidate = process.env.AUX_HOST || process.env.SODS_AUX_HOST || DEFAULT_AUX_HOST;
+  const trimmed = String(candidate || "").trim();
+  return trimmed.length > 0 ? trimmed : DEFAULT_AUX_HOST;
+}
+
 export class Ingestor {
   private baseURLs: string[];
   private activeBaseURL: string;
@@ -43,11 +51,12 @@ export class Ingestor {
   };
   private onEvent?: (ev: CanonicalEvent) => void;
   private onError?: (msg: string) => void;
+  private onPollSuccess?: () => void;
   private eventsPathByBase = new Map<string, string>();
 
   constructor(baseURL: string, limit = 500, pollIntervalMs = 1400) {
     this.baseURLs = buildBaseURLList(baseURL);
-    const auxHost = process.env.AUX_HOST || "pi-aux.local";
+    const auxHost = resolveAuxHost();
     this.activeBaseURL = this.baseURLs[0] ?? `http://${auxHost}:9101`;
     this.limit = limit;
     this.pollIntervalMs = pollIntervalMs;
@@ -61,9 +70,10 @@ export class Ingestor {
     return [...this.baseURLs];
   }
 
-  start(onEvent: (ev: CanonicalEvent) => void, onError: (msg: string) => void) {
+  start(onEvent: (ev: CanonicalEvent) => void, onError: (msg: string) => void, onPollSuccess?: () => void) {
     this.onEvent = onEvent;
     this.onError = onError;
+    this.onPollSuccess = onPollSuccess;
     this.stop();
     this.timer = setInterval(() => this.pollOnce(), this.pollIntervalMs);
     void this.pollOnce();
@@ -96,6 +106,7 @@ export class Ingestor {
         const items: RawEvent[] = Array.isArray(body) ? body : body.items ?? body.events ?? [];
         this.counters.events_in += items.length;
         this.activeBaseURL = baseURL;
+        this.onPollSuccess?.();
 
         const fresh = this.filterFresh(items);
         if (fresh.length === 0) {
@@ -253,13 +264,14 @@ function buildBaseURLList(value: string): string[] {
   // IMPORTANT: Keep the pi-logger events feed separate from Vault ingest.
   // Vault ingest (e.g. :8088/v1/ingest) is authoritative append-only storage, not an events API.
   const envList = process.env.PI_LOGGER_URL || process.env.PI_LOGGER || "";
-  const auxHost = process.env.AUX_HOST || "pi-aux.local";
+  const auxHost = resolveAuxHost();
   // Only include event-feed sources by default. Vault ingest (:8088) is not an events API and causes noisy 404s.
-  const raw = [value, envList, `http://${auxHost}:9101`]
+  const explicit = [value, envList]
     .join(",")
     .split(",")
     .map((s) => s.trim())
     .filter((s) => s.length > 0);
+  const raw = explicit.length > 0 ? explicit : [`http://${auxHost}:9101`];
 
   const normalized = raw
     .map((s) => s.replace(/\/+$/, ""))

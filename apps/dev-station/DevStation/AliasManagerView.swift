@@ -15,47 +15,51 @@ struct AliasManagerView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             ModalHeaderView(title: "Aliases", onBack: nil, onClose: onClose)
-            HStack {
-                TextField("Search", text: $searchText)
-                    .textFieldStyle(.roundedBorder)
-                Button { exportAliases() } label: {
-                    Image(systemName: "square.and.arrow.up")
-                        .font(.system(size: 12, weight: .semibold))
-                }
-                    .buttonStyle(SecondaryActionButtonStyle())
-                    .help("Export")
-                    .accessibilityLabel(Text("Export"))
-                Button { showImport = true } label: {
-                    Image(systemName: "square.and.arrow.down")
-                        .font(.system(size: 12, weight: .semibold))
-                }
-                    .buttonStyle(SecondaryActionButtonStyle())
-                    .help("Import")
-                    .accessibilityLabel(Text("Import"))
-                Button { onClose() } label: {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 12, weight: .semibold))
-                }
-                    .buttonStyle(SecondaryActionButtonStyle())
-                    .help("Close")
-                    .accessibilityLabel(Text("Close"))
-            }
-            ScrollView {
-                VStack(alignment: .leading, spacing: 8) {
-                    ForEach(filteredKeys, id: \.self) { id in
-                        AliasRow(
-                            id: id,
-                            alias: aliasValue(for: id),
-                            onSave: { value in onSave(id, value) },
-                            onDelete: { onDelete(id) }
-                        )
+            ScrollView(.vertical, showsIndicators: true) {
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack {
+                        TextField("Search", text: $searchText)
+                            .textFieldStyle(.roundedBorder)
+                        Button { exportAliases() } label: {
+                            Image(systemName: "square.and.arrow.up")
+                                .font(.system(size: 12, weight: .semibold))
+                        }
+                            .buttonStyle(SecondaryActionButtonStyle())
+                            .help("Export")
+                            .accessibilityLabel(Text("Export"))
+                        Button { showImport = true } label: {
+                            Image(systemName: "square.and.arrow.down")
+                                .font(.system(size: 12, weight: .semibold))
+                        }
+                            .buttonStyle(SecondaryActionButtonStyle())
+                            .help("Import")
+                            .accessibilityLabel(Text("Import"))
+                        Button { onClose() } label: {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 12, weight: .semibold))
+                        }
+                            .buttonStyle(SecondaryActionButtonStyle())
+                            .help("Close")
+                            .accessibilityLabel(Text("Close"))
+                    }
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 8) {
+                            ForEach(filteredKeys, id: \.self) { id in
+                                AliasRow(
+                                    id: id,
+                                    alias: aliasValue(for: id),
+                                    onSave: { value in onSave(id, value) },
+                                    onDelete: { onDelete(id) }
+                                )
+                            }
+                        }
                     }
                 }
             }
         }
         .padding(16)
         .background(Theme.background)
-        .frame(minWidth: 500, minHeight: 420)
+        .frame(minWidth: 520, minHeight: 360)
         .sheet(isPresented: $showImport) {
             VStack(alignment: .leading, spacing: 12) {
                 ModalHeaderView(title: "Import Aliases", onBack: nil, onClose: { showImport = false })
@@ -88,7 +92,7 @@ struct AliasManagerView: View {
                 Spacer()
             }
             .padding(16)
-            .frame(minWidth: 520, minHeight: 420)
+            .frame(minWidth: 420, minHeight: 320)
         }
     }
 

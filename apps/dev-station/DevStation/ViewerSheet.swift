@@ -12,7 +12,7 @@ struct ViewerSheet: View {
                 .clipShape(RoundedRectangle(cornerRadius: 10))
         }
         .padding(12)
-        .frame(minWidth: 800, minHeight: 600)
+        .frame(minWidth: 560, minHeight: 380)
         .background(Theme.background)
         .foregroundColor(Theme.textPrimary)
     }

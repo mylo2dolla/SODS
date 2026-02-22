@@ -9,7 +9,8 @@ help:
 	@echo "  make flash-esp32dev # open ESP Web Tools for ESP32"
 	@echo "  make flash-esp32c3  # open ESP Web Tools for ESP32-C3"
 
-PI_LOGGER ?= http://pi-logger.local:8088
+AUX_HOST ?= pi-aux.local
+PI_LOGGER ?= http://$(AUX_HOST):9101
 PORT ?= 9123
 
 DEV_CMD = cd $(CURDIR)/cli/sods && npm run dev -- --pi-logger $(PI_LOGGER) --port $(PORT)

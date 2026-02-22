@@ -27,6 +27,6 @@
     "board_id": "esp32-devkitv1",
     "buildinfo_path": "firmware/esp32-devkitv1/devstation/buildinfo.json",
     "sha256sums_path": "firmware/esp32-devkitv1/devstation/sha256sums.txt",
-    "generated_ts_ms": 1770618349445
+    "generated_ts_ms": 1771348612802
   }
 }

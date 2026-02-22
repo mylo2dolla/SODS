@@ -90,8 +90,8 @@ final class ControlPlaneStore: ObservableObject {
 
     private func controlPlaneURLs() -> (vaultHealth: URL, gatewayHealth: URL, opsFeedHealth: URL, tokenEndpoint: URL) {
         let env = ProcessInfo.processInfo.environment
-        let auxHost = normalizedHost(env["AUX_HOST"], fallback: "pi-aux.local")
-        let loggerHost = normalizedHost(env["LOGGER_HOST"], fallback: "pi-logger.local")
+        let auxHost = normalizedHost(env["AUX_HOST"], fallback: "192.168.8.114")
+        let loggerHost = normalizedHost(env["LOGGER_HOST"], fallback: "192.168.8.160")
 
         let vault = URL(string: env["VAULT_HEALTH_URL"] ?? "http://\(loggerHost):8088/health")!
         let gateway = URL(string: env["GOD_HEALTH_URL"] ?? "http://\(auxHost):8099/health")!

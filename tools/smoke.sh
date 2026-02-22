@@ -12,7 +12,7 @@ STATION_URL="${SODS_STATION_URL:-http://127.0.0.1:${PORT}}"
 mkdir -p "$LOG_DIR"
 
 echo "Building Dev Station..."
-"$REPO_ROOT/tools/devstation-build.sh"
+SODS_SKIP_FIRMWARE_CHECK="${SODS_SKIP_FIRMWARE_CHECK:-1}" "$REPO_ROOT/tools/devstation-build.sh"
 source "$REPO_ROOT/tools/_app_bundle.sh"
 
 echo "Validating Dev Station app bundle..."

@@ -90,6 +90,16 @@ deny_host_default() {
   fi
 }
 
+resolve_ssh_target() {
+  local preferred="$1"
+  local fallback="$2"
+  if ssh "${SSH_FLAGS[@]}" "$preferred" 'true' >/dev/null 2>&1; then
+    printf '%s' "$preferred"
+    return 0
+  fi
+  printf '%s' "$fallback"
+}
+
 check_local_prereq() {
   local ok="$1"
   local label="$2"
@@ -108,6 +118,9 @@ check_local_prereq() {
 echo "== G + H + I) SSH Guard / Allowlist / Capabilities =="
 
 guard_bin="$(resolve_sl_ssh_bin)"
+AUX_ADMIN_TARGET="$(resolve_ssh_target "${PI_AUX_ADMIN_SSH:-$AUX_SSH_TARGET}" "pi@${AUX_HOST}")"
+VAULT_ADMIN_TARGET="$(resolve_ssh_target "${PI_LOGGER_ADMIN_SSH:-$VAULT_SSH_TARGET}" "pi@${LOGGER_HOST}")"
+MAC16_ADMIN_TARGET="$(resolve_ssh_target "${MAC16_ADMIN_SSH:-$MAC16_SSH_TARGET}" "letsdev@${MAC16_HOST}")"
 
 if [[ -f "$CONTROLLER_KEY" && -f "$CONTROLLER_PUB" ]]; then
   check_local_prereq "1" "controller keypair present" "$CONTROLLER_KEY"
@@ -154,19 +167,19 @@ else
   fi
 fi
 
-if ssh "${SSH_FLAGS[@]}" "$PI_AUX_ADMIN_SSH" 'test -f /opt/strangelab/allowlist.json'; then
+if ssh "${SSH_FLAGS[@]}" "$AUX_ADMIN_TARGET" 'test -f /opt/strangelab/allowlist.json'; then
   pass "allowlist exists on aux"
 else
   fail_msg "allowlist missing on aux"
 fi
 
-if ssh "${SSH_FLAGS[@]}" "$PI_LOGGER_ADMIN_SSH" 'test -f /opt/strangelab/allowlist.json'; then
+if ssh "${SSH_FLAGS[@]}" "$VAULT_ADMIN_TARGET" 'test -f /opt/strangelab/allowlist.json'; then
   pass "allowlist exists on vault"
 else
   fail_msg "allowlist missing on vault"
 fi
 
-if ssh "${SSH_FLAGS[@]}" "$MAC16_ADMIN_SSH" 'test -f /opt/strangelab/allowlist.json'; then
+if ssh "${SSH_FLAGS[@]}" "$MAC16_ADMIN_TARGET" 'test -f /opt/strangelab/allowlist.json'; then
   pass "allowlist exists on mac16"
 else
   fail_msg "allowlist missing on mac16"

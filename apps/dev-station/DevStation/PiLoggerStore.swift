@@ -18,6 +18,7 @@ final class SODSStore: ObservableObject {
     @Published private(set) var realFramesActive: Bool = false
     @Published var baseURL: String
     @Published private(set) var baseURLError: String?
+    @Published private(set) var baseURLNotice: String?
     @Published var isRecording: Bool = false
     @Published private(set) var recordedEvents: [NormalizedEvent] = []
     @Published private(set) var recordingStartedAt: Date?
@@ -34,9 +35,11 @@ final class SODSStore: ObservableObject {
 
     private init() {
         let defaults = UserDefaults.standard
+        var loadedSavedBaseURL = false
         if let saved = defaults.string(forKey: baseURLKey), !saved.isEmpty {
             let validated = Self.normalizeBaseURL(saved)
             if let url = validated.url {
+                loadedSavedBaseURL = true
                 baseURL = url
                 baseURLError = nil
             } else {
@@ -54,15 +57,26 @@ final class SODSStore: ObservableObject {
             IdentityResolver.shared.updateOverrides(aliasOverrides)
         }
         connect()
+        if loadedSavedBaseURL {
+            Task { await recoverSavedBaseURLIfNeeded() }
+        }
     }
 
     @discardableResult
-    func updateBaseURL(_ value: String) -> Bool {
+    func updateBaseURL(_ value: String) async -> Bool {
         let validated = Self.normalizeBaseURL(value)
         guard let url = validated.url else {
             baseURLError = validated.error ?? "Invalid base URL."
             return false
         }
+
+        let probe = await StationEndpointResolver.probeStationAPI(baseURL: url)
+        guard probe == .stationOK else {
+            baseURLError = Self.validationMessage(for: probe, baseURL: url)
+            return false
+        }
+
+        baseURLNotice = nil
         baseURLError = nil
         baseURL = url
         UserDefaults.standard.set(url, forKey: baseURLKey)
@@ -72,11 +86,16 @@ final class SODSStore: ObservableObject {
     }
 
     func resetBaseURL() {
+        baseURLNotice = nil
         baseURLError = nil
         baseURL = StationEndpointResolver.stationBaseURL()
         UserDefaults.standard.set(baseURL, forKey: baseURLKey)
         StationProcessManager.shared.ensureRunning(baseURL: baseURL)
         connect()
+    }
+
+    func clearBaseURLNotice() {
+        baseURLNotice = nil
     }
 
     func connect() {
@@ -235,7 +254,6 @@ final class SODSStore: ObservableObject {
     }
 
     func saveRecording(to url: URL) -> Bool {
-        let encoder = JSONEncoder()
         var lines: [String] = []
         for event in recordedEvents {
             let payload: [String: Any] = [
@@ -701,29 +719,45 @@ final class SODSStore: ObservableObject {
     }
 
     private static func normalizeBaseURL(_ value: String) -> (url: String?, error: String?) {
-        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else {
-            return (nil, "Base URL is required.")
+        StationEndpointResolver.normalizeStationBaseURL(value, requireLocalHost: false)
+    }
+
+    private static func validationMessage(for result: StationEndpointResolver.ProbeResult, baseURL: String) -> String {
+        switch result {
+        case .stationOK:
+            return ""
+        case .nonStationService(let serviceName):
+            let serviceLabel = serviceName?.trimmingCharacters(in: .whitespacesAndNewlines)
+            if let serviceLabel, !serviceLabel.isEmpty {
+                return "Base URL points to non-Station service (\(serviceLabel)). Use \(defaultBaseURL)."
+            }
+            return "Base URL points to a non-Station service. Use \(defaultBaseURL)."
+        case .unreachable:
+            return "Station API is unreachable at \(baseURL)."
+        case .invalidResponse:
+            return "Base URL did not return a valid Station API response at /api/status."
         }
-        let candidate = trimmed.contains("://") ? trimmed : "http://\(trimmed)"
-        guard var components = URLComponents(string: candidate) else {
-            return (nil, "Base URL is invalid.")
+    }
+
+    private func recoverSavedBaseURLIfNeeded() async {
+        let candidate = baseURL
+        let probe = await StationEndpointResolver.probeStationAPI(baseURL: candidate)
+        guard case .nonStationService(let serviceName) = probe else { return }
+
+        let fallback = Self.defaultBaseURL
+        if fallback != baseURL {
+            baseURL = fallback
+            UserDefaults.standard.set(fallback, forKey: baseURLKey)
+            StationProcessManager.shared.ensureRunning(baseURL: fallback)
+            connect()
         }
-        let scheme = components.scheme?.lowercased() ?? ""
-        guard scheme == "http" || scheme == "https" else {
-            return (nil, "Base URL must start with http:// or https://")
+        baseURLError = nil
+        let serviceLabel = serviceName?.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let serviceLabel, !serviceLabel.isEmpty {
+            baseURLNotice = "Saved Base URL pointed to \(serviceLabel). Reset to \(fallback)."
+        } else {
+            baseURLNotice = "Saved Base URL was not a Station API. Reset to \(fallback)."
         }
-        guard let host = components.host, !host.isEmpty else {
-            return (nil, "Base URL must include a host.")
-        }
-        if components.path == "/" {
-            components.path = ""
-        }
-        let normalized = components.url?.absoluteString ?? candidate
-        if normalized.contains("rtsp://") || normalized.contains("ws://") || normalized.contains("wss://") {
-            return (nil, "Base URL must use http:// or https:// only.")
-        }
-        return (normalized, nil)
     }
 
     private func makeWebSocketURL(path: String) -> URL? {

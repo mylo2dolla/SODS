@@ -10,7 +10,8 @@ help:
   @echo "  just flash-esp32c3" 
   @echo "  just verify" 
 
-PI_LOGGER := "http://pi-logger.local:8088"
+AUX_HOST := "pi-aux.local"
+PI_LOGGER := "http://{{AUX_HOST}}:9101"
 PORT := "9123"
 
 dev:

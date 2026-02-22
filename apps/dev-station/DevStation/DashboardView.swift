@@ -20,6 +20,7 @@ struct DashboardView: View {
     @ObservedObject var sodsStore: SODSStore
     @ObservedObject var controlPlane: ControlPlaneStore
     @ObservedObject var vaultTransport: VaultTransport
+    let systemSnapshot: SystemSnapshot?
     let connectingNodeIDs: Set<String>
     let inboxStatus: InboxStatus
     let retentionDays: Int
@@ -47,6 +48,8 @@ struct DashboardView: View {
     let onReconnectStack: () -> Void
     let onReconnectFullFleet: () -> Void
     let onRefreshFleetStatus: () -> Void
+    let onOpenSystemManager: () -> Void
+    let onOptimizeSystemManager: () -> Void
     let stationActionSections: () -> [ActionMenuSection]
     let scanActionSections: () -> [ActionMenuSection]
     let eventsActionSections: () -> [ActionMenuSection]
@@ -60,6 +63,7 @@ struct DashboardView: View {
     @State private var showStationOverlay = false
     @State private var showControlPlaneOverlay = false
     @State private var showStackOverlay = false
+    @State private var showSystemManagerOverlay = false
     @State private var showScanSystemsOverlay = false
     @State private var showScanSummaryOverlay = false
     @State private var showPiAuxOverlay = false
@@ -108,7 +112,8 @@ struct DashboardView: View {
                         Text(detail)
                             .font(.system(size: 11))
                             .foregroundColor(Theme.textSecondary)
-                            .lineLimit(2)
+                            .lineLimit(nil)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                 }
                 .popover(isPresented: $showControlPlaneOverlay, arrowEdge: .bottom) {
@@ -132,12 +137,40 @@ struct DashboardView: View {
                         Text(detail)
                             .font(.system(size: 11))
                             .foregroundColor(Theme.textSecondary)
-                            .lineLimit(2)
+                            .lineLimit(nil)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                 }
                 .popover(isPresented: $showStackOverlay, arrowEdge: .bottom) {
                     dashboardPopover(title: "Stack Status", onClose: { showStackOverlay = false }, sections: []) {
                         stackDetailView()
+                    }
+                }
+
+                statusCard(title: "System Manager", onOpen: { showSystemManagerOverlay = true }) {
+                    if let systemSnapshot {
+                        Text("CPU: \(String(format: "U %.1f%% • S %.1f%% • I %.1f%%", systemSnapshot.cpuUserPercent, systemSnapshot.cpuSystemPercent, systemSnapshot.cpuIdlePercent))")
+                            .font(.system(size: 11))
+                            .foregroundColor(Theme.textSecondary)
+                        Text("RAM: \(memoryLabel(systemSnapshot.memUsedBytes)) / \(memoryLabel(systemSnapshot.memTotalBytes))")
+                            .font(.system(size: 11))
+                            .foregroundColor(Theme.textSecondary)
+                        Text("Swap: \(memoryLabel(systemSnapshot.swapUsedBytes)) / \(memoryLabel(systemSnapshot.swapTotalBytes))")
+                            .font(.system(size: 11))
+                            .foregroundColor(Theme.textSecondary)
+                        Text("Processes: \(systemSnapshot.processCount)")
+                            .font(.system(size: 11))
+                            .foregroundColor(Theme.textSecondary)
+                    } else {
+                        Text("Loading live system stats…")
+                            .font(.system(size: 11))
+                            .foregroundColor(Theme.textSecondary)
+                    }
+                    systemManagerQuickActions()
+                }
+                .popover(isPresented: $showSystemManagerOverlay, arrowEdge: .bottom) {
+                    dashboardPopover(title: "System Manager", onClose: { showSystemManagerOverlay = false }, sections: []) {
+                        systemManagerDetailView()
                     }
                 }
 
@@ -816,6 +849,66 @@ struct DashboardView: View {
         NSWorkspace.shared.open(url)
     }
 
+    private func memoryLabel(_ bytes: Int64) -> String {
+        ByteCountFormatter.string(fromByteCount: bytes, countStyle: .memory)
+    }
+
+    private func systemManagerQuickActions() -> some View {
+        HStack(spacing: 8) {
+            Button { onOpenSystemManager() } label: {
+                Image(systemName: "waveform.path.ecg")
+                    .font(.system(size: 12, weight: .semibold))
+            }
+            .buttonStyle(SecondaryActionButtonStyle())
+            .help("Open System Manager")
+            .accessibilityLabel(Text("Open System Manager"))
+
+            Button { onOptimizeSystemManager() } label: {
+                Image(systemName: "sparkles")
+                    .font(.system(size: 12, weight: .semibold))
+            }
+            .buttonStyle(PrimaryActionButtonStyle())
+            .help("Optimize/Clean RAM")
+            .accessibilityLabel(Text("Optimize or Clean RAM"))
+
+            Spacer()
+        }
+        .padding(.top, 2)
+    }
+
+    private func systemManagerDetailView() -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if let systemSnapshot {
+                Text("CPU: \(String(format: "U %.1f%% • S %.1f%% • I %.1f%%", systemSnapshot.cpuUserPercent, systemSnapshot.cpuSystemPercent, systemSnapshot.cpuIdlePercent))")
+                    .font(.system(size: 11))
+                    .foregroundColor(Theme.textSecondary)
+                Text("RAM Used: \(memoryLabel(systemSnapshot.memUsedBytes)) / \(memoryLabel(systemSnapshot.memTotalBytes))")
+                    .font(.system(size: 11))
+                    .foregroundColor(Theme.textSecondary)
+                Text("RAM Free: \(memoryLabel(systemSnapshot.memFreeBytes))")
+                    .font(.system(size: 11))
+                    .foregroundColor(Theme.textSecondary)
+                Text("Compressed: \(memoryLabel(systemSnapshot.memCompressedBytes))")
+                    .font(.system(size: 11))
+                    .foregroundColor(Theme.textSecondary)
+                Text("Swap: \(memoryLabel(systemSnapshot.swapUsedBytes)) / \(memoryLabel(systemSnapshot.swapTotalBytes))")
+                    .font(.system(size: 11))
+                    .foregroundColor(Theme.textSecondary)
+                Text("Processes: \(systemSnapshot.processCount)")
+                    .font(.system(size: 11))
+                    .foregroundColor(Theme.textSecondary)
+                Text("Updated: \(systemSnapshot.timestamp.formatted(date: .abbreviated, time: .shortened))")
+                    .font(.system(size: 10))
+                    .foregroundColor(Theme.muted)
+            } else {
+                Text("No system stats yet.")
+                    .font(.system(size: 11))
+                    .foregroundColor(Theme.textSecondary)
+            }
+            systemManagerQuickActions()
+        }
+    }
+
     private func stackQuickActions() -> some View {
         let busy = stackReconnectInFlight || stationProcess.isStarting || fullFleetReconnectInFlight
         return HStack(spacing: 8) {
@@ -963,7 +1056,8 @@ struct DashboardView: View {
             Text(target.detail)
                 .font(.system(size: 10))
                 .foregroundColor(Theme.textSecondary)
-                .lineLimit(2)
+                .lineLimit(nil)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 
@@ -983,7 +1077,8 @@ struct DashboardView: View {
             Text(detail)
                 .font(.system(size: 11))
                 .foregroundColor(Theme.textSecondary)
-                .lineLimit(3)
+                .lineLimit(nil)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .padding(10)
         .background(Theme.panelAlt)
@@ -1123,7 +1218,8 @@ struct DashboardView: View {
                         Text(result.detail)
                             .font(.system(size: 11))
                             .foregroundColor(Theme.textSecondary)
-                            .lineLimit(3)
+                            .lineLimit(nil)
+                            .fixedSize(horizontal: false, vertical: true)
                         Text("Checked: \(result.checkedAt.formatted(date: .omitted, time: .shortened))")
                             .font(.system(size: 10))
                             .foregroundColor(Theme.muted)

@@ -20,6 +20,20 @@
                ReferencedContainer = "container:SODSScanneriOS.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
+         <BuildActionEntry
+            buildForTesting = "YES"
+            buildForRunning = "NO"
+            buildForProfiling = "NO"
+            buildForArchiving = "NO"
+            buildForAnalyzing = "YES">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "A1B2C3D4E5F60718293A4B5C"
+               BuildableName = "SODSScanneriOSTests.xctest"
+               BlueprintName = "SODSScanneriOSTests"
+               ReferencedContainer = "container:SODSScanneriOS.xcodeproj">
+            </BuildableReference>
+         </BuildActionEntry>
       </BuildActionEntries>
    </BuildAction>
    <TestAction
@@ -37,6 +51,17 @@
          </BuildableReference>
       </MacroExpansion>
       <Testables>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "YES">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "A1B2C3D4E5F60718293A4B5C"
+               BuildableName = "SODSScanneriOSTests.xctest"
+               BlueprintName = "SODSScanneriOSTests"
+               ReferencedContainer = "container:SODSScanneriOS.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
       </Testables>
    </TestAction>
    <LaunchAction

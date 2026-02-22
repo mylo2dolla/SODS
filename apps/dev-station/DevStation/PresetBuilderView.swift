@@ -19,80 +19,83 @@ struct PresetBuilderView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             ModalHeaderView(title: "Preset Builder", onBack: nil, onClose: onClose)
+            ScrollView(.vertical, showsIndicators: true) {
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(spacing: 10) {
+                        TextField("ID", text: $presetId)
+                            .textFieldStyle(.roundedBorder)
+                        TextField("Title", text: $title)
+                            .textFieldStyle(.roundedBorder)
+                    }
+                    TextField("Description", text: $description)
+                        .textFieldStyle(.roundedBorder)
 
-            HStack(spacing: 10) {
-                TextField("ID", text: $presetId)
-                    .textFieldStyle(.roundedBorder)
-                TextField("Title", text: $title)
-                    .textFieldStyle(.roundedBorder)
-            }
-            TextField("Description", text: $description)
-                .textFieldStyle(.roundedBorder)
+                    Picker("Kind", selection: $kind) {
+                        Text("single").tag("single")
+                        Text("macro").tag("macro")
+                    }
+                    .pickerStyle(.segmented)
 
-            Picker("Kind", selection: $kind) {
-                Text("single").tag("single")
-                Text("macro").tag("macro")
-            }
-            .pickerStyle(.segmented)
-
-            if kind == "single" {
-                TextField("Tool name", text: $toolName)
-                    .textFieldStyle(.roundedBorder)
-                Text("Input (JSON)")
-                    .font(.system(size: 11))
-                    .foregroundColor(.secondary)
-                TextEditor(text: $inputJson)
-                    .font(.system(size: 11, design: .monospaced))
-                    .frame(height: 100)
-                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Theme.border, lineWidth: 1))
-            } else {
-                Text("Vars (JSON)")
-                    .font(.system(size: 11))
-                    .foregroundColor(.secondary)
-                TextEditor(text: $varsJson)
-                    .font(.system(size: 11, design: .monospaced))
-                    .frame(height: 80)
-                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Theme.border, lineWidth: 1))
-                Text("Steps (JSON array)")
-                    .font(.system(size: 11))
-                    .foregroundColor(.secondary)
-                TextEditor(text: $stepsJson)
-                    .font(.system(size: 11, design: .monospaced))
-                    .frame(height: 140)
-                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Theme.border, lineWidth: 1))
-            }
-
-            Toggle("Show as capsule button", isOn: $capsule)
-                .toggleStyle(SwitchToggleStyle(tint: Theme.accent))
-
-            if let lastError {
-                Text(lastError)
-                    .font(.system(size: 11))
-                    .foregroundColor(.red)
-            }
-
-            HStack(spacing: 10) {
-                Text("Save Preset")
-                    .font(.system(size: 11))
-                    .foregroundColor(.secondary)
-                Spacer()
-                Button { savePreset() } label: {
-                    if isSaving {
-                        ProgressView()
-                            .controlSize(.small)
+                    if kind == "single" {
+                        TextField("Tool name", text: $toolName)
+                            .textFieldStyle(.roundedBorder)
+                        Text("Input (JSON)")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                        TextEditor(text: $inputJson)
+                            .font(.system(size: 11, design: .monospaced))
+                            .frame(height: 100)
+                            .overlay(RoundedRectangle(cornerRadius: 8).stroke(Theme.border, lineWidth: 1))
                     } else {
-                        Image(systemName: "square.and.arrow.down")
-                            .font(.system(size: 12, weight: .semibold))
+                        Text("Vars (JSON)")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                        TextEditor(text: $varsJson)
+                            .font(.system(size: 11, design: .monospaced))
+                            .frame(height: 80)
+                            .overlay(RoundedRectangle(cornerRadius: 8).stroke(Theme.border, lineWidth: 1))
+                        Text("Steps (JSON array)")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                        TextEditor(text: $stepsJson)
+                            .font(.system(size: 11, design: .monospaced))
+                            .frame(height: 140)
+                            .overlay(RoundedRectangle(cornerRadius: 8).stroke(Theme.border, lineWidth: 1))
+                    }
+
+                    Toggle("Show as capsule button", isOn: $capsule)
+                        .toggleStyle(SwitchToggleStyle(tint: Theme.accent))
+
+                    if let lastError {
+                        Text(lastError)
+                            .font(.system(size: 11))
+                            .foregroundColor(.red)
+                    }
+
+                    HStack(spacing: 10) {
+                        Text("Save Preset")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                        Spacer()
+                        Button { savePreset() } label: {
+                            if isSaving {
+                                ProgressView()
+                                    .controlSize(.small)
+                            } else {
+                                Image(systemName: "square.and.arrow.down")
+                                    .font(.system(size: 12, weight: .semibold))
+                            }
+                        }
+                        .buttonStyle(PrimaryActionButtonStyle())
+                        .disabled(isSaving)
+                        .help(isSaving ? "Saving..." : "Save Preset")
+                        .accessibilityLabel(Text(isSaving ? "Saving..." : "Save Preset"))
                     }
                 }
-                .buttonStyle(PrimaryActionButtonStyle())
-                .disabled(isSaving)
-                .help(isSaving ? "Saving..." : "Save Preset")
-                .accessibilityLabel(Text(isSaving ? "Saving..." : "Save Preset"))
             }
         }
         .padding(16)
-        .frame(minWidth: 720, minHeight: 520)
+        .frame(minWidth: 520, minHeight: 360)
         .background(Theme.background)
         .foregroundColor(Theme.textPrimary)
     }

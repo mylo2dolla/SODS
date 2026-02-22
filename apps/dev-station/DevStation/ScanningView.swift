@@ -11,10 +11,25 @@ struct ScanningView: View {
     let nodePresence: [String: NodePresence]
     let connectingNodeIDs: Set<String>
 
+    @Binding var onvifDiscoveryEnabled: Bool
+    @Binding var serviceDiscoveryEnabled: Bool
+    @Binding var arpWarmupEnabled: Bool
+    @Binding var bleDiscoveryEnabled: Bool
+    @Binding var safeModeEnabled: Bool
+    @Binding var onlyLocalSubnet: Bool
+    @Binding var scopeCIDR: String
+    @Binding var rangeStart: String
+    @Binding var rangeEnd: String
+    @Binding var showLogs: Bool
+    @Binding var networkScanMode: ScanMode
+    @Binding var bleScanMode: ScanMode
+
     let onStartNetworkScan: () -> Void
     let onStopAllScanning: () -> Void
     let onSetBLEScanning: (Bool) -> Void
     let onGenerateScanReport: () -> Void
+    let onRevealLatestReport: () -> Void
+    let onRestoreCoreNodes: () -> Void
     let onOpenNodes: () -> Void
 
     let onOpenNodeInNodes: (String) -> Void
@@ -72,6 +87,7 @@ struct ScanningView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
+            globalScanControlSection
             globalStatusStrip
             globalActionRow
             ScrollView {
@@ -85,9 +101,208 @@ struct ScanningView: View {
         .padding(16)
     }
 
+    private var globalScanControlSection: some View {
+        GroupBox("Scan Control") {
+            VStack(alignment: .leading, spacing: 8) {
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 8) {
+                        Text("CIDR")
+                            .frame(width: 50, alignment: .leading)
+                            .font(.system(size: 11))
+                        TextField("192.168.1.0/24", text: $scopeCIDR)
+                            .textFieldStyle(.roundedBorder)
+                            .frame(width: 160)
+                        Text("Range")
+                            .frame(width: 50, alignment: .leading)
+                            .font(.system(size: 11))
+                        TextField("Start", text: $rangeStart)
+                            .textFieldStyle(.roundedBorder)
+                            .frame(width: 120)
+                        TextField("End", text: $rangeEnd)
+                            .textFieldStyle(.roundedBorder)
+                            .frame(width: 120)
+                    }
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack(spacing: 8) {
+                            Text("CIDR")
+                                .font(.system(size: 11))
+                            TextField("192.168.1.0/24", text: $scopeCIDR)
+                                .textFieldStyle(.roundedBorder)
+                        }
+                        HStack(spacing: 8) {
+                            Text("Range")
+                                .font(.system(size: 11))
+                            TextField("Start", text: $rangeStart)
+                                .textFieldStyle(.roundedBorder)
+                            TextField("End", text: $rangeEnd)
+                                .textFieldStyle(.roundedBorder)
+                        }
+                    }
+                }
+                HStack(spacing: 12) {
+                    Toggle("Only local subnet", isOn: $onlyLocalSubnet)
+                    Toggle("Safe Mode", isOn: $safeModeEnabled)
+                }
+                .font(.system(size: 11))
+                .toggleStyle(SwitchToggleStyle(tint: Theme.accent))
+                HStack(spacing: 12) {
+                    Toggle("ONVIF", isOn: $onvifDiscoveryEnabled)
+                    Toggle("Service Disc.", isOn: $serviceDiscoveryEnabled)
+                    Toggle("ARP Warmup", isOn: $arpWarmupEnabled)
+                    Toggle(
+                        "BLE",
+                        isOn: Binding(
+                            get: { bleScanner.isScanning },
+                            set: { bleDiscoveryEnabled = $0 }
+                        )
+                    )
+                }
+                .font(.system(size: 11))
+                .toggleStyle(SwitchToggleStyle(tint: Theme.accent))
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 12) {
+                        Text("Net Scan")
+                            .font(.system(size: 11, weight: .semibold))
+                        Picker("Net Scan", selection: $networkScanMode) {
+                            ForEach(ScanMode.allCases) { mode in
+                                Text(mode.label).tag(mode)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+                        .frame(width: 220)
+                        Text("BLE Scan")
+                            .font(.system(size: 11, weight: .semibold))
+                        Picker("BLE Scan", selection: $bleScanMode) {
+                            ForEach(ScanMode.allCases) { mode in
+                                Text(mode.label).tag(mode)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+                        .frame(width: 220)
+                        Spacer()
+                    }
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Net Scan")
+                            .font(.system(size: 11, weight: .semibold))
+                        Picker("Net Scan", selection: $networkScanMode) {
+                            ForEach(ScanMode.allCases) { mode in
+                                Text(mode.label).tag(mode)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+                        Text("BLE Scan")
+                            .font(.system(size: 11, weight: .semibold))
+                        Picker("BLE Scan", selection: $bleScanMode) {
+                            ForEach(ScanMode.allCases) { mode in
+                                Text(mode.label).tag(mode)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+                    }
+                }
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 10) {
+                        if scanner.isScanning {
+                            Button { onStopAllScanning() } label: {
+                                Image(systemName: "stop.circle.fill")
+                                    .font(.system(size: 13, weight: .semibold))
+                            }
+                            .buttonStyle(PrimaryActionButtonStyle())
+                            .help("Stop Scan")
+                            .accessibilityLabel(Text("Stop Scan"))
+                        } else {
+                            Button { onStartNetworkScan() } label: {
+                                Image(systemName: networkScanMode == .oneShot ? "play.circle.fill" : "playpause.circle.fill")
+                                    .font(.system(size: 13, weight: .semibold))
+                            }
+                            .buttonStyle(PrimaryActionButtonStyle())
+                            .help("Start \(networkScanMode.label) Scan")
+                            .accessibilityLabel(Text("Start \(networkScanMode.label) Scan"))
+                        }
+                        Button { onGenerateScanReport() } label: {
+                            Image(systemName: "doc.badge.gearshape")
+                                .font(.system(size: 12, weight: .semibold))
+                        }
+                        .buttonStyle(SecondaryActionButtonStyle())
+                        .help("Generate Scan Report")
+                        .accessibilityLabel(Text("Generate Scan Report"))
+                        Button { onRevealLatestReport() } label: {
+                            Image(systemName: "doc.text.magnifyingglass")
+                                .font(.system(size: 12, weight: .semibold))
+                        }
+                        .buttonStyle(SecondaryActionButtonStyle())
+                        .help("Reveal Latest Report")
+                        .accessibilityLabel(Text("Reveal Latest Report"))
+                        Button { onRestoreCoreNodes() } label: {
+                            Image(systemName: "arrow.triangle.2.circlepath.circle")
+                                .font(.system(size: 12, weight: .semibold))
+                        }
+                        .buttonStyle(SecondaryActionButtonStyle())
+                        .help("Restore Core Nodes")
+                        .accessibilityLabel(Text("Restore Core Nodes"))
+                        Toggle("Logs Panel", isOn: $showLogs)
+                            .toggleStyle(.switch)
+                            .font(.system(size: 11))
+                            .tint(Theme.accent)
+                        Spacer()
+                    }
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack(spacing: 10) {
+                            if scanner.isScanning {
+                                Button { onStopAllScanning() } label: {
+                                    Image(systemName: "stop.circle.fill")
+                                        .font(.system(size: 13, weight: .semibold))
+                                }
+                                .buttonStyle(PrimaryActionButtonStyle())
+                                .help("Stop Scan")
+                                .accessibilityLabel(Text("Stop Scan"))
+                            } else {
+                                Button { onStartNetworkScan() } label: {
+                                    Image(systemName: networkScanMode == .oneShot ? "play.circle.fill" : "playpause.circle.fill")
+                                        .font(.system(size: 13, weight: .semibold))
+                                }
+                                .buttonStyle(PrimaryActionButtonStyle())
+                                .help("Start \(networkScanMode.label) Scan")
+                                .accessibilityLabel(Text("Start \(networkScanMode.label) Scan"))
+                            }
+                            Button { onGenerateScanReport() } label: {
+                                Image(systemName: "doc.badge.gearshape")
+                                    .font(.system(size: 12, weight: .semibold))
+                            }
+                            .buttonStyle(SecondaryActionButtonStyle())
+                            .help("Generate Scan Report")
+                            .accessibilityLabel(Text("Generate Scan Report"))
+                            Button { onRevealLatestReport() } label: {
+                                Image(systemName: "doc.text.magnifyingglass")
+                                    .font(.system(size: 12, weight: .semibold))
+                            }
+                            .buttonStyle(SecondaryActionButtonStyle())
+                            .help("Reveal Latest Report")
+                            .accessibilityLabel(Text("Reveal Latest Report"))
+                        }
+                        HStack(spacing: 10) {
+                            Button { onRestoreCoreNodes() } label: {
+                                Image(systemName: "arrow.triangle.2.circlepath.circle")
+                                    .font(.system(size: 12, weight: .semibold))
+                            }
+                            .buttonStyle(SecondaryActionButtonStyle())
+                            .help("Restore Core Nodes")
+                            .accessibilityLabel(Text("Restore Core Nodes"))
+                            Toggle("Logs Panel", isOn: $showLogs)
+                                .toggleStyle(.switch)
+                                .font(.system(size: 11))
+                                .tint(Theme.accent)
+                        }
+                    }
+                }
+            }
+            .padding(6)
+        }
+    }
+
     private var globalStatusStrip: some View {
         VStack(alignment: .leading, spacing: 8) {
-            ScrollView(.horizontal, showsIndicators: false) {
+            ScrollView(.horizontal, showsIndicators: true) {
                 HStack(spacing: 8) {
                     StatusChipView(
                         label: "Network",
@@ -136,23 +351,36 @@ struct ScanningView: View {
     }
 
     private var globalActionRow: some View {
-        HStack(spacing: 8) {
-            Group {
-                if scanner.isScanning {
-                    Button {
-                        onStopAllScanning()
-                    } label: {
-                        Label("Stop Network Scan", systemImage: "stop.circle")
-                    }
-                    .buttonStyle(SecondaryActionButtonStyle())
-                } else {
-                    Button {
-                        onStartNetworkScan()
-                    } label: {
-                        Label("Start Network Scan", systemImage: "dot.radiowaves.left.and.right")
-                    }
-                    .buttonStyle(PrimaryActionButtonStyle())
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 8) {
+                globalActionButtons
+                Spacer(minLength: 0)
+            }
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 8) {
+                    globalActionButtons
+                    Spacer(minLength: 0)
                 }
+            }
+        }
+    }
+
+    private var globalActionButtons: some View {
+        Group {
+            if scanner.isScanning {
+                Button {
+                    onStopAllScanning()
+                } label: {
+                    Label("Stop Network Scan", systemImage: "stop.circle")
+                }
+                .buttonStyle(SecondaryActionButtonStyle())
+            } else {
+                Button {
+                    onStartNetworkScan()
+                } label: {
+                    Label("Start Network Scan", systemImage: "dot.radiowaves.left.and.right")
+                }
+                .buttonStyle(PrimaryActionButtonStyle())
             }
 
             Button {
@@ -178,8 +406,6 @@ struct ScanningView: View {
                 Label("Open Nodes", systemImage: "square.grid.2x2")
             }
             .buttonStyle(SecondaryActionButtonStyle())
-
-            Spacer(minLength: 0)
         }
     }
 
@@ -187,7 +413,7 @@ struct ScanningView: View {
         VStack(alignment: .leading, spacing: 8) {
             sectionHeader(title: "Core Nodes", subtitle: "aux / vault / mac16")
             if coreNodes.isEmpty {
-                Text("Core nodes are missing. Use Restore Core Nodes in the Nodes page.")
+                Text("Core nodes are missing. Use Restore Core Nodes in Scanners controls above.")
                     .font(.system(size: 11))
                     .foregroundColor(Theme.textSecondary)
             } else {
@@ -442,7 +668,7 @@ private struct ScannerNodeCardView: View {
                     .foregroundColor(Theme.textSecondary)
             }
 
-            ScrollView(.horizontal, showsIndicators: false) {
+            ScrollView(.horizontal, showsIndicators: true) {
                 HStack(spacing: 6) {
                     if capabilityLabels.isEmpty {
                         ScannerCapabilityBadge(label: "none")
